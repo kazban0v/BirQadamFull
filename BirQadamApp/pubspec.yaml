@@ -1,0 +1,134 @@
+name: birqadam
+description: BirQadam - One step towards a better world. Volunteer management platform.
+
+publish_to: 'none' # Remove this line if you wish to publish to pub.dev
+
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # HTTP requests
+  http: ^1.1.0
+
+  # State management
+  provider: ^6.0.5
+
+  # Shared preferences for token storage
+  shared_preferences: ^2.2.2
+
+  # Secure storage
+  flutter_secure_storage: ^9.0.0
+
+  # JSON serialization
+  json_annotation: ^4.8.1
+
+  # Geolocation
+  geolocator: ^12.0.0
+
+  # Firebase Cloud Messaging for push notifications
+  firebase_core: ^3.0.0
+  firebase_messaging: ^15.0.0
+  firebase_analytics: ^11.0.0  # ✅ ИСПРАВЛЕНИЕ СредП-16: Analytics
+  flutter_local_notifications: ^17.0.0
+
+  # Icons
+  cupertino_icons: ^1.0.2
+
+  # Localization
+  flutter_localizations:
+    sdk: flutter
+  intl: ^0.20.2
+
+  # Animations
+  animated_text_kit: ^4.2.2
+
+  # Sharing functionality
+  share_plus: ^10.1.2
+
+  # URL launcher for opening links
+  url_launcher: ^6.3.1
+
+  # Package info for app version
+  package_info_plus: ^8.1.0
+
+  # Image picker for photo reports
+  image_picker: ^1.0.4
+  
+  # Video player for chat videos
+  video_player: ^2.8.2
+
+  # ✅ ИСПРАВЛЕНИЕ НП-9: Lazy loading для изображений
+  cached_network_image: ^3.3.1
+
+  # Shimmer loading effect
+  shimmer: ^3.0.0
+
+  # Flutter Slidable for swipe actions
+  flutter_slidable: ^3.0.0
+
+  # Smooth page indicator for onboarding
+  smooth_page_indicator: ^1.1.0
+
+  # Permission handler
+  permission_handler: ^11.0.1
+
+  # Lottie animations for onboarding
+  lottie: ^3.0.0
+
+  # Charts for analytics
+  fl_chart: ^0.69.0
+
+  # Maps (OpenStreetMap - бесплатно!)
+  flutter_map: ^6.1.0
+  latlong2: ^0.9.0
+
+  # Calendar
+  table_calendar: ^3.1.2
+
+  # ✅ UI/UX: Google Fonts
+  google_fonts: ^6.1.0
+
+  # ✅ NEW: Network connectivity monitoring for auto IP switching
+  connectivity_plus: ^6.1.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+    
+  flutter_lints: ^2.0.0
+  
+  # Code generation
+  json_serializable: ^6.7.1
+  build_runner: ^2.4.7
+  
+  # Launcher icons generator
+  flutter_launcher_icons: ^0.13.1
+
+flutter:
+  uses-material-design: true
+
+  # Assets
+  assets:
+    - assets/images/
+    - assets/images/errors/
+
+# Launcher Icons Configuration
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/images/logo_birqadam.png"
+  adaptive_icon_background: "#FFFFFF"
+  adaptive_icon_foreground: "assets/images/logo_birqadam.png"
+  
+  # Uncomment if you want to add custom fonts
+  # fonts:
+  #   - family: Schyler
+  #     fonts:
+  #       - asset: fonts/Schyler-Regular.ttf
+  #       - asset: fonts/Schyler-Italic.ttf
+  #         style: italic

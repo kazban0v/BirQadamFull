@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "250386960416",
+    "project_id": "cleanupalmaty",
+    "storage_bucket": "cleanupalmaty.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:250386960416:android:3d6c26be7c50fe86012c45",
+        "android_client_info": {
+          "package_name": "com.example.cleanupv1"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD9WgwKVvCjuTdNuO-LJ0qhkocsaWxzFqY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
