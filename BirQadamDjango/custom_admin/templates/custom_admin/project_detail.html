@@ -1,0 +1,523 @@
+{% extends 'custom_admin/base.html' %} {% load static %} {% block extra_css %}
+<style>
+    :root {
+        --card-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.15);
+        --card-hover-shadow: 0 0.3rem 2rem 0 rgba(58, 59, 69, 0.25);
+    }
+
+    /* Page Header */
+    .page-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 15px;
+        padding: 2rem;
+        margin-bottom: 2rem;
+        color: white;
+        box-shadow: var(--card-shadow);
+    }
+
+    .page-header h2 {
+        margin: 0;
+        font-size: 1.75rem;
+        font-weight: 700;
+    }
+
+    /* Enhanced Cards */
+    .project-card {
+        background: white;
+        border-radius: 15px;
+        box-shadow: var(--card-shadow);
+        transition: all 0.3s ease;
+        border: none;
+        margin-bottom: 1.5rem;
+        overflow: hidden;
+    }
+
+    .project-card:hover {
+        box-shadow: var(--card-hover-shadow);
+        transform: translateY(-3px);
+    }
+
+    .project-card .card-header {
+        border-radius: 15px 15px 0 0 !important;
+        font-weight: 700;
+        padding: 1.25rem 1.5rem;
+        border: none;
+    }
+
+    .project-card .card-body {
+        padding: 1.5rem;
+    }
+
+    /* Chart Container */
+    .chart-container {
+        position: relative;
+        height: 280px;
+        padding: 1rem;
+    }
+
+    /* Stats Badge */
+    .stats-badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.5rem 1rem;
+        border-radius: 25px;
+        font-weight: 600;
+        margin: 0.25rem;
+    }
+
+    /* Table Enhancement */
+    .modern-table {
+        border-radius: 10px;
+        overflow: hidden;
+    }
+
+    .modern-table thead {
+        background: #f8f9fc;
+    }
+
+    .modern-table tbody tr {
+        transition: all 0.3s ease;
+    }
+
+    .modern-table tbody tr:hover {
+        background: rgba(102, 126, 234, 0.05);
+        transform: scale(1.01);
+    }
+
+    /* Mobile Optimization */
+    @media (max-width: 768px) {
+        .page-header {
+            padding: 1.5rem;
+        }
+
+        .page-header h2 {
+            font-size: 1.25rem;
+        }
+
+        .chart-container {
+            height: 250px;
+            padding: 0.5rem;
+        }
+
+        .project-card .card-body {
+            padding: 1rem;
+        }
+
+        .table-responsive {
+            font-size: 0.875rem;
+        }
+
+        .btn-sm {
+            font-size: 0.75rem;
+            padding: 0.25rem 0.5rem;
+        }
+
+        /* Stack cards vertically on mobile */
+        .col-lg-6,
+        .col-md-6 {
+            flex: 0 0 100%;
+            max-width: 100%;
+        }
+
+        /* Reduce table padding on mobile */
+        .table-sm th,
+        .table-sm td {
+            padding: 0.3rem;
+            font-size: 0.8rem;
+        }
+
+        /* Make badges smaller on mobile */
+        .stats-badge {
+            padding: 0.25rem 0.5rem;
+            font-size: 0.75rem;
+            margin: 0.15rem;
+        }
+    }
+
+    /* Small devices (phones, less than 576px) */
+    @media (max-width: 576px) {
+        .page-header h2 {
+            font-size: 1.1rem;
+        }
+
+        .chart-container {
+            height: 200px;
+        }
+
+        /* Hide less important columns on very small screens */
+        .hide-on-mobile {
+            display: none;
+        }
+    }
+
+    /* Animation */
+    @keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .fade-in-up {
+        animation: fadeInUp 0.5s ease-out;
+    }
+</style>
+{% endblock %} {% block content %}
+<div class="container-fluid">
+    <!-- Page Header -->
+    <div class="page-header fade-in-up">
+        <div class="d-flex justify-content-between align-items-center flex-wrap">
+            <div class="mb-2 mb-md-0">
+                <h2><i class="fas fa-project-diagram me-2"></i>{{ project.title }}</h2>
+                <p class="mb-0 opacity-75">Детальная информация о проекте</p>
+            </div>
+            <div>
+                <span class="stats-badge bg-light text-dark">
+                    <i class="fas fa-users me-1"></i>{{ project.volunteer_projects.count }} волонтёров
+                </span>
+                <span class="stats-badge bg-light text-dark">
+                    <i class="fas fa-tasks me-1"></i>{{ project.tasks.count }} задач
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <!-- First Row: Basic Info and Task Stats -->
+    <div class="row">
+        <div class="col-lg-6 fade-in-up" style="animation-delay: 0.1s;">
+            <div class="project-card card">
+                <div class="card-header bg-primary text-white">
+                    <i class="fas fa-info-circle me-2"></i>Основная информация
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <div class="text-muted small mb-1"><i class="fas fa-align-left me-2"></i>Описание</div>
+                        <p class="mb-0">{{ project.description }}</p>
+                    </div>
+                    <div class="mb-3">
+                        <div class="text-muted small mb-1"><i class="fas fa-map-marker-alt me-2"></i>Город</div>
+                        <strong>{{ project.city }}</strong>
+                    </div>
+                    <div class="mb-3">
+                        <div class="text-muted small mb-1"><i class="fas fa-flag me-2"></i>Статус</div>
+                        <span class="badge bg-{% if project.status == 'approved' %}success{% elif project.status == 'rejected' %}danger{% else %}warning{% endif %} rounded-pill">
+                            {{ project.get_status_display }}
+                        </span>
+                    </div>
+                    <div class="d-grid gap-2">
+                        <a href="{% url 'project_edit' project.pk %}" class="btn btn-primary">
+                            <i class="fas fa-edit me-1"></i>Редактировать проект
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-6 fade-in-up" style="animation-delay: 0.2s;">
+            <div class="project-card card">
+                <div class="card-header bg-success text-white">
+                    <i class="fas fa-chart-pie me-2"></i>Статистика задач
+                </div>
+                <div class="card-body">
+                    <div class="chart-container">
+                        <canvas id="taskStatsChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Second Row: Top Volunteers and Recent Tasks -->
+    <div class="row">
+        <div class="col-lg-6 fade-in-up" style="animation-delay: 0.3s;">
+            <div class="project-card card">
+                <div class="card-header bg-warning text-white">
+                    <i class="fas fa-trophy me-2"></i>Топ волонтёров
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table modern-table table-sm table-hover align-middle mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Волонтёр</th>
+                                    <th class="text-center">Выполнено</th>
+                                    <th class="text-center hide-on-mobile">Рейтинг</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for volunteer in top_volunteers %}
+                                <tr>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <div class="avatar-circle me-2 bg-primary text-white d-flex align-items-center justify-content-center" style="width: 30px; height: 30px; border-radius: 50%; font-size: 0.8rem;">
+                                                {{ volunteer.username|slice:":1"|upper }}
+                                            </div>
+                                            <strong class="d-none d-md-inline">{{ volunteer.username }}</strong>
+                                            <strong class="d-md-none">{{ volunteer.username|truncatechars:15 }}</strong>
+                                        </div>
+                                    </td>
+                                    <td class="text-center">
+                                        <span class="badge bg-primary rounded-pill">{{ volunteer.task_count }}</span>
+                                    </td>
+                                    <td class="text-center hide-on-mobile">
+                                        {% if volunteer.avg_rating %}
+                                        <span class="badge bg-warning rounded-pill">{{ volunteer.avg_rating|floatformat:1 }}⭐</span>
+                                        {% else %}
+                                        <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="3" class="text-center py-4">
+                                        <i class="fas fa-users-slash fa-2x text-muted mb-2"></i>
+                                        <p class="text-muted mb-0">Нет данных</p>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-6 fade-in-up" style="animation-delay: 0.4s;">
+            <div class="project-card card">
+                <div class="card-header bg-info text-white">
+                    <i class="fas fa-tasks me-2"></i>Последние задачи
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table modern-table table-sm table-hover align-middle mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Задача</th>
+                                    <th class="text-center">Статус</th>
+                                    <th class="text-center hide-on-mobile">Срок</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for task in project.tasks.all|slice:":5" %}
+                                <tr>
+                                    <td>
+                                        <span class="d-none d-md-inline">{{ task.text|truncatechars:30 }}</span>
+                                        <span class="d-md-none">{{ task.text|truncatechars:20 }}</span>
+                                    </td>
+                                    <td class="text-center">
+                                        <span class="badge bg-{% if task.status == 'completed' %}success{% elif task.status == 'in_progress' %}warning{% else %}secondary{% endif %} rounded-pill" style="font-size: 0.7rem;">
+                                            {{ task.get_status_display }}
+                                        </span>
+                                    </td>
+                                    <td class="text-center hide-on-mobile">
+                                        <small class="text-muted">
+                                            {{ task.deadline_date|date:"d.m.Y"|default:"-" }}
+                                        </small>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="3" class="text-center py-4">
+                                        <i class="fas fa-tasks fa-2x text-muted mb-2"></i>
+                                        <p class="text-muted mb-0">Нет задач</p>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Third Row: Activity Chart (Full Width) -->
+    <div class="row">
+        <div class="col-12 fade-in-up" style="animation-delay: 0.5s;">
+            <div class="project-card card">
+                <div class="card-header bg-secondary text-white">
+                    <i class="fas fa-chart-line me-2"></i>Активность волонтёров по дням
+                </div>
+                <div class="card-body">
+                    <div class="chart-container" style="height: 300px;">
+                        <canvas id="activityChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %} {% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Общие настройки для графиков
+        const commonOptions = {
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: {
+                duration: 1000,
+                easing: 'easeInOutQuart'
+            },
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        padding: 10,
+                        font: {
+                            size: window.innerWidth < 768 ? 10 : 12,
+                            family: "'Nunito', sans-serif",
+                            weight: '600'
+                        },
+                        usePointStyle: true
+                    }
+                },
+                tooltip: {
+                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                    padding: 12,
+                    titleFont: {
+                        size: 13
+                    },
+                    bodyFont: {
+                        size: 12
+                    }
+                }
+            }
+        };
+
+        // График статусов задач
+        const taskStatsData = JSON.parse('{{ task_stats|escapejs }}');
+        const taskCtx = document.getElementById('taskStatsChart').getContext('2d');
+
+        const statusMap = {
+            'open': 'Открыто',
+            'in_progress': 'В работе',
+            'completed': 'Выполнено',
+            'failed': 'Не выполнено',
+            'closed': 'Закрыто'
+        };
+
+        new Chart(taskCtx, {
+            type: 'doughnut',
+            data: {
+                labels: taskStatsData.map(item => statusMap[item.status] || item.status),
+                datasets: [{
+                    data: taskStatsData.map(item => item.count),
+                    backgroundColor: [
+                        'rgba(54, 162, 235, 0.8)',
+                        'rgba(255, 206, 86, 0.8)',
+                        'rgba(75, 192, 192, 0.8)',
+                        'rgba(255, 99, 132, 0.8)',
+                        'rgba(201, 203, 207, 0.8)'
+                    ],
+                    hoverBackgroundColor: [
+                        'rgba(54, 162, 235, 1)',
+                        'rgba(255, 206, 86, 1)',
+                        'rgba(75, 192, 192, 1)',
+                        'rgba(255, 99, 132, 1)',
+                        'rgba(201, 203, 207, 1)'
+                    ],
+                    borderColor: '#fff',
+                    borderWidth: 3
+                }]
+            },
+            options: {
+                ...commonOptions,
+                cutout: '65%',
+                plugins: {
+                    ...commonOptions.plugins,
+                    tooltip: {
+                        ...commonOptions.plugins.tooltip,
+                        callbacks: {
+                            label: function(context) {
+                                const label = context.label || '';
+                                const value = context.raw || 0;
+                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                const percentage = total > 0 ? Math.round((value / total) * 100) : 0;
+                                return `${label}: ${value} (${percentage}%)`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        // График активности
+        const activityData = JSON.parse('{{ activity_data|escapejs }}');
+        const activityCtx = document.getElementById('activityChart').getContext('2d');
+
+        const activityGradient = activityCtx.createLinearGradient(0, 0, 0, 300);
+        activityGradient.addColorStop(0, 'rgba(78, 115, 223, 0.4)');
+        activityGradient.addColorStop(1, 'rgba(78, 115, 223, 0.0)');
+
+        new Chart(activityCtx, {
+            type: 'line',
+            data: {
+                labels: activityData.map(item => item.day),
+                datasets: [{
+                    label: 'Выполненные задачи',
+                    data: activityData.map(item => item.count),
+                    borderColor: 'rgba(78, 115, 223, 1)',
+                    backgroundColor: activityGradient,
+                    borderWidth: 3,
+                    fill: true,
+                    tension: 0.4,
+                    pointRadius: window.innerWidth < 768 ? 3 : 5,
+                    pointBackgroundColor: 'rgba(78, 115, 223, 1)',
+                    pointBorderColor: '#fff',
+                    pointBorderWidth: 2,
+                    pointHoverRadius: window.innerWidth < 768 ? 5 : 7
+                }]
+            },
+            options: {
+                ...commonOptions,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: {
+                            color: 'rgba(0, 0, 0, 0.05)'
+                        },
+                        ticks: {
+                            font: {
+                                size: window.innerWidth < 768 ? 9 : 11
+                            },
+                            padding: window.innerWidth < 768 ? 5 : 10
+                        }
+                    },
+                    x: {
+                        grid: {
+                            display: false
+                        },
+                        ticks: {
+                            font: {
+                                size: window.innerWidth < 768 ? 9 : 11
+                            },
+                            maxRotation: window.innerWidth < 768 ? 45 : 30,
+                            minRotation: window.innerWidth < 768 ? 45 : 0,
+                            padding: window.innerWidth < 768 ? 5 : 10
+                        }
+                    }
+                },
+                plugins: {
+                    ...commonOptions.plugins,
+                    tooltip: {
+                        ...commonOptions.plugins.tooltip,
+                        callbacks: {
+                            title: function(context) {
+                                return `Дата: ${context[0].label}`;
+                            },
+                            label: function(context) {
+                                return `Выполнено: ${context.raw} задач`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,637 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <title>Функционал — BirQadam</title>
+    <meta charset="utf-8" />
+    <link rel="icon" href="{% static 'about_site/images/logob.png' %}" type="image/png">
+
+    <link rel="apple-touch-icon" href="{% static 'about_site/images/logob.png' %}">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="{% static 'about_site/css/style.css' %}">
+    <link rel="stylesheet" href="{% static 'about_site/css/aos.css' %}">
+    <link rel="stylesheet" href="{% static 'about_site/css/bootstrap.min.css' %}">
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;800&display=swap');
+
+        :root {
+            /* ОБНОВЛЕННЫЕ ЦВЕТА */
+            --birqadam-primary: #8BC34A;
+            /* Светло-зеленый (вместо синего) */
+            --birqadam-accent: #e3794d;
+            /* Оранжево-персиковый (вместо красного) */
+            --birqadam-success: #4CAF50;
+            /* Success Green */
+            --birqadam-gray: #EDEDED;
+            --birqadam-white: #f8ecc4;
+            /* задний фон */
+            --birqadam-pure-white: #FFFFFF;
+            /* Чисто белый для контраста */
+
+            /* Алиасы для совместимости */
+            --alma-primary: var(--birqadam-primary);
+            --alma-accent: var(--birqadam-accent);
+            --alma-gray: var(--birqadam-gray);
+            --alma-white: var(--birqadam-white);
+        }
+
+        body {
+            font-family: 'Montserrat', sans-serif;
+            color: #333;
+            background: var(--alma-white);
+            margin: 0;
+            padding: 0;
+            overflow-x: hidden;
+        }
+
+        a {
+            text-decoration: none;
+            /* Основное правило для всех ссылок */
+            color: inherit;
+        }
+
+        /* НОВОЕ ПРАВИЛО: Гарантирует отсутствие подчеркивания на карточках и кнопках */
+        .common-card a,
+        .btn-base {
+            text-decoration: none !important;
+        }
+
+        .common-card a:hover {
+            text-decoration: none !important;
+        }
+
+
+        h1,
+        h2,
+        h3 {
+            font-weight: 800;
+            color: var(--alma-primary);
+        }
+
+        p {
+            color: #555;
+            line-height: 1.6;
+        }
+
+        .header-wrapper {
+            max-width: 1140px;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 1rem;
+        }
+
+        header {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            padding: 1rem 0;
+            background: var(--birqadam-primary);
+            z-index: 100;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, .1);
+        }
+
+        header .site-logo a {
+            font-weight: 800;
+            font-size: 1.5rem;
+            color: var(--birqadam-pure-white);
+        }
+
+        .site-menu {
+            list-style: none;
+            display: flex;
+            gap: 2rem;
+            padding-left: 0;
+            /* Убираем стандартный padding у UL */
+        }
+
+        /* Стили для ссылок в основном меню (a - для тех, что не в dropdown) */
+        .site-menu>a,
+        .site-menu li {
+            position: relative;
+        }
+
+        .site-menu a {
+            color: var(--birqadam-pure-white);
+            padding-bottom: 0.25rem;
+            border-bottom: 2px solid transparent;
+            transition: all 0.3s ease;
+            position: relative;
+            font-weight: 600;
+            display: block;
+        }
+
+        /* ИСПРАВЛЕНИЕ: Отдельные стили для hover и active */
+        .site-menu a:hover {
+            border-color: transparent;
+            /* Убираем линию при наведении */
+            transform: none;
+            /* Убираем масштабирование */
+            text-shadow: 0 0 5px rgba(255, 255, 255, 0.5);
+            /* Немного тени для эффекта подсветки */
+        }
+
+        .site-menu a.active {
+            border-color: var(--birqadam-pure-white);
+            /* Линия остается только для активной страницы */
+            transform: none;
+            text-shadow: 0 2px 8px rgba(0, 32, 91, 0.3);
+        }
+
+        /* КОНЕЦ ИСПРАВЛЕНИЯ */
+
+        /* Стили Dropdown */
+        .dropdown {
+            /* Переопределяем display: flex, чтобы li не ломало верстку */
+            display: list-item;
+        }
+
+        .dropdown-content {
+            display: none;
+            /* Скрываем по умолчанию */
+            position: absolute;
+            background-color: var(--birqadam-primary);
+            /* Фон меню */
+            min-width: 160px;
+            box-shadow: 0px 8px 16px 0px rgba(0, 0, 0, 0.2);
+            z-index: 101;
+            padding: 0.5rem 0;
+            border-radius: 0 0 0.5rem 0.5rem;
+            /* Смещаем, чтобы меню начиналось ровно под кнопкой */
+            left: -0.5rem;
+            top: 100%;
+        }
+
+        .dropdown-content a {
+            color: var(--birqadam-pure-white);
+            padding: 0.5rem 1rem;
+            text-decoration: none;
+            display: block;
+            font-weight: 400;
+            /* Более тонкий шрифт для подменю */
+            border-bottom: none;
+            /* Убираем линии в подменю */
+            transition: background-color 0.2s ease;
+        }
+
+        .dropdown-content a:hover {
+            background-color: color-mix(in srgb, var(--birqadam-primary) 80%, black);
+            /* Небольшое затемнение при наведении */
+            transform: none;
+            text-shadow: none;
+        }
+
+        /* ПОКАЗАТЬ МЕНЮ ПРИ НАВЕДЕНИИ */
+        .dropdown:hover .dropdown-content {
+            display: block;
+        }
+
+        /* КОНЕЦ СТИЛЕЙ DROP DOWN */
+
+        /* КОНТЕЙНЕР ДЛЯ ДВУХ КНОПОК (В РЯД) */
+        .btn-actions-container {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            justify-content: center;
+            margin-top: 1rem;
+        }
+
+        .btn-base {
+            border-radius: 9999px;
+            padding: 0.75rem 2rem;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            font-weight: 600;
+            display: inline-block;
+            text-align: center;
+            white-space: nowrap;
+        }
+
+        /* ОБЕ КНОПКИ ТЕПЕРЬ ИМЕЮТ ЕДИНЫЙ СТИЛЬ (Белый/Зеленый) */
+        .btn-primary,
+        .btn-secondary {
+            /* Белый фон, светло-зеленый текст и рамка */
+            background-color: var(--birqadam-pure-white);
+            color: var(--alma-primary);
+            border: 2px solid var(--alma-primary);
+        }
+
+        .btn-primary:hover,
+        .btn-secondary:hover {
+            /* При наведении: заливка светло-зеленым */
+            background-color: var(--alma-primary);
+            color: var(--birqadam-pure-white);
+            transform: scale(1.05);
+            border-color: var(--alma-accent);
+            /* Персиковый бордер */
+            box-shadow: 0 4px 16px rgba(0, 32, 91, 0.3);
+        }
+
+        /* КОНЕЦ БЛОКА КНОПОК */
+
+        .section {
+            padding: 4rem 0;
+        }
+
+        .section h2 {
+            font-size: 2rem;
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .section p {
+            max-width: 800px;
+            margin: 0 auto 1rem;
+            text-align: center;
+        }
+
+        .hero {
+            min-height: 100vh;
+            padding-top: 100px;
+            padding-left: 5%;
+            padding-right: 5%;
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            text-align: left;
+            background: var(--alma-white);
+            color: var(--alma-primary);
+            position: relative;
+        }
+
+        .hero h1 {
+            font-size: 3rem;
+            color: var(--alma-primary);
+        }
+
+        .hero p {
+            font-size: 1.25rem;
+            margin-bottom: 2rem;
+            color: var(--alma-primary);
+        }
+
+        .common-card {
+            display: block;
+            background: var(--birqadam-pure-white);
+            padding: 2rem;
+            border-radius: 1rem;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+            border: 2px solid var(--alma-primary);
+            text-align: center;
+            transition: 0.3s ease;
+            font-weight: 600;
+            height: 100%;
+        }
+
+        .common-card:hover {
+            transform: scale(1.03);
+            border-color: var(--alma-accent);
+            box-shadow: 0 8px 20px rgba(227, 121, 77, 0.3);
+        }
+
+        .common-card h3 {
+            font-weight: 700;
+            margin-bottom: 1rem;
+            color: var(--alma-primary);
+        }
+
+        .common-card p {
+            color: #555;
+            font-size: 0.95rem;
+        }
+
+        .why-we-box {
+            max-width: 1140px;
+            margin: 0 auto;
+            padding: 1rem;
+        }
+
+        footer {
+            background: var(--alma-accent);
+            color: var(--birqadam-pure-white);
+            padding: 2rem;
+            text-align: center;
+        }
+
+        footer a {
+            color: var(--birqadam-pure-white);
+            text-decoration: underline;
+        }
+
+        footer a:hover {
+            opacity: 0.8;
+        }
+
+        .alma-footer-manual {
+            position: relative;
+            background-color: var(--alma-white);
+            overflow: hidden;
+            padding: 4rem 2rem 2rem;
+            text-align: center;
+            color: var(--alma-primary);
+        }
+
+        .footer-shapes {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 200px;
+            z-index: 0;
+        }
+
+        .red-corner {
+            position: absolute;
+            left: -100px;
+            bottom: 0;
+            width: 300px;
+            height: 300px;
+            background: var(--alma-accent);
+            transform: rotate(45deg);
+            z-index: 1;
+        }
+
+        .blue-corner {
+            position: absolute;
+            right: -100px;
+            bottom: 0;
+            width: 300px;
+            height: 300px;
+            background: var(--alma-primary);
+            transform: rotate(-45deg);
+            z-index: 1;
+        }
+
+        .footer-content {
+            position: relative;
+            z-index: 2;
+        }
+
+        .footer-content p {
+            margin-top: 1rem;
+            font-weight: 600;
+        }
+
+        .alma-logo {
+            width: 120px;
+            height: auto;
+            margin-bottom: 1rem;
+        }
+
+        @media (max-width: 768px) {
+            .header-wrapper {
+                flex-direction: column;
+                gap: 1rem;
+            }
+
+            .hero h1 {
+                font-size: 2rem;
+            }
+
+            .hero p {
+                font-size: 1rem;
+            }
+
+            .site-menu {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .common-card {
+                flex: 1 1 100%;
+            }
+
+            .btn-actions-container a {
+                flex: 1 1 100%;
+                /* На мобильном кнопки занимают всю ширину */
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <div class="header-wrapper">
+            <div class="site-logo"><a href="{% url 'about_site:home' %}">BirQadam</a></div>
+            <ul class="site-menu">
+                <a href="{% url 'about_site:home' %}">Главная</a>
+                <a href="{% url 'about_site:services' %}" class="active">Функционал</a>
+
+                <li class="dropdown">
+                    <a href="{% url 'about_site:instruction' %}" class="dropdown-trigger">Инструкция</a>
+                    <div class="dropdown-content">
+                        <a href="{% url 'about_site:volunteer_guide' %}">Волонтёр</a>
+                        <a href="{% url 'about_site:organizer_guide' %}">Организатор</a>
+                        <a href="{% url 'about_site:admin_guide' %}">Админ</a>
+                    </div>
+                </li>
+            </ul>
+        </div>
+    </header>
+
+    <section class="section" style="margin-top: 100px;" id="instruction-content">
+        <div class="container" data-aos="fade-up">
+            <h2 class="mb-4 text-center">Инструкция по использованию бота</h2>
+            <ol>
+                <li><strong>Регистрация.</strong> Зайдите в наш TelegramBot, создайте аккаунт, указав своё имя и контактные данные.</li>
+                <li><strong>Выбор роли.</strong> В боте вам предложат выбрать путь волонтёра, организатора или администратора.</li>
+                <li><strong>Поиск мероприятий.</strong> Волонтёры смогут видеть доступные акции, а организаторы — создавать свои события.</li>
+                <li><strong>Участие.</strong> Волонтёры записываются на выбранные мероприятия, а организаторы видят список участников.</li>
+                <li><strong>Подтверждение.</strong> Администратор проверяет данные, следит за работой системы и помогает при вопросах.</li>
+            </ol>
+            <p class="mt-4">Следуйте этим шагам для эффективной работы с BirQadam</p>
+
+            <div class="text-center mt-4 mb-5">
+                <div class="btn-actions-container">
+                    <a href="https://t.me/cleanupalmaty_bot" target="_blank" class="btn-primary btn-base" id="telegram-button">Перейти в Telegram</a>
+                    <a href="http://localhost:5173/" target="_blank" class="btn-secondary btn-base" id="browser-button">Перейти в веб портал</a>
+                </div>
+            </div>
+
+            <h3 class="text-center mt-5 mb-4">Выберите вашу роль</h3>
+            <div class="row text-center mb-5">
+                <div class="col-md-4 mb-4">
+                    <div class="common-card">
+                        <a class="guide-card" href="{% url 'about_site:volunteer_guide' %}">
+                            <h3>🤝 Волонтёр</h3>
+                            <p>Инструкция для добровольцев и участников акций.</p>
+                        </a>
+                    </div>
+                </div>
+                <div class="col-md-4 mb-4">
+                    <div class="common-card">
+                        <a class="guide-card" href="{% url 'about_site:organizer_guide' %}">
+                            <h3>📢 Организатор</h3>
+                            <p>Как создать и управлять мероприятием.</p>
+                        </a>
+                    </div>
+                </div>
+                <div class="col-md-4 mb-4">
+                    <div class="common-card">
+                        <a class="guide-card" href="{% url 'about_site:admin_guide' %}">
+                            <h3>🛠 Админ</h3>
+                            <p>Роль админа, модерация и контроль.</p>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <footer class="alma-footer-manual">
+        <div class="footer-shapes">
+            <div class="red-corner"></div>
+            <div class="blue-corner"></div>
+        </div>
+        <div class="footer-content">
+            <img src="{% static 'about_site/images/logob.png' %}" alt="AlmaU Logo" class="alma-logo">
+
+        </div>
+    </footer>
+
+    <script src="{% static 'about_site/js/jquery-3.3.1.min.js' %}"></script>
+    <script src="{% static 'about_site/js/aos.js' %}"></script>
+    <script>
+        // JS для вашей кастомной аналитики
+
+        // Функции для работы с куки и генерацией ID
+        function getCookie(name) {
+            const nameEQ = name + "=";
+            const ca = document.cookie.split(';');
+            for (let i = 0; i < ca.length; i++) {
+                let c = ca[i];
+                while (c.charAt(0) === ' ') c = c.substring(1, c.length);
+                if (c.indexOf(nameEQ) === 0) return c.substring(nameEQ.length, c.length);
+            }
+            return null;
+        }
+
+        // --- Получение CSRF-токена для Django ---
+        function getCsrfToken() {
+            return getCookie('csrftoken');
+        }
+
+        function setCookie(name, value, days) {
+            let expires = "";
+            if (days) {
+                const date = new Date();
+                date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+                expires = "; expires=" + date.toUTCString();
+            }
+            document.cookie = name + "=" + (value || "") + expires + "; path=/; SameSite=Lax";
+        }
+
+        function generateUserId() {
+            // Простой генератор UUID
+            return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+                const r = Math.random() * 16 | 0,
+                    v = c === 'x' ? r : (r & 0x3 | 0x8);
+                return v.toString(16);
+            });
+        }
+
+        const USER_ID_COOKIE = 'birqadam_user_id';
+        let userId = getCookie(USER_ID_COOKIE);
+
+        // Переменная для отслеживания, является ли визит новым
+        let isNewVisit = false;
+
+        // --- Функция для отправки объединенного запроса на Django-бэкенд ---
+        const ANALYTICS_ENDPOINT = '/api/track/data/'; // <-- URL, который мы настроили в Django
+
+        function sendAnalyticsData(buttonAction = null) {
+            const csrfToken = getCsrfToken();
+
+            if (!csrfToken) {
+                console.error("CSRF token not found. Cannot send data to Django backend.");
+                return;
+            }
+
+            // Если user ID еще не установлен, генерируем и устанавливаем его
+            if (!userId) {
+                userId = generateUserId();
+                setCookie(USER_ID_COOKIE, userId, 365);
+                isNewVisit = true;
+            }
+
+            const data = {
+                user_id: userId,
+                visit_data: {
+                    type: isNewVisit ? 'new' : 'returning',
+                    url: window.location.pathname,
+                    referrer: document.referrer || null,
+                },
+                event_data: buttonAction ? {
+                    event_name: 'click',
+                    action: buttonAction,
+                    url: window.location.pathname
+                } : null
+            };
+
+            // Если визит не новый И нет события, мы не отправляем ничего.
+            if (!isNewVisit && !buttonAction) {
+                return;
+            }
+
+            fetch(ANALYTICS_ENDPOINT, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken
+                    },
+                    body: JSON.stringify(data),
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`Server error: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('Analytics data sent successfully (combined request):', data);
+                    // После успешной отправки сбрасываем флаг нового визита
+                    if (isNewVisit) isNewVisit = false;
+                })
+                .catch((error) => {
+                    console.error('Error sending analytics data:', error);
+                });
+        }
+
+        // --- Инициализация при загрузке страницы ---
+        if (!userId) {
+            isNewVisit = true;
+            console.log("Analytics: New User ID initialized. Waiting for first event...");
+        } else {
+            console.log("Analytics: Returning User.");
+        }
+
+        // --- Привязка логики к событиям DOM ---
+        document.addEventListener('DOMContentLoaded', () => {
+            const telegramBtn = document.getElementById('telegram-button');
+            const browserBtn = document.getElementById('browser-button');
+
+            if (telegramBtn) {
+                telegramBtn.addEventListener('click', () => {
+                    sendAnalyticsData('Telegram_Link_Clicked');
+                });
+            }
+
+            if (browserBtn) {
+                browserBtn.addEventListener('click', () => {
+                    sendAnalyticsData('Web_Portal_Clicked');
+                });
+            }
+
+            AOS.init({
+                once: true
+            });
+        });
+    </script>
+</body>
+
+</html>

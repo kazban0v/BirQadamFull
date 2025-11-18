@@ -1,0 +1,283 @@
+{% extends 'custom_admin/base.html' %} {% load static %} {% block extra_css %}
+<style>
+    :root {
+        --card-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.15);
+        --danger-gradient: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    }
+
+    /* Page Container */
+    .delete-page {
+        min-height: 60vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 2rem 0;
+    }
+
+    /* Delete Card */
+    .delete-card {
+        max-width: 600px;
+        width: 100%;
+        background: white;
+        border-radius: 20px;
+        box-shadow: var(--card-shadow);
+        border: none;
+        overflow: hidden;
+        animation: fadeInUp 0.5s ease-out;
+    }
+
+    .delete-card-header {
+        background: var(--danger-gradient);
+        color: white;
+        padding: 2rem;
+        text-align: center;
+        border: none;
+    }
+
+    .delete-card-header .icon {
+        font-size: 4rem;
+        margin-bottom: 1rem;
+        animation: pulse 2s infinite;
+    }
+
+    .delete-card-header h2 {
+        margin: 0;
+        font-size: 1.75rem;
+        font-weight: 700;
+    }
+
+    .delete-card-body {
+        padding: 2.5rem;
+        text-align: center;
+    }
+
+    .project-name {
+        font-size: 1.3rem;
+        font-weight: 700;
+        color: #2d3748;
+        margin: 1.5rem 0;
+        padding: 1rem;
+        background: #f7fafc;
+        border-radius: 10px;
+        border-left: 4px solid #f5576c;
+    }
+
+    .warning-box {
+        background: linear-gradient(135deg, #fff5f5 0%, #fed7d7 100%);
+        border-radius: 12px;
+        padding: 1.25rem;
+        margin: 1.5rem 0;
+        border-left: 4px solid #f5576c;
+    }
+
+    .warning-box i {
+        font-size: 1.5rem;
+        color: #f5576c;
+        margin-right: 0.75rem;
+    }
+
+    .warning-box p {
+        margin: 0;
+        color: #742a2a;
+        font-weight: 600;
+        font-size: 1rem;
+    }
+
+    .action-buttons {
+        display: flex;
+        gap: 1rem;
+        margin-top: 2rem;
+        flex-wrap: wrap;
+    }
+
+    .action-buttons button,
+    .action-buttons a {
+        flex: 1;
+        min-width: 200px;
+    }
+
+    /* Buttons */
+    .btn-delete {
+        background: var(--danger-gradient);
+        color: white;
+        border: none;
+        border-radius: 12px;
+        padding: 1rem 2rem;
+        font-weight: 700;
+        font-size: 1.05rem;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 15px rgba(245, 87, 108, 0.3);
+    }
+
+    .btn-delete:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 6px 20px rgba(245, 87, 108, 0.4);
+        color: white;
+    }
+
+    .btn-cancel {
+        background: #e2e8f0;
+        color: #4a5568;
+        border: none;
+        border-radius: 12px;
+        padding: 1rem 2rem;
+        font-weight: 700;
+        font-size: 1.05rem;
+        transition: all 0.3s ease;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .btn-cancel:hover {
+        background: #cbd5e0;
+        transform: translateY(-3px);
+        box-shadow: var(--card-shadow);
+        color: #4a5568;
+    }
+
+    .btn-icon {
+        margin-right: 0.5rem;
+        font-size: 1.1rem;
+    }
+
+    /* Mobile Responsive */
+    @media (max-width: 576px) {
+        .delete-card {
+            margin: 1rem;
+        }
+
+        .delete-card-header {
+            padding: 1.5rem;
+        }
+
+        .delete-card-header .icon {
+            font-size: 3rem;
+        }
+
+        .delete-card-header h2 {
+            font-size: 1.35rem;
+        }
+
+        .delete-card-body {
+            padding: 1.5rem;
+        }
+
+        .project-name {
+            font-size: 1.1rem;
+        }
+
+        .action-buttons {
+            flex-direction: column;
+        }
+
+        .action-buttons button,
+        .action-buttons a {
+            width: 100%;
+            min-width: auto;
+        }
+    }
+
+    /* Animations */
+    @keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(30px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    @keyframes pulse {
+        0%, 100% {
+            transform: scale(1);
+        }
+        50% {
+            transform: scale(1.05);
+        }
+    }
+
+    /* Confirmation Checklist */
+    .confirmation-list {
+        text-align: left;
+        margin: 1.5rem 0;
+        padding: 1.25rem;
+        background: #f7fafc;
+        border-radius: 10px;
+    }
+
+    .confirmation-list li {
+        padding: 0.5rem 0;
+        color: #4a5568;
+        font-size: 0.95rem;
+    }
+
+    .confirmation-list li i {
+        color: #f5576c;
+        margin-right: 0.5rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid delete-page">
+    <div class="delete-card">
+        <!-- Header -->
+        <div class="delete-card-header">
+            <div class="icon">
+                <i class="fas fa-exclamation-triangle"></i>
+            </div>
+            <h2>Подтверждение удаления</h2>
+            <p class="mb-0 opacity-75">Это действие необратимо!</p>
+        </div>
+
+        <!-- Body -->
+        <div class="delete-card-body">
+            <p style="font-size: 1.1rem; color: #4a5568; margin-bottom: 0.5rem;">
+                Вы действительно хотите удалить проект?
+            </p>
+
+            <div class="project-name">
+                <i class="fas fa-project-diagram me-2"></i>{{ object.title }}
+            </div>
+
+            <div class="warning-box">
+                <div class="d-flex align-items-start">
+                    <i class="fas fa-shield-alt"></i>
+                    <div>
+                        <p class="mb-2"><strong>Внимание! Это действие нельзя отменить!</strong></p>
+                        <small style="color: #742a2a;">После удаления все данные проекта будут потеряны безвозвратно.</small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="confirmation-list">
+                <p style="font-weight: 600; color: #2d3748; margin-bottom: 0.75rem;">
+                    <i class="fas fa-info-circle me-2"></i>Что будет удалено:
+                </p>
+                <ul style="list-style: none; padding-left: 0; margin: 0;">
+                    <li><i class="fas fa-times-circle"></i>Все задачи проекта</li>
+                    <li><i class="fas fa-times-circle"></i>Назначения волонтёров</li>
+                    <li><i class="fas fa-times-circle"></i>Фотоотчёты</li>
+                    <li><i class="fas fa-times-circle"></i>История изменений</li>
+                </ul>
+            </div>
+
+            <form method="post">
+                {% csrf_token %}
+                <div class="action-buttons">
+                    <a href="{% url 'project_list' %}" class="btn-cancel">
+                        <i class="fas fa-times btn-icon"></i>Отмена
+                    </a>
+                    <button type="submit" class="btn-delete">
+                        <i class="fas fa-trash-alt btn-icon"></i>Да, удалить проект
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

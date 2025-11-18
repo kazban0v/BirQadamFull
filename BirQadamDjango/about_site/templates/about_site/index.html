@@ -1,0 +1,694 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <title>BirQadam - Один шаг к лучшему миру</title>
+    <meta charset="utf-8" />
+    <link rel="icon" href="{% static 'about_site/images/logob.png' %}" type="image/png">
+
+    <link rel="apple-touch-icon" href="{% static 'about_site/images/logob.png' %}">
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="BirQadam - платформа для волонтёров и организаторов социальных проектов в Казахстане" />
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;800&display=swap" rel="stylesheet" />
+
+    <script>
+        (function(w, d, s, l, i) {
+            w[l] = w[l] || [];
+            w[l].push({
+                'gtm.start': new Date().getTime(),
+                event: 'gtm.js'
+            });
+            var f = d.getElementsByTagName(s)[0],
+                j = d.createElement(s),
+                dl = l != 'dataLayer' ? '&l=' + l : '';
+            j.async = true;
+            j.src =
+                'https://www.googletagmanager.com/gtm.js?id=' + i + dl;
+            f.parentNode.insertBefore(j, f);
+        })(window, document, 'script', 'dataLayer', 'GTM-M5X2K92L');
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;800&display=swap');
+
+        :root {
+            /* BirQadam Brand Colors */
+            --birqadam-primary: #8BC34A;
+            /* Primary Color (Светло-зеленый) */
+            --birqadam-accent: #e3794d;
+            /* Accent Color (Оранжево-персиковый) */
+            --birqadam-success: #4CAF50;
+            /* Success Green (оставлен для отличия) */
+            --birqadam-gray: #FAFAFA;
+            /* Background Gray */
+            --birqadam-pure-white: #FFFFFF;
+            /* Чисто белый для текста на цветных фонах */
+            --birqadam-background: #f8ecc4;
+            /* фон задний */
+        }
+
+        body {
+            font-family: 'Montserrat', sans-serif;
+            color: #333;
+            background: var(--birqadam-background);
+            margin: 0;
+            padding: 0;
+            overflow-x: hidden;
+        }
+
+        a {
+            text-decoration: none;
+            color: inherit;
+        }
+
+        .common-card a,
+        .btn-base {
+            text-decoration: none !important;
+        }
+
+        .common-card a:hover {
+            text-decoration: none !important;
+        }
+
+
+        h1,
+        h3 {
+            font-weight: 800;
+            color: var(--birqadam-pure-white);
+        }
+
+        h2 {
+            font-weight: 800;
+            color: var(--birqadam-primary);
+        }
+
+        p {
+            color: var(--birqadam-pure-white);
+            line-height: 1.6;
+        }
+
+        .header-wrapper {
+            max-width: 1140px;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 1rem;
+        }
+
+        header {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            padding: 1rem 0;
+            background: var(--birqadam-primary);
+            z-index: 100;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, .1);
+        }
+
+        header .site-logo a {
+            font-weight: 800;
+            font-size: 1.5rem;
+            color: var(--birqadam-pure-white);
+        }
+
+        .site-menu {
+            list-style: none;
+            display: flex;
+            gap: 2rem;
+            padding-left: 0;
+        }
+
+        .site-menu>a,
+        .site-menu li {
+            position: relative;
+        }
+
+        .site-menu a {
+            color: var(--birqadam-pure-white);
+            padding-bottom: 0.25rem;
+            border-bottom: 2px solid transparent;
+            transition: all 0.3s ease;
+            font-weight: 600;
+            display: block;
+        }
+
+        .site-menu a:hover {
+            border-color: transparent;
+            transform: none;
+            text-shadow: 0 0 5px rgba(255, 255, 255, 0.5);
+        }
+
+        .site-menu a.active {
+            border-color: var(--birqadam-pure-white);
+            transform: none;
+            text-shadow: 0 2px 8px rgba(0, 32, 91, 0.3);
+        }
+
+        /* Стили Dropdown */
+        .dropdown {
+            display: list-item;
+        }
+
+        .dropdown-content {
+            display: none;
+            position: absolute;
+            background-color: var(--birqadam-primary);
+            min-width: 160px;
+            box-shadow: 0px 8px 16px 0px rgba(0, 0, 0, 0.2);
+            z-index: 101;
+            padding: 0.5rem 0;
+            left: -0.5rem;
+            top: 100%;
+            border-radius: 0 0 0.5rem 0.5rem;
+        }
+
+        .dropdown-content a {
+            color: var(--birqadam-pure-white);
+            padding: 0.5rem 1rem;
+            text-decoration: none;
+            display: block;
+            font-weight: 400;
+            border-bottom: none;
+            transition: background-color 0.2s ease;
+        }
+
+        .dropdown-content a:hover {
+            background-color: color-mix(in srgb, var(--birqadam-primary) 80%, black);
+            transform: none;
+            text-shadow: none;
+        }
+
+        .dropdown:hover .dropdown-content {
+            display: block;
+        }
+
+        /* КОНТЕЙНЕР ДЛЯ ДВУХ КНОПОК */
+        .hero-actions {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .btn-base {
+            border-radius: 9999px;
+            padding: 0.75rem 2rem;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            font-weight: 600;
+            display: inline-block;
+            text-align: center;
+            white-space: nowrap;
+            text-decoration: none !important;
+        }
+
+        .btn-primary,
+        .btn-secondary {
+            background-color: var(--birqadam-pure-white);
+            color: var(--birqadam-primary);
+            border: 2px solid var(--birqadam-primary);
+        }
+
+        .btn-primary:hover,
+        .btn-secondary:hover {
+            background-color: var(--birqadam-primary);
+            color: var(--birqadam-pure-white);
+            border-color: var(--birqadam-accent);
+            transform: scale(1.05);
+            box-shadow: 0 4px 16px rgba(0, 32, 91, 0.3);
+        }
+
+        .section {
+            padding: 4rem 1rem;
+        }
+
+        .section h2 {
+            font-size: 2rem;
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .section p {
+            max-width: 800px;
+            margin: 0 auto 1rem;
+            text-align: center;
+            color: #555;
+        }
+
+        .section-accent-title {
+            color: var(--birqadam-accent);
+        }
+
+        .hero {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            text-align: left;
+            position: relative;
+            padding: 0 5%;
+            color: var(--birqadam-pure-white);
+            overflow: hidden;
+            /* Важно для карусели */
+        }
+
+        /* СТИЛИ ДЛЯ КАРУСЕЛИ ФОНОВ */
+        .hero-carousel-backgrounds {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            /* Чтобы был под контентом Hero */
+        }
+
+        .carousel-item {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-size: cover;
+            background-position: center;
+            opacity: 0;
+            /* Скрываем по умолчанию */
+            transition: opacity 1.5s ease-in-out;
+            /* Плавный переход */
+        }
+
+        .carousel-item.active {
+            opacity: 1;
+            /* Активный элемент отображаем */
+        }
+
+        .hero::before {
+            /* Слой для градиента / наложения */
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5));
+            z-index: 1;
+            /* Над изображениями, но под контентом */
+        }
+
+        /* КОНЕЦ СТИЛЕЙ КАРУСЕЛИ */
+
+        .hero .container {
+            position: relative;
+            /* Чтобы контент Hero был над фоном и наложением */
+            z-index: 2;
+        }
+
+        .hero h1 {
+            font-size: 3rem;
+        }
+
+        .hero p {
+            font-size: 1.25rem;
+            margin-bottom: 2rem;
+        }
+
+        .common-card {
+            background: var(--birqadam-pure-white);
+            padding: 2rem;
+            border-radius: 1rem;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+            border: 2px solid var(--birqadam-primary);
+            text-align: center;
+            transition: 0.3s ease;
+            font-weight: 600;
+            width: 100%;
+            flex: 1 1 300px;
+        }
+
+        .common-card:hover {
+            transform: scale(1.03);
+            border-color: var(--birqadam-accent);
+            box-shadow: 0 8px 20px rgba(227, 121, 77, 0.3);
+        }
+
+        .common-card h3 {
+            font-weight: 700;
+            margin-bottom: 1rem;
+            color: var(--birqadam-primary);
+        }
+
+        .common-card p {
+            color: #555;
+            font-size: 0.95rem;
+        }
+
+        .common-card a {
+            text-decoration: none !important;
+        }
+
+        .why-we-box {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1.5rem;
+            justify-content: center;
+            max-width: 1140px;
+            margin: 0 auto;
+        }
+
+        footer {
+            background: var(--birqadam-accent);
+            color: var(--birqadam-pure-white);
+            padding: 2rem;
+            text-align: center;
+        }
+
+        footer a {
+            color: var(--birqadam-pure-white);
+            text-decoration: underline;
+        }
+
+        footer a:hover {
+            opacity: 0.8;
+        }
+
+        .alma-footer-manual {
+            position: relative;
+            background-color: var(--birqadam-background);
+            overflow: hidden;
+            padding: 4rem 2rem 2rem;
+            text-align: center;
+            color: var(--birqadam-primary);
+        }
+
+        .footer-logos {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 1.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .footer-shapes {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 200px;
+            z-index: 0;
+        }
+
+        .red-corner,
+        .blue-corner {
+            position: absolute;
+            bottom: 0;
+            width: 300px;
+            height: 300px;
+            z-index: 1;
+        }
+
+        .red-corner {
+            left: -100px;
+            background: var(--birqadam-accent);
+            transform: rotate(45deg);
+        }
+
+        .blue-corner {
+            right: -100px;
+            background: var(--birqadam-primary);
+            transform: rotate(-45deg);
+        }
+
+        .footer-content {
+            position: relative;
+            z-index: 2;
+        }
+
+        .footer-content p {
+            margin-top: 1rem;
+            font-weight: 600;
+        }
+
+        .alma-logo,
+        .footer-logo-birqadam {
+            width: 120px;
+            height: auto;
+        }
+
+        @media (max-width: 768px) {
+            .header-wrapper {
+                flex-direction: column;
+                gap: 1rem;
+            }
+
+            .hero h1 {
+                font-size: 2rem;
+            }
+
+            .hero p {
+                font-size: 1rem;
+            }
+
+            .site-menu {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .common-card {
+                flex: 1 1 100%;
+            }
+
+            .footer-logos {
+                flex-direction: column;
+            }
+
+            .hero-actions .btn-base {
+                flex: 1 1 100%;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-M5X2K92L" height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+    <header>
+        <div class="header-wrapper">
+            <div class="site-logo"><a href="{% url 'about_site:home' %}">BirQadam</a></div>
+            <ul class="site-menu">
+                <a href="{% url 'about_site:home' %}" class="active">Главная</a>
+                <a href="{% url 'about_site:services' %}">Функционал</a>
+
+                <li class="dropdown">
+                    <a href="{% url 'about_site:instruction' %}" class="dropdown-trigger">Инструкция</a>
+                    <div class="dropdown-content">
+                        <a href="{% url 'about_site:volunteer_guide' %}">Волонтёр</a>
+                        <a href="{% url 'about_site:organizer_guide' %}">Организатор</a>
+                        <a href="{% url 'about_site:admin_guide' %}">Админ</a>
+                    </div>
+                </li>
+            </ul>
+        </div>
+    </header>
+
+    <section class="hero" id="hero">
+        <div class="hero-carousel-backgrounds">
+            <div class="carousel-item active" style="background-image: url('{% static 'about_site/images/hero-bg.jpg' %}')"></div>
+            <div class="carousel-item" style="background-image: url('{% static 'about_site/images/hero-bg1.jpg' %}')"></div>
+            <div class="carousel-item" style="background-image: url('{% static 'about_site/images/hero-bg2.jpg.webp' %}')"></div>
+            <div class="carousel-item" style="background-image: url('{% static 'about_site/images/hero-bg3.jpg' %}')"></div>
+        </div>
+        <div class="container" data-aos="fade-up">
+            <h1>Один шаг к лучшему</h1>
+            <p>С помощью технологий и вашего участия</p>
+
+            <div class="hero-actions">
+                <a href="https://t.me/cleanupalmaty_bot" class="btn-primary btn-base" id="telegram-button">Перейти в Telegram</a>
+                <a href="http://localhost:5173/" target="_blank" class="btn-secondary btn-base" id="browser-button">Перейти в веб портал</a>
+            </div>
+        </div>
+    </section>
+
+    <section class="section" id="features">
+        <div class="container" data-aos="fade-up">
+            <h2 class="mb-5 text-center section-accent-title">Почему мы?</h2>
+            <div class="why-we-box">
+                <div class="common-card">
+                    <p><strong>Наш бот улучшает инфраструктуру университетов.</strong> С помощью TelegramBot студенты и сотрудники университета всегда в курсе актуальных волонтёрских акций...</p>
+                </div>
+                <div class="common-card">
+                    <p><strong>Это решение нужно крупным организациям.</strong> Компании смогут использовать нашего бота для управления волонтёрами без лишней бюрократии.</p>
+                </div>
+                <div class="common-card">
+                    <p><strong>Бот упрощает поиск организаторов.</strong> Нет необходимости искать контакты вручную — всё собрано в одном месте.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <footer class="alma-footer-manual">
+        <div class="footer-shapes">
+            <div class="red-corner"></div>
+            <div class="blue-corner"></div>
+        </div>
+        <div class="footer-content">
+            <div class="footer-logos">
+                <img src="{% static 'about_site/images/logob.png' %}" alt="BirQadam Logo" class="footer-logo-birqadam">
+
+            </div>
+    </footer>
+
+    <script src="{% static 'about_site/js/jquery-3.3.1.min.js' %}"></script>
+    <script src="{% static 'about_site/js/aos.js' %}"></script>
+    <script>
+        // JS для вашей кастомной аналитики (оставлен для справки)
+
+        // Функции для работы с куки и генерацией ID
+        function getCookie(name) {
+            const nameEQ = name + "=";
+            const ca = document.cookie.split(';');
+            for (let i = 0; i < ca.length; i++) {
+                let c = ca[i];
+                while (c.charAt(0) === ' ') c = c.substring(1, c.length);
+                if (c.indexOf(nameEQ) === 0) return c.substring(nameEQ.length, c.length);
+            }
+            return null;
+        }
+
+        // --- Получение CSRF-токена для Django ---
+        function getCsrfToken() {
+            return getCookie('csrftoken');
+        }
+
+        function setCookie(name, value, days) {
+            let expires = "";
+            if (days) {
+                const date = new Date();
+                date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+                expires = "; expires=" + date.toUTCString();
+            }
+            document.cookie = name + "=" + (value || "") + expires + "; path=/; SameSite=Lax";
+        }
+
+        function generateUserId() {
+            // Простой генератор UUID
+            return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+                const r = Math.random() * 16 | 0,
+                    v = c === 'x' ? r : (r & 0x3 | 0x8);
+                return v.toString(16);
+            });
+        }
+
+        const USER_ID_COOKIE = 'birqadam_user_id';
+        let userId = getCookie(USER_ID_COOKIE);
+
+        // Переменная для отслеживания, является ли визит новым
+        let isNewVisit = false;
+
+        // --- Функция для отправки объединенного запроса на Django-бэкенд ---
+        const ANALYTICS_ENDPOINT = '/api/track/data/'; // <-- URL, который мы настроили в Django
+
+        function sendAnalyticsData(buttonAction = null) {
+            const csrfToken = getCsrfToken();
+
+            if (!csrfToken) {
+                console.error("CSRF token not found. Cannot send data to Django backend.");
+                return;
+            }
+
+            // Если user ID еще не установлен, генерируем и устанавливаем его
+            if (!userId) {
+                userId = generateUserId();
+                setCookie(USER_ID_COOKIE, userId, 365);
+                isNewVisit = true;
+            }
+
+            const data = {
+                user_id: userId,
+                visit_data: {
+                    type: isNewVisit ? 'new' : 'returning',
+                    url: window.location.pathname,
+                    referrer: document.referrer || null,
+                },
+                event_data: buttonAction ? {
+                    event_name: 'click',
+                    action: buttonAction,
+                    url: window.location.pathname
+                } : null
+            };
+
+            // Если визит не новый И нет события, мы не отправляем ничего.
+            if (!isNewVisit && !buttonAction) {
+                return;
+            }
+
+            fetch(ANALYTICS_ENDPOINT, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken
+                    },
+                    body: JSON.stringify(data),
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`Server error: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('Analytics data sent successfully (combined request):', data);
+                    // После успешной отправки сбрасываем флаг нового визита
+                    if (isNewVisit) isNewVisit = false;
+                })
+                .catch((error) => {
+                    console.error('Error sending analytics data:', error);
+                });
+        }
+
+        // --- Инициализация при загрузке страницы ---
+        if (!userId) {
+            isNewVisit = true;
+            console.log("Analytics: New User ID initialized. Waiting for first event...");
+        } else {
+            console.log("Analytics: Returning User.");
+        }
+
+        // --- Логика для карусели Hero-секции ---
+        document.addEventListener('DOMContentLoaded', () => {
+            const carouselItems = document.querySelectorAll('.hero-carousel-backgrounds .carousel-item');
+            let currentItem = 0;
+
+            function showNextItem() {
+                carouselItems[currentItem].classList.remove('active');
+                currentItem = (currentItem + 1) % carouselItems.length;
+                carouselItems[currentItem].classList.add('active');
+            }
+
+            // Запускаем карусель, меняя изображения каждые 5 секунд
+            setInterval(showNextItem, 5000);
+
+            // Привязка логики к событиям DOM (кнопки)
+            const telegramBtn = document.getElementById('telegram-button');
+            const browserBtn = document.getElementById('browser-button');
+
+            if (telegramBtn) {
+                telegramBtn.addEventListener('click', () => {
+                    sendAnalyticsData('Telegram_Link_Clicked');
+                });
+            }
+
+            if (browserBtn) {
+                browserBtn.addEventListener('click', () => {
+                    sendAnalyticsData('Web_Portal_Clicked');
+                });
+            }
+
+            AOS.init({
+                once: true
+            });
+            // Отправляем данные о посещении страницы после загрузки DOM
+            sendAnalyticsData();
+        });
+    </script>
+</body>
+
+</html>

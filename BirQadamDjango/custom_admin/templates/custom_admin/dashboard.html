@@ -1,0 +1,1647 @@
+{% extends "custom_admin/base.html" %} {% load static %} {% block extra_css %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<style>
+    :root {
+        --dashboard-gradient-1: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        --dashboard-gradient-2: linear-gradient(135deg, #56ab2f 0%, #a8e063 100%);
+        --dashboard-gradient-3: linear-gradient(135deg, #2193b0 0%, #6dd5ed 100%);
+        --dashboard-gradient-4: linear-gradient(135deg, #f2994a 0%, #f2c94c 100%);
+        --card-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.15);
+        --card-hover-shadow: 0 0.3rem 2rem 0 rgba(58, 59, 69, 0.25);
+    }
+
+    /* Page Header */
+    .dashboard-header {
+        background: var(--dashboard-gradient-1);
+        border-radius: 15px;
+        padding: 2rem;
+        margin-bottom: 2rem;
+        color: white;
+        box-shadow: var(--card-shadow);
+    }
+
+    .dashboard-header h1 {
+        margin: 0;
+        font-size: 2rem;
+        font-weight: 700;
+    }
+
+    /* 🔍 Global Search Styles */
+    .global-search-container {
+        background: white;
+        border-radius: 15px;
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+        box-shadow: var(--card-shadow);
+    }
+
+    .search-wrapper {
+        position: relative;
+        max-width: 800px;
+        margin: 0 auto;
+    }
+
+    .search-input-group {
+        position: relative;
+        display: flex;
+        align-items: center;
+    }
+
+    .search-icon {
+        position: absolute;
+        left: 20px;
+        color: #667eea;
+        font-size: 1.2rem;
+        z-index: 10;
+    }
+
+    .global-search-input {
+        width: 100%;
+        padding: 15px 60px 15px 55px;
+        border: 2px solid #e3e6f0;
+        border-radius: 50px;
+        font-size: 1rem;
+        transition: all 0.3s ease;
+        background: #f8f9fc;
+    }
+
+    .global-search-input:focus {
+        outline: none;
+        border-color: #667eea;
+        background: white;
+        box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+    }
+
+    .search-spinner {
+        position: absolute;
+        right: 20px;
+        color: #667eea;
+    }
+
+    .search-results-dropdown {
+        position: absolute;
+        top: calc(100% + 10px);
+        left: 0;
+        right: 0;
+        background: white;
+        border-radius: 15px;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+        max-height: 500px;
+        overflow-y: auto;
+        z-index: 1000;
+        animation: slideDown 0.3s ease;
+    }
+
+    @keyframes slideDown {
+        from {
+            opacity: 0;
+            transform: translateY(-10px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .search-results-content {
+        padding: 1rem;
+    }
+
+    .search-section {
+        margin-bottom: 1.5rem;
+    }
+
+    .search-section:last-child {
+        margin-bottom: 0;
+    }
+
+    .search-section-title {
+        font-size: 0.85rem;
+        font-weight: 700;
+        color: #667eea;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 0.75rem;
+        padding-left: 0.5rem;
+        border-left: 3px solid #667eea;
+    }
+
+    .search-result-item {
+        padding: 12px 15px;
+        border-radius: 10px;
+        margin-bottom: 8px;
+        transition: all 0.2s ease;
+        cursor: pointer;
+        border: 1px solid transparent;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .search-result-item:hover {
+        background: #f8f9fc;
+        border-color: #667eea;
+        transform: translateX(5px);
+    }
+
+    .search-result-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.2rem;
+        flex-shrink: 0;
+    }
+
+    .search-result-icon.user {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+    }
+
+    .search-result-icon.project {
+        background: linear-gradient(135deg, #56ab2f 0%, #a8e063 100%);
+        color: white;
+    }
+
+    .search-result-icon.task {
+        background: linear-gradient(135deg, #2193b0 0%, #6dd5ed 100%);
+        color: white;
+    }
+
+    .search-result-info {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .search-result-title {
+        font-weight: 600;
+        color: #2c3e50;
+        margin-bottom: 4px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .search-result-subtitle {
+        font-size: 0.85rem;
+        color: #6c757d;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .search-result-badge {
+        padding: 4px 10px;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        flex-shrink: 0;
+    }
+
+    .badge-volunteer {
+        background: rgba(102, 126, 234, 0.1);
+        color: #667eea;
+    }
+
+    .badge-organizer {
+        background: rgba(86, 171, 47, 0.1);
+        color: #56ab2f;
+    }
+
+    .badge-approved {
+        background: rgba(86, 171, 47, 0.1);
+        color: #56ab2f;
+    }
+
+    .badge-pending {
+        background: rgba(255, 152, 0, 0.1);
+        color: #FF9800;
+    }
+
+    .badge-completed {
+        background: rgba(33, 147, 176, 0.1);
+        color: #2193b0;
+    }
+
+    .search-no-results {
+        text-align: center;
+        padding: 3rem 1rem;
+        color: #6c757d;
+    }
+
+    .search-no-results i {
+        font-size: 3rem;
+        opacity: 0.3;
+        margin-bottom: 1rem;
+    }
+
+    .search-view-all {
+        text-align: center;
+        padding: 1rem;
+        border-top: 1px solid #e3e6f0;
+    }
+
+    .search-view-all a {
+        color: #667eea;
+        text-decoration: none;
+        font-weight: 600;
+        transition: all 0.2s ease;
+    }
+
+    .search-view-all a:hover {
+        color: #764ba2;
+    }
+
+    /* Filter Section */
+    .filter-toolbar {
+        background: white;
+        border-radius: 15px;
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+        box-shadow: var(--card-shadow);
+    }
+
+    .filter-toolbar .form-control,
+    .filter-toolbar .form-select {
+        border-radius: 10px;
+        border: 2px solid #e3e6f0;
+    }
+
+    .filter-toolbar .btn {
+        border-radius: 10px;
+        padding: 0.5rem 1.5rem;
+        font-weight: 600;
+    }
+
+    /* Stat Cards - Modern Design */
+    .stat-card {
+        border-radius: 15px;
+        border: none;
+        box-shadow: var(--card-shadow);
+        transition: all 0.3s ease;
+        overflow: hidden;
+        position: relative;
+    }
+
+    .stat-card:hover {
+        transform: translateY(-5px);
+        box-shadow: var(--card-hover-shadow);
+    }
+
+    .stat-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 5px;
+        height: 100%;
+        background: var(--primary-color);
+    }
+
+    .stat-card.border-left-primary::before {
+        background: var(--dashboard-gradient-1);
+    }
+
+    .stat-card.border-left-success::before {
+        background: var(--dashboard-gradient-2);
+    }
+
+    .stat-card.border-left-info::before {
+        background: var(--dashboard-gradient-3);
+    }
+
+    .stat-card.border-left-warning::before {
+        background: var(--dashboard-gradient-4);
+    }
+
+    .stat-card .card-body {
+        padding: 1.5rem;
+    }
+
+    .stat-icon {
+        width: 60px;
+        height: 60px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.8rem;
+    }
+
+    .stat-icon.primary {
+        background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+        color: #667eea;
+    }
+
+    .stat-icon.success {
+        background: linear-gradient(135deg, rgba(86, 171, 47, 0.1) 0%, rgba(168, 224, 99, 0.1) 100%);
+        color: #56ab2f;
+    }
+
+    .stat-icon.info {
+        background: linear-gradient(135deg, rgba(33, 147, 176, 0.1) 0%, rgba(109, 213, 237, 0.1) 100%);
+        color: #2193b0;
+    }
+
+    .stat-icon.warning {
+        background: linear-gradient(135deg, rgba(242, 153, 74, 0.1) 0%, rgba(242, 201, 76, 0.1) 100%);
+        color: #f2994a;
+    }
+
+    .stat-card .stat-value {
+        font-size: 2rem;
+        font-weight: 700;
+        color: #212529;
+        margin: 0.5rem 0;
+    }
+
+    .stat-card .stat-label {
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: #6c757d;
+    }
+
+    .stat-card a {
+        text-decoration: none;
+        color: #858796;
+        transition: color 0.3s;
+        font-size: 0.85rem;
+        font-weight: 600;
+    }
+
+    .stat-card a:hover {
+        color: var(--primary-color);
+    }
+
+    /* Chart Cards */
+    .chart-card {
+        border-radius: 15px;
+        border: none;
+        box-shadow: var(--card-shadow);
+        transition: all 0.3s ease;
+    }
+
+    .chart-card:hover {
+        box-shadow: var(--card-hover-shadow);
+    }
+
+    .chart-card .card-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 15px 15px 0 0;
+        padding: 1.25rem 1.5rem;
+        border: none;
+    }
+
+    .chart-card .card-header h6 {
+        margin: 0;
+        font-weight: 700;
+        font-size: 1rem;
+    }
+
+    .chart-area {
+        height: 320px;
+        position: relative;
+    }
+
+    /* Leaderboard */
+    .leaderboard-card {
+        border-radius: 15px;
+        box-shadow: var(--card-shadow);
+        border: none;
+    }
+
+    .leaderboard-card .list-group-item {
+        border: none;
+        border-bottom: 1px solid #f3f3f3;
+        padding: 1rem;
+        transition: all 0.3s ease;
+    }
+
+    .leaderboard-card .list-group-item:hover {
+        background: rgba(102, 126, 234, 0.05);
+        transform: translateX(5px);
+    }
+
+    .leaderboard-card .list-group-item a {
+        text-decoration: none;
+        color: #212529;
+        font-weight: 600;
+    }
+
+    .leaderboard-card .badge {
+        background: var(--dashboard-gradient-1);
+        padding: 0.5rem 0.75rem;
+        font-weight: 600;
+    }
+
+    /* Map Container */
+    #map {
+        height: 600px;
+        width: 100%;
+        border-radius: 12px;
+        z-index: 1;
+    }
+
+    .map-controls {
+        background: #f8f9fc;
+        padding: 15px;
+        border-radius: 8px;
+        margin-bottom: 15px;
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        align-items: center;
+    }
+
+    .control-group {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .control-group label {
+        font-weight: 600;
+        margin: 0;
+        font-size: 14px;
+    }
+
+    .control-btn {
+        padding: 8px 16px;
+        border-radius: 6px;
+        border: 2px solid #e0e0e0;
+        background: white;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        font-weight: 600;
+    }
+
+    .control-btn:hover {
+        border-color: #667eea;
+        background: #f0f4ff;
+    }
+
+    .stats-overlay {
+        position: absolute;
+        top: 80px;
+        right: 20px;
+        background: white;
+        padding: 15px;
+        border-radius: 10px;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+        z-index: 1000;
+        min-width: 200px;
+    }
+
+    .stat-item-map {
+        padding: 8px 0;
+        border-bottom: 1px solid #e0e0e0;
+    }
+
+    .stat-item-map:last-child {
+        border-bottom: none;
+    }
+
+    .stat-label-map {
+        color: #666;
+        font-size: 11px;
+        text-transform: uppercase;
+        margin-bottom: 3px;
+    }
+
+    .stat-value-map {
+        font-size: 20px;
+        font-weight: 700;
+        color: #667eea;
+    }
+
+    /* Custom markers */
+    .custom-marker {
+        background-color: #4CAF50;
+        width: 30px;
+        height: 30px;
+        border-radius: 50%;
+        border: 3px solid white;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        font-size: 11px;
+        color: white;
+    }
+
+    .custom-marker.pending {
+        background-color: #FF9800;
+    }
+
+    .custom-marker.rejected {
+        background-color: #F44336;
+    }
+
+    /* Pulse animation */
+    .marker-pulse {
+        animation: pulse-map 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse-map {
+
+        0%,
+        100% {
+            transform: scale(1);
+            opacity: 1;
+        }
+
+        50% {
+            transform: scale(1.15);
+            opacity: 0.85;
+        }
+    }
+
+    .custom-marker:hover {
+        transform: scale(1.2) !important;
+        cursor: pointer;
+        filter: brightness(1.1);
+    }
+
+    .leaflet-popup-content-wrapper {
+        border-radius: 8px;
+        box-shadow: 0 3px 14px rgba(0, 0, 0, 0.4);
+    }
+
+    .popup-title {
+        margin: 0 0 10px 0;
+        font-size: 16px;
+        color: #667eea;
+        font-weight: bold;
+    }
+
+    .popup-info {
+        margin: 5px 0;
+        font-size: 14px;
+    }
+
+    .popup-info strong {
+        color: #333;
+    }
+
+    /* Photo Cards */
+    .photo-card {
+        border-radius: 15px;
+        overflow: hidden;
+        box-shadow: var(--card-shadow);
+        transition: all 0.3s ease;
+        border: none;
+    }
+
+    .photo-card:hover {
+        transform: translateY(-5px);
+        box-shadow: var(--card-hover-shadow);
+    }
+
+    .photo-card img {
+        height: 200px;
+        object-fit: cover;
+        border-radius: 15px 15px 0 0;
+    }
+
+    @media (max-width: 1200px) {
+        .col-xl-3 {
+            flex: 0 0 50%;
+            max-width: 50%;
+        }
+
+        .col-xl-6 {
+            flex: 0 0 100%;
+            max-width: 100%;
+        }
+    }
+
+    @media (max-width: 768px) {
+        .dashboard-header .d-flex {
+            flex-direction: column;
+            align-items: flex-start !important;
+        }
+
+        .dashboard-header .text-end {
+            text-align: left !important;
+            margin-top: 1rem;
+        }
+
+        .h1,
+        .h3 {
+            font-size: 1.5rem;
+        }
+
+        .row {
+            margin-left: -0.5rem;
+            margin-right: -0.5rem;
+        }
+
+        .col-md-6,
+        .col-xl-3,
+        .col-xl-6,
+        .col-xl-8,
+        .col-xl-4,
+        .col-xl-12,
+        .col-md-4 {
+            padding-left: 0.5rem;
+            padding-right: 0.5rem;
+        }
+
+        .card {
+            margin-bottom: 1rem;
+        }
+
+        .input-group {
+            flex-direction: column;
+        }
+
+        .input-group .form-control,
+        .input-group .btn {
+            width: 100%;
+            margin-bottom: 0.5rem;
+        }
+
+        .input-group .btn {
+            margin-top: 0.5rem;
+        }
+
+        .stat-card .h5 {
+            font-size: 1.1rem;
+        }
+
+        .chart-area {
+            height: 250px;
+        }
+
+        .card-body .row .col-md-4 {
+            flex: 0 0 50%;
+            max-width: 50%;
+        }
+    }
+
+    @media (max-width: 576px) {
+        .dashboard-header {
+            padding: 1.5rem;
+        }
+
+        .dashboard-header h1 {
+            font-size: 1.5rem;
+        }
+
+        .card-body .row .col-md-4 {
+            flex: 0 0 100%;
+            max-width: 100%;
+        }
+
+        .card-header .btn-sm {
+            width: 100%;
+            margin-top: 0.5rem;
+        }
+
+        .card-header {
+            flex-direction: column;
+            align-items: flex-start !important;
+        }
+
+        .stat-card {
+            margin-bottom: 1rem;
+        }
+
+        .filter-toolbar {
+            padding: 1rem;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Dashboard Header -->
+    <div class="dashboard-header">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h1><i class="fas fa-tachometer-alt me-2"></i>Панель управления</h1>
+                <p class="mb-0 opacity-75">Добро пожаловать в систему мониторинга волонтёрской активности</p>
+            </div>
+            <div class="text-end">
+                <p class="mb-0 small">{{ date_from|date:"d.m.Y" }} - {{ date_to|date:"d.m.Y" }}</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- 🔍 Global Search -->
+    <div class="global-search-container">
+        <div class="search-wrapper">
+            <div class="search-input-group">
+                <i class="fas fa-search search-icon"></i>
+                <input type="text" id="globalSearchInput" class="global-search-input" placeholder="🔍 Поиск по волонтерам, проектам, задачам..." autocomplete="off">
+                <div class="search-spinner" id="searchSpinner" style="display: none;">
+                    <i class="fas fa-spinner fa-spin"></i>
+                </div>
+            </div>
+
+            <!-- Search Results Dropdown -->
+            <div class="search-results-dropdown" id="searchResults" style="display: none;">
+                <div class="search-results-content">
+                    <!-- Results will be dynamically inserted here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="filter-toolbar">
+        <div class="row g-3">
+            <div class="col-md-8">
+                <form method="GET" action="{% url 'dashboard' %}" class="row g-2">
+                    <div class="col-md-5">
+                        <input type="date" name="date_from" class="form-control" value="{{ date_from|date:'Y-m-d' }}" placeholder="От">
+                    </div>
+                    <div class="col-md-5">
+                        <input type="date" name="date_to" class="form-control" value="{{ date_to|date:'Y-m-d' }}" placeholder="До">
+                    </div>
+                    <div class="col-md-2">
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="fas fa-filter me-1"></i>Применить
+                        </button>
+                    </div>
+                </form>
+            </div>
+            <div class="col-md-4">
+                <form method="GET" action="{% url 'dashboard' %}">
+                    <select name="period" class="form-select" onchange="this.form.submit()">
+                        <option value="week" {% if period == 'week' %}selected{% endif %}>
+                            <i class="fas fa-calendar-week me-1"></i>Последние 7 дней
+                        </option>
+                        <option value="month" {% if period == 'month' %}selected{% endif %}>
+                            <i class="fas fa-calendar-day me-1"></i>Последние 30 дней
+                        </option>
+                        <option value="year" {% if period == 'year' %}selected{% endif %}>
+                            <i class="fas fa-calendar me-1"></i>Последний год
+                        </option>
+                    </select>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stat Cards -->
+    <div class="row">
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card stat-card border-left-primary h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div class="stat-icon primary">
+                            <i class="fas fa-users"></i>
+                        </div>
+                        <div class="text-end">
+                            <div class="stat-label">Волонтеры</div>
+                            <div class="stat-value">{{ stats.total_volunteers }}</div>
+                        </div>
+                    </div>
+                    <a href="{% url 'volunteers' %}" class="d-flex align-items-center">
+                        Подробнее <i class="fas fa-arrow-right ms-2"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card stat-card border-left-success h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div class="stat-icon success">
+                            <i class="fas fa-project-diagram"></i>
+                        </div>
+                        <div class="text-end">
+                            <div class="stat-label">Активные проекты</div>
+                            <div class="stat-value">{{ stats.active_projects }}</div>
+                        </div>
+                    </div>
+                    <a href="{% url 'project_list' %}" class="d-flex align-items-center">
+                        Подробнее <i class="fas fa-arrow-right ms-2"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card stat-card border-left-info h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div class="stat-icon info">
+                            <i class="fas fa-tasks"></i>
+                        </div>
+                        <div class="text-end">
+                            <div class="stat-label">Ожидающие задачи</div>
+                            <div class="stat-value">{{ stats.pending_tasks }}</div>
+                        </div>
+                    </div>
+                    <a href="{% url 'task_list' %}" class="d-flex align-items-center">
+                        Подробнее <i class="fas fa-arrow-right ms-2"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card stat-card border-left-warning h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div class="stat-icon warning">
+                            <i class="fas fa-clock"></i>
+                        </div>
+                        <div class="text-end">
+                            <div class="stat-label">Проекты на модерации</div>
+                            <div class="stat-value">{{ stats.pending_projects|default:"0" }}</div>
+                        </div>
+                    </div>
+                    <a href="{% url 'project_list' %}" class="d-flex align-items-center">
+                        Подробнее <i class="fas fa-arrow-right ms-2"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts -->
+    <div class="row">
+        <div class="col-xl-6">
+            <div class="card chart-card mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h6><i class="fas fa-project-diagram me-2"></i>Статусы проектов</h6>
+                    <div class="dropdown">
+                        <button class="btn btn-sm btn-light dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                            <i class="fas fa-ellipsis-v"></i>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li><a class="dropdown-item" href="{% url 'project_list' %}"><i class="fas fa-list me-2"></i>Все проекты</a></li>
+                            <li><a class="dropdown-item" href="{% url 'analytics' %}"><i class="fas fa-chart-line me-2"></i>Аналитика</a></li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="chart-area">
+                        <canvas id="projectChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-6">
+            <div class="card chart-card mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h6><i class="fas fa-tasks me-2"></i>Статусы задач</h6>
+                    <div class="dropdown">
+                        <button class="btn btn-sm btn-light dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                            <i class="fas fa-ellipsis-v"></i>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li><a class="dropdown-item" href="{% url 'task_list' %}"><i class="fas fa-list me-2"></i>Все задачи</a></li>
+                            <li><a class="dropdown-item" href="{% url 'analytics' %}"><i class="fas fa-chart-line me-2"></i>Аналитика</a></li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="chart-area">
+                        <canvas id="taskChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Activity & Leaderboard -->
+    <div class="row">
+        <div class="col-xl-8">
+            <div class="card chart-card mb-4">
+                <div class="card-header">
+                    <h6><i class="fas fa-chart-line me-2"></i>Активность волонтеров</h6>
+                    <small class="opacity-75">{% if period == 'week' %}Последние 7 дней{% elif period == 'month' %}Последние 30 дней{% else %}Последний год{% endif %}</small>
+                </div>
+                <div class="card-body">
+                    <div class="chart-area">
+                        <canvas id="activityChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-4">
+            <div class="card leaderboard-card mb-4">
+                <div class="card-header bg-gradient-primary text-white" style="border-radius: 15px 15px 0 0; padding: 1.25rem 1.5rem;">
+                    <h6 class="m-0"><i class="fas fa-trophy me-2"></i>Таблица лидеров</h6>
+                </div>
+                <div class="card-body p-0">
+                    {% if top_volunteers %}
+                    <ul class="list-group list-group-flush">
+                        {% for volunteer in top_volunteers %}
+                        <li class="list-group-item">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div class="d-flex align-items-center">
+                                    <div class="me-2" style="width: 30px; height: 30px; border-radius: 50%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; color: white; font-weight: 700;">
+                                        {{ forloop.counter }}
+                                    </div>
+                                    <a href="{% url 'volunteer_analytics' volunteer.id %}">{{ volunteer.username }}</a>
+                                </div>
+                                <span class="badge">{{ volunteer.task_count }}</span>
+                            </div>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                    {% else %}
+                    <div class="text-center py-5">
+                        <i class="fas fa-trophy fa-3x text-muted mb-3"></i>
+                        <p class="text-muted">Нет данных за выбранный период</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Interactive Map -->
+    <div class="row">
+        <div class="col-xl-12">
+            <div class="card chart-card mb-4">
+                <div class="card-header">
+                    <h6><i class="fas fa-map-marked-alt me-2"></i>🗺️ Интерактивная карта активности</h6>
+                    <small class="text-muted">Визуализация проектов и активности волонтеров (OpenStreetMap)</small>
+                </div>
+                <div class="card-body">
+                    <!-- Map Controls -->
+                    <div class="map-controls">
+                        <div class="control-group">
+                            <label>Статус:</label>
+                            <select id="statusFilter" class="form-select form-select-sm" onchange="loadMapData()" style="width: 150px;">
+                                <option value="approved">Одобренные</option>
+                                <option value="pending">Ожидающие</option>
+                                <option value="">Все</option>
+                            </select>
+                        </div>
+
+                        <div class="control-group">
+                            <label>Город:</label>
+                            <input type="text" id="cityFilter" class="form-control form-control-sm" placeholder="Все города" onchange="loadMapData()" onkeypress="if(event.key === 'Enter') loadMapData()" style="width: 150px;">
+                        </div>
+
+                        <button class="control-btn btn-sm" onclick="loadMapData()">
+                            <i class="fas fa-sync"></i> Обновить
+                        </button>
+                    </div>
+
+                    <!-- Map Container with Stats Overlay -->
+                    <div style="position: relative;">
+                        <div id="map"></div>
+
+                        <div class="stats-overlay">
+                            <div class="stat-item-map">
+                                <div class="stat-label-map">Всего проектов</div>
+                                <div class="stat-value-map" id="totalProjects">0</div>
+                            </div>
+                            <div class="stat-item-map">
+                                <div class="stat-label-map">Активных городов</div>
+                                <div class="stat-value-map" id="totalCities">0</div>
+                            </div>
+                            <div class="stat-item-map">
+                                <div class="stat-label-map">Волонтеров</div>
+                                <div class="stat-value-map" id="totalVolunteers">0</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Photo Reports -->
+    <div class="row">
+        <div class="col-xl-12">
+            <div class="card chart-card mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h6><i class="fas fa-camera me-2"></i>Последние фотоотчеты</h6>
+                    <a href="{% url 'task_list' %}" class="btn btn-sm btn-light">
+                        <i class="fas fa-arrow-right me-1"></i>Все отчеты
+                    </a>
+                </div>
+                <div class="card-body">
+                    {% if stats.photos %}
+                    <div class="row">
+                        {% for photo in stats.photos %}
+                        <div class="col-md-4 mb-4">
+                            <div class="card photo-card h-100">
+                                {% if photo.image %}
+                                <img src="{{ photo.image.url }}" class="card-img-top" alt="Photo">
+                                {% endif %}
+                                <div class="card-body">
+                                    <h6 class="card-title mb-2">{{ photo.project.title|truncatechars:30 }}</h6>
+                                    <p class="card-text text-muted small mb-2">
+                                        <i class="fas fa-user me-1"></i> {{ photo.volunteer.username }}<br>
+                                        <i class="fas fa-clock me-1"></i> {{ photo.uploaded_at|date:"d.m.Y H:i" }}
+                                    </p>
+                                    <span class="badge bg-{% if photo.status == 'approved' %}success{% elif photo.status == 'rejected' %}danger{% else %}warning{% endif %} rounded-pill">
+                                        {{ photo.get_status_display }}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <div class="text-center py-5">
+                        <i class="fas fa-camera fa-4x text-muted mb-3" style="opacity: 0.2;"></i>
+                        <p class="text-muted h5">Нет доступных фотоотчетов</p>
+                        <p class="text-muted small">Фотоотчеты появятся после выполнения задач волонтёрами</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} {% block extra_js %}
+<script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Debug: проверяем данные
+        console.log('Project stats:', '{{ project_stats|escapejs }}');
+        console.log('Task stats:', '{{ task_stats|escapejs }}');
+
+        // Project Status Chart
+        const projectCtx = document.getElementById('projectChart');
+        if (!projectCtx) {
+            console.error('Project chart canvas not found');
+            return;
+        }
+
+        const projectStatsData = JSON.parse('{{ project_stats|escapejs }}');
+        console.log('Parsed project stats:', projectStatsData);
+
+        if (projectStatsData.length === 0) {
+            console.warn('No project stats data available');
+            projectCtx.getContext('2d').fillText('Нет данных', 100, 100);
+            return;
+        }
+
+        const projectChart = new Chart(projectCtx.getContext('2d'), {
+            type: 'doughnut',
+            data: {
+                labels: projectStatsData.map(item => {
+                    const statusMap = {
+                        'pending': 'Ожидает',
+                        'approved': 'Одобрено',
+                        'rejected': 'Отклонено'
+                    };
+                    return statusMap[item.status] || item.status;
+                }),
+                datasets: [{
+                    data: projectStatsData.map(item => item.count),
+                    backgroundColor: ['#4e73df', '#1cc88a', '#e74a3b'],
+                    hoverBackgroundColor: ['#2e59d9', '#17a673', '#be2617'],
+                    hoverBorderColor: "rgba(234, 236, 244, 1)",
+                }],
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'right',
+                        labels: {
+                            padding: 15,
+                            font: {
+                                size: 12
+                            }
+                        }
+                    },
+                    tooltip: {
+                        enabled: true,
+                        backgroundColor: "rgb(255,255,255)",
+                        titleColor: "#6e707e",
+                        bodyColor: "#858796",
+                        borderColor: '#dddfeb',
+                        borderWidth: 1,
+                        padding: 15,
+                        displayColors: true,
+                        callbacks: {
+                            label: function(context) {
+                                const label = context.label || '';
+                                const value = context.raw || 0;
+                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                const percentage = Math.round((value / total) * 100);
+                                return `${label}: ${value} (${percentage}%)`;
+                            }
+                        }
+                    },
+                },
+                cutout: '80%',
+            },
+        });
+
+        // Task Status Chart
+        const taskCtx = document.getElementById('taskChart').getContext('2d');
+        const taskChart = new Chart(taskCtx, {
+            type: 'pie',
+            data: {
+                labels: JSON.parse('{{ task_stats|escapejs }}').map(item => {
+                    const statusMap = {
+                        'open': 'Открыто',
+                        'in_progress': 'В работе',
+                        'completed': 'Выполнено',
+                        'failed': 'Не выполнено',
+                        'closed': 'Закрыто'
+                    };
+                    return statusMap[item.status] || item.status;
+                }),
+                datasets: [{
+                    data: JSON.parse('{{ task_stats|escapejs }}').map(item => item.count),
+                    backgroundColor: ['#36b9cc', '#f6c23e', '#1cc88a', '#e74a3b', '#858796'],
+                    hoverBackgroundColor: ['#2c9faf', '#dda20a', '#17a673', '#be2617', '#6c757d'],
+                    hoverBorderColor: "rgba(234, 236, 244, 1)",
+                }],
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'right',
+                        labels: {
+                            padding: 15,
+                            font: {
+                                size: 12
+                            }
+                        }
+                    },
+                    tooltip: {
+                        enabled: true,
+                        backgroundColor: "rgb(255,255,255)",
+                        titleColor: "#6e707e",
+                        bodyColor: "#858796",
+                        borderColor: '#dddfeb',
+                        borderWidth: 1,
+                        padding: 15,
+                        displayColors: true,
+                        callbacks: {
+                            label: function(context) {
+                                const label = context.label || '';
+                                const value = context.raw || 0;
+                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                const percentage = Math.round((value / total) * 100);
+                                return `${label}: ${value} (${percentage}%)`;
+                            }
+                        }
+                    },
+                },
+            },
+        });
+
+        // Activity Chart
+        const activityCtx = document.getElementById('activityChart').getContext('2d');
+        const activityChart = new Chart(activityCtx, {
+            type: 'bar',
+            data: {
+                labels: JSON.parse('{{ activity_stats|escapejs }}').map(item => item.day),
+                datasets: [{
+                    label: "Выполненные задачи",
+                    backgroundColor: "#4e73df",
+                    hoverBackgroundColor: "#2e59d9",
+                    borderColor: "#4e73df",
+                    data: JSON.parse('{{ activity_stats|escapejs }}').map(item => item.count),
+                }],
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: {
+                        grid: {
+                            display: false,
+                            drawBorder: false
+                        },
+                        ticks: {
+                            maxTicksLimit: 6
+                        }
+                    },
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            maxTicksLimit: 5,
+                            padding: 10
+                        },
+                        grid: {
+                            color: "rgb(234, 236, 244)",
+                            zeroLineColor: "rgb(234, 236, 244)",
+                            drawBorder: false,
+                            borderDash: [2],
+                            zeroLineBorderDash: [2]
+                        }
+                    },
+                },
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        enabled: true,
+                        backgroundColor: "rgb(255,255,255)",
+                        titleColor: "#6e707e",
+                        bodyColor: "#858796",
+                        borderColor: '#dddfeb',
+                        borderWidth: 1,
+                        padding: 15,
+                        displayColors: false,
+                        callbacks: {
+                            label: function(context) {
+                                return `Задач: ${context.raw}`;
+                            }
+                        }
+                    },
+                },
+            },
+        });
+
+        // Interactive Map with full features
+        let interactiveMap;
+        let mapMarkers = [];
+
+        function initInteractiveMap() {
+            if (!document.getElementById('map')) return;
+
+            // Create map centered on Almaty
+            interactiveMap = L.map('map').setView([43.238949, 76.889709], 11);
+
+            // Add OpenStreetMap tile layer
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors',
+                maxZoom: 19
+            }).addTo(interactiveMap);
+
+            // Load map data
+            loadMapData();
+        }
+
+        async function loadMapData() {
+            const status = document.getElementById('statusFilter').value;
+            const city = document.getElementById('cityFilter').value;
+
+            try {
+                let url = '/custom-admin/api/v1/map/projects-web/?';
+                if (status) url += `status=${status}&`;
+                if (city) url += `city=${city}&`;
+
+                const response = await fetch(url);
+                const data = await response.json();
+
+                // Clear previous markers
+                mapMarkers.forEach(marker => {
+                    interactiveMap.removeLayer(marker);
+                });
+                mapMarkers = [];
+
+                // Add new markers
+                let totalVolunteers = 0;
+                const cities = new Set();
+                const bounds = [];
+
+                if (!data.features || data.features.length === 0) {
+                    document.getElementById('totalProjects').textContent = '0';
+                    document.getElementById('totalCities').textContent = '0';
+                    document.getElementById('totalVolunteers').textContent = '0';
+                    console.log('No projects found');
+                    return;
+                }
+
+                data.features.forEach(feature => {
+                    const coords = feature.geometry.coordinates;
+                    const props = feature.properties;
+
+                    // Heat effect: size and brightness depend on activity
+                    const volunteerCount = props.volunteers_count;
+                    const taskCount = props.tasks_count;
+                    const activity = volunteerCount + taskCount;
+
+                    // Marker size depends on activity (35px to 60px)
+                    let markerSize = 35 + Math.min(activity * 5, 25);
+
+                    // Determine marker color by status with heat gradient
+                    let markerColor = '#4CAF50'; // approved - green
+                    let shadowColor = 'rgba(76, 175, 80, 0.6)';
+                    let statusClass = '';
+
+                    if (props.status === 'pending') {
+                        markerColor = '#FF9800'; // orange
+                        shadowColor = 'rgba(255, 152, 0, 0.6)';
+                        statusClass = 'pending';
+                    } else if (props.status === 'rejected') {
+                        markerColor = '#F44336'; // red
+                        shadowColor = 'rgba(244, 67, 54, 0.6)';
+                        statusClass = 'rejected';
+                    }
+
+                    // Pulse for active projects
+                    let pulseClass = activity > 2 ? 'marker-pulse' : '';
+
+                    console.log(`Project: ${props.title}, Activity: ${activity}, Size: ${markerSize}px, Pulse: ${pulseClass ? 'YES' : 'NO'}`);
+
+                    // Create custom icon with heat effect
+                    const glowSize = Math.min(activity * 5, 30);
+                    const customIcon = L.divIcon({
+                        className: 'custom-div-icon',
+                        html: `
+                        <div class="custom-marker ${statusClass} ${pulseClass}" style="
+                            background: radial-gradient(circle, ${markerColor} 0%, ${markerColor}dd 60%, ${markerColor}88 100%);
+                            width: ${markerSize}px;
+                            height: ${markerSize}px;
+                            border: 4px solid white;
+                            box-shadow: 0 0 ${glowSize}px ${shadowColor}, 0 0 ${glowSize * 0.5}px ${shadowColor}, 0 4px 10px rgba(0,0,0,0.4);
+                            font-size: ${Math.max(12, Math.min(markerSize / 3, 18))}px;
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            border-radius: 50%;
+                            font-weight: bold;
+                            color: white;
+                            transition: all 0.3s ease;
+                        ">${volunteerCount}</div>
+                    `,
+                        iconSize: [markerSize, markerSize],
+                        iconAnchor: [markerSize / 2, markerSize / 2]
+                    });
+
+                    // Create marker
+                    const marker = L.marker([coords[1], coords[0]], {
+                        icon: customIcon
+                    }).addTo(interactiveMap);
+
+                    // Status in Russian
+                    let statusText = 'Неизвестно';
+                    if (props.status === 'approved') statusText = '✅ Одобрен';
+                    else if (props.status === 'pending') statusText = '⏳ Ожидает';
+                    else if (props.status === 'rejected') statusText = '❌ Отклонен';
+
+                    // Add popup with information
+                    const popupContent = `
+                    <div>
+                        <div class="popup-title">${props.title}</div>
+                        <div class="popup-info"><strong>📍 Город:</strong> ${props.city}</div>
+                        <div class="popup-info"><strong>🎯 Статус:</strong> ${statusText}</div>
+                        <div class="popup-info"><strong>👥 Волонтеров:</strong> ${props.volunteers_count}</div>
+                        <div class="popup-info"><strong>✅ Задач:</strong> ${props.tasks_count}</div>
+                        <div class="popup-info"><strong>👤 Организатор:</strong> ${props.creator.name}</div>
+                        <div class="popup-info" style="color: #666; margin-top: 10px;">${props.description.substring(0, 150)}...</div>
+                    </div>
+                `;
+
+                    marker.bindPopup(popupContent);
+
+                    mapMarkers.push(marker);
+                    bounds.push([coords[1], coords[0]]);
+
+                    totalVolunteers += props.volunteers_count;
+                    cities.add(props.city);
+                });
+
+                // Update statistics
+                document.getElementById('totalProjects').textContent = data.features.length;
+                document.getElementById('totalCities').textContent = cities.size;
+                document.getElementById('totalVolunteers').textContent = totalVolunteers;
+
+                // Center map on markers
+                if (bounds.length > 0) {
+                    if (bounds.length === 1) {
+                        interactiveMap.setView(bounds[0], 13);
+                    } else {
+                        interactiveMap.fitBounds(bounds, {
+                            padding: [50, 50]
+                        });
+                    }
+                }
+
+                console.log(`Loaded ${data.features.length} projects on map`);
+
+            } catch (error) {
+                console.error('Error loading map projects:', error);
+                alert('Ошибка загрузки данных карты. Проверьте консоль (F12).');
+            }
+        }
+
+        // Initialize interactive map
+        initInteractiveMap();
+
+        // Auto-submit date inputs
+        const dateInputs = document.querySelectorAll('input[type="date"]');
+        dateInputs.forEach(input => {
+            input.addEventListener('change', function() {
+                this.form.submit();
+            });
+        });
+
+        // 🔍 Global Search Implementation
+        const searchInput = document.getElementById('globalSearchInput');
+        const searchResults = document.getElementById('searchResults');
+        const searchSpinner = document.getElementById('searchSpinner');
+        let searchTimeout;
+
+        // Debounced search function
+        function performSearch(query) {
+            clearTimeout(searchTimeout);
+
+            if (!query || query.length < 2) {
+                searchResults.style.display = 'none';
+                return;
+            }
+
+            searchSpinner.style.display = 'block';
+
+            searchTimeout = setTimeout(async () => {
+                try {
+                    const response = await fetch(`/custom-admin/api/v1/search/global/?q=${encodeURIComponent(query)}&type=all`);
+                    const data = await response.json();
+
+                    displaySearchResults(data);
+                    searchSpinner.style.display = 'none';
+                } catch (error) {
+                    console.error('Search error:', error);
+                    searchSpinner.style.display = 'none';
+                    searchResults.innerHTML = '<div class="search-no-results"><i class="fas fa-exclamation-circle"></i><p>Ошибка поиска. Попробуйте снова.</p></div>';
+                    searchResults.style.display = 'block';
+                }
+            }, 300);
+        }
+
+        // Display search results
+        function displaySearchResults(data) {
+            const resultsContent = searchResults.querySelector('.search-results-content');
+            let html = '';
+
+            const totalResults = ((data.users && data.users.length) || 0) + ((data.projects && data.projects.length) || 0) + ((data.tasks && data.tasks.length) || 0);
+
+            if (totalResults === 0) {
+                html = `
+                    <div class="search-no-results">
+                        <i class="fas fa-search"></i>
+                        <p>Ничего не найдено по запросу "${data.query}"</p>
+                        <small>Попробуйте изменить поисковый запрос</small>
+                    </div>
+                `;
+            } else {
+                // Users section
+                if (data.users && data.users.length > 0) {
+                    html += '<div class="search-section">';
+                    html += '<div class="search-section-title"><i class="fas fa-users me-2"></i>Пользователи</div>';
+                    data.users.forEach(user => {
+                        const roleText = user.role === 'volunteer' ? 'Волонтер' : 'Организатор';
+                        const roleBadge = user.role === 'volunteer' ? 'badge-volunteer' : 'badge-organizer';
+                        html += `
+                            <div class="search-result-item" onclick="window.location.href='/custom-admin/${user.role === 'volunteer' ? 'volunteers' : 'organizers'}/${user.id}/'">
+                                <div class="search-result-icon user">
+                                    <i class="fas fa-user"></i>
+                                </div>
+                                <div class="search-result-info">
+                                    <div class="search-result-title">${user.name || user.username}</div>
+                                    <div class="search-result-subtitle">
+                                        ${user.email} • Рейтинг: ${user.rating || 0} • Проекты: ${user.projects_count + user.volunteer_count}
+                                    </div>
+                                </div>
+                                <span class="search-result-badge ${roleBadge}">${roleText}</span>
+                            </div>
+                        `;
+                    });
+                    html += '</div>';
+                }
+
+                // Projects section
+                if (data.projects && data.projects.length > 0) {
+                    html += '<div class="search-section">';
+                    html += '<div class="search-section-title"><i class="fas fa-project-diagram me-2"></i>Проекты</div>';
+                    data.projects.forEach(project => {
+                        const statusMap = {
+                            'approved': {
+                                text: 'Одобрен',
+                                class: 'badge-approved'
+                            },
+                            'pending': {
+                                text: 'Ожидает',
+                                class: 'badge-pending'
+                            },
+                            'rejected': {
+                                text: 'Отклонен',
+                                class: 'badge-pending'
+                            }
+                        };
+                        const status = statusMap[project.status] || {
+                            text: 'Неизвестно',
+                            class: 'badge-pending'
+                        };
+                        html += `
+                            <div class="search-result-item" onclick="window.location.href='/custom-admin/projects/${project.id}/'">
+                                <div class="search-result-icon project">
+                                    <i class="fas fa-project-diagram"></i>
+                                </div>
+                                <div class="search-result-info">
+                                    <div class="search-result-title">${project.title}</div>
+                                    <div class="search-result-subtitle">
+                                        ${project.city} • Организатор: ${project.creator.name} • Волонтеров: ${project.volunteers_count}
+                                    </div>
+                                </div>
+                                <span class="search-result-badge ${status.class}">${status.text}</span>
+                            </div>
+                        `;
+                    });
+                    html += '</div>';
+                }
+
+                // Tasks section
+                if (data.tasks && data.tasks.length > 0) {
+                    html += '<div class="search-section">';
+                    html += '<div class="search-section-title"><i class="fas fa-tasks me-2"></i>Задачи</div>';
+                    data.tasks.forEach(task => {
+                        const statusMap = {
+                            'pending': {
+                                text: 'Открыто',
+                                class: 'badge-pending'
+                            },
+                            'in_progress': {
+                                text: 'В работе',
+                                class: 'badge-pending'
+                            },
+                            'completed': {
+                                text: 'Выполнено',
+                                class: 'badge-completed'
+                            },
+                            'rejected': {
+                                text: 'Отклонено',
+                                class: 'badge-pending'
+                            }
+                        };
+                        const status = statusMap[task.status] || {
+                            text: 'Неизвестно',
+                            class: 'badge-pending'
+                        };
+                        html += `
+                            <div class="search-result-item" onclick="window.location.href='/custom-admin/tasks/?project=${task.project.id}'">
+                                <div class="search-result-icon task">
+                                    <i class="fas fa-clipboard-check"></i>
+                                </div>
+                                <div class="search-result-info">
+                                    <div class="search-result-title">${task.text.substring(0, 80)}${task.text.length > 80 ? '...' : ''}</div>
+                                    <div class="search-result-subtitle">
+                                        Проект: ${task.project.title} • Дедлайн: ${task.deadline_date || 'Не указан'}
+                                    </div>
+                                </div>
+                                <span class="search-result-badge ${status.class}">${status.text}</span>
+                            </div>
+                        `;
+                    });
+                    html += '</div>';
+                }
+
+                // View all link
+                if (totalResults > 5) {
+                    html += `
+                        <div class="search-view-all">
+                            <a href="/custom-admin/search/?q=${encodeURIComponent(data.query)}">
+                                Показать все результаты (${totalResults}) <i class="fas fa-arrow-right ms-1"></i>
+                            </a>
+                        </div>
+                    `;
+                }
+            }
+
+            resultsContent.innerHTML = html;
+            searchResults.style.display = 'block';
+        }
+
+        // Event listeners for search input
+        if (searchInput) {
+            searchInput.addEventListener('input', (e) => {
+                performSearch(e.target.value.trim());
+            });
+
+            searchInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') {
+                    searchResults.style.display = 'none';
+                    searchInput.value = '';
+                }
+            });
+
+            // Close search results when clicking outside
+            document.addEventListener('click', (e) => {
+                if (!searchResults.contains(e.target) && e.target !== searchInput) {
+                    searchResults.style.display = 'none';
+                }
+            });
+        }
+    });
+</script>
+
+<!-- Leaflet JS -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+{% endblock %}

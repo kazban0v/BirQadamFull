@@ -1,0 +1,240 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <title>Регистрация организатора — BirQadam</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="{% static 'about_site/css/bootstrap.min.css' %}">
+    <style>
+        :root {
+            --accent-orange: #FF9800;
+            --primary-blue: #003865;
+            --pure-white: #FFFFFF;
+        }
+
+        body {
+            font-family: 'Montserrat', sans-serif;
+            margin: 0;
+            background: #f4f6fb;
+            color: #212121;
+        }
+
+        a {
+            text-decoration: none;
+            color: inherit;
+        }
+
+        header {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            padding: 1rem 2rem;
+            background: var(--primary-blue);
+            z-index: 100;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, .1);
+        }
+
+        .header-wrapper {
+            max-width: 1140px;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        header .site-logo a {
+            font-weight: 800;
+            font-size: 1.5rem;
+            color: var(--pure-white);
+        }
+
+        .site-menu {
+            list-style: none;
+            display: flex;
+            gap: 1.5rem;
+        }
+
+        .site-menu a {
+            color: var(--pure-white);
+            padding-bottom: 0.25rem;
+            border-bottom: 2px solid transparent;
+            transition: all 0.3s ease;
+            font-weight: 600;
+        }
+
+        .site-menu a:hover,
+        .site-menu a.active {
+            border-color: var(--pure-white);
+            transform: scale(1.05);
+            text-shadow: 0 2px 8px rgba(0, 32, 91, 0.3);
+        }
+
+        .site-menu__cta {
+            padding: 0.5rem 1.4rem;
+            border-radius: 9999px;
+            border: 2px solid transparent;
+            font-weight: 700;
+            transition: all 0.3s ease;
+            margin-left: 0.5rem;
+        }
+
+        .site-menu__cta--primary {
+            background: var(--accent-orange);
+            border-color: var(--accent-orange);
+            color: var(--pure-white);
+        }
+
+        .site-menu__cta--secondary {
+            background: transparent;
+            border-color: var(--pure-white);
+            color: var(--pure-white);
+        }
+
+        .site-menu__cta:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
+        }
+
+        .page-wrapper {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 140px 16px 48px;
+        }
+
+        .card {
+            background: #fff;
+            max-width: 760px;
+            width: 100%;
+            border-radius: 24px;
+            padding: 48px 42px;
+            box-shadow: 0 26px 44px rgba(0, 56, 101, 0.22);
+            text-align: center;
+        }
+
+        .card h1 {
+            font-size: 2.25rem;
+            margin-bottom: 12px;
+            font-weight: 700;
+            color: var(--primary-blue);
+        }
+
+        .card p {
+            margin: 0 auto 24px;
+            line-height: 1.6;
+            color: #4a4a4a;
+            max-width: 600px;
+        }
+
+        .card .note {
+            background: rgba(0, 56, 101, 0.08);
+            border-radius: 16px;
+            padding: 16px 20px;
+            font-size: 0.95rem;
+            color: var(--primary-blue);
+            margin: 0 auto 32px;
+            max-width: 600px;
+        }
+
+        .card .actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 16px;
+            justify-content: center;
+        }
+
+        .card .actions a {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0.75rem 1.8rem;
+            border-radius: 9999px;
+            font-weight: 700;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary {
+            background: var(--accent-orange);
+            color: var(--pure-white);
+            box-shadow: 0 12px 24px rgba(255, 152, 0, 0.3);
+        }
+
+        .btn-primary:hover {
+            box-shadow: 0 18px 32px rgba(255, 152, 0, 0.4);
+            transform: translateY(-2px);
+        }
+
+        .btn-outline {
+            border: 2px solid var(--primary-blue);
+            color: var(--primary-blue);
+        }
+
+        .btn-outline:hover {
+            background: var(--primary-blue);
+            color: var(--pure-white);
+        }
+
+        @media (max-width: 768px) {
+            .header-wrapper {
+                flex-direction: column;
+                gap: 1rem;
+            }
+
+            .site-menu {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .site-menu__cta {
+                margin: 0.5rem 0 0;
+            }
+
+            .card {
+                padding: 40px 24px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <div class="header-wrapper">
+            <div class="site-logo"><a href="{% url 'about_site:home' %}">CleanupAlmatyBot.</a></div>
+            <ul class="site-menu">
+                <a href="{% url 'about_site:home' %}">Главная</a>
+                <a href="{% url 'about_site:services' %}">Услуги</a>
+                <a href="{% url 'about_site:instruction' %}">Инструкция</a>
+                <a href="{% url 'about_site:register_volunteer' %}" class="site-menu__cta site-menu__cta--primary">Стать волонтёром</a>
+                <a href="{% url 'about_site:register_organizer' %}" class="site-menu__cta site-menu__cta--secondary">Стать организатором</a>
+            </ul>
+        </div>
+    </header>
+
+    <main class="page-wrapper">
+        <div class="card">
+            <h1>Регистрация организатора</h1>
+            <p>
+                Команда BirQadam готовит расширенную веб-форму для подачи заявки на статус организатора. Здесь вы сможете
+                указать информацию об организации, прикрепить документы и отслеживать статус модерации в реальном времени.
+            </p>
+            <div class="note">
+                Пока портал не запущен, отправляйте заявки через Telegram-бота. Все текущие данные будут синхронизированы
+                с веб-версией после релиза, чтобы вы не потеряли прогресс.
+            </div>
+            <div class="actions">
+                <a href="https://t.me/cleanupalmaty_bot" class="btn-primary" target="_blank" rel="noopener">
+                    Подать заявку в Telegram-боте
+                </a>
+                <a href="http://localhost:5173/register/organizer" class="btn-outline" target="_blank" rel="noopener">
+                    Открыть веб-портал (dev)
+                </a>
+            </div>
+        </div>
+    </main>
+</body>
+
+</html>

@@ -1,0 +1,647 @@
+{% extends 'custom_admin/base.html' %}
+{% load static %}
+
+{% block extra_css %}
+<style>
+    /* Desktop table */
+    .desktop-table {
+        display: block;
+    }
+
+    /* Mobile cards */
+    .mobile-cards {
+        display: none;
+    }
+
+    .task-card {
+        background: white;
+        border-radius: 0.5rem;
+        box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+        margin-bottom: 1rem;
+        overflow: hidden;
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .task-card:active {
+        transform: scale(0.98);
+    }
+
+    .task-card-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 0.75rem 1rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .task-card-body {
+        padding: 1rem;
+    }
+
+    .task-info-row {
+        display: flex;
+        align-items: center;
+        padding: 0.5rem 0;
+        border-bottom: 1px solid #f0f0f0;
+    }
+
+    .task-info-row:last-child {
+        border-bottom: none;
+    }
+
+    .task-info-label {
+        font-weight: 600;
+        color: #6c757d;
+        min-width: 100px;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .task-info-value {
+        flex: 1;
+        color: #212529;
+    }
+
+    .status-badge {
+        font-size: 0.75rem;
+        padding: 0.35em 0.65em;
+        border-radius: 0.25rem;
+        font-weight: 600;
+        display: inline-block;
+    }
+
+    .expired-indicator {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        color: #dc3545;
+        font-weight: 600;
+    }
+
+    /* Filters */
+    .filters-section {
+        background: white;
+        border-radius: 0.5rem;
+        padding: 1rem;
+        margin-bottom: 1.5rem;
+        box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    }
+
+    .search-box {
+        position: relative;
+    }
+
+    .search-box i {
+        position: absolute;
+        left: 1rem;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #6c757d;
+        z-index: 2;
+    }
+
+    .search-box input {
+        padding-left: 2.5rem;
+    }
+
+    .search-box input:focus {
+        border-color: #667eea;
+        box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+    }
+
+    /* Clear button for search */
+    .search-clear {
+        position: absolute;
+        right: 1rem;
+        top: 50%;
+        transform: translateY(-50%);
+        background: none;
+        border: none;
+        color: #6c757d;
+        cursor: pointer;
+        display: none;
+        z-index: 2;
+        padding: 0.25rem;
+        font-size: 1rem;
+    }
+
+    .search-clear:hover {
+        color: #495057;
+    }
+
+    .search-box input:not(:placeholder-shown)~.search-clear {
+        display: block;
+    }
+
+    /* Stats cards */
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .stat-mini-card {
+        background: white;
+        border-radius: 0.5rem;
+        padding: 1rem;
+        text-align: center;
+        box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    }
+
+    .stat-mini-card i {
+        font-size: 2rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .stat-mini-card .value {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: #212529;
+    }
+
+    .stat-mini-card .label {
+        font-size: 0.75rem;
+        color: #6c757d;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    /* Mobile adaptations */
+    @media (max-width: 991px) {
+        .desktop-table {
+            display: none;
+        }
+
+        .mobile-cards {
+            display: block;
+        }
+
+        .stats-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+    }
+
+    @media (max-width: 575px) {
+        .task-card-header {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 0.5rem;
+        }
+
+        .filters-section {
+            padding: 0.75rem;
+        }
+
+        .stat-mini-card {
+            padding: 0.75rem;
+        }
+
+        .stat-mini-card i {
+            font-size: 1.5rem;
+        }
+
+        .stat-mini-card .value {
+            font-size: 1.25rem;
+        }
+
+        .task-info-label {
+            min-width: 80px;
+            font-size: 0.85rem;
+        }
+
+        .task-info-value {
+            font-size: 0.9rem;
+        }
+
+        /* Header badges on mobile */
+        .d-flex.gap-2 {
+            flex-direction: column;
+            gap: 0.5rem !important;
+            align-items: flex-end !important;
+        }
+
+        .d-flex.gap-2 .badge {
+            font-size: 0.85rem !important;
+            padding: 0.35rem 0.65rem !important;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h1 class="h3 mb-0">
+            <i class="fas fa-clipboard-list text-primary me-2"></i>
+            Управление задачами
+        </h1>
+        <div class="d-flex gap-2 align-items-center">
+            <span class="badge bg-primary" style="font-size: 1rem; padding: 0.5rem 1rem;" id="totalCount">
+                Всего: {{ tasks_count }}
+            </span>
+            <span class="badge bg-success" style="font-size: 1rem; padding: 0.5rem 1rem; display: none;" id="filteredCount">
+                Найдено: <span id="filteredNumber">0</span>
+            </span>
+        </div>
+    </div>
+
+    <!-- Stats Grid -->
+    <div class="stats-grid">
+        <div class="stat-mini-card">
+            <i class="fas fa-circle text-primary"></i>
+            <div class="value">{{ stats.open|default:0 }}</div>
+            <div class="label">Открыто</div>
+        </div>
+        <div class="stat-mini-card">
+            <i class="fas fa-spinner text-warning"></i>
+            <div class="value">{{ stats.in_progress|default:0 }}</div>
+            <div class="label">В работе</div>
+        </div>
+        <div class="stat-mini-card">
+            <i class="fas fa-check-circle text-success"></i>
+            <div class="value">{{ stats.completed|default:0 }}</div>
+            <div class="label">Выполнено</div>
+        </div>
+        <div class="stat-mini-card">
+            <i class="fas fa-times-circle text-danger"></i>
+            <div class="value">{{ stats.failed|default:0 }}</div>
+            <div class="label">Отклонено</div>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="filters-section">
+        <div class="row g-2">
+            <div class="col-md-6">
+                <div class="search-box">
+                    <i class="fas fa-search"></i>
+                    <input type="text" id="searchInput" class="form-control" placeholder="Поиск по проекту или задаче..." autocomplete="off">
+                    <button type="button" class="search-clear" id="searchClear" title="Очистить поиск">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <select id="statusFilter" class="form-select">
+                    <option value="">Все статусы</option>
+                    <option value="open">Открыто</option>
+                    <option value="in_progress">В работе</option>
+                    <option value="completed">Выполнено</option>
+                    <option value="failed">Отклонено</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <select id="sortBy" class="form-select">
+                    <option value="id">По ID</option>
+                    <option value="deadline">По сроку</option>
+                    <option value="project">По проекту</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <!-- Desktop Table -->
+    <div class="desktop-table">
+        <div class="card shadow">
+            <div class="card-header bg-white py-3">
+                <h6 class="m-0 font-weight-bold text-primary">
+                    <i class="fas fa-table"></i> Список задач
+                </h6>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th style="width: 60px;">ID</th>
+                                <th>Проект</th>
+                                <th>Задача</th>
+                                <th style="width: 130px;">Статус</th>
+                                <th style="width: 150px;">Срок</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for task in tasks %}
+                            <tr class="{% if task.status == 'closed' %}table-danger{% endif %}">
+                                <td>{{ task.id }}</td>
+                                <td>
+                                    <a href="{% url 'project_detail' task.project.id %}" class="text-decoration-none">
+                                        {{ task.project.title|truncatechars:30 }}
+                                    </a>
+                                </td>
+                                <td>{{ task.text|truncatechars:50 }}</td>
+                                <td>
+                                    <span class="badge status-badge 
+                                        {% if task.status == 'completed' %}bg-success
+                                        {% elif task.status == 'failed' %}bg-danger
+                                        {% elif task.status == 'open' %}bg-primary
+                                        {% elif task.status == 'in_progress' %}bg-warning text-dark
+                                        {% else %}bg-secondary{% endif %}">
+                                        {{ task.get_status_display }}
+                                    </span>
+                                </td>
+                                <td>
+                                    {% if task.deadline_date %}
+                                    {{ task.deadline_date|date:"d.m.Y" }}
+                                    {% if task.status == 'closed' %}
+                                    <i class="fas fa-exclamation-triangle text-danger"></i>
+                                    {% endif %}
+                                    {% else %}
+                                    <span class="text-muted">Не указан</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="5" class="text-center py-5">
+                                    <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                                    <p class="text-muted">Задачи не найдены</p>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mobile Cards -->
+    <div class="mobile-cards">
+        {% for task in tasks %}
+        <div class="task-card" data-id="{{ task.id }}" data-status="{{ task.status }}" data-project="{{ task.project.title }}" data-text="{{ task.text }}" data-deadline="{{ task.deadline_date|date:'Y-m-d'|default:'9999-12-31' }}">
+            <div class="task-card-header">
+                <div>
+                    <small style="opacity: 0.9;">ID: {{ task.id }}</small>
+                    <div style="font-weight: 700; margin-top: 0.25rem;">
+                        {{ task.project.title|truncatechars:30 }}
+                    </div>
+                </div>
+                <span class="badge status-badge 
+                    {% if task.status == 'completed' %}bg-success
+                    {% elif task.status == 'failed' %}bg-danger
+                    {% elif task.status == 'open' %}bg-light text-dark
+                    {% elif task.status == 'in_progress' %}bg-warning text-dark
+                    {% else %}bg-secondary{% endif %}">
+                    {{ task.get_status_display }}
+                </span>
+            </div>
+            <div class="task-card-body">
+                <div class="task-info-row">
+                    <div class="task-info-label">
+                        <i class="fas fa-tasks"></i>
+                        Задача
+                    </div>
+                    <div class="task-info-value">
+                        {{ task.text|truncatechars:60 }}
+                    </div>
+                </div>
+                <div class="task-info-row">
+                    <div class="task-info-label">
+                        <i class="fas fa-calendar-alt"></i>
+                        Срок
+                    </div>
+                    <div class="task-info-value">
+                        {% if task.deadline_date %}
+                        {{ task.deadline_date|date:"d.m.Y" }}
+                        {% if task.status == 'closed' %}
+                        <span class="expired-indicator">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            Просрочено
+                        </span>
+                        {% endif %}
+                        {% else %}
+                        <span class="text-muted">Не указан</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="text-center py-5">
+            <i class="fas fa-inbox fa-4x text-muted mb-3"></i>
+            <p class="text-muted h5">Задачи не найдены</p>
+            <small class="text-muted">Попробуйте изменить фильтры поиска</small>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<script>
+    // Search functionality with debounce
+    const searchInput = document.getElementById('searchInput');
+    const statusFilter = document.getElementById('statusFilter');
+    const sortBy = document.getElementById('sortBy');
+
+    let searchTimeout;
+
+    function debounce(func, wait) {
+        return function executedFunction(...args) {
+            const later = () => {
+                clearTimeout(searchTimeout);
+                func(...args);
+            };
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(later, wait);
+        };
+    }
+
+    function filterTasks() {
+        const searchTerm = searchInput ? searchInput.value.toLowerCase().trim() : '';
+        const selectedStatus = statusFilter ? statusFilter.value : '';
+
+        console.log('Filtering tasks:', {
+            searchTerm,
+            selectedStatus
+        });
+
+        // For desktop table
+        const tableRows = document.querySelectorAll('.desktop-table tbody tr');
+        let visibleCount = 0;
+
+        tableRows.forEach(row => {
+            // Skip empty state row
+            if (row.querySelector('td[colspan]')) {
+                return;
+            }
+
+            const projectCell = row.cells[1] ? .textContent.toLowerCase() || '';
+            const taskCell = row.cells[2] ? .textContent.toLowerCase() || '';
+            const searchableText = projectCell + ' ' + taskCell;
+            const statusBadge = row.querySelector('.status-badge');
+
+            // Check search match
+            const matchesSearch = !searchTerm || searchableText.includes(searchTerm);
+
+            // Check status match
+            let matchesStatus = true;
+            if (selectedStatus && statusBadge) {
+                const hasStatusClass =
+                    (statusBadge.classList.contains('bg-success') && selectedStatus === 'completed') ||
+                    (statusBadge.classList.contains('bg-danger') && selectedStatus === 'failed') ||
+                    (statusBadge.classList.contains('bg-primary') && selectedStatus === 'open') ||
+                    (statusBadge.classList.contains('bg-warning') && selectedStatus === 'in_progress') ||
+                    (statusBadge.classList.contains('bg-secondary') && selectedStatus === 'closed');
+                matchesStatus = hasStatusClass;
+            }
+
+            if (matchesSearch && matchesStatus) {
+                row.style.display = '';
+                visibleCount++;
+            } else {
+                row.style.display = 'none';
+            }
+        });
+
+        // For mobile cards
+        const mobileCards = document.querySelectorAll('.task-card');
+        let visibleMobileCount = 0;
+
+        mobileCards.forEach(card => {
+            const project = (card.dataset.project || '').toLowerCase();
+            const text = (card.dataset.text || '').toLowerCase();
+            const searchableText = project + ' ' + text;
+            const status = card.dataset.status;
+
+            const matchesSearch = !searchTerm || searchableText.includes(searchTerm);
+            const matchesStatus = !selectedStatus || status === selectedStatus;
+
+            if (matchesSearch && matchesStatus) {
+                card.style.display = '';
+                visibleMobileCount++;
+            } else {
+                card.style.display = 'none';
+            }
+        });
+
+        // Update filtered count badge
+        const filteredCountBadge = document.getElementById('filteredCount');
+        const filteredNumberSpan = document.getElementById('filteredNumber');
+        const totalCountBadge = document.getElementById('totalCount');
+
+        const totalVisible = Math.max(visibleCount, visibleMobileCount);
+        const isFiltering = searchTerm || selectedStatus;
+
+        if (isFiltering) {
+            filteredNumberSpan.textContent = totalVisible;
+            filteredCountBadge.style.display = 'block';
+            if (totalCountBadge) totalCountBadge.style.display = 'none';
+        } else {
+            filteredCountBadge.style.display = 'none';
+            if (totalCountBadge) totalCountBadge.style.display = 'block';
+        }
+
+        console.log(`Filtered: ${visibleCount} desktop rows, ${visibleMobileCount} mobile cards visible`);
+    }
+
+    // Debounced version for input
+    const debouncedFilterTasks = debounce(filterTasks, 300);
+
+    if (searchInput) {
+        searchInput.addEventListener('input', () => {
+            debouncedFilterTasks();
+            // Show/hide clear button
+            const clearBtn = document.getElementById('searchClear');
+            if (clearBtn) {
+                clearBtn.style.display = searchInput.value ? 'block' : 'none';
+            }
+        });
+
+        // Clear button with Escape key
+        searchInput.addEventListener('keyup', (e) => {
+            if (e.key === 'Escape') {
+                searchInput.value = '';
+                const clearBtn = document.getElementById('searchClear');
+                if (clearBtn) clearBtn.style.display = 'none';
+                filterTasks();
+            }
+        });
+    }
+
+    // Clear button click handler
+    const searchClearBtn = document.getElementById('searchClear');
+    if (searchClearBtn) {
+        searchClearBtn.addEventListener('click', () => {
+            if (searchInput) {
+                searchInput.value = '';
+                searchInput.focus();
+                searchClearBtn.style.display = 'none';
+                filterTasks();
+            }
+        });
+    }
+
+    if (statusFilter) {
+        statusFilter.addEventListener('change', filterTasks);
+    }
+
+    // Sort functionality (works for both desktop and mobile)
+    if (sortBy) {
+        sortBy.addEventListener('change', function() {
+            const sortValue = this.value;
+            console.log('Sorting by:', sortValue);
+
+            // Sort mobile cards
+            const mobileContainer = document.querySelector('.mobile-cards');
+            if (mobileContainer) {
+                const cards = Array.from(document.querySelectorAll('.task-card'));
+
+                cards.sort((a, b) => {
+                    if (sortValue === 'id') {
+                        return parseInt(a.dataset.id) - parseInt(b.dataset.id);
+                    } else if (sortValue === 'project') {
+                        return (a.dataset.project || '').localeCompare(b.dataset.project || '');
+                    } else if (sortValue === 'deadline') {
+                        const dateA = new Date(a.dataset.deadline || '9999-12-31');
+                        const dateB = new Date(b.dataset.deadline || '9999-12-31');
+                        return dateA - dateB;
+                    }
+                    return 0;
+                });
+
+                cards.forEach(card => mobileContainer.appendChild(card));
+            }
+
+            // Sort desktop table rows
+            const tableBody = document.querySelector('.desktop-table tbody');
+            if (tableBody) {
+                const rows = Array.from(tableBody.querySelectorAll('tr')).filter(row => !row.querySelector('td[colspan]'));
+
+                rows.sort((a, b) => {
+                    if (sortValue === 'id') {
+                        const idA = parseInt(a.cells[0] ? .textContent.replace('ID:', '').trim() || '0');
+                        const idB = parseInt(b.cells[0] ? .textContent.replace('ID:', '').trim() || '0');
+                        return idA - idB;
+                    } else if (sortValue === 'project') {
+                        const projectA = a.cells[1] ? .textContent.trim() || '';
+                        const projectB = b.cells[1] ? .textContent.trim() || '';
+                        return projectA.localeCompare(projectB);
+                    } else if (sortValue === 'deadline') {
+                        const dueDateA = a.cells[3] ? .textContent.trim() || '9999-12-31';
+                        const dueDateB = b.cells[3] ? .textContent.trim() || '9999-12-31';
+                        return dueDateA.localeCompare(dueDateB);
+                    }
+                    return 0;
+                });
+
+                rows.forEach(row => tableBody.appendChild(row));
+            }
+        });
+    }
+
+    // Add touch feedback for mobile cards
+    document.querySelectorAll('.task-card').forEach(card => {
+        card.addEventListener('touchstart', function() {
+            this.style.transform = 'scale(0.98)';
+        });
+
+        card.addEventListener('touchend', function() {
+            this.style.transform = '';
+        });
+    });
+</script>
+{% endblock %}

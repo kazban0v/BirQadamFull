@@ -1,0 +1,395 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <title>Админ-гайд | BirQadam</title>
+    <meta charset="utf-8" />
+    <link rel="icon" href="{% static 'about_site/images/logob.png' %}" type="image/png">
+    
+    <link rel="apple-touch-icon" href="{% static 'about_site/images/logob.png' %}">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+    <link rel="stylesheet" href="{% static 'about_site/css/aos.css' %}">
+    <link rel="stylesheet" href="{% static 'about_site/css/bootstrap.min.css' %}">
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;800&display=swap');
+
+        :root {
+            /* НОВЫЕ ЦВЕТА BIRQADAM */
+            --birqadam-primary: #8BC34A;    /* Primary Color (Светло-зеленый) */
+            --birqadam-accent: #e3794d;    /* Accent Color (Оранжево-персиковый) */
+            --birqadam-gray: #EDEDED;
+            --birqadam-white: #f8ecc4;      /* ФОН: Светлый бежево-желтый  */
+            --birqadam-pure-white: #FFFFFF; /* Чисто белый для карточек и текста */
+
+            /* Алиасы для совместимости (обновлены) */
+            --alma-primary: var(--birqadam-primary);
+            --alma-accent: var(--birqadam-accent);
+            --alma-gray: var(--birqadam-gray);
+            --alma-white: var(--birqadam-white);
+        }
+
+        body {
+            font-family: 'Montserrat', sans-serif;
+            color: #333;
+            background: var(--alma-white);
+            margin: 0;
+            padding: 0;
+            overflow-x: hidden;
+        }
+
+        a {
+            text-decoration: none;
+            color: inherit;
+        }
+
+        .common-card a, 
+        .btn-primary {
+            text-decoration: none !important;
+        }
+
+        h1, h2, h3 {
+            font-weight: 800;
+            color: var(--alma-primary);
+        }
+
+        p {
+            color: #555;
+            line-height: 1.6;
+        }
+        
+        /* HEADER СТИЛИ */
+        .header-wrapper {
+            max-width: 1140px;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 1rem;
+        }
+        
+        header {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            padding: 1rem 0;
+            background: var(--alma-primary);
+            z-index: 100;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, .1);
+        }
+
+        header .site-logo a {
+            font-weight: 800;
+            font-size: 1.5rem;
+            color: var(--birqadam-pure-white);
+        }
+
+        .site-nav { 
+            list-style: none;
+            display: flex;
+            gap: 2rem;
+            padding-left: 0;
+            margin: 0;
+        }
+
+        .site-nav > a, .site-nav li {
+            position: relative;
+        }
+
+        .site-nav a {
+            color: var(--birqadam-pure-white);
+            padding-bottom: 0.25rem;
+            border-bottom: 2px solid transparent;
+            transition: all 0.3s ease;
+            position: relative;
+            font-weight: 600;
+            display: block;
+        }
+
+        .site-nav a:hover {
+            opacity: 0.8;
+            text-shadow: none;
+        }
+        
+        .site-nav a.active, 
+        .site-nav a[aria-current="page"] {
+            border-color: var(--birqadam-pure-white);
+            opacity: 1;
+            text-shadow: none;
+        }
+
+        /* Стили Dropdown */
+        .dropdown {
+            display: list-item; 
+        }
+
+        .dropdown-content {
+            display: none;
+            position: absolute;
+            background-color: var(--birqadam-primary);
+            min-width: 160px;
+            box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+            z-index: 101;
+            padding: 0.5rem 0;
+            border-radius: 0 0 0.5rem 0.5rem;
+            left: -0.5rem;
+            top: 100%;
+        }
+
+        .dropdown-content a {
+            padding: 0.5rem 1rem;
+            display: block;
+            font-weight: 400;
+            border-bottom: none;
+            transition: background-color 0.2s ease;
+        }
+
+        .dropdown-content a:hover,
+        .dropdown-content a.active {
+            background-color: color-mix(in srgb, var(--birqadam-primary) 80%, black);
+        }
+
+        .dropdown:hover .dropdown-content {
+            display: block;
+        }
+
+        /* СТИЛИ КНОПКИ */
+        .btn-primary {
+            background-color: var(--birqadam-pure-white); 
+            color: var(--alma-primary);
+            border: 2px solid var(--alma-primary);
+            border-radius: 9999px;
+            padding: 0.75rem 2rem;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            font-weight: 600;
+            display: inline-block;
+            width: 100%;
+            max-width: 350px; 
+            text-align: center;
+        }
+
+        .btn-primary:hover {
+            background-color: var(--alma-primary);
+            color: var(--birqadam-pure-white);
+            transform: scale(1.05);
+            border-color: var(--birqadam-accent); 
+            box-shadow: 0 4px 16px rgba(0, 32, 91, 0.3);
+        }
+
+        .section {
+            padding: 4rem 0;
+        }
+
+        .section h2 {
+            font-size: 2rem;
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .section p {
+            max-width: 800px;
+            margin: 0 auto 1rem;
+            text-align: center;
+        }
+        
+        /* СТИЛИ КАРТОЧЕК */
+        .common-card {
+            background: var(--birqadam-pure-white);
+            padding: 2rem;
+            border-radius: 1rem;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            border: 2px solid var(--alma-primary);
+            text-align: center;
+            transition: 0.3s ease;
+            font-weight: 600;
+            height: 100%;
+        }
+
+        .common-card:hover {
+            transform: scale(1.03);
+            border-color: var(--alma-accent);
+            box-shadow: 0 8px 20px rgba(227, 121, 77, 0.3);
+        }
+
+        .common-card h3 {
+            margin-bottom: 1rem;
+            color: var(--alma-primary);
+        }
+
+        .common-card p {
+            color: #555;
+            font-size: 0.95rem;
+        }
+
+        /* ВОЗВРАЩЕННЫЕ СТИЛИ ФУТЕРА */
+        .alma-footer-manual {
+            position: relative;
+            background-color: var(--alma-white);
+            overflow: hidden;
+            padding: 4rem 2rem 2rem;
+            text-align: center;
+            color: var(--alma-primary);
+        }
+
+        .footer-shapes {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 200px;
+            z-index: 0;
+        }
+
+        .red-corner {
+            position: absolute;
+            left: -100px;
+            bottom: 0;
+            width: 300px;
+            height: 300px;
+            background: var(--alma-accent);
+            transform: rotate(45deg);
+            z-index: 1;
+        }
+
+        .blue-corner {
+            position: absolute;
+            right: -100px;
+            bottom: 0;
+            width: 300px;
+            height: 300px;
+            background: var(--alma-primary);
+            transform: rotate(-45deg);
+            z-index: 1;
+        }
+
+        .footer-content {
+            position: relative;
+            z-index: 2;
+        }
+
+        .footer-content p {
+            margin-top: 1rem;
+            font-weight: 600;
+        }
+
+        .alma-logo {
+            width: 120px;
+            height: auto;
+            margin-bottom: 1rem;
+        }
+
+        /* КОНЕЦ ВОЗВРАЩЕННЫХ СТИЛЕЙ ФУТЕРА */
+
+         @media (max-width: 768px) {
+            .header-wrapper {
+                flex-direction: column;
+                gap: 1rem;
+            }
+            .site-nav {
+                flex-direction: column;
+                align-items: center;
+                gap: 0.5rem;
+                padding-bottom: 1rem;
+            }
+            .site-nav > a, .site-nav li {
+                 width: 100%;
+                 text-align: center;
+            }
+            .dropdown-content {
+                position: static; 
+                width: 100%;
+                border-radius: 0;
+                box-shadow: none;
+            }
+            .common-card {
+                flex: 1 1 100%;
+            }
+            /* На мобильных футер с углами может выглядеть странно, но оставляем, как запрошено */
+        }
+
+    </style>
+</head>
+
+<body>
+    <header>
+        <div class="header-wrapper">
+            <div class="site-logo"><a href="{% url 'about_site:home' %}">BirQadam.</a></div>
+            <nav role="navigation">
+                <ul class="site-nav">
+                    <li><a href="{% url 'about_site:home' %}">Главная</a></li>
+                    <li><a href="{% url 'about_site:services' %}">Функционал</a></li>
+                    
+                    <li class="dropdown">
+                        <a href="{% url 'about_site:instruction' %}" class="dropdown-trigger" aria-current="page">Инструкция</a>
+                        <div class="dropdown-content">
+                            <a href="{% url 'about_site:volunteer_guide' %}">Волонтёр</a>
+                            <a href="{% url 'about_site:organizer_guide' %}">Организатор</a>
+                            <a href="{% url 'about_site:admin_guide' %}" class="active" aria-current="page">Админ</a>
+                        </div>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <section class="section" style="margin-top: 100px;" id="admin-guide">
+        <div class="container" data-aos="fade-up">
+            <h2 class="text-center mb-5">Инструкция для администратора</h2>
+
+            <div class="row">
+                <div class="col-md-6 mb-4">
+                    <div class="common-card">
+                        <h3>🔐 Авторизация</h3>
+                        <p>Администратор входит в систему через Telegram с правами, которые заранее установлены при регистрации.</p>
+                    </div>
+                </div>
+                <div class="col-md-6 mb-4">
+                    <div class="common-card">
+                        <h3>📋 Управление пользователями</h3>
+                        <p>Просматривайте список волонтёров и организаторов, проверяйте их данные, блокируйте или подтверждайте при необходимости.</p>
+                    </div>
+                </div>
+                <div class="col-md-6 mb-4">
+                    <div class="common-card">
+                        <h3>🛠 Модерация мероприятий</h3>
+                        <p>Вы можете одобрять или отклонять созданные события, редактировать их описание и следить за количеством участников.</p>
+                    </div>
+                </div>
+                <div class="col-md-6 mb-4">
+                    <div class="common-card">
+                        <h3>📊 Аналитика</h3>
+                        <p>Доступ к общей статистике: сколько мероприятий прошло, сколько волонтёров участвовало, какие места самые активные.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="text-center mt-5">
+                <a href="{% static 'about_site/files/admin_test.pdf' %}" download class="btn-primary" id="admin-test-button">
+                    ⬇ Скачать сценарий тестирования
+                </a>
+            </div>
+
+        </div>
+    </section>
+
+    <footer class="alma-footer-manual">
+        <div class="footer-shapes">
+            <div class="red-corner"></div>
+            <div class="blue-corner"></div>
+        </div>
+        <div class="footer-content">
+            <img src="{% static 'about_site/images/logob.png' %}" alt="AlmaU Logo" class="alma-logo">
+            
+        </div>
+    </footer>
+
+    <script src="{% static 'about_site/js/jquery-3.3.1.min.js' %}"></script>
+    <script src="{% static 'about_site/js/aos.js' %}"></script>
+    <script>
+        AOS.init({ once: true });
+    </script>
+</body>
+
+</html>

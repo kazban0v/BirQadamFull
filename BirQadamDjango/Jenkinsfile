@@ -1,0 +1,44 @@
+pipeline {
+  agent { label 'deployment_1' }
+
+  environment {
+    IMAGE_NAME = 'cleanup-almaty-app'
+    CONTAINER_NAME = 'cleanup-almaty-container'
+    PORT = '8003'
+  }
+
+  stages {
+    stage('Build Docker Image') {
+      steps {
+        sh 'docker build -t $IMAGE_NAME .'
+      }
+    }
+
+    stage('Stop Previous Container') {
+      steps {
+        sh 'docker rm -f $CONTAINER_NAME || true'
+      }
+    }
+
+    stage('Run Container') {
+      steps {
+        sh '''
+          docker run -d \
+            --name $CONTAINER_NAME \
+            -p $PORT:8003 \
+            --env-file .env \
+            $IMAGE_NAME
+        '''
+      }
+    }
+  }
+
+  post {
+    success {
+      echo "✅ Deployed successfully: http://your-server:$PORT"
+    }
+    failure {
+      echo "❌ Deployment failed"
+    }
+  }
+}

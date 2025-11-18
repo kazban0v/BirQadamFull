@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}Volunteer Admin{% endblock %}</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet"> {% block extra_css %}{% endblock %}
+<style>
+    /* MOBILE ADAPTATIONS */
+    @media (max-width: 768px) {
+        .container-fluid { padding-left: 1rem !important; padding-right: 1rem !important; }
+        body { font-size: 0.95rem; }
+    }
+
+    @media (max-width: 576px) {
+        .container-fluid { padding-left: 0.75rem !important; padding-right: 0.75rem !important; }
+        body { font-size: 0.9rem; }
+    }
+</style>
+</head>
+
+<body>
+    <div class="container-fluid">
+        <main class="col-12 p-0">
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+    <!-- Подключение скриптов -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    {% block extra_js %}{% endblock %}
+</body>
+
+</html>
