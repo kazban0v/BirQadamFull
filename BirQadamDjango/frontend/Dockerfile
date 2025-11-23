@@ -1,20 +1,9 @@
-# Базовый образ с Node
-FROM node:20-alpine
+FROM node:20-alpine AS build
 
-# Рабочая директория
 WORKDIR /app
 
-# Сначала копируем package.json и package-lock.json
 COPY package*.json ./
+RUN npm ci
 
-# Устанавливаем зависимости
-RUN npm ci \
-  && chmod +x node_modules/.bin/* && chmod +x node_modules/.bin/vite
-# Копируем остальной код
 COPY . .
-
-# Открываем порт Vite
-EXPOSE 5173
-
-# Запускаем Vite dev server
-CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0", "--port", "5173"]
+RUN npm run build
