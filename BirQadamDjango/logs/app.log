@@ -14572,3 +14572,304 @@ INFO 2025-11-18 16:12:02,312 basehttp 16904 12496 "GET /custom-admin/api/v1/orga
 INFO 2025-11-18 16:13:18,029 basehttp 16904 12496 "GET /api/web/me/ HTTP/1.1" 200 222
 INFO 2025-11-18 16:13:18,462 basehttp 16904 12496 "GET /custom-admin/api/organizer/projects/ HTTP/1.1" 200 2
 INFO 2025-11-18 16:13:18,484 basehttp 16904 2100 "GET /custom-admin/api/v1/organizer/photo-reports/?status=pending&limit=30&offset=0 HTTP/1.1" 200 182
+ERROR 2025-11-19 17:08:55,977 signal 1 124702880140160 Signal handler <bound method DjangoFixup.on_import_modules of <celery.fixups.django.DjangoFixup object at 0x716aa4fe7f50>> raised: ImproperlyConfigured('Error loading psycopg2 or psycopg module')
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/django/db/backends/postgresql/base.py", line 25, in <module>
+    import psycopg as Database
+ModuleNotFoundError: No module named 'psycopg'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/django/db/backends/postgresql/base.py", line 27, in <module>
+    import psycopg2 as Database
+ModuleNotFoundError: No module named 'psycopg2'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/celery/utils/dispatch/signal.py", line 276, in send
+    response = receiver(signal=self, sender=sender, **named)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/celery/fixups/django.py", line 100, in on_import_modules
+    self.worker_fixup.validate_models()
+  File "/usr/local/lib/python3.11/site-packages/celery/fixups/django.py", line 138, in validate_models
+    self.django_setup()
+  File "/usr/local/lib/python3.11/site-packages/celery/fixups/django.py", line 134, in django_setup
+    django.setup()
+  File "/usr/local/lib/python3.11/site-packages/django/__init__.py", line 24, in setup
+    apps.populate(settings.INSTALLED_APPS)
+  File "/usr/local/lib/python3.11/site-packages/django/apps/registry.py", line 116, in populate
+    app_config.import_models()
+  File "/usr/local/lib/python3.11/site-packages/django/apps/config.py", line 269, in import_models
+    self.models_module = import_module(models_module_name)
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/importlib/__init__.py", line 126, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<frozen importlib._bootstrap>", line 1204, in _gcd_import
+  File "<frozen importlib._bootstrap>", line 1176, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1147, in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 690, in _load_unlocked
+  File "<frozen importlib._bootstrap_external>", line 940, in exec_module
+  File "<frozen importlib._bootstrap>", line 241, in _call_with_frames_removed
+  File "/usr/local/lib/python3.11/site-packages/django/contrib/auth/models.py", line 5, in <module>
+    from django.contrib.auth.base_user import AbstractBaseUser, BaseUserManager
+  File "/usr/local/lib/python3.11/site-packages/django/contrib/auth/base_user.py", line 43, in <module>
+    class AbstractBaseUser(models.Model):
+  File "/usr/local/lib/python3.11/site-packages/django/db/models/base.py", line 145, in __new__
+    new_class.add_to_class("_meta", Options(meta, app_label))
+  File "/usr/local/lib/python3.11/site-packages/django/db/models/base.py", line 373, in add_to_class
+    value.contribute_to_class(cls, name)
+  File "/usr/local/lib/python3.11/site-packages/django/db/models/options.py", line 238, in contribute_to_class
+    self.db_table, connection.ops.max_name_length()
+                   ^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/django/utils/connection.py", line 15, in __getattr__
+    return getattr(self._connections[self._alias], item)
+                   ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/django/utils/connection.py", line 62, in __getitem__
+    conn = self.create_connection(alias)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/django/db/utils.py", line 193, in create_connection
+    backend = load_backend(db["ENGINE"])
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/django/db/utils.py", line 113, in load_backend
+    return import_module("%s.base" % backend_name)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/importlib/__init__.py", line 126, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/django/db/backends/postgresql/base.py", line 29, in <module>
+    raise ImproperlyConfigured("Error loading psycopg2 or psycopg module")
+django.core.exceptions.ImproperlyConfigured: Error loading psycopg2 or psycopg module
+ERROR 2025-11-19 17:11:57,596 signal 1 123356878977920 Signal handler <bound method DjangoFixup.on_import_modules of <celery.fixups.django.DjangoFixup object at 0x70314111f890>> raised: ImproperlyConfigured('Error loading psycopg2 or psycopg module')
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/django/db/backends/postgresql/base.py", line 25, in <module>
+    import psycopg as Database
+ModuleNotFoundError: No module named 'psycopg'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/django/db/backends/postgresql/base.py", line 27, in <module>
+    import psycopg2 as Database
+ModuleNotFoundError: No module named 'psycopg2'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/celery/utils/dispatch/signal.py", line 276, in send
+    response = receiver(signal=self, sender=sender, **named)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/celery/fixups/django.py", line 100, in on_import_modules
+    self.worker_fixup.validate_models()
+  File "/usr/local/lib/python3.11/site-packages/celery/fixups/django.py", line 138, in validate_models
+    self.django_setup()
+  File "/usr/local/lib/python3.11/site-packages/celery/fixups/django.py", line 134, in django_setup
+    django.setup()
+  File "/usr/local/lib/python3.11/site-packages/django/__init__.py", line 24, in setup
+    apps.populate(settings.INSTALLED_APPS)
+  File "/usr/local/lib/python3.11/site-packages/django/apps/registry.py", line 116, in populate
+    app_config.import_models()
+  File "/usr/local/lib/python3.11/site-packages/django/apps/config.py", line 269, in import_models
+    self.models_module = import_module(models_module_name)
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/importlib/__init__.py", line 126, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<frozen importlib._bootstrap>", line 1204, in _gcd_import
+  File "<frozen importlib._bootstrap>", line 1176, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1147, in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 690, in _load_unlocked
+  File "<frozen importlib._bootstrap_external>", line 940, in exec_module
+  File "<frozen importlib._bootstrap>", line 241, in _call_with_frames_removed
+  File "/usr/local/lib/python3.11/site-packages/django/contrib/auth/models.py", line 5, in <module>
+    from django.contrib.auth.base_user import AbstractBaseUser, BaseUserManager
+  File "/usr/local/lib/python3.11/site-packages/django/contrib/auth/base_user.py", line 43, in <module>
+    class AbstractBaseUser(models.Model):
+  File "/usr/local/lib/python3.11/site-packages/django/db/models/base.py", line 145, in __new__
+    new_class.add_to_class("_meta", Options(meta, app_label))
+  File "/usr/local/lib/python3.11/site-packages/django/db/models/base.py", line 373, in add_to_class
+    value.contribute_to_class(cls, name)
+  File "/usr/local/lib/python3.11/site-packages/django/db/models/options.py", line 238, in contribute_to_class
+    self.db_table, connection.ops.max_name_length()
+                   ^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/django/utils/connection.py", line 15, in __getattr__
+    return getattr(self._connections[self._alias], item)
+                   ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/django/utils/connection.py", line 62, in __getitem__
+    conn = self.create_connection(alias)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/django/db/utils.py", line 193, in create_connection
+    backend = load_backend(db["ENGINE"])
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/django/db/utils.py", line 113, in load_backend
+    return import_module("%s.base" % backend_name)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/importlib/__init__.py", line 126, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/django/db/backends/postgresql/base.py", line 29, in <module>
+    raise ImproperlyConfigured("Error loading psycopg2 or psycopg module")
+django.core.exceptions.ImproperlyConfigured: Error loading psycopg2 or psycopg module
+ERROR 2025-11-19 17:14:26,793 signal 1 133954667031424 Signal handler <bound method DjangoFixup.on_import_modules of <celery.fixups.django.DjangoFixup object at 0x79d4be757c10>> raised: ModuleNotFoundError("No module named 'aiofiles'")
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/celery/utils/dispatch/signal.py", line 276, in send
+    response = receiver(signal=self, sender=sender, **named)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/celery/fixups/django.py", line 100, in on_import_modules
+    self.worker_fixup.validate_models()
+  File "/usr/local/lib/python3.11/site-packages/celery/fixups/django.py", line 138, in validate_models
+    self.django_setup()
+  File "/usr/local/lib/python3.11/site-packages/celery/fixups/django.py", line 134, in django_setup
+    django.setup()
+  File "/usr/local/lib/python3.11/site-packages/django/__init__.py", line 24, in setup
+    apps.populate(settings.INSTALLED_APPS)
+  File "/usr/local/lib/python3.11/site-packages/django/apps/registry.py", line 124, in populate
+    app_config.ready()
+  File "/usr/local/lib/python3.11/site-packages/django/contrib/admin/apps.py", line 27, in ready
+    self.module.autodiscover()
+  File "/usr/local/lib/python3.11/site-packages/django/contrib/admin/__init__.py", line 52, in autodiscover
+    autodiscover_modules("admin", register_to=site)
+  File "/usr/local/lib/python3.11/site-packages/django/utils/module_loading.py", line 58, in autodiscover_modules
+    import_module("%s.%s" % (app_config.name, module_to_search))
+  File "/usr/local/lib/python3.11/importlib/__init__.py", line 126, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<frozen importlib._bootstrap>", line 1204, in _gcd_import
+  File "<frozen importlib._bootstrap>", line 1176, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1147, in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 690, in _load_unlocked
+  File "<frozen importlib._bootstrap_external>", line 940, in exec_module
+  File "<frozen importlib._bootstrap>", line 241, in _call_with_frames_removed
+  File "/app/core/admin.py", line 17, in <module>
+    from bot.organization_handlers import notify_project_status, notify_organizer_status
+  File "/app/bot/organization_handlers.py", line 14, in <module>
+    import aiofiles
+ModuleNotFoundError: No module named 'aiofiles'
+INFO 2025-11-19 17:17:19,680 telegram_bot 1 123327352306560 Загружен файл .env из /app
+INFO 2025-11-19 17:17:19,681 telegram_bot 1 123327352306560 Загружен токен: 75857... (частично для безопасности)
+INFO 2025-11-19 17:17:19,774 telegram_bot 1 123327352306560 Приложение успешно создано с persistence
+INFO 2025-11-19 17:24:19,683 telegram_bot 1 126018830060416 Загружен файл .env из /app
+INFO 2025-11-19 17:24:19,683 telegram_bot 1 126018830060416 Загружен токен: 75857... (частично для безопасности)
+INFO 2025-11-19 17:24:19,736 telegram_bot 1 126018830060416 Приложение успешно создано с persistence
+INFO 2025-11-19 17:26:35,635 telegram_bot 1 139309005953920 Загружен файл .env из /app
+INFO 2025-11-19 17:26:35,635 telegram_bot 1 139309005953920 Загружен токен: 75857... (частично для безопасности)
+INFO 2025-11-19 17:26:35,684 telegram_bot 1 139309005953920 Приложение успешно создано с persistence
+INFO 2025-11-19 17:27:29,380 telegram_bot 1 140085472283520 Загружен файл .env из /app
+INFO 2025-11-19 17:27:29,380 telegram_bot 1 140085472283520 Загружен токен: 75857... (частично для безопасности)
+INFO 2025-11-19 17:27:29,432 telegram_bot 1 140085472283520 Приложение успешно создано с persistence
+INFO 2025-11-19 17:29:09,344 telegram_bot 1 137235258375040 Загружен файл .env из /app
+INFO 2025-11-19 17:29:09,344 telegram_bot 1 137235258375040 Загружен токен: 75857... (частично для безопасности)
+INFO 2025-11-19 17:29:09,397 telegram_bot 1 137235258375040 Приложение успешно создано с persistence
+INFO 2025-11-19 17:32:06,731 telegram_bot 7 133184984693632 Загружен файл .env из /app
+INFO 2025-11-19 17:32:06,732 telegram_bot 7 133184984693632 Загружен токен: 75857... (частично для безопасности)
+INFO 2025-11-19 17:32:06,813 telegram_bot 1 139431138618240 Загружен файл .env из /app
+INFO 2025-11-19 17:32:06,814 telegram_bot 1 139431138618240 Загружен токен: 75857... (частично для безопасности)
+INFO 2025-11-19 17:32:06,814 telegram_bot 7 133184984693632 Приложение успешно создано с persistence
+INFO 2025-11-19 17:32:06,864 telegram_bot 1 139431138618240 Приложение успешно создано с persistence
+INFO 2025-11-19 17:33:46,085 telegram_bot 7 131596564663168 Загружен файл .env из /app
+INFO 2025-11-19 17:33:46,086 telegram_bot 7 131596564663168 Загружен токен: 75857... (частично для безопасности)
+INFO 2025-11-19 17:33:46,116 telegram_bot 1 136604730973056 Загружен файл .env из /app
+INFO 2025-11-19 17:33:46,117 telegram_bot 1 136604730973056 Загружен токен: 75857... (частично для безопасности)
+INFO 2025-11-19 17:33:46,167 telegram_bot 7 131596564663168 Приложение успешно создано с persistence
+INFO 2025-11-19 17:33:46,167 telegram_bot 1 136604730973056 Приложение успешно создано с persistence
+INFO 2025-11-19 17:45:21,368 telegram_bot 1 127309842746240 Загружен файл .env из /app
+INFO 2025-11-19 17:45:21,368 telegram_bot 7 125487643528064 Загружен файл .env из /app
+INFO 2025-11-19 17:45:21,368 telegram_bot 1 127309842746240 Загружен токен: 75857... (частично для безопасности)
+INFO 2025-11-19 17:45:21,369 telegram_bot 7 125487643528064 Загружен токен: 75857... (частично для безопасности)
+INFO 2025-11-19 17:45:21,437 telegram_bot 1 127309842746240 Приложение успешно создано с persistence
+INFO 2025-11-19 17:45:21,464 telegram_bot 7 125487643528064 Приложение успешно создано с persistence
+INFO 2025-11-20 14:28:08,920 telegram_bot 7 126340902304640 Загружен файл .env из /app
+INFO 2025-11-20 14:28:08,920 telegram_bot 1 137317059496832 Загружен файл .env из /app
+INFO 2025-11-20 14:28:08,921 telegram_bot 7 126340902304640 Загружен токен: 75857... (частично для безопасности)
+INFO 2025-11-20 14:28:08,921 telegram_bot 1 137317059496832 Загружен токен: 75857... (частично для безопасности)
+INFO 2025-11-20 14:28:09,001 telegram_bot 1 137317059496832 Приложение успешно создано с persistence
+INFO 2025-11-20 14:28:09,032 telegram_bot 7 126340902304640 Приложение успешно создано с persistence
+INFO 2025-11-20 14:31:17,984 telegram_bot 7 127400745241472 Загружен файл .env из /app
+INFO 2025-11-20 14:31:17,985 telegram_bot 7 127400745241472 Загружен токен: 75857... (частично для безопасности)
+INFO 2025-11-20 14:31:18,025 telegram_bot 1 127833707531136 Загружен файл .env из /app
+INFO 2025-11-20 14:31:18,026 telegram_bot 1 127833707531136 Загружен токен: 75857... (частично для безопасности)
+INFO 2025-11-20 14:31:18,067 telegram_bot 7 127400745241472 Приложение успешно создано с persistence
+INFO 2025-11-20 14:31:18,078 telegram_bot 1 127833707531136 Приложение успешно создано с persistence
+INFO 2025-11-20 14:33:19,880 telegram_bot 8 123670561012608 Загружен файл .env из /app
+INFO 2025-11-20 14:33:19,881 telegram_bot 8 123670561012608 Загружен токен: 75857... (частично для безопасности)
+INFO 2025-11-20 14:33:19,930 telegram_bot 1 126684567559040 Загружен файл .env из /app
+INFO 2025-11-20 14:33:19,931 telegram_bot 1 126684567559040 Загружен токен: 75857... (частично для безопасности)
+INFO 2025-11-20 14:33:19,995 telegram_bot 8 123670561012608 Приложение успешно создано с persistence
+INFO 2025-11-20 14:33:20,005 telegram_bot 1 126684567559040 Приложение успешно создано с persistence
+INFO 2025-11-20 14:34:54,550 telegram_bot 6 130490853710720 Загружен файл .env из /app
+INFO 2025-11-20 14:34:54,551 telegram_bot 6 130490853710720 Загружен токен: 75857... (частично для безопасности)
+INFO 2025-11-20 14:34:54,568 telegram_bot 1 131789300046720 Загружен файл .env из /app
+INFO 2025-11-20 14:34:54,568 telegram_bot 1 131789300046720 Загружен токен: 75857... (частично для безопасности)
+INFO 2025-11-20 14:34:54,619 telegram_bot 1 131789300046720 Приложение успешно создано с persistence
+INFO 2025-11-20 14:34:54,640 telegram_bot 6 130490853710720 Приложение успешно создано с persistence
+INFO 2025-11-20 14:36:42,472 telegram_bot 7 129034240453504 Загружен файл .env из /app
+INFO 2025-11-20 14:36:42,473 telegram_bot 7 129034240453504 Загружен токен: 75857... (частично для безопасности)
+INFO 2025-11-20 14:36:42,552 telegram_bot 1 126985264184192 Загружен файл .env из /app
+INFO 2025-11-20 14:36:42,552 telegram_bot 1 126985264184192 Загружен токен: 75857... (частично для безопасности)
+INFO 2025-11-20 14:36:42,557 telegram_bot 7 129034240453504 Приложение успешно создано с persistence
+INFO 2025-11-20 14:36:42,602 telegram_bot 1 126985264184192 Приложение успешно создано с persistence
+INFO 2025-11-20 15:23:28,525 telegram_bot 7 129435935333248 Загружен файл .env из /app
+INFO 2025-11-20 15:23:28,525 telegram_bot 1 140056147835776 Загружен файл .env из /app
+INFO 2025-11-20 15:23:28,526 telegram_bot 7 129435935333248 Загружен токен: 75857... (частично для безопасности)
+INFO 2025-11-20 15:23:28,526 telegram_bot 1 140056147835776 Загружен токен: 75857... (частично для безопасности)
+INFO 2025-11-20 15:23:29,004 telegram_bot 1 140056147835776 Приложение успешно создано с persistence
+INFO 2025-11-20 15:23:29,010 telegram_bot 7 129435935333248 Приложение успешно создано с persistence
+INFO 2025-11-20 15:27:09,986 telegram_bot 8 138684417313664 Загружен файл .env из /app
+INFO 2025-11-20 15:27:09,987 telegram_bot 8 138684417313664 Загружен токен: 75857... (частично для безопасности)
+INFO 2025-11-20 15:27:10,090 telegram_bot 8 138684417313664 Приложение успешно создано с persistence
+INFO 2025-11-20 15:31:32,949 telegram_bot 7 137663763676032 Загружен файл .env из /app
+INFO 2025-11-20 15:31:32,950 telegram_bot 7 137663763676032 Загружен токен: 75857... (частично для безопасности)
+INFO 2025-11-20 15:31:33,053 telegram_bot 7 137663763676032 Приложение успешно создано с persistence
+INFO 2025-11-20 15:35:04,324 telegram_bot 6 125125312568192 Загружен файл .env из /app
+INFO 2025-11-20 15:35:04,324 telegram_bot 1 133102007495552 Загружен файл .env из /app
+INFO 2025-11-20 15:35:04,325 telegram_bot 6 125125312568192 Загружен токен: 75857... (частично для безопасности)
+INFO 2025-11-20 15:35:04,325 telegram_bot 1 133102007495552 Загружен токен: 75857... (частично для безопасности)
+INFO 2025-11-20 15:35:04,433 telegram_bot 1 133102007495552 Приложение успешно создано с persistence
+INFO 2025-11-20 15:35:04,448 telegram_bot 6 125125312568192 Приложение успешно создано с persistence
+INFO 2025-11-20 15:37:41,220 telegram_bot 7 134626117172096 Загружен файл .env из /app
+INFO 2025-11-20 15:37:41,220 telegram_bot 7 134626117172096 Загружен токен: 75857... (частично для безопасности)
+INFO 2025-11-20 15:37:41,310 telegram_bot 7 134626117172096 Приложение успешно создано с persistence
+INFO 2025-11-20 15:37:41,371 telegram_bot 1 124941482175360 Загружен файл .env из /app
+INFO 2025-11-20 15:37:41,372 telegram_bot 1 124941482175360 Загружен токен: 75857... (частично для безопасности)
+INFO 2025-11-20 15:37:41,426 telegram_bot 1 124941482175360 Приложение успешно создано с persistence
+INFO 2025-11-20 15:39:06,651 telegram_bot 7 123338693700480 Загружен файл .env из /app
+INFO 2025-11-20 15:39:06,652 telegram_bot 7 123338693700480 Загружен токен: 75857... (частично для безопасности)
+INFO 2025-11-20 15:39:06,746 telegram_bot 7 123338693700480 Приложение успешно создано с persistence
+INFO 2025-11-20 15:39:06,785 telegram_bot 1 130695347538816 Загружен файл .env из /app
+INFO 2025-11-20 15:39:06,787 telegram_bot 1 130695347538816 Загружен токен: 75857... (частично для безопасности)
+INFO 2025-11-20 15:39:06,842 telegram_bot 1 130695347538816 Приложение успешно создано с persistence
+INFO 2025-11-20 15:40:43,089 telegram_bot 7 128881150974848 Загружен файл .env из /app
+INFO 2025-11-20 15:40:43,090 telegram_bot 7 128881150974848 Загружен токен: 75857... (частично для безопасности)
+INFO 2025-11-20 15:40:43,171 telegram_bot 1 124299930594176 Загружен файл .env из /app
+INFO 2025-11-20 15:40:43,172 telegram_bot 1 124299930594176 Загружен токен: 75857... (частично для безопасности)
+INFO 2025-11-20 15:40:43,182 telegram_bot 7 128881150974848 Приложение успешно создано с persistence
+INFO 2025-11-20 15:40:43,228 telegram_bot 1 124299930594176 Приложение успешно создано с persistence
+INFO 2025-11-20 17:02:02,399 telegram_bot 8 128881150974848 Загружен файл .env из /app
+INFO 2025-11-20 17:02:02,399 telegram_bot 8 128881150974848 Загружен токен: 75857... (частично для безопасности)
+INFO 2025-11-20 17:02:02,500 telegram_bot 8 128881150974848 Приложение успешно создано с persistence
+INFO 2025-11-20 17:12:35,728 telegram_bot 9 128881150974848 Загружен файл .env из /app
+INFO 2025-11-20 17:12:35,729 telegram_bot 9 128881150974848 Загружен токен: 75857... (частично для безопасности)
+INFO 2025-11-20 17:12:35,843 telegram_bot 9 128881150974848 Приложение успешно создано с persistence
+INFO 2025-11-20 17:37:39,298 telegram_bot 10 128881150974848 Загружен файл .env из /app
+INFO 2025-11-20 17:37:39,299 telegram_bot 10 128881150974848 Загружен токен: 75857... (частично для безопасности)
+INFO 2025-11-20 17:37:39,413 telegram_bot 10 128881150974848 Приложение успешно создано с persistence
+INFO 2025-11-23 13:02:04,438 telegram_bot 7 124565039217536 Загружен файл .env из /app
+INFO 2025-11-23 13:02:04,438 telegram_bot 1 134523397917568 Загружен файл .env из /app
+INFO 2025-11-23 13:02:04,439 telegram_bot 1 134523397917568 Загружен токен: 75857... (частично для безопасности)
+INFO 2025-11-23 13:02:04,439 telegram_bot 7 124565039217536 Загружен токен: 75857... (частично для безопасности)
+INFO 2025-11-23 13:02:04,517 telegram_bot 1 134523397917568 Приложение успешно создано с persistence
+INFO 2025-11-23 13:02:04,545 telegram_bot 7 124565039217536 Приложение успешно создано с persistence
+INFO 2025-11-23 13:03:02,875 telegram_bot 7 132355803597696 Загружен файл .env из /app
+INFO 2025-11-23 13:03:02,875 telegram_bot 7 132355803597696 Загружен токен: 75857... (частично для безопасности)
+INFO 2025-11-23 13:03:02,917 telegram_bot 1 137825432869760 Загружен файл .env из /app
+INFO 2025-11-23 13:03:02,918 telegram_bot 1 137825432869760 Загружен токен: 75857... (частично для безопасности)
+INFO 2025-11-23 13:03:02,978 telegram_bot 7 132355803597696 Приложение успешно создано с persistence
+INFO 2025-11-23 13:03:02,987 telegram_bot 1 137825432869760 Приложение успешно создано с persistence
+INFO 2025-11-23 13:05:19,423 telegram_bot 1 129500701236096 Загружен файл .env из /app
+INFO 2025-11-23 13:05:19,424 telegram_bot 7 139859353017216 Загружен файл .env из /app
+INFO 2025-11-23 13:05:19,425 telegram_bot 1 129500701236096 Загружен токен: 75857... (частично для безопасности)
+INFO 2025-11-23 13:05:19,425 telegram_bot 7 139859353017216 Загружен токен: 75857... (частично для безопасности)
+INFO 2025-11-23 13:05:19,509 telegram_bot 1 129500701236096 Приложение успешно создано с persistence
+INFO 2025-11-23 13:05:19,544 telegram_bot 7 139859353017216 Приложение успешно создано с persistence

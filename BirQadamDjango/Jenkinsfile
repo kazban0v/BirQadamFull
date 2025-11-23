@@ -2,40 +2,52 @@ pipeline {
   agent { label 'deployment_1' }
 
   environment {
-    IMAGE_NAME = 'cleanup-almaty-app'
-    CONTAINER_NAME = 'cleanup-almaty-container'
-    PORT = '8003'
+    // имя проекта для docker compose (опционально)
+    COMPOSE_PROJECT_NAME = 'cleanup-almaty'
+    // просто чтобы красиво вывести в конце
+    APP_PORT = '8003'
   }
 
   stages {
-    stage('Build Docker Image') {
+    stage('Checkout') {
       steps {
-        sh 'docker build -t $IMAGE_NAME .'
+        // если это multibranch — обычно достаточно checkout scm
+        checkout scm
       }
     }
 
-    stage('Stop Previous Container') {
+    stage('Prepare .env from Jenkins credentials') {
       steps {
-        sh 'docker rm -f $CONTAINER_NAME || true'
+        dir('BirQadamDjango') {
+          // В Jenkins должен быть создан Secret file с ID: cleanup-almaty-env
+          withCredentials([file(credentialsId: 'cleanup-almaty-env', variable: 'ENV_FILE')]) {
+            sh '''
+              echo "Using secret .env from Jenkins credentials..."
+              cp "$ENV_FILE" .env
+              ls -la .env
+            '''
+          }
+        }
       }
     }
 
-    stage('Run Container') {
+    stage('Deploy with Docker Compose') {
       steps {
-        sh '''
-          docker run -d \
-            --name $CONTAINER_NAME \
-            -p $PORT:8003 \
-            --env-file .env \
-            $IMAGE_NAME
-        '''
+        dir('BirQadamDjango') {
+          // Если у тебя установлен docker-compose как бинарник,
+          // замени `docker compose` на `docker-compose`
+          sh '''
+            docker compose down || true
+            docker compose up -d --build
+          '''
+        }
       }
     }
   }
 
   post {
     success {
-      echo "✅ Deployed successfully: http://your-server:$PORT"
+      echo "✅ Deployed successfully: http://your-server:${APP_PORT}"
     }
     failure {
       echo "❌ Deployment failed"
