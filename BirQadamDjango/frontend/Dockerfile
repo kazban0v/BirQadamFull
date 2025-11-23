@@ -9,8 +9,7 @@ COPY package*.json ./
 
 # Устанавливаем зависимости
 RUN npm ci \
-  && chmod +x node_modules/.bin/*
-
+  && chmod +x node_modules/.bin/* && chmod +x node_modules/.bin/vite
 # Копируем остальной код
 COPY . .
 
