@@ -23,7 +23,7 @@ pipeline {
           withCredentials([file(credentialsId: 'cleanup-almaty-env', variable: 'ENV_FILE')]) {
             sh '''
               echo "Using secret .env from Jenkins credentials..."
-              cp "$ENV_FILE" .env
+              cp "$ENV_FILE" .env || true
               ls -la .env
             '''
           }
