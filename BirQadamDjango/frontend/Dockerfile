@@ -8,7 +8,8 @@ WORKDIR /app
 COPY package*.json ./
 
 # Устанавливаем зависимости
-RUN npm ci
+RUN npm ci \
+  && chmod +x node_modules/.bin/*
 
 # Копируем остальной код
 COPY . .
