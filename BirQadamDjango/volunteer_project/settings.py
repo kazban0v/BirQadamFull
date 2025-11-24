@@ -61,7 +61,8 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:8000",
     "http://127.0.0.1:8000",
     "https://birqadam.almau.edu.kz",
-    "http://192.168.45.232:8002"
+    "http://192.168.45.232:8002",
+    "https://cleanup.almau.edu.kz"
 ]
 
 CORS_ALLOW_CREDENTIALS = True
@@ -154,7 +155,7 @@ MEDIA_ROOT = BASE_DIR / 'media'
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
-    'django.contrib.sessions.middleware.SessionMiddleware',
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     'django.contrib.sessions.middleware.SessionMiddleware',
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -180,7 +181,7 @@ STORAGES = {
     },
 }
 
-STATIC_ROOT = '/app/staticfiles'
+STATIC_ROOT = '/staticfiles'
 STATIC_URL = '/static/'
 
 # ✅ Добавляем JWT Debug Middleware только в DEBUG режиме
