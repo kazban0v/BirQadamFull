@@ -155,6 +155,7 @@ MEDIA_ROOT = BASE_DIR / 'media'
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
+    'django.contrib.sessions.middleware.SessionMiddleware',
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -169,6 +170,13 @@ MIDDLEWARE = [
     'custom_admin.middleware.middleware.RateLimitMiddleware',  # Rate limiting
     'custom_admin.middleware.middleware.LoginAttemptMiddleware',  # Защита от брутфорса логина
 ]
+
+STORAGES = {
+    'default': {'BACKEND': 'django.core.files.storage.FileSystemStorage'},
+    'staticfiles': {'BACKEND': 'django.contrib.staticfiles.storage.StaticFilesStorage'},
+}
+STATIC_ROOT = '/app/staticfiles'
+STATIC_URL = '/static/'
 
 # ✅ Добавляем JWT Debug Middleware только в DEBUG режиме
 if DEBUG:
