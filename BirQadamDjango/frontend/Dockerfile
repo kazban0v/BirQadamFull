@@ -1,16 +1,35 @@
-FROM node:20-alpine AS frontend
+# ---------- Stage 1: build ----------
+FROM node:20-alpine AS build
 
 WORKDIR /app
 
-# 1. Ставим зависимости
+# 1. Устанавливаем зависимости
 COPY package*.json ./
 RUN npm ci
 
 # 2. Копируем исходники
 COPY . .
 
-# 3. Чиним права на все бинарники из node_modules/.bin
+# 3. Чиним права на бинарники, чтобы не было Permission denied
 RUN chmod +x node_modules/.bin/*
 
 # 4. Собираем
-RUN npm run build
+RUN npm run build   # тут всё равно упадёт, если есть TS-ошибки
+
+
+# ---------- Stage 2: runtime (serve) ----------
+FROM node:20-alpine AS frontend
+
+WORKDIR /app
+
+# Ставим serve глобально
+RUN npm install -g serve
+
+# Копируем только собранный фронт
+COPY --from=build /app/dist ./dist
+
+# Порт, на котором будет слушать serve
+EXPOSE 4173
+
+# Запускаем статический сервер
+CMD ["serve", "-s", "dist", "-l", "4173"]
