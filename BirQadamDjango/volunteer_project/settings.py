@@ -172,9 +172,14 @@ MIDDLEWARE = [
 ]
 
 STORAGES = {
-    'default': {'BACKEND': 'django.core.files.storage.FileSystemStorage'},
-    'staticfiles': {'BACKEND': 'django.contrib.staticfiles.storage.StaticFilesStorage'},
+    "default": {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+    },
+    "staticfiles": {
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",  # 👈 вот это
+    },
 }
+
 STATIC_ROOT = '/app/staticfiles'
 STATIC_URL = '/static/'
 
