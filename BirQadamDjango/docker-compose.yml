@@ -2,7 +2,7 @@ services:
   web:
     build: .
     container_name: birqadam
-    command: gunicorn volunteer.wsgi:application --bind 0.0.0.0:8000
+    command: gunicorn volunteer_project.wsgi:application --bind 0.0.0.0:8000
     volumes:
       - .:/app
     ports:
