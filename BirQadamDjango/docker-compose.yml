@@ -47,4 +47,4 @@ services:
       dockerfile: Dockerfile
     container_name: birqadam_frontend
     ports:
-      - "4173:4173"
+      - "4172:4173"
