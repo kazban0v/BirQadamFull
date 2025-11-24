@@ -73,7 +73,8 @@ CSRF_TRUSTED_ORIGINS = [
     "http://localhost:5174",
     "http://127.0.0.1:5174",
     "https://birqadam.almau.edu.kz",
-    "http://192.168.45.232:5173"
+    "http://192.168.45.232:5173",
+    "https://cleanup.almau.edu.kz"
 ]
 
 CORS_ALLOW_HEADERS = [
