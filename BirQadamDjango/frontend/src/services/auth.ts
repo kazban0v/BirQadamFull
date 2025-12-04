@@ -12,13 +12,11 @@ export async function login(payload: LoginPayload) {
 
 
 export async function logout() {
-  const csrftoken = Cookies.get('csrftoken');
-
   await httpClient.post(
     '/api/web/logout/',
     {},
     {
-      withCredentials: true, // чтобы ушли cookies sessionid и csrftoken
+      withCredentials: true,
     },
   );
 }
