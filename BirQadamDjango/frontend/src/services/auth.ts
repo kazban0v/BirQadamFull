@@ -1,5 +1,5 @@
 import { httpClient } from './http';
-import Cookies from 'js-cookie';
+
 export interface LoginPayload {
   identifier: string;
   password: string;
@@ -18,9 +18,6 @@ export async function logout() {
     '/api/web/logout/',
     {},
     {
-      headers: {
-        'X-CSRFToken': csrftoken,
-      },
       withCredentials: true, // чтобы ушли cookies sessionid и csrftoken
     },
   );
