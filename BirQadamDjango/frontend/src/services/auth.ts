@@ -10,8 +10,20 @@ export async function login(payload: LoginPayload) {
   return data;
 }
 
+
 export async function logout() {
-  await httpClient.post('/api/web/logout/');
+  const csrftoken = Cookies.get('csrftoken');
+
+  await httpClient.post(
+    '/api/web/logout/',
+    {},
+    {
+      headers: {
+        'X-CSRFToken': csrftoken,
+      },
+      withCredentials: true, // чтобы ушли cookies sessionid и csrftoken
+    },
+  );
 }
 
 export async function fetchCurrentUser() {
