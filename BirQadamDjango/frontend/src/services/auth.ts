@@ -1,5 +1,5 @@
 import { httpClient } from './http';
-
+import Cookies from 'js-cookie';
 export interface LoginPayload {
   identifier: string;
   password: string;
