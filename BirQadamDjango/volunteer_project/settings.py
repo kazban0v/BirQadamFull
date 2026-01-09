@@ -326,20 +326,75 @@ WSGI_APPLICATION = 'volunteer_project.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.getenv('DB_NAME', 'postgres'),
-        'USER': os.getenv('DB_USER', 'postgres'),
-        'PASSWORD': os.getenv('DB_PASSWORD'),  # ИЗ ПЕРЕМЕННОЙ ОКРУЖЕНИЯ!
-        'HOST': os.getenv('DB_HOST', 'localhost'),
-        'PORT': os.getenv('DB_PORT', '5432'),
-        'OPTIONS': {
-            'sslmode': 'prefer',
-            'client_encoding': 'UTF8',  # ✅ ИСПРАВЛЕНИЕ: Явно указываем кодировку UTF-8
-        },
+# Database configuration
+# Поддержка DATABASE_URL (Railway предоставляет это) или отдельных переменных
+DATABASE_URL = os.getenv('DATABASE_URL') or os.getenv('POSTGRES_URL')
+
+if DATABASE_URL:
+    # Используем DATABASE_URL если он есть (Railway часто предоставляет это)
+    import re
+    # Парсим DATABASE_URL: postgresql://user:password@host:port/dbname
+    match = re.match(r'postgres(ql)?://([^:]+):([^@]+)@([^:]+):(\d+)/(.+)', DATABASE_URL)
+    if match:
+        DATABASES = {
+            'default': {
+                'ENGINE': 'django.db.backends.postgresql',
+                'NAME': match.group(6),
+                'USER': match.group(2),
+                'PASSWORD': match.group(3),
+                'HOST': match.group(4),
+                'PORT': match.group(5),
+                'OPTIONS': {
+                    'sslmode': 'prefer',
+                    'client_encoding': 'UTF8',
+                },
+            }
+        }
+    else:
+        # Если формат не распознан, используем отдельные переменные
+        DATABASES = {
+            'default': {
+                'ENGINE': 'django.db.backends.postgresql',
+                'NAME': os.getenv('DB_NAME', 'postgres'),
+                'USER': os.getenv('DB_USER', 'postgres'),
+                'PASSWORD': os.getenv('DB_PASSWORD', ''),
+                'HOST': os.getenv('DB_HOST', 'localhost'),
+                'PORT': os.getenv('DB_PORT', '5432'),
+                'OPTIONS': {
+                    'sslmode': 'prefer',
+                    'client_encoding': 'UTF8',
+                },
+            }
+        }
+else:
+    # Используем отдельные переменные
+    db_host = os.getenv('DB_HOST', '').strip()
+    db_port = os.getenv('DB_PORT', '5432').strip()
+    
+    # Валидация: если DB_HOST пустой, используем localhost только в DEBUG
+    if not db_host:
+        if DEBUG:
+            db_host = 'localhost'
+        else:
+            raise ValueError(
+                "DB_HOST must be set in production! "
+                "Set it in Railway Variables: DB_HOST=${PGHOST} or use DATABASE_URL"
+            )
+    
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': os.getenv('DB_NAME', 'postgres'),
+            'USER': os.getenv('DB_USER', 'postgres'),
+            'PASSWORD': os.getenv('DB_PASSWORD', ''),
+            'HOST': db_host,
+            'PORT': db_port,
+            'OPTIONS': {
+                'sslmode': 'prefer',
+                'client_encoding': 'UTF8',
+            },
+        }
     }
-}
 
 
 # Настройки кеширования для улучшения производительности
