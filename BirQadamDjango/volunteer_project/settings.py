@@ -146,14 +146,16 @@ else:
             )
     else:
         # Обычная обработка: список доменов через запятую
-        CSRF_TRUSTED_ORIGINS = [origin.strip() for origin in _csrf_trusted_origins_env.split(",") if origin.strip()]
-        # Проверяем что все домены начинаются с http:// или https://
-        for origin in CSRF_TRUSTED_ORIGINS:
+        CSRF_TRUSTED_ORIGINS = []
+        for origin in _csrf_trusted_origins_env.split(","):
+            origin = origin.strip()
+            if not origin:
+                continue
+            # Автоматически добавляем https:// если протокол не указан
             if not origin.startswith(("http://", "https://")):
-                raise ValueError(
-                    f"CSRF_TRUSTED_ORIGINS must start with http:// or https://, but found: {origin}. "
-                    f"Use format: CSRF_TRUSTED_ORIGINS=https://your-domain.com"
-                )
+                # В production всегда используем https
+                origin = f"https://{origin}"
+            CSRF_TRUSTED_ORIGINS.append(origin)
 
 # -------------------------
 # Production hardening (proxy/https/cookies)
