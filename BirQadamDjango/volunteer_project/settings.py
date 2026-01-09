@@ -114,7 +114,46 @@ else:
             "CSRF_TRUSTED_ORIGINS must be set in production! "
             "Set it in .env file: CSRF_TRUSTED_ORIGINS=https://your-domain.com,https://www.your-domain.com"
         )
-    CSRF_TRUSTED_ORIGINS = [origin.strip() for origin in _csrf_trusted_origins_env.split(",") if origin.strip()]
+    
+    # Обработка специального значения "*" для автоматического определения домена Railway
+    if _csrf_trusted_origins_env == "*":
+        CSRF_TRUSTED_ORIGINS = []
+        
+        # Пытаемся определить домен Railway автоматически
+        railway_domain = os.getenv("RAILWAY_PUBLIC_DOMAIN") or os.getenv("RAILWAY_STATIC_URL", "")
+        if railway_domain:
+            # Убираем протокол если есть
+            railway_domain = railway_domain.replace("https://", "").replace("http://", "").strip()
+            if railway_domain:
+                CSRF_TRUSTED_ORIGINS = [f"https://{railway_domain}"]
+        
+        # Если не удалось определить из Railway переменных, используем ALLOWED_HOSTS
+        if not CSRF_TRUSTED_ORIGINS:
+            allowed_hosts = os.getenv("ALLOWED_HOSTS", "").strip()
+            if allowed_hosts and allowed_hosts != "*":
+                # Берем первый домен из ALLOWED_HOSTS
+                first_host = allowed_hosts.split(",")[0].strip()
+                if first_host and not first_host.startswith(("*", ".")):
+                    CSRF_TRUSTED_ORIGINS = [f"https://{first_host}"]
+        
+        # Если все еще не удалось определить - выбросить ошибку с инструкцией
+        if not CSRF_TRUSTED_ORIGINS:
+            raise ValueError(
+                "CSRF_TRUSTED_ORIGINS=* requires a domain. "
+                "Either set RAILWAY_PUBLIC_DOMAIN, or set CSRF_TRUSTED_ORIGINS to your Railway domain. "
+                "Example: CSRF_TRUSTED_ORIGINS=https://your-project.up.railway.app\n"
+                "To get your Railway domain: Go to your service → Settings → Generate Domain"
+            )
+    else:
+        # Обычная обработка: список доменов через запятую
+        CSRF_TRUSTED_ORIGINS = [origin.strip() for origin in _csrf_trusted_origins_env.split(",") if origin.strip()]
+        # Проверяем что все домены начинаются с http:// или https://
+        for origin in CSRF_TRUSTED_ORIGINS:
+            if not origin.startswith(("http://", "https://")):
+                raise ValueError(
+                    f"CSRF_TRUSTED_ORIGINS must start with http:// or https://, but found: {origin}. "
+                    f"Use format: CSRF_TRUSTED_ORIGINS=https://your-domain.com"
+                )
 
 # -------------------------
 # Production hardening (proxy/https/cookies)
