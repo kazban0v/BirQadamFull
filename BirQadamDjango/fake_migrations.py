@@ -28,14 +28,18 @@ def table_exists(table_name):
 
 def main():
     # Проверяем, есть ли хотя бы одна таблица Django
-    if table_exists('django_migrations'):
-        print("Таблица django_migrations существует. Пометим все миграции как примененные...")
-        # Помечаем все миграции как примененные
-        call_command('migrate', '--fake', verbosity=1)
-        print("Миграции помечены как примененные.")
+    if table_exists('django_content_type'):
+        print("Таблицы уже существуют. Пропускаем миграции...")
+        # Помечаем все миграции как примененные используя --fake-initial
+        try:
+            call_command('migrate', '--fake-initial', verbosity=1, interactive=False)
+            print("Миграции помечены как примененные.")
+        except Exception as e:
+            print(f"Ошибка при пометке миграций: {e}")
+            print("Пропускаем миграции и продолжаем...")
     else:
-        print("Таблица django_migrations не найдена. Выполняем обычные миграции...")
-        call_command('migrate', verbosity=1)
+        print("Таблицы не найдены. Выполняем обычные миграции...")
+        call_command('migrate', verbosity=1, interactive=False)
 
 if __name__ == '__main__':
     main()
