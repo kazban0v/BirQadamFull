@@ -368,18 +368,41 @@ if DATABASE_URL:
         }
 else:
     # Используем отдельные переменные
-    db_host = os.getenv('DB_HOST', '').strip()
-    db_port = os.getenv('DB_PORT', '5432').strip()
+    # Пробуем DB_HOST, если нет - используем PGHOST (Railway предоставляет это)
+    db_host = os.getenv('DB_HOST', '').strip() or os.getenv('PGHOST', '').strip()
+    db_port = os.getenv('DB_PORT', '5432').strip() or os.getenv('PGPORT', '5432').strip()
+    
+    # Убираем порт из DB_HOST если он там есть (например: host:5432 -> host)
+    if db_host and ':' in db_host:
+        parts = db_host.split(':')
+        db_host = parts[0]
+        if len(parts) > 1 and not db_port or db_port == '5432':
+            db_port = parts[1]
     
     # Валидация: если DB_HOST пустой, используем localhost только в DEBUG
     if not db_host:
         if DEBUG:
             db_host = 'localhost'
         else:
+            # Логируем для отладки
+            logger.error(
+                f"DB_HOST is not set! Available env vars: "
+                f"DB_HOST={os.getenv('DB_HOST')}, "
+                f"PGHOST={os.getenv('PGHOST')}, "
+                f"DATABASE_URL={'SET' if os.getenv('DATABASE_URL') else 'NOT SET'}"
+            )
             raise ValueError(
                 "DB_HOST must be set in production! "
-                "Set it in Railway Variables: DB_HOST=${PGHOST} or use DATABASE_URL"
+                "Set it in Railway Variables: DB_HOST=${PGHOST} or use DATABASE_URL. "
+                f"Current DB_HOST value: '{os.getenv('DB_HOST')}'"
             )
+    
+    # Дополнительная валидация: DB_HOST не должен быть пустой строкой
+    if not db_host or db_host == '':
+        raise ValueError(
+            f"DB_HOST cannot be empty! Current value: '{os.getenv('DB_HOST')}'. "
+            "Set DB_HOST=${PGHOST} in Railway Variables."
+        )
     
     DATABASES = {
         'default': {
@@ -395,6 +418,10 @@ else:
             },
         }
     }
+    
+    # Логируем настройки БД (без пароля) для отладки
+    if not DEBUG:
+        logger.info(f"Database config: HOST={db_host}, PORT={db_port}, NAME={os.getenv('DB_NAME', 'postgres')}, USER={os.getenv('DB_USER', 'postgres')}")
 
 
 # Настройки кеширования для улучшения производительности
