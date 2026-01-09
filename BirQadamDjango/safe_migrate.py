@@ -55,6 +55,9 @@ def safe_migrate():
                 return True
             
             # Пытаемся применить каждую миграцию отдельно с обработкой ошибок
+            from django.db.migrations.recorder import MigrationRecorder
+            
+            recorder = MigrationRecorder(connection)
             applied_count = 0
             fake_count = 0
             
@@ -62,11 +65,32 @@ def safe_migrate():
                 if backwards:
                     continue
                 
+                migration_name = migration.name
+                app_label = migration.app_label
+                
+                # Проверяем, не применена ли уже миграция
+                migration_key = (app_label, migration_name)
+                applied_migrations = recorder.applied_migrations()
+                
+                if migration_key in applied_migrations:
+                    print(f"[safe_migrate] ⚠ Миграция {app_label}.{migration_name} уже применена, пропускаем")
+                    continue
+                
                 try:
-                    print(f"[safe_migrate] Применение: {migration.app_label}.{migration.name}")
-                    executor.apply_migration(migration, fake=False)
+                    print(f"[safe_migrate] Применение: {app_label}.{migration_name}")
+                    # Применяем миграцию через call_command с правильными аргументами
+                    # Формат: python manage.py migrate app_label migration_name
+                    # В call_command это позиционные аргументы после имени команды
+                    call_command(
+                        'migrate',
+                        app_label,
+                        migration_name,
+                        verbosity=1,
+                        interactive=False,
+                        fake=False
+                    )
                     applied_count += 1
-                    print(f"[safe_migrate] ✓ Применена: {migration.app_label}.{migration.name}")
+                    print(f"[safe_migrate] ✓ Применена: {app_label}.{migration_name}")
                 except (ProgrammingError, OperationalError) as migration_error:
                     error_str = str(migration_error).lower()
                     
@@ -76,10 +100,21 @@ def safe_migrate():
                         'duplicate',
                         'relation already exists'
                     ]):
-                        print(f"[safe_migrate] ⚠ Объекты уже существуют для {migration.app_label}.{migration.name}")
-                        executor.apply_migration(migration, fake=True)
-                        fake_count += 1
-                        print(f"[safe_migrate] ✓ Помечена как примененная: {migration.app_label}.{migration.name}")
+                        print(f"[safe_migrate] ⚠ Объекты уже существуют для {app_label}.{migration_name}")
+                        # Помечаем миграцию как примененную через MigrationRecorder напрямую
+                        try:
+                            recorder.record_applied(app_label, migration_name)
+                            fake_count += 1
+                            print(f"[safe_migrate] ✓ Помечена как примененная: {app_label}.{migration_name}")
+                        except Exception as record_error:
+                            # Проверяем, не помечена ли уже миграция (может быть race condition)
+                            applied_migrations_after = recorder.applied_migrations()
+                            if migration_key not in applied_migrations_after:
+                                print(f"[safe_migrate] ⚠ Не удалось пометить миграцию: {record_error}")
+                                raise
+                            else:
+                                print(f"[safe_migrate] ⚠ Миграция уже помечена другим процессом")
+                                fake_count += 1
                     else:
                         # Другие ошибки - пробрасываем дальше
                         print(f"[safe_migrate] ✗ Ошибка: {migration_error}")
@@ -87,6 +122,8 @@ def safe_migrate():
                 except Exception as e:
                     # Неожиданные ошибки - пробрасываем
                     print(f"[safe_migrate] ✗ Неожиданная ошибка: {e}")
+                    import traceback
+                    traceback.print_exc()
                     raise
             
             print(f"[safe_migrate] ✓ Завершено: применено {applied_count}, помечено {fake_count}")
