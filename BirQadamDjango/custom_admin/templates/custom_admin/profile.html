@@ -1,0 +1,535 @@
+{% extends 'custom_admin/base.html' %}
+{% load static %}
+
+{% block extra_css %}
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+<style>
+    .profile-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        padding: 2rem;
+        border-radius: 15px 15px 0 0;
+        color: white;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .profile-header::before {
+        content: '';
+        position: absolute;
+        top: -50%;
+        right: -50%;
+        width: 200%;
+        height: 200%;
+        background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+        animation: pulse 15s ease-in-out infinite;
+    }
+    
+    @keyframes pulse {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.1); }
+    }
+    
+    .profile-avatar {
+        width: 120px;
+        height: 120px;
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 3rem;
+        color: white;
+        border: 5px solid rgba(255,255,255,0.3);
+        box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        position: relative;
+        z-index: 1;
+    }
+    
+    .profile-info {
+        position: relative;
+        z-index: 1;
+    }
+    
+    .profile-name {
+        font-size: 2rem;
+        font-weight: 700;
+        margin-bottom: 0.5rem;
+        text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+    }
+    
+    .profile-role {
+        display: inline-block;
+        padding: 0.5rem 1.5rem;
+        background: rgba(255,255,255,0.2);
+        backdrop-filter: blur(10px);
+        border-radius: 50px;
+        font-weight: 600;
+        font-size: 0.9rem;
+        letter-spacing: 1px;
+    }
+    
+    .stat-card {
+        background: white;
+        border-radius: 15px;
+        padding: 1.5rem;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+        transition: all 0.3s ease;
+        border: 1px solid rgba(0,0,0,0.05);
+    }
+    
+    .stat-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+    }
+    
+    .stat-icon {
+        width: 60px;
+        height: 60px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.8rem;
+        margin-bottom: 1rem;
+    }
+    
+    .stat-icon.primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+    }
+    
+    .stat-icon.success {
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        color: white;
+    }
+    
+    .stat-icon.info {
+        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        color: white;
+    }
+    
+    .stat-icon.warning {
+        background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+        color: white;
+    }
+    
+    .stat-value {
+        font-size: 2rem;
+        font-weight: 700;
+        color: #2d3748;
+        margin-bottom: 0.25rem;
+    }
+    
+    .stat-label {
+        color: #718096;
+        font-size: 0.9rem;
+        font-weight: 500;
+    }
+    
+    .info-card {
+        background: white;
+        border-radius: 15px;
+        padding: 2rem;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+        margin-bottom: 1.5rem;
+    }
+    
+    .info-card-title {
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: #2d3748;
+        margin-bottom: 1.5rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .info-item {
+        display: flex;
+        align-items: center;
+        padding: 1rem;
+        border-radius: 10px;
+        margin-bottom: 0.75rem;
+        background: #f7fafc;
+        transition: all 0.3s ease;
+    }
+    
+    .info-item:hover {
+        background: #edf2f7;
+        transform: translateX(5px);
+    }
+    
+    .info-icon {
+        width: 40px;
+        height: 40px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 1.2rem;
+        margin-right: 1rem;
+        flex-shrink: 0;
+    }
+    
+    .info-content {
+        flex: 1;
+    }
+    
+    .info-label {
+        font-size: 0.85rem;
+        color: #718096;
+        margin-bottom: 0.25rem;
+        font-weight: 500;
+    }
+    
+    .info-value {
+        font-size: 1rem;
+        color: #2d3748;
+        font-weight: 600;
+    }
+    
+    .action-btn {
+        padding: 0.75rem 1.5rem;
+        border-radius: 10px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        border: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .action-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+    }
+    
+    .btn-primary-gradient {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+    }
+    
+    .btn-secondary-gradient {
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        color: white;
+    }
+
+    /* MOBILE ADAPTATIONS */
+    @media (max-width: 992px) {
+        .profile-header {
+            padding: 1.5rem;
+        }
+
+        .profile-avatar {
+            width: 100px;
+            height: 100px;
+            font-size: 2.5rem;
+        }
+
+        .profile-name {
+            font-size: 1.5rem;
+        }
+
+        .stat-value {
+            font-size: 1.5rem;
+        }
+
+        .stat-icon {
+            width: 50px;
+            height: 50px;
+            font-size: 1.5rem;
+        }
+
+        .info-card {
+            padding: 1.5rem;
+        }
+
+        .info-card-title {
+            font-size: 1.1rem;
+        }
+    }
+
+    @media (max-width: 768px) {
+        .container-fluid {
+            padding-left: 1rem !important;
+            padding-right: 1rem !important;
+        }
+
+        .profile-header .row {
+            flex-direction: column;
+            text-align: center;
+        }
+
+        .profile-header .col-auto {
+            margin-bottom: 1rem;
+        }
+
+        .profile-avatar {
+            width: 90px;
+            height: 90px;
+            font-size: 2rem;
+            margin: 0 auto;
+        }
+
+        .profile-name {
+            font-size: 1.3rem;
+        }
+
+        .profile-role {
+            padding: 0.4rem 1rem;
+            font-size: 0.8rem;
+        }
+
+        .col-lg-6 {
+            flex: 0 0 100%;
+            max-width: 100%;
+        }
+
+        .info-card {
+            padding: 1.25rem;
+        }
+
+        .info-item {
+            padding: 0.75rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .info-icon {
+            width: 35px;
+            height: 35px;
+            font-size: 1rem;
+            margin-right: 0.75rem;
+        }
+
+        .info-label {
+            font-size: 0.75rem;
+        }
+
+        .info-value {
+            font-size: 0.9rem;
+        }
+
+        .action-btn {
+            width: 100%;
+            justify-content: center;
+            padding: 0.65rem 1.25rem;
+            font-size: 0.9rem;
+        }
+
+        .d-flex.gap-3 {
+            flex-direction: column;
+            gap: 0.75rem !important;
+        }
+    }
+
+    @media (max-width: 576px) {
+        .profile-header {
+            padding: 1rem;
+            border-radius: 10px 10px 0 0;
+        }
+
+        .profile-avatar {
+            width: 80px;
+            height: 80px;
+            font-size: 1.8rem;
+            border-width: 3px;
+        }
+
+        .profile-name {
+            font-size: 1.2rem;
+        }
+
+        .profile-role {
+            padding: 0.35rem 0.85rem;
+            font-size: 0.75rem;
+        }
+
+        .info-card {
+            padding: 1rem;
+            border-radius: 10px;
+        }
+
+        .info-card-title {
+            font-size: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .info-item {
+            padding: 0.65rem;
+            border-radius: 8px;
+        }
+
+        .info-icon {
+            width: 32px;
+            height: 32px;
+            font-size: 0.9rem;
+            border-radius: 8px;
+        }
+
+        .info-label {
+            font-size: 0.7rem;
+        }
+
+        .info-value {
+            font-size: 0.85rem;
+        }
+
+        .badge {
+            font-size: 0.75rem !important;
+            padding: 0.35rem 0.75rem !important;
+        }
+
+        .action-btn {
+            padding: 0.6rem 1rem;
+            font-size: 0.85rem;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 py-4">
+    <!-- Заголовок профиля -->
+    <div class="card shadow-lg border-0 mb-4">
+        <div class="profile-header">
+            <div class="row align-items-center">
+                <div class="col-auto">
+                    <div class="profile-avatar">
+                        {% if user.avatar %}
+                            <img src="{{ user.avatar.url }}" alt="Аватар" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">
+                        {% else %}
+                            <i class="bi bi-person-circle"></i>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="col">
+                    <div class="profile-info">
+                        <h1 class="profile-name">{{ user.username }}</h1>
+                        <div class="profile-role">
+                            <i class="bi bi-shield-check me-2"></i>
+                            {% if user.is_staff %}АДМИНИСТРАТОР СИСТЕМЫ
+                            {% elif user.is_organizer %}ОРГАНИЗАТОР
+                            {% else %}ВОЛОНТЕР{% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- Основная информация -->
+    <div class="row g-4">
+        <div class="col-lg-6">
+            <div class="info-card">
+                <h3 class="info-card-title">
+                    <i class="bi bi-person-badge"></i>
+                    Личная информация
+                </h3>
+                
+                <div class="info-item">
+                    <div class="info-icon">
+                        <i class="bi bi-person"></i>
+                    </div>
+                    <div class="info-content">
+                        <div class="info-label">Имя пользователя</div>
+                        <div class="info-value">{{ user.username }}</div>
+                    </div>
+                </div>
+
+                <div class="info-item">
+                    <div class="info-icon">
+                        <i class="bi bi-envelope"></i>
+                    </div>
+                    <div class="info-content">
+                        <div class="info-label">Email</div>
+                        <div class="info-value">{{ user.email|default:"Не указан" }}</div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <div class="col-lg-6">
+            <div class="info-card">
+                <h3 class="info-card-title">
+                    <i class="bi bi-gear"></i>
+                    Системная информация
+                </h3>
+                
+                <div class="info-item">
+                    <div class="info-icon">
+                        <i class="bi bi-shield-lock"></i>
+                    </div>
+                    <div class="info-content">
+                        <div class="info-label">Роль в системе</div>
+                        <div class="info-value">
+                            <span class="badge {% if user.is_staff %}bg-danger{% elif user.is_organizer %}bg-warning text-dark{% else %}bg-success{% endif %}" style="font-size: 0.9rem; padding: 0.5rem 1rem;">
+                                <i class="bi bi-shield-fill-check me-1"></i>
+                                {% if user.is_staff %}Администратор
+                                {% elif user.is_organizer %}Организатор
+                                {% else %}Волонтер{% endif %}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="info-item">
+                    <div class="info-icon">
+                        <i class="bi bi-key"></i>
+                    </div>
+                    <div class="info-content">
+                        <div class="info-label">ID пользователя</div>
+                        <div class="info-value">#{{ user.id }}</div>
+                    </div>
+                </div>
+
+                <div class="info-item">
+                    <div class="info-icon">
+                        <i class="bi bi-calendar-plus"></i>
+                    </div>
+                    <div class="info-content">
+                        <div class="info-label">Дата регистрации</div>
+                        <div class="info-value">{{ user.date_joined|date:"d.m.Y H:i" }}</div>
+                    </div>
+                </div>
+
+                <div class="info-item">
+                    <div class="info-icon">
+                        <i class="bi bi-clock-history"></i>
+                    </div>
+                    <div class="info-content">
+                        <div class="info-label">Последний вход</div>
+                        <div class="info-value">{{ user.last_login|date:"d.m.Y H:i"|default:"Никогда" }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Действия -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="info-card">
+                <h3 class="info-card-title">
+                    <i class="bi bi-lightning"></i>
+                    Быстрые действия
+                </h3>
+                <div class="d-flex gap-3 flex-wrap">
+                    <a href="{% url 'profile_edit' %}" class="action-btn btn-primary-gradient">
+                        <i class="bi bi-pencil-square"></i>
+                        Редактировать профиль
+                    </a>
+                    <a href="{% url 'dashboard' %}" class="action-btn btn-primary-gradient">
+                        <i class="bi bi-speedometer2"></i>
+                        Панель управления
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

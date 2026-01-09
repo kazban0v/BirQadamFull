@@ -1,0 +1,415 @@
+{% extends 'custom_admin/base.html' %}
+{% load static %}
+
+{% block title %}🗺️ Карта активности{% endblock %}
+
+{% block extra_css %}
+<!-- Leaflet CSS -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+<style>
+    .map-container {
+        padding: 20px;
+        max-width: 1600px;
+        margin: 0 auto;
+    }
+
+    .map-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        padding: 30px;
+        border-radius: 16px;
+        color: white;
+        margin-bottom: 20px;
+        box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+    }
+
+    .map-header h1 {
+        margin: 0 0 10px 0;
+        font-size: 28px;
+    }
+
+    .map-controls {
+        background: white;
+        padding: 20px;
+        border-radius: 12px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+        margin-bottom: 20px;
+        display: flex;
+        gap: 15px;
+        flex-wrap: wrap;
+        align-items: center;
+    }
+
+    .control-group {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .control-group label {
+        font-weight: 600;
+        margin: 0;
+    }
+
+    .control-btn {
+        padding: 10px 20px;
+        border-radius: 8px;
+        border: 2px solid #e0e0e0;
+        background: white;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        font-weight: 600;
+    }
+
+    .control-btn:hover {
+        border-color: #667eea;
+        background: #f0f4ff;
+    }
+
+    .map-wrapper {
+        background: white;
+        border-radius: 16px;
+        padding: 20px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+        position: relative;
+    }
+
+    #map {
+        height: 600px;
+        border-radius: 12px;
+        z-index: 1;
+    }
+
+    .stats-overlay {
+        position: absolute;
+        top: 100px;
+        right: 30px;
+        background: white;
+        padding: 20px;
+        border-radius: 12px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        z-index: 1000;
+        min-width: 250px;
+    }
+
+    .stat-item {
+        padding: 12px 0;
+        border-bottom: 1px solid #e0e0e0;
+    }
+
+    .stat-item:last-child {
+        border-bottom: none;
+    }
+
+    .stat-label {
+        color: #666;
+        font-size: 12px;
+        text-transform: uppercase;
+        margin-bottom: 5px;
+    }
+
+    .stat-value {
+        font-size: 24px;
+        font-weight: 700;
+        color: #667eea;
+    }
+
+    /* Кастомные маркеры */
+    .custom-marker {
+        background-color: #4CAF50;
+        width: 30px;
+        height: 30px;
+        border-radius: 50%;
+        border: 3px solid white;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        font-size: 11px;
+        color: white;
+    }
+
+    .custom-marker.pending {
+        background-color: #FF9800;
+    }
+
+    .custom-marker.rejected {
+        background-color: #F44336;
+    }
+
+    /* 🔥 Анимация пульсации */
+    .marker-pulse {
+        animation: pulse 2s infinite;
+    }
+
+    /* Попап стили */
+    .leaflet-popup-content-wrapper {
+        border-radius: 8px;
+        box-shadow: 0 3px 14px rgba(0, 0, 0, 0.4);
+    }
+
+    .popup-title {
+        margin: 0 0 10px 0;
+        font-size: 16px;
+        color: #667eea;
+        font-weight: bold;
+    }
+
+    .popup-info {
+        margin: 5px 0;
+        font-size: 14px;
+    }
+
+    .popup-info strong {
+        color: #333;
+    }
+
+    /* 🔥 Анимация пульсации для активных проектов */
+    @keyframes pulse {
+
+        0%,
+        100% {
+            transform: scale(1);
+            opacity: 1;
+        }
+
+        50% {
+            transform: scale(1.15);
+            opacity: 0.85;
+        }
+    }
+
+    .marker-pulse {
+        animation: pulse 2s ease-in-out infinite !important;
+    }
+
+    /* Дополнительный эффект при наведении */
+    .custom-marker:hover {
+        transform: scale(1.2) !important;
+        cursor: pointer;
+        filter: brightness(1.1);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="map-container">
+    <div class="map-header">
+        <h1>🗺️ Интерактивная карта активности</h1>
+        <p>Визуализация проектов и активности волонтеров (OpenStreetMap)</p>
+    </div>
+
+    <div class="map-controls">
+        <div class="control-group">
+            <label>Статус:</label>
+            <select id="statusFilter" class="form-select" onchange="loadMapData()">
+                <option value="approved">Одобренные</option>
+                <option value="pending">Ожидающие</option>
+                <option value="">Все</option>
+            </select>
+        </div>
+
+        <div class="control-group">
+            <label>Город:</label>
+            <input type="text" id="cityFilter" class="form-control" placeholder="Все города" onchange="loadMapData()" onkeypress="if(event.key === 'Enter') loadMapData()">
+        </div>
+
+        <button class="control-btn" onclick="loadMapData()">
+            <i class="fas fa-sync"></i> Обновить
+        </button>
+    </div>
+
+    <div class="map-wrapper">
+        <div id="map"></div>
+
+        <div class="stats-overlay">
+            <div class="stat-item">
+                <div class="stat-label">Всего проектов</div>
+                <div class="stat-value" id="totalProjects">0</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-label">Активных городов</div>
+                <div class="stat-value" id="totalCities">0</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-label">Волонтеров</div>
+                <div class="stat-value" id="totalVolunteers">0</div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<!-- Leaflet JS -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<script>
+    let map;
+    let markers = [];
+
+    // Инициализация карты OpenStreetMap
+    function initMap() {
+        // Создаем карту с центром на Алматы
+        map = L.map('map').setView([43.238949, 76.889709], 11);
+
+        // Добавляем слой OpenStreetMap (полностью бесплатно!)
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors',
+            maxZoom: 19
+        }).addTo(map);
+
+        // Загружаем данные проектов
+        loadMapData();
+    }
+
+    async function loadMapData() {
+        const status = document.getElementById('statusFilter').value;
+        const city = document.getElementById('cityFilter').value;
+
+        try {
+            let url = '/custom-admin/api/v1/map/projects-web/?';
+            if (status) url += `status=${status}&`;
+            if (city) url += `city=${city}&`;
+
+            const response = await fetch(url);
+            const data = await response.json();
+
+            // Очищаем предыдущие маркеры
+            markers.forEach(marker => {
+                map.removeLayer(marker);
+            });
+            markers = [];
+
+            // Добавляем новые маркеры
+            let totalVolunteers = 0;
+            const cities = new Set();
+            const bounds = [];
+
+            if (!data.features || data.features.length === 0) {
+                document.getElementById('totalProjects').textContent = '0';
+                document.getElementById('totalCities').textContent = '0';
+                document.getElementById('totalVolunteers').textContent = '0';
+                console.log('No projects found');
+                return;
+            }
+
+            data.features.forEach(feature => {
+                const coords = feature.geometry.coordinates;
+                const props = feature.properties;
+
+                // 🔥 ТЕПЛОТА: Размер и яркость зависят от активности
+                const volunteerCount = props.volunteers_count;
+                const taskCount = props.tasks_count;
+                const activity = volunteerCount + taskCount; // Мера активности
+
+                // Размер маркера зависит от активности (от 35px до 60px)
+                let markerSize = 35 + Math.min(activity * 5, 25);
+
+                // Определяем цвет маркера по статусу с градиентом "теплоты"
+                let markerColor = '#4CAF50'; // approved - зеленый
+                let shadowColor = 'rgba(76, 175, 80, 0.6)'; // тень зеленая
+                let statusClass = '';
+
+                if (props.status === 'pending') {
+                    markerColor = '#FF9800'; // оранжевый
+                    shadowColor = 'rgba(255, 152, 0, 0.6)';
+                    statusClass = 'pending';
+                } else if (props.status === 'rejected') {
+                    markerColor = '#F44336'; // красный
+                    shadowColor = 'rgba(244, 67, 54, 0.6)';
+                    statusClass = 'rejected';
+                }
+
+                // Пульсация для активных проектов (снижен порог с 5 до 3)
+                let pulseClass = activity > 2 ? 'marker-pulse' : '';
+
+                console.log(`Project: ${props.title}, Activity: ${activity}, Size: ${markerSize}px, Pulse: ${pulseClass ? 'YES' : 'NO'}`);
+
+                // Создаем кастомную иконку с "теплотой"
+                const glowSize = Math.min(activity * 5, 30); // Увеличенное свечение
+                const customIcon = L.divIcon({
+                    className: 'custom-div-icon',
+                    html: `
+                    <div class="custom-marker ${statusClass} ${pulseClass}" style="
+                        background: radial-gradient(circle, ${markerColor} 0%, ${markerColor}dd 60%, ${markerColor}88 100%);
+                        width: ${markerSize}px;
+                        height: ${markerSize}px;
+                        border: 4px solid white;
+                        box-shadow: 0 0 ${glowSize}px ${shadowColor}, 0 0 ${glowSize * 0.5}px ${shadowColor}, 0 4px 10px rgba(0,0,0,0.4);
+                        font-size: ${Math.max(12, Math.min(markerSize / 3, 18))}px;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        border-radius: 50%;
+                        font-weight: bold;
+                        color: white;
+                        transition: all 0.3s ease;
+                    ">${volunteerCount}</div>
+                `,
+                    iconSize: [markerSize, markerSize],
+                    iconAnchor: [markerSize / 2, markerSize / 2]
+                });
+
+                // Создаем маркер
+                const marker = L.marker([coords[1], coords[0]], {
+                    icon: customIcon
+                }).addTo(map);
+
+                // Статус на русском
+                let statusText = 'Неизвестно';
+                if (props.status === 'approved') statusText = '✅ Одобрен';
+                else if (props.status === 'pending') statusText = '⏳ Ожидает';
+                else if (props.status === 'rejected') statusText = '❌ Отклонен';
+
+                // Добавляем попап с информацией
+                const popupContent = `
+                <div>
+                    <div class="popup-title">${props.title}</div>
+                    <div class="popup-info"><strong>📍 Город:</strong> ${props.city}</div>
+                    <div class="popup-info"><strong>🎯 Статус:</strong> ${statusText}</div>
+                    <div class="popup-info"><strong>👥 Волонтеров:</strong> ${props.volunteers_count}</div>
+                    <div class="popup-info"><strong>✅ Задач:</strong> ${props.tasks_count}</div>
+                    <div class="popup-info"><strong>👤 Организатор:</strong> ${props.creator.name}</div>
+                    <div class="popup-info" style="color: #666; margin-top: 10px;">${props.description.substring(0, 150)}...</div>
+                </div>
+            `;
+
+                marker.bindPopup(popupContent);
+
+                markers.push(marker);
+                bounds.push([coords[1], coords[0]]);
+
+                totalVolunteers += props.volunteers_count;
+                cities.add(props.city);
+            });
+
+            // Обновляем статистику
+            document.getElementById('totalProjects').textContent = data.features.length;
+            document.getElementById('totalCities').textContent = cities.size;
+            document.getElementById('totalVolunteers').textContent = totalVolunteers;
+
+            // Центрируем карту на маркерах
+            if (bounds.length > 0) {
+                if (bounds.length === 1) {
+                    map.setView(bounds[0], 13);
+                } else {
+                    map.fitBounds(bounds, {
+                        padding: [50, 50]
+                    });
+                }
+            }
+
+            console.log(`Loaded ${data.features.length} projects on map`);
+
+        } catch (error) {
+            console.error('Oshibka zagruzki proektov:', error);
+            alert('Oshibka zagruzki dannykh karty. Proverite console (F12).');
+        }
+    }
+
+    // Инициализация при загрузке страницы
+    document.addEventListener('DOMContentLoaded', initMap);
+</script>
+{% endblock %}

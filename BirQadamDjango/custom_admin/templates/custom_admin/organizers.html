@@ -1,0 +1,637 @@
+{% extends 'custom_admin/base.html' %} {% load static %} {% block extra_css %}
+<style>
+    :root {
+        --card-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.15);
+        --card-hover-shadow: 0 0.3rem 2rem 0 rgba(58, 59, 69, 0.25);
+    }
+
+    /* Page Header */
+    .page-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 15px;
+        padding: 2rem;
+        margin-bottom: 2rem;
+        color: white;
+        box-shadow: var(--card-shadow);
+    }
+
+    .page-header h1 {
+        margin: 0;
+        font-size: 2rem;
+        font-weight: 700;
+    }
+
+    /* Modern Table Card */
+    .table-card {
+        background: white;
+        border-radius: 15px;
+        overflow: hidden;
+        box-shadow: var(--card-shadow);
+        margin-bottom: 1.5rem;
+    }
+
+    .table-card .card-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 1.25rem 1.5rem;
+        border: none;
+    }
+
+    .table-card .table {
+        margin: 0;
+    }
+
+    .table-card thead {
+        background: #f8f9fc;
+    }
+
+    .table-card tbody tr {
+        transition: all 0.3s ease;
+    }
+
+    .table-card tbody tr:hover {
+        background: rgba(102, 126, 234, 0.05);
+        transform: scale(1.01);
+    }
+
+    .organizer-avatar {
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #f2994a 0%, #f2c94c 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 1.5rem;
+        font-weight: 700;
+        margin-right: 1rem;
+    }
+
+    /* Organizer Cards for Mobile */
+    .organizer-card {
+        background: white;
+        border-radius: 15px;
+        box-shadow: var(--card-shadow);
+        transition: all 0.3s ease;
+        border: none;
+        margin-bottom: 1.5rem;
+    }
+
+    .organizer-card:hover {
+        transform: translateY(-5px);
+        box-shadow: var(--card-hover-shadow);
+    }
+
+    .organizer-card .card-body {
+        padding: 1.5rem;
+    }
+
+    .chart-area {
+        height: 300px;
+        position: relative;
+    }
+
+    @media (max-width: 768px) {
+        .page-header {
+            padding: 1.5rem;
+        }
+
+        .page-header h1 {
+            font-size: 1.5rem;
+        }
+
+        .table-responsive {
+            display: none;
+        }
+
+        .mobile-organizer-cards {
+            display: block;
+        }
+    }
+
+    @media (min-width: 769px) {
+        .table-responsive {
+            display: block;
+        }
+
+        .mobile-organizer-cards {
+            display: none;
+        }
+    }
+</style>
+{% endblock %} {% block content %}
+<div class="container-fluid">
+    {% if not show_analytics %}
+    <!-- Page Header -->
+    <div class="page-header">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h1><i class="fas fa-users-cog me-2"></i>Организаторы</h1>
+                <p class="mb-0 opacity-75">Управление организаторами проектов</p>
+            </div>
+            <div class="text-end">
+                <h2 class="mb-0">{{ approved_organizers.count }}</h2>
+                <small>Одобренных</small>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pending Approvals -->
+    {% if pending_organizers %}
+    <div class="table-card">
+        <div class="card-header d-flex justify-content-between align-items-center" style="background: linear-gradient(135deg, #f2994a 0%, #f2c94c 100%);">
+            <h6 class="m-0"><i class="fas fa-clock me-2"></i>Ожидают одобрения</h6>
+            <span class="badge bg-light text-dark">{{ pending_organizers|length }}</span>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead>
+                        <tr>
+                            <th><i class="fas fa-user me-2"></i>Организатор</th>
+                            <th><i class="fas fa-building me-2"></i>Организация</th>
+                            <th class="text-center"><i class="fas fa-cog me-2"></i>Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for organizer in pending_organizers %}
+                        <tr>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <div class="organizer-avatar">
+                                        {{ organizer.username|slice:":1"|upper }}
+                                    </div>
+                                    <strong>{{ organizer.name|default:organizer.email|default:organizer.username|default:"Без имени" }}</strong>
+                                </div>
+                            </td>
+                            <td>{{ organizer.organization_name|default:"Не указана" }}</td>
+                            <td class="text-center">
+                                <form method="post" action="{% url 'approve_organizer' organizer.id %}" style="display: inline;">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-sm btn-success">
+                                        <i class="fas fa-check me-1"></i>Одобрить
+                                    </button>
+                                </form>
+                                <form method="post" action="{% url 'reject_organizer' organizer.id %}" style="display: inline;">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-sm btn-danger">
+                                        <i class="fas fa-times me-1"></i>Отклонить
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Mobile Card View for Pending -->
+            <div class="mobile-organizer-cards">
+                {% for organizer in pending_organizers %}
+                <div class="organizer-card">
+                    <div class="card-body">
+                        <div class="d-flex align-items-center mb-3">
+                            <div class="organizer-avatar">
+                                {{ organizer.username|slice:":1"|upper }}
+                            </div>
+                            <div>
+                                <h5 class="mb-0">{{ organizer.name|default:organizer.email|default:organizer.username|default:"Без имени" }}</h5>
+                                <small class="text-muted">{{ organizer.organization_name|default:"Не указана" }}</small>
+                            </div>
+                        </div>
+                        <div class="row mb-2">
+                            <div class="col-6">
+                                <form method="post" action="{% url 'approve_organizer' organizer.id %}" class="w-100">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-success w-100">
+                                        <i class="fas fa-check me-1"></i>Одобрить
+                                    </button>
+                                </form>
+                            </div>
+                            <div class="col-6">
+                                <form method="post" action="{% url 'reject_organizer' organizer.id %}" class="w-100">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-danger w-100">
+                                        <i class="fas fa-times me-1"></i>Отклонить
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Approved Organizers -->
+    <div class="table-card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h6 class="m-0"><i class="fas fa-list me-2"></i>Одобренные организаторы</h6>
+            <a href="{% url 'analytics' %}" class="btn btn-sm btn-light">
+                <i class="fas fa-chart-bar me-1"></i>Аналитика
+            </a>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead>
+                        <tr>
+                            <th><i class="fas fa-user me-2"></i>Организатор</th>
+                            <th class="text-center"><i class="fas fa-project-diagram me-2"></i>Проекты</th>
+                            <th class="text-center"><i class="fas fa-tasks me-2"></i>Задачи</th>
+                            <th class="text-center"><i class="fas fa-cog me-2"></i>Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for organizer in approved_organizers %}
+                        <tr>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <div class="organizer-avatar">
+                                        {{ organizer.username|slice:":1"|upper }}
+                                    </div>
+                                    <strong>{{ organizer.name|default:organizer.email|default:organizer.username|default:"Без имени" }}</strong>
+                                </div>
+                            </td>
+                            <td class="text-center">
+                                <span class="badge bg-info rounded-pill">
+                                    <i class="fas fa-project-diagram me-1"></i>{{ organizer.project_count }}
+                                </span>
+                            </td>
+                            <td class="text-center">
+                                <span class="badge bg-primary rounded-pill">
+                                    <i class="fas fa-tasks me-1"></i>{{ organizer.task_count }}
+                                </span>
+                            </td>
+                            <td class="text-center">
+                                <a href="{% url 'organizer_analytics' organizer.id %}" class="btn btn-sm btn-outline-primary">
+                                    <i class="fas fa-chart-line me-1"></i>Аналитика
+                                </a>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="4" class="text-center py-5">
+                                <i class="fas fa-users-cog fa-4x text-muted mb-3" style="opacity: 0.2;"></i>
+                                <p class="text-muted h5">Нет одобренных организаторов</p>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Mobile Card View for Approved -->
+            <div class="mobile-organizer-cards">
+                {% for organizer in approved_organizers %}
+                <div class="organizer-card">
+                    <div class="card-body">
+                        <div class="d-flex align-items-center mb-3">
+                            <div class="organizer-avatar">
+                                {{ organizer.username|slice:":1"|upper }}
+                            </div>
+                            <div>
+                                <h5 class="mb-0">{{ organizer.name|default:organizer.email|default:organizer.username|default:"Без имени" }}</h5>
+                                <small class="text-muted">{{ organizer.email }}</small>
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-6">
+                                <span class="badge bg-info rounded-pill w-100">
+                                    <i class="fas fa-project-diagram me-1"></i>{{ organizer.project_count }} проектов
+                                </span>
+                            </div>
+                            <div class="col-6">
+                                <span class="badge bg-primary rounded-pill w-100">
+                                    <i class="fas fa-tasks me-1"></i>{{ organizer.task_count }} задач
+                                </span>
+                            </div>
+                        </div>
+                        <a href="{% url 'organizer_analytics' organizer.id %}" class="btn btn-primary w-100">
+                            <i class="fas fa-chart-line me-1"></i>Посмотреть аналитику
+                        </a>
+                    </div>
+                </div>
+                {% empty %}
+                <div class="text-center py-5">
+                    <i class="fas fa-users-cog fa-4x text-muted mb-3" style="opacity: 0.2;"></i>
+                    <p class="text-muted h5">Нет одобренных организаторов</p>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    <!-- Rejected Organizers -->
+    {% if rejected_organizers %}
+    <div class="table-card">
+        <div class="card-header d-flex justify-content-between align-items-center bg-danger text-white">
+            <h6 class="m-0"><i class="fas fa-times-circle me-2"></i>Отклоненные заявки</h6>
+            <span class="badge bg-light text-dark">{{ rejected_organizers|length }}</span>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead>
+                        <tr>
+                            <th><i class="fas fa-user me-2"></i>Организатор</th>
+                            <th><i class="fas fa-building me-2"></i>Организация</th>
+                            <th class="text-center"><i class="fas fa-cog me-2"></i>Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for organizer in rejected_organizers %}
+                        <tr>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <div class="organizer-avatar bg-secondary">
+                                        {{ organizer.username|slice:":1"|upper }}
+                                    </div>
+                                    <strong>{{ organizer.name|default:organizer.email|default:organizer.username|default:"Без имени" }}</strong>
+                                </div>
+                            </td>
+                            <td>{{ organizer.organization_name|default:"Не указана" }}</td>
+                            <td class="text-center">
+                                <form method="post" action="{% url 'approve_organizer' organizer.id %}" style="display: inline;">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-sm btn-success">
+                                        <i class="fas fa-check me-1"></i>Одобрить
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    {% else %}
+    <!-- Профиль организатора -->
+    <div class="page-header">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h1><i class="fas fa-user-cog me-2"></i>{{ organizer.name|default:organizer.username|default:"Организатор" }}</h1>
+                <p class="mb-0 opacity-75">Детальная информация об организаторе</p>
+            </div>
+            <a href="{% url 'organizers' %}" class="btn btn-light">
+                <i class="fas fa-arrow-left me-1"></i>Назад
+            </a>
+        </div>
+    </div>
+
+    <!-- Основная информация -->
+    <div class="row mb-4">
+        <div class="col-lg-4 mb-4">
+            <div class="table-card h-100">
+                <div class="card-header">
+                    <h6 class="m-0"><i class="fas fa-user me-2"></i>Личные данные</h6>
+                </div>
+                <div class="card-body">
+                    <div class="text-center mb-4">
+                        <div class="organizer-avatar mx-auto" style="width: 80px; height: 80px; font-size: 2.5rem;">
+                            {{ organizer.username|slice:":1"|upper }}
+                        </div>
+                        <h5 class="mt-3 mb-1">{{ organizer.name|default:organizer.username|default:"Без имени" }}</h5>
+                    </div>
+                    <hr>
+                    <div class="mb-3">
+                        <div class="text-muted small mb-1"><i class="fas fa-user me-2"></i>Имя пользователя</div>
+                        <strong>{{ organizer.username }}</strong>
+                    </div>
+                    <div class="mb-3">
+                        <div class="text-muted small mb-1"><i class="fas fa-phone me-2"></i>Номер телефона</div>
+                        <strong>{{ organizer.phone_number|default:"Не указан" }}</strong>
+                    </div>
+                    <div class="mb-3">
+                        <div class="text-muted small mb-1"><i class="fas fa-building me-2"></i>Организация</div>
+                        <strong>{{ organizer.organization_name|default:"Не указана" }}</strong>
+                    </div>
+                    <div class="mb-3">
+                        <div class="text-muted small mb-1"><i class="fab fa-telegram me-2"></i>Telegram ID</div>
+                        <strong>{{ organizer.telegram_id|default:"Не привязан" }}</strong>
+                    </div>
+                    <div class="mb-0">
+                        <div class="text-muted small mb-1"><i class="fas fa-calendar-plus me-2"></i>Дата регистрации</div>
+                        <strong>{{ organizer.date_joined|date:"d.m.Y H:i" }}</strong>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-8">
+            <!-- Статистика -->
+            <div class="row mb-4">
+                <div class="col-md-4 mb-3">
+                    <div class="table-card h-100">
+                        <div class="card-body text-center">
+                            <i class="fas fa-project-diagram fa-3x mb-3" style="color: #667eea;"></i>
+                            <h2 class="mb-0">{{ stats.project_count }}</h2>
+                            <div class="text-muted">Созданных проектов</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <div class="table-card h-100">
+                        <div class="card-body text-center">
+                            <i class="fas fa-tasks fa-3x mb-3" style="color: #1cc88a;"></i>
+                            <h2 class="mb-0">{{ stats.task_count }}</h2>
+                            <div class="text-muted">Созданных задач</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Созданные проекты -->
+            <div class="table-card mb-4">
+                <div class="card-header">
+                    <h6 class="m-0"><i class="fas fa-project-diagram me-2"></i>Созданные проекты</h6>
+                </div>
+                <div class="card-body">
+                    <!-- Desktop Table View -->
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Проект</th>
+                                    <th class="text-center">Волонтеры</th>
+                                    <th class="text-center">Задачи</th>
+                                    <th class="text-center">Статус</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for project in organizer.created_projects.all %}
+                                <tr>
+                                    <td>
+                                        <strong>{{ project.title }}</strong>
+                                        <br>
+                                        <small class="text-muted">Создан: {{ project.created_at|date:"d.m.Y" }}</small>
+                                    </td>
+                                    <td class="text-center">
+                                        <span class="badge bg-info rounded-pill">
+                                            <i class="fas fa-users me-1"></i>{{ project.volunteer_projects.count }}
+                                        </span>
+                                    </td>
+                                    <td class="text-center">
+                                        <span class="badge bg-primary rounded-pill">
+                                            <i class="fas fa-tasks me-1"></i>{{ project.tasks.count }}
+                                        </span>
+                                    </td>
+                                    <td class="text-center">
+                                        <span class="badge bg-{% if project.status == 'approved' %}success{% elif project.status == 'rejected' %}danger{% else %}warning{% endif %}">
+                                            {{ project.get_status_display }}
+                                        </span>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="4" class="text-center py-4">
+                                        <i class="fas fa-project-diagram fa-2x text-muted mb-3"></i>
+                                        <p class="text-muted">Нет созданных проектов</p>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Mobile Card View -->
+                    <div class="mobile-organizer-cards">
+                        {% for project in organizer.created_projects.all %}
+                        <div class="organizer-card mb-3">
+                            <div class="card-body">
+                                <h5 class="mb-2">{{ project.title }}</h5>
+                                <small class="text-muted d-block mb-3">Создан: {{ project.created_at|date:"d.m.Y" }}</small>
+
+                                <div class="row mb-2">
+                                    <div class="col-4 text-center">
+                                        <span class="badge bg-info w-100 py-2">
+                                            <i class="fas fa-users d-block mb-1"></i>
+                                            {{ project.volunteer_projects.count }}
+                                        </span>
+                                        <small class="text-muted d-block mt-1">Волонтеры</small>
+                                    </div>
+                                    <div class="col-4 text-center">
+                                        <span class="badge bg-primary w-100 py-2">
+                                            <i class="fas fa-tasks d-block mb-1"></i>
+                                            {{ project.tasks.count }}
+                                        </span>
+                                        <small class="text-muted d-block mt-1">Задачи</small>
+                                    </div>
+                                    <div class="col-4 text-center">
+                                        <span class="badge bg-{% if project.status == 'approved' %}success{% elif project.status == 'rejected' %}danger{% else %}warning{% endif %} w-100 py-2">
+                                            <i class="fas fa-{% if project.status == 'approved' %}check{% elif project.status == 'rejected' %}times{% else %}clock{% endif %} d-block mb-1"></i>
+                                            <small>{{ project.get_status_display }}</small>
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% empty %}
+                        <div class="text-center py-4">
+                            <i class="fas fa-project-diagram fa-2x text-muted mb-3"></i>
+                            <p class="text-muted">Нет созданных проектов</p>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Созданные задачи -->
+            <div class="table-card">
+                <div class="card-header">
+                    <h6 class="m-0"><i class="fas fa-tasks me-2"></i>Созданные задачи</h6>
+                </div>
+                <div class="card-body">
+                    <!-- Desktop Table View -->
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Задача</th>
+                                    <th class="text-center">Проект</th>
+                                    <th class="text-center">Статус</th>
+                                    <th class="text-center">Срок</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for project in organizer.created_projects.all %}
+                                    {% for task in project.tasks.all|slice:":10" %}
+                                    <tr>
+                                        <td>
+                                            <strong>{{ task.text|truncatechars:50 }}</strong>
+                                        </td>
+                                        <td class="text-center">
+                                            <small class="text-muted">{{ project.title|truncatechars:30 }}</small>
+                                        </td>
+                                        <td class="text-center">
+                                            <span class="badge bg-{% if task.status == 'completed' %}success{% elif task.status == 'in_progress' %}warning{% else %}secondary{% endif %} rounded-pill">
+                                                {{ task.get_status_display }}
+                                            </span>
+                                        </td>
+                                        <td class="text-center">
+                                            <small class="text-muted">{{ task.deadline_date|date:"d.m.Y"|default:"-" }}</small>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                {% empty %}
+                                <tr>
+                                    <td colspan="4" class="text-center py-4">
+                                        <i class="fas fa-tasks fa-2x text-muted mb-3"></i>
+                                        <p class="text-muted">Нет созданных задач</p>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Mobile Card View -->
+                    <div class="mobile-organizer-cards">
+                        {% for project in organizer.created_projects.all %}
+                            {% for task in project.tasks.all|slice:":10" %}
+                            <div class="organizer-card mb-3">
+                                <div class="card-body">
+                                    <h6 class="mb-2">{{ task.text|truncatechars:80 }}</h6>
+
+                                    <div class="mb-3">
+                                        <small class="text-muted">
+                                            <i class="fas fa-project-diagram me-1"></i>
+                                            {{ project.title }}
+                                        </small>
+                                    </div>
+
+                                    <div class="row">
+                                        <div class="col-6">
+                                            <span class="badge bg-{% if task.status == 'completed' %}success{% elif task.status == 'in_progress' %}warning{% else %}secondary{% endif %} w-100 py-2">
+                                                <i class="fas fa-{% if task.status == 'completed' %}check{% elif task.status == 'in_progress' %}spinner{% else %}clock{% endif %} me-1"></i>
+                                                {{ task.get_status_display }}
+                                            </span>
+                                        </div>
+                                        <div class="col-6 text-center">
+                                            <small class="text-muted d-block">
+                                                <i class="fas fa-calendar me-1"></i>
+                                                {{ task.deadline_date|date:"d.m.Y"|default:"Без срока" }}
+                                            </small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        {% empty %}
+                        <div class="text-center py-4">
+                            <i class="fas fa-tasks fa-2x text-muted mb-3"></i>
+                            <p class="text-muted">Нет созданных задач</p>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

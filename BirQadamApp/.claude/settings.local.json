@@ -1,0 +1,34 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python:*)",
+      "Bash(git checkout:*)",
+      "Bash(del auth_provider.dart)",
+      "Bash(ren:*)",
+      "Bash(flutter pub:*)",
+      "Read(//c/Users/User/Desktop/ItStartUp/CleanUpAlmatyV1/custom_admin/**)",
+      "Read(//c/Users/User/Desktop/ItStartUp/CleanUpAlmatyV1/**)",
+      "Bash(flutter:*)",
+      "Bash(dir:*)",
+      "Bash(findstr:*)",
+      "Read(//c/Users/User/Desktop/**)",
+      "Bash(netstat:*)",
+      "Bash(curl:*)",
+      "Read(//c/Users/User/**)",
+      "Bash(taskkill:*)",
+      "Bash(Get-Process python)",
+      "Bash(Stop-Process -Force)",
+      "Bash(tasklist:*)",
+      "Bash(del \"C:\\Users\\User\\Desktop\\ItStartUp\\CleanUpAlmatyV1\\admin_handlers.py\")",
+      "Bash(psql:*)",
+      "Read(//c/Program Files/PostgreSQL/17/bin/**)",
+      "Bash(\"C:\\Program Files\\PostgreSQL\\17\\bin\\psql.exe\" -U postgres -c \"DROP DATABASE IF EXISTS cleanup_almaty_db;\")",
+      "Bash(timeout:*)",
+      "Bash(PGPASSWORD=Beybit0606 \"C:\\Program Files\\PostgreSQL\\17\\bin\\psql.exe\" -U postgres -c \"DROP DATABASE IF EXISTS cleanup_almaty_db;\")",
+      "Bash(PGPASSWORD=Beybit0606 \"C:\\Program Files\\PostgreSQL\\17\\bin\\psql.exe\":*)",
+      "Bash(adb:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

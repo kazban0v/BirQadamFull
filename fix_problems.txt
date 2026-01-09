@@ -1,0 +1,8 @@
+Что важно сделать при деплое (в .env)
+Чтобы реально закрепить результат, в .env на сервере выставьте хотя бы:
+VITE_API_BASE_URL=https://ВАШ_API_ДОМЕН (или http://... если без https)
+ALLOWED_HOSTS=ВАШ_API_ДОМЕН (и нужные поддомены)
+CORS_ALLOWED_ORIGINS=https://ВАШ_FRONT_ДОМЕН
+CSRF_TRUSTED_ORIGINS=https://ВАШ_FRONT_ДОМЕН
+если фронт и API на разных доменах: SESSION_COOKIE_SAMESITE=None, CSRF_COOKIE_SAMESITE=None, SESSION_COOKIE_SECURE=true, CSRF_COOKIE_SECURE=true, USE_X_FORWARDED_PROTO=true
+После вашего деплоя скажи, что именно не работает (endpoint + статус 401/403/404/500) — и добьём остаток по фактическим симптомам.
