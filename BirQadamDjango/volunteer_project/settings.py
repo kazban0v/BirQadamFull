@@ -43,14 +43,17 @@ DEBUG = os.getenv('DEBUG', 'False') == 'True'
 if DEBUG:
     ALLOWED_HOSTS = ['*']  # Только для разработки
 else:
-    # В production ОБЯЗАТЕЛЬНО задайте ALLOWED_HOSTS через .env
+    # В production используем ALLOWED_HOSTS из .env, или значения по умолчанию для Railway
     allowed_hosts_str = os.getenv('ALLOWED_HOSTS', '').strip()
     if not allowed_hosts_str:
-        raise ValueError(
-            "ALLOWED_HOSTS must be set in production! "
-            "Set it in .env file: ALLOWED_HOSTS=your-domain.com,www.your-domain.com"
+        # Значения по умолчанию для Railway
+        ALLOWED_HOSTS = ['*', '*.railway.app']
+        logger.warning(
+            "ALLOWED_HOSTS not set in production! Using default: ['*', '*.railway.app']. "
+            "For better security, set ALLOWED_HOSTS in .env file"
         )
-    ALLOWED_HOSTS = [host.strip() for host in allowed_hosts_str.split(',') if host.strip()]
+    else:
+        ALLOWED_HOSTS = [host.strip() for host in allowed_hosts_str.split(',') if host.strip()]
 
 # ✅ CORS настройки: в DEBUG разрешаем все, в production только из переменных окружения
 CORS_ALLOW_ALL_ORIGINS = DEBUG  # True только в режиме разработки
@@ -79,13 +82,16 @@ if DEBUG:
             if origin.strip() and origin.strip() not in CORS_ALLOWED_ORIGINS
         ])
 else:
-    # В production: ТОЛЬКО из переменных окружения
+    # В production: из переменных окружения, или значения по умолчанию
     if not _cors_allowed_origins_env:
-        raise ValueError(
-            "CORS_ALLOWED_ORIGINS must be set in production! "
-            "Set it in .env file: CORS_ALLOWED_ORIGINS=https://your-domain.com,https://www.your-domain.com"
+        # Значения по умолчанию для Railway (пустой список, но не падаем)
+        CORS_ALLOWED_ORIGINS = []
+        logger.warning(
+            "CORS_ALLOWED_ORIGINS not set in production! Using empty list. "
+            "For proper CORS, set CORS_ALLOWED_ORIGINS in .env file"
         )
-    CORS_ALLOWED_ORIGINS = [origin.strip() for origin in _cors_allowed_origins_env.split(",") if origin.strip()]
+    else:
+        CORS_ALLOWED_ORIGINS = [origin.strip() for origin in _cors_allowed_origins_env.split(",") if origin.strip()]
 
 CORS_ALLOW_CREDENTIALS = True
 
@@ -108,15 +114,16 @@ if DEBUG:
             if origin.strip() and origin.strip() not in CSRF_TRUSTED_ORIGINS
         ])
 else:
-    # В production: ТОЛЬКО из переменных окружения
+    # В production: из переменных окружения, или значения по умолчанию
     if not _csrf_trusted_origins_env:
-        raise ValueError(
-            "CSRF_TRUSTED_ORIGINS must be set in production! "
-            "Set it in .env file: CSRF_TRUSTED_ORIGINS=https://your-domain.com,https://www.your-domain.com"
+        # Значения по умолчанию для Railway
+        CSRF_TRUSTED_ORIGINS = []
+        logger.warning(
+            "CSRF_TRUSTED_ORIGINS not set in production! Using empty list. "
+            "For proper CSRF protection, set CSRF_TRUSTED_ORIGINS in .env file"
         )
-    
     # Обработка специального значения "*" для автоматического определения домена Railway
-    if _csrf_trusted_origins_env == "*":
+    elif _csrf_trusted_origins_env == "*":
         CSRF_TRUSTED_ORIGINS = []
         
         # Пытаемся определить домен Railway автоматически
@@ -136,14 +143,13 @@ else:
                 if first_host and not first_host.startswith(("*", ".")):
                     CSRF_TRUSTED_ORIGINS = [f"https://{first_host}"]
         
-        # Если все еще не удалось определить - выбросить ошибку с инструкцией
+        # Если все еще не удалось определить - используем пустой список (предупреждение уже было)
         if not CSRF_TRUSTED_ORIGINS:
-            raise ValueError(
-                "CSRF_TRUSTED_ORIGINS=* requires a domain. "
-                "Either set RAILWAY_PUBLIC_DOMAIN, or set CSRF_TRUSTED_ORIGINS to your Railway domain. "
-                "Example: CSRF_TRUSTED_ORIGINS=https://your-project.up.railway.app\n"
-                "To get your Railway domain: Go to your service → Settings → Generate Domain"
+            logger.warning(
+                "Could not auto-detect Railway domain for CSRF_TRUSTED_ORIGINS=*. "
+                "Set CSRF_TRUSTED_ORIGINS explicitly in .env file"
             )
+            CSRF_TRUSTED_ORIGINS = []
     else:
         # Обычная обработка: список доменов через запятую
         CSRF_TRUSTED_ORIGINS = []
