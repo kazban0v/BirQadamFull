@@ -24,7 +24,15 @@ git add .
 
 ### 5. Создайте коммит
 ```powershell
-git commit -m "Подготовка к деплою на Railway: исправлены пути, добавлены конфигурационные файлы"
+git commit -m "Исправлена ошибка миграций в Railway: добавлен флаг --fake-initial для всех команд migrate
+
+- Исправлено: railway.json (корневой)
+- Исправлено: BirQadamDjango/railway.json
+- Исправлено: BirQadamDjango/entrypoint.sh
+- Исправлено: BirQadamDjango/nixpacks.toml
+- Исправлено: BirQadamDjango/Procfile
+
+Решает ошибку: relation django_content_type already exists"
 ```
 
 ### 6. Если репозиторий уже подключен к GitHub - запушьте:
