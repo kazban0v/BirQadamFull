@@ -2,7 +2,7 @@
 set -eu
 
 echo "[entrypoint] Running migrations..."
-python manage.py migrate --noinput --fake-initial
+python safe_migrate.py
 
 echo "[entrypoint] Collecting static..."
 python manage.py collectstatic --noinput

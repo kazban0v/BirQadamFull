@@ -5,5 +5,5 @@ nixPkgs = ["python311", "pip"]
 cmds = ["pip install -r requirements.txt"]
 
 [start]
-cmd = "python manage.py migrate --noinput --fake-initial && python manage.py collectstatic --noinput && gunicorn volunteer_project.wsgi:application --bind 0.0.0.0:$PORT --workers 3 --timeout 120"
+cmd = "python safe_migrate.py && python manage.py collectstatic --noinput && gunicorn volunteer_project.wsgi:application --bind 0.0.0.0:$PORT --workers 3 --timeout 120"
 
