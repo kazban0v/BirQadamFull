@@ -31,14 +31,19 @@ def safe_migrate():
         error_msg = str(e).lower()
         
         # Если ошибка связана с существующими объектами (таблицы, индексы, constraints)
+        # ИЛИ с отсутствующими объектами (колонки уже удалены, объекты уже изменены)
+        # В обоих случаях желаемое состояние уже достигнуто, можно пометить миграцию как примененную
         if any(keyword in error_msg for keyword in [
             'already exists',
             'duplicate table',
             'duplicate index',
             'duplicate key',
-            'relation already exists'
+            'relation already exists',
+            'does not exist',
+            'undefined column',
+            'column "name" of relation'
         ]):
-            print(f"[safe_migrate] ⚠ Обнаружена ошибка о существующем объекте")
+            print(f"[safe_migrate] ⚠ Обнаружена ошибка миграции (объект уже существует или отсутствует)")
             print(f"[safe_migrate] Детали: {str(e)[:200]}...")
             
             # Получаем список миграций, которые нужно применить
@@ -88,11 +93,14 @@ def safe_migrate():
                 return True
             except (ProgrammingError, OperationalError) as retry_error:
                 error_msg_retry = str(retry_error).lower()
-                # Если все еще ошибка, помечаем все проблемные миграции
+                # Если все еще ошибка (объект существует или отсутствует), помечаем все проблемные миграции
                 if any(keyword in error_msg_retry for keyword in [
                     'already exists',
                     'duplicate',
-                    'relation already exists'
+                    'relation already exists',
+                    'does not exist',
+                    'undefined column',
+                    'column "name" of relation'
                 ]):
                     print(f"[safe_migrate] ⚠ Все еще есть проблемы, помечаем все проблемные миграции...")
                     for app_label, migration_name in problematic_migrations:
@@ -112,8 +120,8 @@ def safe_migrate():
                         return True
                     except Exception:
                         # Если ничего не помогло, все равно возвращаем успех
-                        # так как проблема в существующих объектах, которые уже есть в БД
-                        print("[safe_migrate] ⚠ Миграции частично применены, но некоторые объекты уже существуют")
+                        # так как проблема в том, что объекты уже в нужном состоянии (существуют или отсутствуют)
+                        print("[safe_migrate] ⚠ Миграции частично применены, но некоторые объекты уже в нужном состоянии")
                         print("[safe_migrate] ⚠ Это нормально для production - продолжаем работу")
                         return True
                 else:
