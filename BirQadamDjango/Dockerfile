@@ -28,5 +28,6 @@ RUN chmod +x /app/entrypoint.sh
 RUN chmod +x /app/start.sh
 
 # Старт по умолчанию: используем start.sh который обрабатывает PORT
-ENTRYPOINT ["/app/entrypoint.sh"]
+# Используем shell form для лучшей обработки переменных окружения
+ENTRYPOINT ["/bin/bash", "/app/entrypoint.sh"]
 CMD ["/app/start.sh"]
