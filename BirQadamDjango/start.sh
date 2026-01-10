@@ -6,7 +6,16 @@ echo "=== Starting BirQadam Django Application ===" 1>&2
 echo "[start.sh] Script started at $(date)" 1>&2
 echo "[start.sh] Current directory: $(pwd)" 1>&2
 echo "[start.sh] Current user: $(whoami)" 1>&2
+
+# Activate virtual environment if it exists
+if [ -d "/opt/venv" ]; then
+    echo "[start.sh] Activating virtual environment at /opt/venv" 1>&2
+    source /opt/venv/bin/activate
+    export PATH="/opt/venv/bin:$PATH"
+fi
+
 echo "[start.sh] Python version: $(python --version 2>&1)" 1>&2
+echo "[start.sh] Python path: $(which python)" 1>&2
 echo "[start.sh] PORT=$PORT" 1>&2
 
 # Ensure we see all output immediately

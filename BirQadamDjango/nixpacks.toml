@@ -2,24 +2,24 @@
 nixPkgs = ["python311", "postgresql_16.dev", "gcc"]
 cmds = [
     "python3 --version",
-    "python3 -m pip --version 2>/dev/null || (python3 -c \"import urllib.request; urllib.request.urlretrieve('https://bootstrap.pypa.io/get-pip.py', '/tmp/get-pip.py')\" && python3 /tmp/get-pip.py && rm -f /tmp/get-pip.py) || true",
-    "python3 -m pip install --upgrade pip setuptools wheel || true",
-    "mkdir -p /usr/local/bin /usr/bin",
-    "echo '#!/bin/bash' > /usr/local/bin/pip",
-    "echo 'exec python3 -m pip \"$@\"' >> /usr/local/bin/pip",
-    "chmod +x /usr/local/bin/pip",
-    "cp /usr/local/bin/pip /usr/bin/pip 2>/dev/null || ln -sf /usr/local/bin/pip /usr/bin/pip 2>/dev/null || true"
+    "python3 -m venv /opt/venv",
+    "/opt/venv/bin/pip install --upgrade pip setuptools wheel"
 ]
 
 [variables]
 PYTHON_VERSION = "3.11"
+PATH = "/opt/venv/bin:/usr/local/bin:/usr/bin:${PATH}"
 
 [phases.install]
 cmds = [
     "python3 --version",
-    "pip --version || python3 -m pip --version",
-    "pip install --no-cache-dir --upgrade pip setuptools wheel || python3 -m pip install --no-cache-dir --upgrade pip setuptools wheel",
-    "pip install --no-cache-dir -r requirements.txt || python3 -m pip install --no-cache-dir -r requirements.txt"
+    "/opt/venv/bin/pip --version",
+    "/opt/venv/bin/pip install --no-cache-dir --upgrade pip setuptools wheel",
+    "/opt/venv/bin/pip install --no-cache-dir -r requirements.txt",
+    "mkdir -p /usr/local/bin /usr/bin",
+    "ln -sf /opt/venv/bin/pip /usr/local/bin/pip",
+    "ln -sf /opt/venv/bin/python /usr/local/bin/python",
+    "ln -sf /opt/venv/bin/pip /usr/bin/pip 2>/dev/null || true"
 ]
 
 [start]
