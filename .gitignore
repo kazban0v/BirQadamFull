@@ -31,6 +31,9 @@ firebase-service-account.json
 # OS
 .DS_Store
 Thumbs.db
+__MACOSX/
+._*
+.DS_Store
 
 # Node (если есть фронтенд в проекте)
 node_modules/

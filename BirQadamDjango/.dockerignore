@@ -5,3 +5,8 @@ Dockerfile
 **/Dockerfile.*
 frontend/Dockerfile
 
+# Ignore macOS metadata files
+__MACOSX/
+._*
+.DS_Store
+
