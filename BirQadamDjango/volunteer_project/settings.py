@@ -497,7 +497,9 @@ EMAIL_HOST = os.getenv('EMAIL_HOST', 'smtp.gmail.com')
 EMAIL_PORT = int(os.getenv('EMAIL_PORT', '587'))
 EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS', 'True').lower() in ('true', '1', 'yes')
 EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', 'birqadamofficial@gmail.com')
-EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', '')  # Обязательно должно быть задано в Railway
+# Gmail App Password: убираем пробелы, если они есть (Gmail показывает пароль с пробелами, но нужен без пробелов)
+_email_password = os.getenv('EMAIL_HOST_PASSWORD', '').strip()
+EMAIL_HOST_PASSWORD = _email_password.replace(' ', '') if _email_password else ''  # Убираем пробелы из App Password
 DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', os.getenv('EMAIL_HOST_USER', 'birqadamofficial@gmail.com'))
 
 # Дополнительные настройки для Gmail
