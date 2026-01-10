@@ -1,13 +1,37 @@
-#!/usr/bin/env sh
-set -eu
+#!/bin/bash
+# Entrypoint script for Docker
+set -x  # Debug mode
 
+echo "=== Docker Entrypoint ==="
+echo "[entrypoint] Container starting..."
+echo "[entrypoint] Current directory: $(pwd)"
+echo "[entrypoint] Current user: $(whoami)"
+echo "[entrypoint] Python version: $(python --version 2>&1 || echo 'Python not found')"
+echo "[entrypoint] PORT=$PORT"
+
+# Check if we're in the right directory
+if [ ! -f "manage.py" ]; then
+    echo "[entrypoint] ERROR: manage.py not found!"
+    echo "[entrypoint] Contents:"
+    ls -la
+    exit 1
+fi
+
+# Run migrations
 echo "[entrypoint] Running migrations..."
-python safe_migrate.py
+if ! python safe_migrate.py; then
+    echo "[entrypoint] ERROR: Migrations failed!"
+    exit 1
+fi
 
-echo "[entrypoint] Collecting static..."
-python manage.py collectstatic --noinput
+# Collect static files
+echo "[entrypoint] Collecting static files..."
+python manage.py collectstatic --noinput || {
+    echo "[entrypoint] WARNING: collectstatic failed, but continuing..."
+}
 
-echo "[entrypoint] Starting: $*"
+# Execute the command passed from CMD (usually start.sh)
+echo "[entrypoint] Executing command: $*"
 exec "$@"
 
 
