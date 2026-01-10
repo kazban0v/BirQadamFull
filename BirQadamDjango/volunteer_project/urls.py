@@ -22,13 +22,15 @@ def frontend_view(request, path=''):
         with open(index_path, 'r', encoding='utf-8') as f:
             html_content = f.read()
         
-        # Заменяем абсолютные пути на относительные с /portal/
-        # Если путь начинается с /assets/, заменяем на /portal/assets/
-        # Если путь начинается с /vite.svg, заменяем на /portal/vite.svg
+        # Заменяем абсолютные пути на пути с /portal/
+        # Обрабатываем пути, которые начинаются с / но не с /portal/
         import re
-        html_content = re.sub(r'href=["\'](/assets/[^"\']+)["\']', r'href="/portal\1"', html_content)
-        html_content = re.sub(r'src=["\'](/assets/[^"\']+)["\']', r'src="/portal\1"', html_content)
-        html_content = re.sub(r'href=["\'](/vite\.svg)["\']', r'href="/portal\1"', html_content)
+        # Заменяем пути к assets (JS, CSS и другие файлы)
+        html_content = re.sub(r'(href|src)=["\'](/assets/[^"\']+)["\']', r'\1="/portal\2"', html_content)
+        # Заменяем пути к vite.svg и другим статическим файлам в корне
+        html_content = re.sub(r'(href|src)=["\'](/(?!portal/)[^"\']*\.(?:svg|ico|png|jpg|jpeg|gif))["\']', r'\1="/portal\2"', html_content)
+        # Убеждаемся, что пути уже с /portal/ не заменяются дважды
+        # Это уже обработано регулярными выражениями выше
         
         from django.http import HttpResponse
         return HttpResponse(html_content, content_type='text/html')
