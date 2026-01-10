@@ -507,14 +507,21 @@ EMAIL_TIMEOUT = int(os.getenv('EMAIL_TIMEOUT', '10'))
 EMAIL_USE_SSL = os.getenv('EMAIL_USE_SSL', 'False').lower() in ('true', '1', 'yes')
 
 # Логирование настроек email для отладки (всегда, но без пароля)
+# Используем print для гарантированного вывода в логи Railway
+print(f"[EMAIL CONFIG] Email settings loaded: HOST={EMAIL_HOST}, PORT={EMAIL_PORT}, USER={EMAIL_HOST_USER}, FROM={DEFAULT_FROM_EMAIL}")
 logger.info(f"Email settings loaded: HOST={EMAIL_HOST}, PORT={EMAIL_PORT}, USER={EMAIL_HOST_USER}, FROM={DEFAULT_FROM_EMAIL}")
+
 if not EMAIL_HOST_PASSWORD:
-    logger.warning("⚠️ EMAIL_HOST_PASSWORD не установлен! Email не будет работать. Установите переменную окружения EMAIL_HOST_PASSWORD в Railway.")
+    warning_msg = "⚠️ EMAIL_HOST_PASSWORD не установлен! Email не будет работать. Установите переменную окружения EMAIL_HOST_PASSWORD в Railway."
+    print(f"[EMAIL CONFIG] {warning_msg}")
+    logger.warning(warning_msg)
 else:
     # Логируем длину пароля (без самого пароля) и проверяем, что пробелы убраны
     password_length = len(EMAIL_HOST_PASSWORD)
     had_spaces = ' ' in _email_password_raw if _email_password_raw else False
-    logger.info(f"✓ EMAIL_HOST_PASSWORD установлен (длина: {password_length} символов, пробелы были удалены: {had_spaces})")  
+    success_msg = f"✓ EMAIL_HOST_PASSWORD установлен (длина: {password_length} символов, пробелы были удалены: {had_spaces})"
+    print(f"[EMAIL CONFIG] {success_msg}")
+    logger.info(success_msg)  
 
 SESSION_COOKIE_AGE = 86400 * 7  # 7 дней
 SESSION_SAVE_EVERY_REQUEST = True  # Обновляем время жизни сессии при каждом запросе

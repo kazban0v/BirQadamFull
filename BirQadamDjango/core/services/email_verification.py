@@ -87,7 +87,11 @@ def send_verification_email(email: str, code: str, username: str) -> None:
 🌱 Вместе делаем город чище!
 """
     
-    # Логируем попытку отправки
+    # Логируем попытку отправки (используем print для гарантированного вывода в Railway)
+    print(f"[EMAIL] Attempting to send verification email to {email} from {settings.DEFAULT_FROM_EMAIL}")
+    print(f"[EMAIL] Settings: HOST={settings.EMAIL_HOST}, PORT={settings.EMAIL_PORT}, USER={settings.EMAIL_HOST_USER}")
+    print(f"[EMAIL] PASSWORD_SET={bool(settings.EMAIL_HOST_PASSWORD)}, PASSWORD_LENGTH={len(settings.EMAIL_HOST_PASSWORD) if settings.EMAIL_HOST_PASSWORD else 0}")
+    
     logger.info(f"Attempting to send verification email to {email} from {settings.DEFAULT_FROM_EMAIL}")
     logger.info(f"Email settings: HOST={settings.EMAIL_HOST}, PORT={settings.EMAIL_PORT}, USER={settings.EMAIL_HOST_USER}")
     
@@ -99,11 +103,20 @@ def send_verification_email(email: str, code: str, username: str) -> None:
             recipient_list=[email],
             fail_silently=False,
         )
-        logger.info(f"Successfully sent verification email to {email}")
+        success_msg = f"Successfully sent verification email to {email}"
+        print(f"[EMAIL] ✓ {success_msg}")
+        logger.info(success_msg)
     except Exception as e:
-        logger.error(f"Failed to send verification email to {email}: {str(e)}")
+        error_msg = f"Failed to send verification email to {email}: {str(e)}"
+        print(f"[EMAIL] ✗ {error_msg}")
+        print(f"[EMAIL] Config: HOST={settings.EMAIL_HOST}, PORT={settings.EMAIL_PORT}, USER={settings.EMAIL_HOST_USER}")
+        print(f"[EMAIL] FROM={settings.DEFAULT_FROM_EMAIL}, PASSWORD_SET={bool(settings.EMAIL_HOST_PASSWORD)}")
+        logger.error(error_msg)
         logger.error(f"Email config: HOST={settings.EMAIL_HOST}, USER={settings.EMAIL_HOST_USER}, FROM={settings.DEFAULT_FROM_EMAIL}")
         logger.error(f"EMAIL_HOST_PASSWORD is set: {bool(settings.EMAIL_HOST_PASSWORD)}")
+        # Выводим тип ошибки для диагностики
+        import traceback
+        logger.error(f"Traceback: {traceback.format_exc()}")
         raise  # Пробрасываем ошибку дальше, чтобы её можно было обработать
 
 
