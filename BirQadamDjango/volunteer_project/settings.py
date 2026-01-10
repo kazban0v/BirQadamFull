@@ -497,9 +497,9 @@ EMAIL_HOST = os.getenv('EMAIL_HOST', 'smtp.gmail.com')
 EMAIL_PORT = int(os.getenv('EMAIL_PORT', '587'))
 EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS', 'True').lower() in ('true', '1', 'yes')
 EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', 'birqadamofficial@gmail.com')
-# Gmail App Password: убираем пробелы, если они есть (Gmail показывает пароль с пробелами, но нужен без пробелов)
-_email_password = os.getenv('EMAIL_HOST_PASSWORD', '').strip()
-EMAIL_HOST_PASSWORD = _email_password.replace(' ', '') if _email_password else ''  # Убираем пробелы из App Password
+# Gmail App Password: убираем пробелы, если они есть (Gmail показывает пароль как "rcmb qxaq arpo fuyv", но нужен "rcmbqxaqarpofuyv")
+_email_password_raw = os.getenv('EMAIL_HOST_PASSWORD', '').strip()
+EMAIL_HOST_PASSWORD = _email_password_raw.replace(' ', '').replace('-', '') if _email_password_raw else ''  # Убираем пробелы и дефисы из App Password
 DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', os.getenv('EMAIL_HOST_USER', 'birqadamofficial@gmail.com'))
 
 # Дополнительные настройки для Gmail
@@ -511,7 +511,10 @@ logger.info(f"Email settings loaded: HOST={EMAIL_HOST}, PORT={EMAIL_PORT}, USER=
 if not EMAIL_HOST_PASSWORD:
     logger.warning("⚠️ EMAIL_HOST_PASSWORD не установлен! Email не будет работать. Установите переменную окружения EMAIL_HOST_PASSWORD в Railway.")
 else:
-    logger.info("✓ EMAIL_HOST_PASSWORD установлен (пароль скрыт)")  
+    # Логируем длину пароля (без самого пароля) и проверяем, что пробелы убраны
+    password_length = len(EMAIL_HOST_PASSWORD)
+    had_spaces = ' ' in _email_password_raw if _email_password_raw else False
+    logger.info(f"✓ EMAIL_HOST_PASSWORD установлен (длина: {password_length} символов, пробелы были удалены: {had_spaces})")  
 
 SESSION_COOKIE_AGE = 86400 * 7  # 7 дней
 SESSION_SAVE_EVERY_REQUEST = True  # Обновляем время жизни сессии при каждом запросе
