@@ -1,10 +1,11 @@
 {
     "$schema": "https://railway.app/railway.schema.json",
     "build": {
-        "builder": "NIXPACKS"
+        "builder": "NIXPACKS",
+        "nixpacksConfigPath": "BirQadamDjango/nixpacks.toml"
     },
     "deploy": {
-        "startCommand": "chmod +x start.sh && bash start.sh",
+        "startCommand": "chmod +x BirQadamDjango/start.sh && bash BirQadamDjango/start.sh",
         "restartPolicyType": "ON_FAILURE",
         "restartPolicyMaxRetries": 10
     }
