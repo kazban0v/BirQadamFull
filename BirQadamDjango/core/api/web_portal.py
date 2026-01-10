@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 
+from django.conf import settings
 from django.contrib.auth import get_user_model, login, logout
 from django.urls import path
 from django.utils import timezone
@@ -254,10 +255,23 @@ class ResendVerificationCodeAPIView(APIView):
                 },
                 status=status.HTTP_200_OK,
             )
-        except Exception as e:
-            logger.error(f"Ошибка повторной отправки кода: {e}")
+        except ValueError as e:
+            # Ошибка генерации кода
+            logger.error(f"Ошибка генерации кода подтверждения: {e}")
             return Response(
-                {'detail': 'Не удалось отправить код. Попробуйте позже.'},
+                {'detail': 'Не удалось сгенерировать код. Попробуйте позже.'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+        except Exception as e:
+            # Ошибка отправки email
+            logger.error(f"Ошибка отправки email на {email}: {str(e)}")
+            logger.error(f"Email settings: HOST={settings.EMAIL_HOST}, USER={settings.EMAIL_HOST_USER}, PASSWORD_SET={bool(settings.EMAIL_HOST_PASSWORD)}")
+            # Возвращаем более информативное сообщение, но без раскрытия деталей
+            error_message = 'Не удалось отправить email. Проверьте настройки почты на сервере.'
+            if settings.DEBUG:
+                error_message += f' Ошибка: {str(e)}'
+            return Response(
+                {'detail': error_message},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 

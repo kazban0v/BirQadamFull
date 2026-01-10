@@ -87,13 +87,24 @@ def send_verification_email(email: str, code: str, username: str) -> None:
 🌱 Вместе делаем город чище!
 """
     
-    send_mail(
-        subject=subject,
-        message=message,
-        from_email=settings.DEFAULT_FROM_EMAIL,
-        recipient_list=[email],
-        fail_silently=False,
-    )
+    # Логируем попытку отправки
+    logger.info(f"Attempting to send verification email to {email} from {settings.DEFAULT_FROM_EMAIL}")
+    logger.info(f"Email settings: HOST={settings.EMAIL_HOST}, PORT={settings.EMAIL_PORT}, USER={settings.EMAIL_HOST_USER}")
+    
+    try:
+        send_mail(
+            subject=subject,
+            message=message,
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[email],
+            fail_silently=False,
+        )
+        logger.info(f"Successfully sent verification email to {email}")
+    except Exception as e:
+        logger.error(f"Failed to send verification email to {email}: {str(e)}")
+        logger.error(f"Email config: HOST={settings.EMAIL_HOST}, USER={settings.EMAIL_HOST_USER}, FROM={settings.DEFAULT_FROM_EMAIL}")
+        logger.error(f"EMAIL_HOST_PASSWORD is set: {bool(settings.EMAIL_HOST_PASSWORD)}")
+        raise  # Пробрасываем ошибку дальше, чтобы её можно было обработать
 
 
 def verify_email_code(email: str, code: str) -> tuple[bool, User | None, str]:
