@@ -1,5 +1,27 @@
+[providers]
+python = "3.11"
+
+[phases.setup]
+nixPkgs = ["python311", "postgresql_16.dev", "gcc"]
+cmds = [
+    "python3 -m ensurepip --upgrade --default-pip",
+    "python3 -m pip install --upgrade pip setuptools wheel",
+    "mkdir -p /usr/local/bin",
+    "printf '#!/bin/bash\\nexec python3 -m pip \"$@\"\\n' > /usr/local/bin/pip",
+    "chmod +x /usr/local/bin/pip",
+    "ln -sf /usr/local/bin/pip /usr/bin/pip || true"
+]
+
+[variables]
+PYTHON_VERSION = "3.11"
+
 [phases.install]
-cmds = ["pip install --no-cache-dir -r requirements.txt"]
+cmds = [
+    "python3 --version",
+    "pip --version",
+    "pip install --no-cache-dir --upgrade pip setuptools wheel",
+    "pip install --no-cache-dir -r requirements.txt"
+]
 
 [start]
 cmd = "chmod +x start.sh && bash start.sh"
