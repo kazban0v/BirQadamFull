@@ -4,6 +4,8 @@ Dockerfile
 **/Dockerfile
 **/Dockerfile.*
 frontend/Dockerfile
+BirQadamDjango/Dockerfile
+./Dockerfile
 
 # Ignore macOS metadata files
 __MACOSX/
