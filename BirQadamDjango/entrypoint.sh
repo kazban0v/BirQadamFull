@@ -2,77 +2,75 @@
 # Entrypoint script for Docker
 # Output all commands for debugging
 set -x
-# Don't use set -e here - we want to see errors, not fail silently
-# set -euo pipefail
 
 # Ensure we see all output immediately
 export PYTHONUNBUFFERED=1
 
-echo "=== Docker Entrypoint Starting ===" | tee /dev/stderr
-echo "[entrypoint] Container starting..." | tee /dev/stderr
-echo "[entrypoint] Date: $(date)" | tee /dev/stderr
-echo "[entrypoint] Current directory: $(pwd)" | tee /dev/stderr
-echo "[entrypoint] Current user: $(whoami 2>&1)" | tee /dev/stderr
-echo "[entrypoint] PORT=$PORT" | tee /dev/stderr
+echo "=== Docker Entrypoint Starting ==="
+echo "[entrypoint] Container starting..."
+echo "[entrypoint] Date: $(date)"
+echo "[entrypoint] Current directory: $(pwd)"
+echo "[entrypoint] Current user: $(whoami)"
+echo "[entrypoint] PORT=$PORT"
 
 # List current directory contents
-echo "[entrypoint] Directory contents:" | tee /dev/stderr
-ls -la 2>&1 | tee /dev/stderr || echo "[entrypoint] Failed to list directory" | tee /dev/stderr
+echo "[entrypoint] Directory contents:"
+ls -la || echo "[entrypoint] Failed to list directory"
 
 # Check if we're in the right directory
 if [ ! -f "manage.py" ]; then
-    echo "[entrypoint] ERROR: manage.py not found in $(pwd)!" | tee /dev/stderr
-    echo "[entrypoint] Searching for manage.py:" | tee /dev/stderr
-    find /app -name "manage.py" 2>&1 | tee /dev/stderr || echo "[entrypoint] manage.py not found anywhere" | tee /dev/stderr
-    exit 1
+    echo "[entrypoint] ERROR: manage.py not found in $(pwd)!"
+    echo "[entrypoint] Searching for manage.py:"
+    find /app -name "manage.py" 2>/dev/null || echo "[entrypoint] manage.py not found anywhere"
+    echo "[entrypoint] Will continue anyway..."
+else
+    echo "[entrypoint] Found manage.py - continuing..."
 fi
 
-echo "[entrypoint] Found manage.py - continuing..." | tee /dev/stderr
-
 # Check Python
-echo "[entrypoint] Python check:" | tee /dev/stderr
-python --version 2>&1 | tee /dev/stderr || echo "[entrypoint] Python version check failed" | tee /dev/stderr
+echo "[entrypoint] Python check:"
+python --version || echo "[entrypoint] Python version check failed"
 
 # Run migrations
-echo "[entrypoint] =========================================" | tee /dev/stderr
-echo "[entrypoint] Running migrations..." | tee /dev/stderr
-echo "[entrypoint] =========================================" | tee /dev/stderr
-python safe_migrate.py 2>&1 | tee /dev/stderr || {
+echo "[entrypoint] ========================================="
+echo "[entrypoint] Running migrations..."
+echo "[entrypoint] ========================================="
+python safe_migrate.py || {
     EXIT_CODE=$?
-    echo "[entrypoint] ERROR: Migrations failed with exit code $EXIT_CODE" | tee /dev/stderr
-    echo "[entrypoint] Continuing anyway to see if app can start..." | tee /dev/stderr
+    echo "[entrypoint] ERROR: Migrations failed with exit code $EXIT_CODE"
+    echo "[entrypoint] Continuing anyway to see if app can start..."
 }
 
 # Collect static files
-echo "[entrypoint] =========================================" | tee /dev/stderr
-echo "[entrypoint] Collecting static files..." | tee /dev/stderr
-echo "[entrypoint] =========================================" | tee /dev/stderr
-python manage.py collectstatic --noinput 2>&1 | tee /dev/stderr || {
+echo "[entrypoint] ========================================="
+echo "[entrypoint] Collecting static files..."
+echo "[entrypoint] ========================================="
+python manage.py collectstatic --noinput || {
     EXIT_CODE=$?
-    echo "[entrypoint] WARNING: collectstatic failed with exit code $EXIT_CODE" | tee /dev/stderr
-    echo "[entrypoint] Continuing anyway..." | tee /dev/stderr
+    echo "[entrypoint] WARNING: collectstatic failed with exit code $EXIT_CODE"
+    echo "[entrypoint] Continuing anyway..."
 }
 
 # Execute the command passed from CMD (usually start.sh)
-echo "[entrypoint] =========================================" | tee /dev/stderr
-echo "[entrypoint] Executing command: $*" | tee /dev/stderr
-echo "[entrypoint] =========================================" | tee /dev/stderr
+echo "[entrypoint] ========================================="
+echo "[entrypoint] Executing command: $*"
+echo "[entrypoint] ========================================="
 
 # Check if start.sh exists and is executable
 if [ -f "/app/start.sh" ]; then
-    echo "[entrypoint] start.sh exists" | tee /dev/stderr
-    ls -la /app/start.sh 2>&1 | tee /dev/stderr
-    echo "[entrypoint] Making sure start.sh is executable..." | tee /dev/stderr
-    chmod +x /app/start.sh 2>&1 | tee /dev/stderr
+    echo "[entrypoint] start.sh exists"
+    ls -la /app/start.sh
+    echo "[entrypoint] Making sure start.sh is executable..."
+    chmod +x /app/start.sh
 else
-    echo "[entrypoint] ERROR: start.sh not found!" | tee /dev/stderr
-    echo "[entrypoint] Looking for start.sh..." | tee /dev/stderr
-    find /app -name "start.sh" 2>&1 | tee /dev/stderr
-    exit 1
+    echo "[entrypoint] ERROR: start.sh not found!"
+    echo "[entrypoint] Looking for start.sh..."
+    find /app -name "start.sh" 2>/dev/null
+    echo "[entrypoint] Will try to execute command anyway: $*"
 fi
 
 # Execute command
-echo "[entrypoint] About to exec: $*" | tee /dev/stderr
+echo "[entrypoint] About to exec: $*"
 exec "$@"
 
 
