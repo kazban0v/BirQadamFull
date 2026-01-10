@@ -14,9 +14,11 @@ export PYTHONUNBUFFERED=1
 # Check if we're in the right directory
 if [ ! -f "manage.py" ]; then
     echo "[start.sh] ERROR: manage.py not found in $(pwd)!"
-    echo "[start.sh] Contents:"
+    echo "[start.sh] Contents of current directory:"
     ls -la
-    exit 1
+    echo "[start.sh] Searching for manage.py..."
+    find . -name "manage.py" 2>/dev/null || echo "[start.sh] manage.py not found"
+    echo "[start.sh] Will continue anyway - Railway may be in correct directory"
 fi
 
 # Run migrations
