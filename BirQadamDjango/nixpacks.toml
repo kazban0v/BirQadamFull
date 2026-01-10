@@ -1,9 +1,9 @@
 [phases.setup]
-nixPkgs = ["python311", "pip"]
+nixPkgs = ["python311", "pip", "postgresql"]
 
 [phases.install]
-cmds = ["pip install -r requirements.txt"]
+cmds = ["pip install --no-cache-dir -r requirements.txt"]
 
 [start]
-cmd = "chmod +x start.sh && ./start.sh"
+cmd = "chmod +x start.sh && bash start.sh"
 
