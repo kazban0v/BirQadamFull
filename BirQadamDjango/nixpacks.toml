@@ -1,12 +1,14 @@
 [phases.setup]
 nixPkgs = ["python311", "postgresql_16.dev", "gcc"]
 cmds = [
-    "python3 -m ensurepip --upgrade --default-pip",
-    "python3 -m pip install --upgrade pip setuptools wheel",
-    "mkdir -p /usr/local/bin",
-    "printf '#!/bin/bash\\nexec python3 -m pip \"$@\"\\n' > /usr/local/bin/pip",
+    "python3 --version",
+    "python3 -m pip --version 2>/dev/null || (python3 -c \"import urllib.request; urllib.request.urlretrieve('https://bootstrap.pypa.io/get-pip.py', '/tmp/get-pip.py')\" && python3 /tmp/get-pip.py && rm -f /tmp/get-pip.py) || true",
+    "python3 -m pip install --upgrade pip setuptools wheel || true",
+    "mkdir -p /usr/local/bin /usr/bin",
+    "echo '#!/bin/bash' > /usr/local/bin/pip",
+    "echo 'exec python3 -m pip \"$@\"' >> /usr/local/bin/pip",
     "chmod +x /usr/local/bin/pip",
-    "ln -sf /usr/local/bin/pip /usr/bin/pip || true"
+    "cp /usr/local/bin/pip /usr/bin/pip 2>/dev/null || ln -sf /usr/local/bin/pip /usr/bin/pip 2>/dev/null || true"
 ]
 
 [variables]
@@ -15,9 +17,9 @@ PYTHON_VERSION = "3.11"
 [phases.install]
 cmds = [
     "python3 --version",
-    "pip --version",
-    "pip install --no-cache-dir --upgrade pip setuptools wheel",
-    "pip install --no-cache-dir -r requirements.txt"
+    "pip --version || python3 -m pip --version",
+    "pip install --no-cache-dir --upgrade pip setuptools wheel || python3 -m pip install --no-cache-dir --upgrade pip setuptools wheel",
+    "pip install --no-cache-dir -r requirements.txt || python3 -m pip install --no-cache-dir -r requirements.txt"
 ]
 
 [start]
