@@ -109,10 +109,32 @@ def send_verification_email(email: str, code: str, username: str) -> None:
     except Exception as e:
         error_msg = f"Failed to send verification email to {email}: {str(e)}"
         print(f"[EMAIL] ✗ {error_msg}")
-        print(f"[EMAIL] Config: HOST={settings.EMAIL_HOST}, PORT={settings.EMAIL_PORT}, USER={settings.EMAIL_HOST_USER}")
+        print(f"[EMAIL] Config: HOST={settings.EMAIL_HOST}, PORT={settings.EMAIL_PORT}, SSL={settings.EMAIL_USE_SSL}, TLS={settings.EMAIL_USE_TLS}, USER={settings.EMAIL_HOST_USER}")
         print(f"[EMAIL] FROM={settings.DEFAULT_FROM_EMAIL}, PASSWORD_SET={bool(settings.EMAIL_HOST_PASSWORD)}")
+        
+        # Детальная диагностика ошибки подключения
+        error_str = str(e).lower()
+        if 'network is unreachable' in error_str or 'errno 101' in error_str:
+            advice = "🚨 Railway блокирует подключение к SMTP серверу! Решения:\n"
+            advice += "1. Установите в Railway переменную: EMAIL_PORT=465 (порт 465 часто разблокирован)\n"
+            advice += "2. Или используйте альтернативный email сервис (SendGrid, Mailgun, Resend)\n"
+            advice += "3. Проверьте, что Railway не блокирует исходящие SMTP подключения"
+            print(f"[EMAIL] 💡 {advice}")
+            logger.error(advice)
+        elif 'authentication failed' in error_str or '535' in error_str:
+            advice = "🚨 Ошибка аутентификации! Проверьте:\n"
+            advice += "1. Правильный ли App Password (без пробелов)\n"
+            advice += "2. Включена ли двухфакторная аутентификация в Gmail\n"
+            advice += "3. Создан ли новый App Password в https://myaccount.google.com/apppasswords"
+            print(f"[EMAIL] 💡 {advice}")
+            logger.error(advice)
+        elif 'timeout' in error_str or 'timed out' in error_str:
+            advice = "🚨 Таймаут подключения! Увеличьте EMAIL_TIMEOUT в Railway (например, 60)"
+            print(f"[EMAIL] 💡 {advice}")
+            logger.error(advice)
+        
         logger.error(error_msg)
-        logger.error(f"Email config: HOST={settings.EMAIL_HOST}, USER={settings.EMAIL_HOST_USER}, FROM={settings.DEFAULT_FROM_EMAIL}")
+        logger.error(f"Email config: HOST={settings.EMAIL_HOST}, PORT={settings.EMAIL_PORT}, SSL={settings.EMAIL_USE_SSL}, TLS={settings.EMAIL_USE_TLS}, USER={settings.EMAIL_HOST_USER}, FROM={settings.DEFAULT_FROM_EMAIL}")
         logger.error(f"EMAIL_HOST_PASSWORD is set: {bool(settings.EMAIL_HOST_PASSWORD)}")
         # Выводим тип ошибки для диагностики
         import traceback

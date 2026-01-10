@@ -494,8 +494,16 @@ AUTH_USER_MODEL = 'core.User'
 # Настройки почты
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = os.getenv('EMAIL_HOST', 'smtp.gmail.com')
-EMAIL_PORT = int(os.getenv('EMAIL_PORT', '587'))
-EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS', 'True').lower() in ('true', '1', 'yes')
+
+# Railway часто блокирует порт 587, используем 465 с SSL по умолчанию
+# Порт 465 с SSL работает лучше на Railway, чем 587 с TLS
+_email_port = os.getenv('EMAIL_PORT', '').strip()
+if _email_port:
+    EMAIL_PORT = int(_email_port)
+else:
+    # По умолчанию пробуем 465 (SSL), если не указано
+    EMAIL_PORT = 465
+
 EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', 'birqadamofficial@gmail.com')
 # Gmail App Password: убираем пробелы, если они есть (Gmail показывает пароль как "rcmb qxaq arpo fuyv", но нужен "rcmbqxaqarpofuyv")
 _email_password_raw = os.getenv('EMAIL_HOST_PASSWORD', '').strip()
@@ -503,13 +511,24 @@ EMAIL_HOST_PASSWORD = _email_password_raw.replace(' ', '').replace('-', '') if _
 DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', os.getenv('EMAIL_HOST_USER', 'birqadamofficial@gmail.com'))
 
 # Дополнительные настройки для Gmail
-EMAIL_TIMEOUT = int(os.getenv('EMAIL_TIMEOUT', '10'))
-EMAIL_USE_SSL = os.getenv('EMAIL_USE_SSL', 'False').lower() in ('true', '1', 'yes')
+EMAIL_TIMEOUT = int(os.getenv('EMAIL_TIMEOUT', '30'))  # Увеличиваем таймаут до 30 секунд
+
+# Для порта 465 используем SSL, для 587 - TLS
+if EMAIL_PORT == 465:
+    EMAIL_USE_SSL = True
+    EMAIL_USE_TLS = False
+elif EMAIL_PORT == 587:
+    EMAIL_USE_SSL = False
+    EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS', 'True').lower() in ('true', '1', 'yes')
+else:
+    # Если указан другой порт, используем настройки из env
+    EMAIL_USE_SSL = os.getenv('EMAIL_USE_SSL', 'False').lower() in ('true', '1', 'yes')
+    EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS', 'True').lower() in ('true', '1', 'yes')
 
 # Логирование настроек email для отладки (всегда, но без пароля)
 # Используем print для гарантированного вывода в логи Railway
-print(f"[EMAIL CONFIG] Email settings loaded: HOST={EMAIL_HOST}, PORT={EMAIL_PORT}, USER={EMAIL_HOST_USER}, FROM={DEFAULT_FROM_EMAIL}")
-logger.info(f"Email settings loaded: HOST={EMAIL_HOST}, PORT={EMAIL_PORT}, USER={EMAIL_HOST_USER}, FROM={DEFAULT_FROM_EMAIL}")
+print(f"[EMAIL CONFIG] Email settings loaded: HOST={EMAIL_HOST}, PORT={EMAIL_PORT}, SSL={EMAIL_USE_SSL}, TLS={EMAIL_USE_TLS}, USER={EMAIL_HOST_USER}, FROM={DEFAULT_FROM_EMAIL}, TIMEOUT={EMAIL_TIMEOUT}")
+logger.info(f"Email settings loaded: HOST={EMAIL_HOST}, PORT={EMAIL_PORT}, SSL={EMAIL_USE_SSL}, TLS={EMAIL_USE_TLS}, USER={EMAIL_HOST_USER}, FROM={DEFAULT_FROM_EMAIL}, TIMEOUT={EMAIL_TIMEOUT}")
 
 if not EMAIL_HOST_PASSWORD:
     warning_msg = "⚠️ EMAIL_HOST_PASSWORD не установлен! Email не будет работать. Установите переменную окружения EMAIL_HOST_PASSWORD в Railway."
@@ -521,7 +540,13 @@ else:
     had_spaces = ' ' in _email_password_raw if _email_password_raw else False
     success_msg = f"✓ EMAIL_HOST_PASSWORD установлен (длина: {password_length} символов, пробелы были удалены: {had_spaces})"
     print(f"[EMAIL CONFIG] {success_msg}")
-    logger.info(success_msg)  
+    logger.info(success_msg)
+    
+    # Совет по использованию порта 465 для Railway
+    if EMAIL_PORT == 587:
+        advice_msg = "💡 Совет: Railway может блокировать порт 587. Попробуйте использовать порт 465 с SSL. Установите в Railway: EMAIL_PORT=465"
+        print(f"[EMAIL CONFIG] {advice_msg}")
+        logger.info(advice_msg)  
 
 SESSION_COOKIE_AGE = 86400 * 7  # 7 дней
 SESSION_SAVE_EVERY_REQUEST = True  # Обновляем время жизни сессии при каждом запросе
