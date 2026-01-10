@@ -1,5 +1,6 @@
 #!/bin/bash
-set -e  # Exit on error
+# Don't use set -e here, we want to see all errors
+set -x  # Debug mode - show all commands
 
 echo "=== Starting BirQadam Django Application ==="
 echo "[start.sh] Current directory: $(pwd)"
@@ -36,14 +37,9 @@ echo "[start.sh] PORT=$PORT"
 echo "[start.sh] Binding to 0.0.0.0:$PORT"
 echo "[start.sh] WSGI application: volunteer_project.wsgi:application"
 
-# Test if Django can import settings
-echo "[start.sh] Testing Django import..."
-if ! python -c "import django; django.setup(); from volunteer_project import settings; print('Django settings loaded successfully')"; then
-    echo "[start.sh] ERROR: Failed to import Django settings!"
-    exit 1
-fi
-
 # Start gunicorn with detailed logging
+# Note: We don't test Django import here - if it fails, gunicorn will show the error
+echo "[start.sh] Launching Gunicorn now..."
 exec gunicorn volunteer_project.wsgi:application \
     --bind "0.0.0.0:$PORT" \
     --workers 3 \
