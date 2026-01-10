@@ -10,8 +10,9 @@ def frontend_url(request):
     """
     Добавляет FRONTEND_URL в контекст шаблонов
     Используется для ссылки на фронтенд приложение
+    Фронтенд доступен на пути /portal на том же домене
     """
-    # Получаем из переменной окружения, в production должно быть задано
+    # Получаем из переменной окружения, в production может быть задано для переопределения
     frontend_url_value = os.getenv('FRONTEND_URL', '')
     
     # Если не задано, используем значение по умолчанию в зависимости от режима
@@ -20,22 +21,23 @@ def frontend_url(request):
             # В разработке используем localhost
             frontend_url_value = 'http://localhost:5173'
         else:
-            # В production: безопасный fallback на текущий домен
-            # Это не сломает сайт, но ссылка может быть неправильной,
-            # если фронтенд на отдельном домене
+            # В production: используем текущий домен с путем /portal
             try:
                 scheme = request.scheme if hasattr(request, 'scheme') else 'https'
                 host = request.get_host() if hasattr(request, 'get_host') else ''
                 if host:
-                    frontend_url_value = f'{scheme}://{host}'
+                    # Фронтенд доступен на том же домене по пути /portal
+                    frontend_url_value = f'{scheme}://{host}/portal'
                 else:
                     # Fallback на текущий домен из настроек
-                    frontend_url_value = getattr(settings, 'ALLOWED_HOSTS', [''])[0] if getattr(settings, 'ALLOWED_HOSTS', []) else ''
-                    if frontend_url_value and not frontend_url_value.startswith('http'):
-                        frontend_url_value = f'https://{frontend_url_value}'
+                    allowed_host = getattr(settings, 'ALLOWED_HOSTS', [''])[0] if getattr(settings, 'ALLOWED_HOSTS', []) else ''
+                    if allowed_host:
+                        frontend_url_value = f'https://{allowed_host}/portal' if not allowed_host.startswith('http') else f'{allowed_host}/portal'
+                    else:
+                        frontend_url_value = '/portal'
             except Exception:
-                # В случае любой ошибки используем пустую строку (безопасно)
-                frontend_url_value = ''
+                # В случае любой ошибки используем относительный путь (безопасно)
+                frontend_url_value = '/portal'
     
     return {
         'FRONTEND_URL': frontend_url_value,

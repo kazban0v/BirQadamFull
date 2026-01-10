@@ -4,6 +4,8 @@ import { fileURLToPath, URL } from 'node:url';
 
 // https://vite.dev/config/
 export default defineConfig({
+  // ✅ Базовый путь для развертывания на /portal
+  base: '/portal/',
   plugins: [vue()],
   resolve: {
     alias: {
