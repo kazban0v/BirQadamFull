@@ -89,11 +89,18 @@ def send_verification_email(email: str, code: str, username: str) -> None:
     
     # Логируем попытку отправки (используем print для гарантированного вывода в Railway)
     print(f"[EMAIL] Attempting to send verification email to {email} from {settings.DEFAULT_FROM_EMAIL}")
-    print(f"[EMAIL] Settings: HOST={settings.EMAIL_HOST}, PORT={settings.EMAIL_PORT}, USER={settings.EMAIL_HOST_USER}")
-    print(f"[EMAIL] PASSWORD_SET={bool(settings.EMAIL_HOST_PASSWORD)}, PASSWORD_LENGTH={len(settings.EMAIL_HOST_PASSWORD) if settings.EMAIL_HOST_PASSWORD else 0}")
+    
+    # Показываем тип backend
+    backend_name = settings.EMAIL_BACKEND.split('.')[-1] if settings.EMAIL_BACKEND else 'unknown'
+    print(f"[EMAIL] Using backend: {backend_name}")
     
     logger.info(f"Attempting to send verification email to {email} from {settings.DEFAULT_FROM_EMAIL}")
-    logger.info(f"Email settings: HOST={settings.EMAIL_HOST}, PORT={settings.EMAIL_PORT}, USER={settings.EMAIL_HOST_USER}")
+    logger.info(f"Using email backend: {backend_name}")
+    
+    # Показываем SMTP настройки только если используется SMTP backend
+    if 'smtp' in settings.EMAIL_BACKEND.lower():
+        print(f"[EMAIL] SMTP Settings: HOST={getattr(settings, 'EMAIL_HOST', 'N/A')}, PORT={getattr(settings, 'EMAIL_PORT', 'N/A')}, USER={getattr(settings, 'EMAIL_HOST_USER', 'N/A')}")
+        logger.info(f"Email settings: HOST={settings.EMAIL_HOST}, PORT={settings.EMAIL_PORT}, USER={settings.EMAIL_HOST_USER}")
     
     try:
         send_mail(
