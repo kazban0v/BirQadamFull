@@ -7,6 +7,128 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+class ResendEmailBackend(BaseEmailBackend):
+    """
+    Email backend для Resend API (https://resend.com)
+    Работает через HTTP REST API, не требует SMTP подключений
+    Проще в настройке, чем SendGrid - без проверок аккаунта
+    """
+    
+    def __init__(self, fail_silently=False, **kwargs):
+        super().__init__(fail_silently=fail_silently, **kwargs)
+        self.api_key = getattr(settings, 'RESEND_API_KEY', None)
+        self.api_url = 'https://api.resend.com/emails'
+        
+        if not self.api_key and not self.fail_silently:
+            logger.warning('RESEND_API_KEY не установлен. Resend не будет работать.')
+    
+    def send_messages(self, email_messages):
+        """
+        Отправляет список email сообщений через Resend API
+        """
+        if not email_messages:
+            return 0
+        
+        if not self.api_key:
+            if self.fail_silently:
+                return 0
+            raise ValueError('RESEND_API_KEY не установлен в settings или переменных окружения')
+        
+        num_sent = 0
+        for message in email_messages:
+            if self._send_email(message):
+                num_sent += 1
+        
+        return num_sent
+    
+    def _send_email(self, message: EmailMessage):
+        """
+        Отправляет одно email сообщение через Resend API
+        """
+        try:
+            # Resend API использует простой формат JSON
+            payload = {
+                'from': message.from_email or settings.DEFAULT_FROM_EMAIL,
+                'to': message.to,
+                'subject': message.subject,
+                'text': message.body,
+            }
+            
+            # Добавляем CC если есть
+            if message.cc:
+                payload['cc'] = message.cc
+            
+            # Добавляем BCC если есть
+            if message.bcc:
+                payload['bcc'] = message.bcc
+            
+            # Добавляем reply_to если есть
+            if message.reply_to:
+                payload['reply_to'] = message.reply_to[0] if isinstance(message.reply_to, list) else message.reply_to
+            
+            # Если есть HTML версия, добавляем её
+            if hasattr(message, 'alternatives') and message.alternatives:
+                for content, mimetype in message.alternatives:
+                    if mimetype == 'text/html':
+                        payload['html'] = content
+                        break
+            
+            # Отправка запроса к Resend API
+            headers = {
+                'Authorization': f'Bearer {self.api_key}',
+                'Content-Type': 'application/json',
+            }
+            
+            print(f"[RESEND] Sending email to {message.to} via Resend API")
+            print(f"[RESEND] From: {payload['from']}")
+            print(f"[RESEND] Subject: {message.subject}")
+            logger.info(f"Sending email to {message.to} via Resend API")
+            
+            response = requests.post(
+                self.api_url,
+                json=payload,
+                headers=headers,
+                timeout=30
+            )
+            
+            # Логируем полный ответ от Resend
+            print(f"[RESEND] Response status: {response.status_code}")
+            logger.info(f"Resend API response status: {response.status_code}")
+            
+            if response.status_code == 200:
+                response_data = response.json()
+                email_id = response_data.get('id', 'unknown')
+                print(f"[RESEND] ✓ Email successfully sent via Resend (ID: {email_id})")
+                logger.info(f"Email successfully sent via Resend to {message.to} (ID: {email_id})")
+                return True
+            else:
+                error_msg = f"Resend API error: {response.status_code} - {response.text}"
+                logger.error(error_msg)
+                print(f"[RESEND] ✗ {error_msg}")
+                
+                # Детальный анализ ошибки
+                try:
+                    error_json = response.json()
+                    if 'message' in error_json:
+                        error_detail = f"Resend error: {error_json['message']}"
+                        print(f"[RESEND] {error_detail}")
+                        logger.error(error_detail)
+                except:
+                    pass
+                
+                if not self.fail_silently:
+                    raise Exception(error_msg)
+                return False
+                
+        except Exception as e:
+            error_msg = f"Error sending email via Resend: {str(e)}"
+            logger.error(error_msg, exc_info=True)
+            print(f"[RESEND] ✗ {error_msg}")
+            if not self.fail_silently:
+                raise
+            return False
+
+
 class SendGridEmailBackend(BaseEmailBackend):
     """
     Email backend для SendGrid API (https://sendgrid.com)

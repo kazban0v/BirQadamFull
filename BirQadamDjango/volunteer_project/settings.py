@@ -492,13 +492,25 @@ AUTH_USER_MODEL = 'core.User'
 
 
 # Настройки почты
-# Приоритет: SendGrid API > SMTP (Gmail и др.)
-# SendGrid работает через HTTP API и не требует SMTP подключений (Railway блокирует SMTP порты)
+# Приоритет: Resend API > SendGrid API > SMTP (Gmail и др.)
+# Resend и SendGrid работают через HTTP API и не требуют SMTP подключений (Railway блокирует SMTP порты)
 
+RESEND_API_KEY = os.getenv('RESEND_API_KEY', '').strip()
 SENDGRID_API_KEY = os.getenv('SENDGRID_API_KEY', '').strip()
 
-if SENDGRID_API_KEY:
-    # Используем SendGrid через REST API (не требует SMTP, работает на Railway)
+if RESEND_API_KEY:
+    # Используем Resend через REST API (проще в настройке, без проверок аккаунта)
+    EMAIL_BACKEND = 'core.email_backends.ResendEmailBackend'
+    DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'birqadamofficial@gmail.com')
+    
+    print(f"[EMAIL CONFIG] ✓ Using Resend API backend (RESEND_API_KEY is set)")
+    print(f"[EMAIL CONFIG] FROM_EMAIL={DEFAULT_FROM_EMAIL}")
+    logger.info(f"Using Resend API backend. FROM_EMAIL={DEFAULT_FROM_EMAIL}")
+    
+    # Дополнительные настройки (не используются, но оставляем для совместимости)
+    EMAIL_TIMEOUT = int(os.getenv('EMAIL_TIMEOUT', '30'))
+elif SENDGRID_API_KEY:
+    # Fallback на SendGrid через REST API (не требует SMTP, работает на Railway)
     EMAIL_BACKEND = 'core.email_backends.SendGridEmailBackend'
     DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'birqadamofficial@gmail.com')
     
