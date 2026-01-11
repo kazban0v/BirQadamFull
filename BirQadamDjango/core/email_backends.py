@@ -95,7 +95,10 @@ class SendGridEmailBackend(BaseEmailBackend):
             }
             
             print(f"[SENDGRID] Sending email to {message.to} via SendGrid API")
+            print(f"[SENDGRID] From: {message.from_email or settings.DEFAULT_FROM_EMAIL}")
+            print(f"[SENDGRID] Subject: {message.subject}")
             logger.info(f"Sending email to {message.to} via SendGrid API")
+            logger.debug(f"SendGrid payload: {payload}")
             
             response = requests.post(
                 self.api_url,
@@ -104,14 +107,34 @@ class SendGridEmailBackend(BaseEmailBackend):
                 timeout=30
             )
             
+            # Логируем полный ответ от SendGrid
+            print(f"[SENDGRID] Response status: {response.status_code}")
+            logger.info(f"SendGrid API response status: {response.status_code}")
+            
             if response.status_code in (200, 202):
+                response_data = response.text
+                print(f"[SENDGRID] ✓ Email accepted by SendGrid API (status {response.status_code})")
+                if response_data:
+                    print(f"[SENDGRID] Response body: {response_data}")
+                    logger.info(f"SendGrid API response: {response_data}")
                 logger.info(f"Email successfully sent via SendGrid to {message.to}")
-                print(f"[SENDGRID] ✓ Email successfully sent to {message.to}")
                 return True
             else:
                 error_msg = f"SendGrid API error: {response.status_code} - {response.text}"
                 logger.error(error_msg)
                 print(f"[SENDGRID] ✗ {error_msg}")
+                
+                # Детальный анализ ошибки
+                try:
+                    error_json = response.json()
+                    if 'errors' in error_json:
+                        for err in error_json['errors']:
+                            error_detail = f"SendGrid error: {err.get('message', 'Unknown error')} (field: {err.get('field', 'N/A')})"
+                            print(f"[SENDGRID] {error_detail}")
+                            logger.error(error_detail)
+                except:
+                    pass
+                
                 if not self.fail_silently:
                     raise Exception(error_msg)
                 return False
