@@ -73,7 +73,10 @@ else:
     # В production: из переменных окружения, или значения по умолчанию
     if not _cors_allowed_origins_env:
         # Значения по умолчанию для Railway (пустой список, но не падаем)
-        CORS_ALLOWED_ORIGINS = []
+        CORS_ALLOWED_ORIGINS = [
+            "https://birqadam.almau.edu.kz",
+            "http://birqadam.almau.edu.kz",  # если нужно
+        ]
         logger.warning(
             "CORS_ALLOWED_ORIGINS not set in production! Using empty list. "
             "For proper CORS, set CORS_ALLOWED_ORIGINS in .env file"
