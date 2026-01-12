@@ -80,7 +80,8 @@ else:
         # Значения по умолчанию для Railway (пустой список, но не падаем)
         CORS_ALLOWED_ORIGINS = [
             "https://birqadam.almau.edu.kz",
-            "http://birqadam.almau.edu.kz",  # если нужно
+            "http://birqadam.almau.edu.kz",
+            "https://cleanup.almau.edu.kz"
         ]
         logger.warning(
             "CORS_ALLOWED_ORIGINS not set in production! Using empty list. "
@@ -105,6 +106,7 @@ CSRF_TRUSTED_ORIGINS_DEV = [
     "http://127.0.0.1:5173",
     "http://localhost:5174",
     "http://127.0.0.1:5174",
+    "https://cleanup.almau.edu.kz",
 ]
 
 # В production используем только адреса из переменных окружения
