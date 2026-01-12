@@ -189,8 +189,9 @@ USE_X_FORWARDED_HOST = _getenv_bool("USE_X_FORWARDED_HOST", False)
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https") if _getenv_bool("USE_X_FORWARDED_PROTO", False) else None
 
 # Если сайт работает по HTTPS (обычно за nginx/traefik), включите эти флаги в .env
-CSRF_COOKIE_SECURE = _getenv_bool("CSRF_COOKIE_SECURE", not DEBUG)
-SESSION_COOKIE_SECURE = _getenv_bool("SESSION_COOKIE_SECURE", not DEBUG)
+SESSION_COOKIE_SECURE = True
+CSRF_COOKIE_SECURE = True
+
 
 # Для SPA на другом домене часто требуется SameSite=None + Secure=True
 SESSION_COOKIE_SAMESITE = "None"
