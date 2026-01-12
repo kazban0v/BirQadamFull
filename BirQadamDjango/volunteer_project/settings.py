@@ -65,10 +65,15 @@ if DEBUG:
     # В разработке: dev адреса + адреса из .env (если есть)
     CORS_ALLOWED_ORIGINS = CORS_ALLOWED_ORIGINS_DEV.copy()
     if _cors_allowed_origins_env:
-        CORS_ALLOWED_ORIGINS.extend([
-            origin.strip() for origin in _cors_allowed_origins_env.split(",") 
-            if origin.strip() and origin.strip() not in CORS_ALLOWED_ORIGINS
-        ])
+        for origin in _cors_allowed_origins_env.split(","):
+            origin = origin.strip()
+            if not origin:
+                continue
+            if not origin.startswith(("http://", "https://")):
+                origin = f"http://{origin}"  # в dev логичнее http
+            if origin not in CORS_ALLOWED_ORIGINS:
+                CORS_ALLOWED_ORIGINS.append(origin)
+
 else:
     # В production: из переменных окружения, или значения по умолчанию
     if not _cors_allowed_origins_env:
@@ -82,7 +87,15 @@ else:
             "For proper CORS, set CORS_ALLOWED_ORIGINS in .env file"
         )
     else:
-        CORS_ALLOWED_ORIGINS = [origin.strip() for origin in _cors_allowed_origins_env.split(",") if origin.strip()]
+        CORS_ALLOWED_ORIGINS = []
+        for origin in _cors_allowed_origins_env.split(","):
+            origin = origin.strip()
+            if not origin:
+                continue
+            # если забыли протокол — добавляем https:// (в проде обычно так)
+            if not origin.startswith(("http://", "https://")):
+                origin = f"https://{origin}"
+            CORS_ALLOWED_ORIGINS.append(origin)
 
 CORS_ALLOW_CREDENTIALS = True
 
