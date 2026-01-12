@@ -50,7 +50,6 @@ services:
       dockerfile: Dockerfile
       args:
         # Vite читает только VITE_* на этапе build. Это значение должно быть задано в .env на деплое.
-        VITE_API_BASE_URL: ${VITE_API_BASE_URL}
     container_name: birqadam_frontend
     ports:
       - "4172:4173"
