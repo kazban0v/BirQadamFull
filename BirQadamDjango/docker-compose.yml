@@ -3,10 +3,6 @@ services:
     build: .
     container_name: birqadam
     command: gunicorn volunteer_project.wsgi:application --bind 0.0.0.0:8000
-    # NOTE: Для production лучше НЕ монтировать исходники, чтобы не получить рассинхрон версий.
-    # Для локальной разработки можно вернуть bind-mount.
-    # volumes:
-    #   - .:/app
     ports:
       - "8002:8000"
     env_file:
@@ -18,25 +14,10 @@ services:
     build: .
     container_name: django_celery
     command: celery -A volunteer_project worker -l info
-    # NOTE: Для production лучше НЕ монтировать исходники, чтобы не получить рассинхрон версий.
-    # volumes:
-    #   - .:/app
     env_file:
       - .env
     depends_on:
       - redis
-
-  # если нужен celery beat — можешь включить
-  # celery_beat:
-  #   build: .
-  #   container_name: django_celery_beat
-  #   command: celery -A config beat -l info
-  #   volumes:
-  #     - .:/app
-  #   env_file:
-  #     - .env
-  #   depends_on:
-  #     - redis
 
   redis:
     image: redis:7-alpine
@@ -50,4 +31,4 @@ services:
       dockerfile: Dockerfile
     container_name: birqadam_frontend
     ports:
-      - "4172:4173"
+      - "127.0.0.1:4172:4173"

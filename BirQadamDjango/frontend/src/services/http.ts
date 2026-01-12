@@ -2,7 +2,7 @@ import axios from 'axios';
 
 // ✅ PRODUCTION: VITE_API_BASE_URL должен быть задан через переменную окружения
 // В development можно задать в .env файле или через vite.config.ts
-const apiBaseUrl = '/api';
+const apiBaseUrl ='https://cleanup.almau.edu.kz';
 
 export const httpClient = axios.create({
   baseURL: apiBaseUrl,

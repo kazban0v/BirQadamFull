@@ -3,10 +3,6 @@ FROM node:20-alpine AS build
 
 WORKDIR /app
 
-# Vite env (build-time)
-ARG VITE_API_BASE_URL
-ENV VITE_API_BASE_URL=${VITE_API_BASE_URL}
-
 # 1. Устанавливаем зависимости
 COPY package*.json ./
 RUN npm ci
