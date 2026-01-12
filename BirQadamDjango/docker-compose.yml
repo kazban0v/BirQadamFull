@@ -48,8 +48,6 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-      args:
-        # Vite читает только VITE_* на этапе build. Это значение должно быть задано в .env на деплое.
     container_name: birqadam_frontend
     ports:
       - "4172:4173"
