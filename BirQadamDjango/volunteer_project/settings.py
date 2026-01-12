@@ -121,54 +121,57 @@ if DEBUG:
             if origin.strip() and origin.strip() not in CSRF_TRUSTED_ORIGINS
         ])
 else:
-    # В production: из переменных окружения, или значения по умолчанию
-    if not _csrf_trusted_origins_env:
-        # Значения по умолчанию для Railway
-        CSRF_TRUSTED_ORIGINS = []
-        logger.warning(
-            "CSRF_TRUSTED_ORIGINS not set in production! Using empty list. "
-            "For proper CSRF protection, set CSRF_TRUSTED_ORIGINS in .env file"
-        )
-    # Обработка специального значения "*" для автоматического определения домена Railway
-    elif _csrf_trusted_origins_env == "*":
-        CSRF_TRUSTED_ORIGINS = []
-        
-        # Пытаемся определить домен Railway автоматически
-        railway_domain = os.getenv("RAILWAY_PUBLIC_DOMAIN") or os.getenv("RAILWAY_STATIC_URL", "")
-        if railway_domain:
-            # Убираем протокол если есть
-            railway_domain = railway_domain.replace("https://", "").replace("http://", "").strip()
-            if railway_domain:
-                CSRF_TRUSTED_ORIGINS = [f"https://{railway_domain}"]
-        
-        # Если не удалось определить из Railway переменных, используем ALLOWED_HOSTS
-        if not CSRF_TRUSTED_ORIGINS:
-            allowed_hosts = os.getenv("ALLOWED_HOSTS", "").strip()
-            if allowed_hosts and allowed_hosts != "*":
-                # Берем первый домен из ALLOWED_HOSTS
-                first_host = allowed_hosts.split(",")[0].strip()
-                if first_host and not first_host.startswith(("*", ".")):
-                    CSRF_TRUSTED_ORIGINS = [f"https://{first_host}"]
-        
-        # Если все еще не удалось определить - используем пустой список (предупреждение уже было)
-        if not CSRF_TRUSTED_ORIGINS:
-            logger.warning(
-                "Could not auto-detect Railway domain for CSRF_TRUSTED_ORIGINS=*. "
-                "Set CSRF_TRUSTED_ORIGINS explicitly in .env file"
-            )
-            CSRF_TRUSTED_ORIGINS = []
-    else:
-        # Обычная обработка: список доменов через запятую
-        CSRF_TRUSTED_ORIGINS = []
-        for origin in _csrf_trusted_origins_env.split(","):
-            origin = origin.strip()
-            if not origin:
-                continue
-            # Автоматически добавляем https:// если протокол не указан
-            if not origin.startswith(("http://", "https://")):
-                # В production всегда используем https
-                origin = f"https://{origin}"
-            CSRF_TRUSTED_ORIGINS.append(origin)
+        CSRF_TRUSTED_ORIGINS = [
+            "https://birqadam.almau.edu.kz",
+            "https://cleanup.almau.edu.kz",  # если реально оттуда шлёшь запросы
+        ]
+    # if not _csrf_trusted_origins_env:
+    #     # Значения по умолчанию для Railway
+    #     CSRF_TRUSTED_ORIGINS = []
+    #     logger.warning(
+    #         "CSRF_TRUSTED_ORIGINS not set in production! Using empty list. "
+    #         "For proper CSRF protection, set CSRF_TRUSTED_ORIGINS in .env file"
+    #     )
+    # # Обработка специального значения "*" для автоматического определения домена Railway
+    # elif _csrf_trusted_origins_env == "*":
+    #     CSRF_TRUSTED_ORIGINS = []
+    #
+    #     # Пытаемся определить домен Railway автоматически
+    #     railway_domain = os.getenv("RAILWAY_PUBLIC_DOMAIN") or os.getenv("RAILWAY_STATIC_URL", "")
+    #     if railway_domain:
+    #         # Убираем протокол если есть
+    #         railway_domain = railway_domain.replace("https://", "").replace("http://", "").strip()
+    #         if railway_domain:
+    #             CSRF_TRUSTED_ORIGINS = [f"https://{railway_domain}"]
+    #
+    #     # Если не удалось определить из Railway переменных, используем ALLOWED_HOSTS
+    #     if not CSRF_TRUSTED_ORIGINS:
+    #         allowed_hosts = os.getenv("ALLOWED_HOSTS", "").strip()
+    #         if allowed_hosts and allowed_hosts != "*":
+    #             # Берем первый домен из ALLOWED_HOSTS
+    #             first_host = allowed_hosts.split(",")[0].strip()
+    #             if first_host and not first_host.startswith(("*", ".")):
+    #                 CSRF_TRUSTED_ORIGINS = [f"https://{first_host}"]
+    #
+    #     # Если все еще не удалось определить - используем пустой список (предупреждение уже было)
+    #     if not CSRF_TRUSTED_ORIGINS:
+    #         logger.warning(
+    #             "Could not auto-detect Railway domain for CSRF_TRUSTED_ORIGINS=*. "
+    #             "Set CSRF_TRUSTED_ORIGINS explicitly in .env file"
+    #         )
+    #         CSRF_TRUSTED_ORIGINS = ['birqadam.almau.edu.kz',]
+    # else:
+    #     # Обычная обработка: список доменов через запятую
+    #     CSRF_TRUSTED_ORIGINS = []
+    #     for origin in _csrf_trusted_origins_env.split(","):
+    #         origin = origin.strip()
+    #         if not origin:
+    #             continue
+    #         # Автоматически добавляем https:// если протокол не указан
+    #         if not origin.startswith(("http://", "https://")):
+    #             # В production всегда используем https
+    #             origin = f"https://{origin}"
+    #         CSRF_TRUSTED_ORIGINS.append(origin)
 
 # -------------------------
 # Production hardening (proxy/https/cookies)
