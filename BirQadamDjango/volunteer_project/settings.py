@@ -44,7 +44,7 @@ else:
         ALLOWED_HOSTS = [host.strip() for host in allowed_hosts_str.split(',') if host.strip()]
 
 # ✅ CORS настройки: в DEBUG разрешаем все, в production только из переменных окружения
-CORS_ALLOW_ALL_ORIGINS = DEBUG  # True только в режиме разработки
+CORS_ALLOW_ALL_ORIGINS = True  # True только в режиме разработки
 
 # Базовые CORS origins для разработки
 CORS_ALLOWED_ORIGINS_DEV = [
