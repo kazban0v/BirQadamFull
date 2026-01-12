@@ -190,8 +190,8 @@ CSRF_COOKIE_SECURE = _getenv_bool("CSRF_COOKIE_SECURE", not DEBUG)
 SESSION_COOKIE_SECURE = _getenv_bool("SESSION_COOKIE_SECURE", not DEBUG)
 
 # Для SPA на другом домене часто требуется SameSite=None + Secure=True
-CSRF_COOKIE_SAMESITE = os.getenv("CSRF_COOKIE_SAMESITE", "Lax")
-SESSION_COOKIE_SAMESITE = os.getenv("SESSION_COOKIE_SAMESITE", "Lax")
+SESSION_COOKIE_SAMESITE = "None"
+CSRF_COOKIE_SAMESITE = "None"
 
 CORS_ALLOW_HEADERS = [
     'accept',
