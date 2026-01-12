@@ -3,7 +3,7 @@ from . import views
 from django.conf.urls.static import static
 from django.conf import settings
 from django.contrib.auth import views as auth_views
-from .views.views import ProfileView, ProfileUpdateView, RapidPasswordResetView
+from .views.views import ProfileView, ProfileUpdateView, RapidPasswordResetView, csrf
 from .views.views import project_detail, ProjectUpdateView, ProjectDeleteView
 from .views.views import RegisterAPIView, LoginAPIView, ProfileAPIView, ProjectsAPIView, JoinProjectAPIView, UserTasksAPIView, OrganizerProjectsAPIView, ProjectParticipantsAPIView, ProjectManagementAPIView, ProjectTasksAPIView, LeaveProjectAPIView, DeviceTokenAPIView, ActivitiesAPIView, AchievementsAPIView, UserProgressAPIView, LeaderboardAPIView
 from .api.photo import SubmitPhotoReportAPIView, OrganizerPhotoReportsAPIView, PhotoReportDetailAPIView, RatePhotoReportAPIView, RejectPhotoReportAPIView, VolunteerPhotoReportsAPIView, TaskPhotosAPIView
@@ -73,7 +73,7 @@ urlpatterns = [
     path('projects/<int:pk>/feedback/', views.project_feedback, name='project_feedback'),
     path('projects/<int:pk>/restore/', views.project_restore, name='project_restore'),
     path('feedback/<int:session_id>/', views.feedback_detail, name='feedback_detail'),
-
+    path("custom-admin/api/csrf/", csrf),
     # Profile
     path('profile/', ProfileView.as_view(), name='profile'),
     path('profile/edit/', ProfileUpdateView.as_view(), name='profile_edit'),

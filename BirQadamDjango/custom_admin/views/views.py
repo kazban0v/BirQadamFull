@@ -46,7 +46,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import authenticate
 import logging
 from core.utils.api_errors import APIError  # ✅ Стандартизированные ошибки API
-
+from django.views.decorators.csrf import ensure_csrf_cookie
 # Logger setup
 logger = logging.getLogger(__name__)
 
@@ -547,6 +547,9 @@ class ProjectDeleteView(DeleteView):
         context = super().get_context_data(**kwargs)
         context['hide_sidebar'] = False
         return context
+@ensure_csrf_cookie
+def csrf(request):
+    return JsonResponse({"ok": True})
 
 @login_required
 def project_detail(request: HttpRequest, pk: int | str) -> HttpResponse:

@@ -4,17 +4,16 @@ import axios from 'axios';
 // В development можно задать в .env файле или через vite.config.ts
 const apiBaseUrl ='https://cleanup.almau.edu.kz';
 // PROD https://cleanup.almau.edu.kz
+// const apiBaseUrl = '/custom-admin/api';
+
 export const httpClient = axios.create({
   baseURL: apiBaseUrl,
   timeout: 15000,
   withCredentials: true,
-  headers: {
-    'Content-Type': 'application/json',
-    Accept: 'application/json',
-  },
   xsrfCookieName: 'csrftoken',
   xsrfHeaderName: 'X-CSRFToken',
 });
+
 
 const CSRF_SAFE_METHODS = ['get', 'head', 'options', 'trace'];
 
