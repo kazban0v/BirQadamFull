@@ -15,7 +15,7 @@ pipeline {
         checkout scm
       }
     }
-
+//birqadam-front-env
     stage('Prepare .env from Jenkins credentials') {
       steps {
         dir('BirQadamDjango') {
@@ -24,6 +24,22 @@ pipeline {
             sh '''
               echo "Using secret .env from Jenkins credentials..."
               cp "$ENV_FILE" .env || true
+              ls -la .env
+            '''
+          }
+        }
+      }
+    }
+
+
+    stage('Prepare .env from Jenkins credentials') {
+      steps {
+        dir('BirQadamDjango') {
+          // В Jenkins должен быть создан Secret file с ID: birqadam-front-env
+          withCredentials([file(credentialsId: 'birqadam-front-env', variable: 'ENV_FILE')]) {
+            sh '''
+              echo "Using secret .env from Jenkins credentials..."
+              cp "$ENV_FILE" ./frontend/.env || true
               ls -la .env
             '''
           }
