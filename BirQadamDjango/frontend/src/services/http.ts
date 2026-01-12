@@ -4,7 +4,7 @@ import axios from 'axios';
 // В development можно задать в .env файле или через vite.config.ts
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? (
   import.meta.env.DEV 
-    ? 'http://localhost:8000'  // Fallback только для development
+    ? '192.168.45.232:8002'  // Fallback только для development
     : (() => {
         console.error('VITE_API_BASE_URL is not set! This is required in production.');
         return '';  // Пустая строка вызовет ошибку, что правильно для production
