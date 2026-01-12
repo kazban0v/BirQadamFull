@@ -2,14 +2,7 @@ import axios from 'axios';
 
 // ✅ PRODUCTION: VITE_API_BASE_URL должен быть задан через переменную окружения
 // В development можно задать в .env файле или через vite.config.ts
-const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? (
-  import.meta.env.DEV 
-    ? 'http://192.168.45.232:8002'  // Fallback только для development
-    : (() => {
-        console.error('VITE_API_BASE_URL is not set! This is required in production.');
-        return '';  // Пустая строка вызовет ошибку, что правильно для production
-      })()
-);
+const apiBaseUrl ='http://192.168.45.232:8002';
 
 export const httpClient = axios.create({
   baseURL: apiBaseUrl,
