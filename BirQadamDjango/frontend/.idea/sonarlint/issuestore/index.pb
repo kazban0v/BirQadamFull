@@ -16,3 +16,7 @@ D
 src/App.vue,5\4\5441d5289c77ce615f0e420c266cdee5d78f3ecd
 ]
 -node_modules/vue-router/dist/vue-router.d.mts,0\c\0cda9c5686f0424e1c35f72f4c99cd2d4a47b4ac
+I
+src/services/organizer.ts,7\2\72cea3a3b5a61969d2cb91d930f0e89cc7b54527
+D
+src/services/auth.ts,9\c\9cf127594a3be14053c3e0e66e6147a5aa1859bd

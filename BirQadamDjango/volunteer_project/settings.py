@@ -103,9 +103,9 @@ CORS_ALLOW_CREDENTIALS = True
 # Базовые CSRF trusted origins для разработки
 CSRF_TRUSTED_ORIGINS_DEV = [
     "http://localhost:5173",
-    "http://127.0.0.1:5173",
+    "http://localhost:5173",
     "http://localhost:5174",
-    "http://127.0.0.1:5174",
+    "http://localhost:5174",
     "https://cleanup.almau.edu.kz",
     "https://birqadam.almau.edu.kz",
 ]

@@ -47,6 +47,10 @@ from django.contrib.auth import authenticate
 import logging
 from core.utils.api_errors import APIError  # ✅ Стандартизированные ошибки API
 from django.views.decorators.csrf import ensure_csrf_cookie
+from rest_framework.authentication import SessionAuthentication
+from django.utils.decorators import method_decorator
+from django.views.decorators.csrf import csrf_exempt
+from rest_framework.permissions import IsAuthenticated
 # Logger setup
 logger = logging.getLogger(__name__)
 
@@ -1252,24 +1256,29 @@ class UserTasksAPIView(APIView):
         return Response(tasks, status=status.HTTP_200_OK)
 
 
+class CsrfExemptSessionAuthentication(SessionAuthentication):
+    """
+    Сессионная аутентификация БЕЗ CSRF-проверки.
+    Используй только для точечных API, где это действительно нужно.
+    """
+    def enforce_csrf(self, request):
+        return  # отключаем CSRF check
+
+
+@method_decorator(csrf_exempt, name="dispatch")  # доп. страховка
 class OrganizerProjectsAPIView(APIView):
     permission_classes = [IsAuthenticated]
+    authentication_classes = [CsrfExemptSessionAuthentication]  # важно
 
     @staticmethod
     def _is_approved_organizer(user: Any) -> bool:
-        """
-        Дополнительная проверка на случай, если флаг is_approved ещё не синхронизирован
-        с новым статусом organizer_status в модели пользователя.
-        """
         is_organizer = getattr(user, 'is_organizer', False)
         is_approved_flag = getattr(user, 'is_approved', False)
         organizer_status = getattr(user, 'organizer_status', None)
-
         return bool(is_organizer and (is_approved_flag or organizer_status == 'approved'))
 
     def _parse_tags(self, raw_tags: Any) -> list[str]:
         import json
-
         if not raw_tags:
             return []
         if isinstance(raw_tags, list):
@@ -1289,7 +1298,6 @@ class OrganizerProjectsAPIView(APIView):
 
     def _parse_date(self, value: Any):
         from datetime import datetime
-
         if not value:
             return None
         if isinstance(value, datetime):
@@ -1322,8 +1330,8 @@ class OrganizerProjectsAPIView(APIView):
         projects_qs = (
             Project.objects.filter(creator=request.user, deleted_at__isnull=True)
             .annotate(
-                volunteer_count=Count('volunteer_projects', distinct=True),  # type: ignore[attr-defined]
-                task_count=Count('tasks', distinct=True),  # type: ignore[attr-defined]
+                volunteer_count=Count('volunteer_projects', distinct=True),
+                task_count=Count('tasks', distinct=True),
             )
             .prefetch_related('tags')
             .order_by('-created_at')
@@ -1331,118 +1339,18 @@ class OrganizerProjectsAPIView(APIView):
 
         projects: list[dict[str, Any]] = []
         for project in projects_qs:
-            projects.append(
-                {
-                    'id': project.id,  # type: ignore[attr-defined]
-                    'title': project.title,
-                    'description': project.description,
-                    'city': project.city,
-                    'status': project.status,
-                    'volunteer_type': project.volunteer_type,
-                    'start_date': project.start_date.isoformat() if project.start_date else None,
-                    'end_date': project.end_date.isoformat() if project.end_date else None,
-                    'created_at': project.created_at.isoformat() if project.created_at else None,
-                    'volunteer_count': project.volunteer_count,
-                    'task_count': project.task_count,
-                    'address': project.address,
-                    'latitude': project.latitude,
-                    'longitude': project.longitude,
-                    'contact_person': project.contact_person,
-                    'contact_phone': project.contact_phone,
-                    'contact_email': project.contact_email,
-                    'contact_telegram': project.contact_telegram,
-                    'info_url': project.info_url,
-                    'tags': list(project.tags.names()),
-                    'cover_image_url': project.cover_image.url if project.cover_image else None,
-                }
-            )
-
-        return Response(projects, status=status.HTTP_200_OK)
-
-    def post(self, request: Any) -> Response:
-        # Детальное логирование для диагностики 401 ошибки
-        print('=' * 80)
-        print('🔍 OrganizerProjectsAPIView POST request debugging')
-        print(f'📧 request.user: {request.user}')
-        print(f'🔐 request.user.is_authenticated: {request.user.is_authenticated}')
-        print(f'👤 request.user type: {type(request.user)}')
-        if hasattr(request.user, 'is_organizer'):
-            print(f'👔 request.user.is_organizer: {request.user.is_organizer}')
-        if hasattr(request.user, 'is_approved'):
-            print(f'✅ request.user.is_approved: {request.user.is_approved}')
-        if hasattr(request.user, 'organizer_status'):
-            print(f'📌 request.user.organizer_status: {request.user.organizer_status}')
-        print(f'📝 Headers: {dict(request.headers) if hasattr(request, "headers") else "N/A"}')
-        # Для DRF API используем request.data
-        from rest_framework.request import Request as DRFRequest
-        if isinstance(request, DRFRequest):
-            data = request.data
-        else:
-            data = getattr(request, 'POST', {})
-        print(f'📦 request.data: {data}')
-        print('=' * 80)
-
-        try:
-            from datetime import datetime, timedelta
-
-            title = data.get('title')  # type: ignore[attr-defined]
-            description = data.get('description')  # type: ignore[attr-defined]
-            city = data.get('city')  # type: ignore[attr-defined]
-            volunteer_type = data.get('volunteer_type', 'any')  # type: ignore[attr-defined]
-
-            if not all([title, description, city]):
-                return Response({'error': 'Missing required fields'}, status=status.HTTP_400_BAD_REQUEST)
-
-            start_date = self._parse_date(data.get('start_date'))  # type: ignore[attr-defined]
-            end_date = self._parse_date(data.get('end_date'))  # type: ignore[attr-defined]
-
-            if not start_date:
-                start_date = datetime.now().date()
-            if not end_date:
-                end_date = (datetime.now() + timedelta(days=30)).date()
-
-            latitude = self._parse_float(data.get('latitude'))  # type: ignore[attr-defined]
-            longitude = self._parse_float(data.get('longitude'))  # type: ignore[attr-defined]
-
-            tags = self._parse_tags(data.get('tags'))  # type: ignore[attr-defined]
-
-            project = Project.objects.create(  # type: ignore[attr-defined]
-                title=title,
-                description=description,
-                city=city,
-                start_date=start_date,
-                end_date=end_date,
-                volunteer_type=volunteer_type,
-                creator=request.user,
-                status='pending',
-                latitude=latitude,
-                longitude=longitude,
-                address=data.get('address', ''),  # type: ignore[attr-defined]
-                contact_person=data.get('contact_person', ''),  # type: ignore[attr-defined]
-                contact_phone=data.get('contact_phone', ''),  # type: ignore[attr-defined]
-                contact_email=data.get('contact_email'),  # type: ignore[attr-defined]
-                contact_telegram=data.get('contact_telegram', ''),  # type: ignore[attr-defined]
-                info_url=data.get('info_url'),  # type: ignore[attr-defined]
-            )
-
-            cover_image = getattr(request, 'FILES', {}).get('cover_image')  # type: ignore[attr-defined]
-            if cover_image:
-                project.cover_image = cover_image
-                project.save(update_fields=['cover_image'])
-
-            if tags:
-                project.tags.set(tags)
-
-            return Response({
-                'id': project.id,  # type: ignore[attr-defined]
+            projects.append({
+                'id': project.id,
                 'title': project.title,
                 'description': project.description,
                 'city': project.city,
                 'status': project.status,
-                'volunteer_count': 0,
-                'task_count': 0,
-                'created_at': project.created_at.isoformat(),
                 'volunteer_type': project.volunteer_type,
+                'start_date': project.start_date.isoformat() if project.start_date else None,
+                'end_date': project.end_date.isoformat() if project.end_date else None,
+                'created_at': project.created_at.isoformat() if project.created_at else None,
+                'volunteer_count': project.volunteer_count,
+                'task_count': project.task_count,
                 'address': project.address,
                 'latitude': project.latitude,
                 'longitude': project.longitude,
@@ -1451,11 +1359,85 @@ class OrganizerProjectsAPIView(APIView):
                 'contact_email': project.contact_email,
                 'contact_telegram': project.contact_telegram,
                 'info_url': project.info_url,
-                'tags': tags,
+                'tags': list(project.tags.names()),
                 'cover_image_url': project.cover_image.url if project.cover_image else None,
-            }, status=status.HTTP_201_CREATED)
-        except Exception as e:
-            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            })
+
+        return Response(projects, status=status.HTTP_200_OK)
+
+    def post(self, request) -> Response:
+        # request здесь всегда DRF Request, можно сразу использовать request.data / request.FILES
+        if not self._is_approved_organizer(request.user):
+            return Response({'error': 'Not authorized'}, status=status.HTTP_403_FORBIDDEN)
+
+        data = request.data
+
+        from datetime import datetime, timedelta
+
+        title = data.get('title')
+        description = data.get('description')
+        city = data.get('city')
+        volunteer_type = data.get('volunteer_type', 'any')
+
+        if not all([title, description, city]):
+            return Response({'error': 'Missing required fields'}, status=status.HTTP_400_BAD_REQUEST)
+
+        start_date = self._parse_date(data.get('start_date')) or datetime.now().date()
+        end_date = self._parse_date(data.get('end_date')) or (datetime.now() + timedelta(days=30)).date()
+
+        latitude = self._parse_float(data.get('latitude'))
+        longitude = self._parse_float(data.get('longitude'))
+
+        tags = self._parse_tags(data.get('tags'))
+
+        project = Project.objects.create(
+            title=title,
+            description=description,
+            city=city,
+            start_date=start_date,
+            end_date=end_date,
+            volunteer_type=volunteer_type,
+            creator=request.user,
+            status='pending',
+            latitude=latitude,
+            longitude=longitude,
+            address=data.get('address', ''),
+            contact_person=data.get('contact_person', ''),
+            contact_phone=data.get('contact_phone', ''),
+            contact_email=data.get('contact_email'),
+            contact_telegram=data.get('contact_telegram', ''),
+            info_url=data.get('info_url'),
+        )
+
+        cover_image = request.FILES.get('cover_image')
+        if cover_image:
+            project.cover_image = cover_image
+            project.save(update_fields=['cover_image'])
+
+        if tags:
+            project.tags.set(tags)
+
+        return Response({
+            'id': project.id,
+            'title': project.title,
+            'description': project.description,
+            'city': project.city,
+            'status': project.status,
+            'volunteer_count': 0,
+            'task_count': 0,
+            'created_at': project.created_at.isoformat(),
+            'volunteer_type': project.volunteer_type,
+            'address': project.address,
+            'latitude': project.latitude,
+            'longitude': project.longitude,
+            'contact_person': project.contact_person,
+            'contact_phone': project.contact_phone,
+            'contact_email': project.contact_email,
+            'contact_telegram': project.contact_telegram,
+            'info_url': project.info_url,
+            'tags': tags,
+            'cover_image_url': project.cover_image.url if project.cover_image else None,
+        }, status=status.HTTP_201_CREATED)
 
 
 class ProjectParticipantsAPIView(APIView):

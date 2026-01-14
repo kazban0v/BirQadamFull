@@ -182,9 +182,12 @@ export async function createOrganizerProject(payload: CreateProjectPayload): Pro
   if (payload.tags && payload.tags.length) formData.append('tags', payload.tags.join(','));
   if (payload.cover_image) formData.append('cover_image', payload.cover_image);
 
-  const { data } = await httpClient.post<OrganizerProject>(ORGANIZER_PROJECTS_URL, formData, {
+
+
+
+  const { data } = await httpClient.post(ORGANIZER_PROJECTS_URL, formData, {
     withCredentials: true,
-    headers: { 'Content-Type': 'multipart/form-data' },
+    // Content-Type для multipart лучше не ставить руками
   });
   return data;
 }

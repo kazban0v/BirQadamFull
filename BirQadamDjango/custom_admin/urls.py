@@ -73,7 +73,8 @@ urlpatterns = [
     path('projects/<int:pk>/feedback/', views.project_feedback, name='project_feedback'),
     path('projects/<int:pk>/restore/', views.project_restore, name='project_restore'),
     path('feedback/<int:session_id>/', views.feedback_detail, name='feedback_detail'),
-    path("custom-admin/api/csrf/", csrf),
+    path("api/csrf/", csrf),
+
     # Profile
     path('profile/', ProfileView.as_view(), name='profile'),
     path('profile/edit/', ProfileUpdateView.as_view(), name='profile_edit'),
