@@ -2,7 +2,7 @@ import axios from 'axios';
 
 // ✅ PRODUCTION: VITE_API_BASE_URL должен быть задан через переменную окружения
 // В development можно задать в .env файле или через vite.config.ts
-const apiBaseUrl ='http://127.0.0.1:8002';
+const apiBaseUrl ='https://cleanup.almau.edu.kz';
 // PROD https://cleanup.almau.edu.kz
 // const apiBaseUrl = '/custom-admin/api';
 
@@ -14,8 +14,8 @@ export const httpClient = axios.create({
   xsrfHeaderName: 'X-CSRFToken',
 });
 
-
-const CSRF_SAFE_METHODS = ['get', 'head', 'options', 'trace'];
+//
+// const CSRF_SAFE_METHODS = ['get', 'head', 'options', 'trace'];
 
 export function getCookie(name: string): string | null {
   if (typeof document === 'undefined') return null;
