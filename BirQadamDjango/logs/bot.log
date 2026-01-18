@@ -1,0 +1,60 @@
+2025-11-11 10:03:11,575 - __main__ - INFO - Загружен файл .env из C:\Users\User\Desktop\BirQadam\BirQadamDjango\bot
+2025-11-11 10:03:11,576 - __main__ - INFO - Добавлен путь к проекту: C:\Users\User\Desktop\BirQadam\BirQadamDjango
+2025-11-11 10:03:11,581 - bot.telegram_bot - INFO - Загружен файл .env из C:\Users\User\Desktop\BirQadam\BirQadamDjango\bot
+2025-11-11 10:03:11,582 - bot.telegram_bot - INFO - Загружен токен: 83214... (частично для безопасности)
+2025-11-11 10:03:12,490 - bot.telegram_bot - INFO - Приложение успешно создано с persistence
+2025-11-11 10:03:12,934 - volunteer_project.settings - WARNING - [WARNING] SENTRY_DSN не установлен - мониторинг ошибок отключен
+2025-11-11 10:04:33,703 - __main__ - INFO - Загружен файл .env из C:\Users\User\Desktop\BirQadam\BirQadamDjango\bot
+2025-11-11 10:04:33,704 - __main__ - INFO - Добавлен путь к проекту: C:\Users\User\Desktop\BirQadam\BirQadamDjango
+2025-11-11 10:04:33,708 - bot.telegram_bot - INFO - Загружен файл .env из C:\Users\User\Desktop\BirQadam\BirQadamDjango\bot
+2025-11-11 10:04:33,709 - bot.telegram_bot - INFO - Загружен токен: 83214... (частично для безопасности)
+2025-11-11 10:04:34,458 - bot.telegram_bot - INFO - Приложение успешно создано с persistence
+2025-11-11 10:04:34,705 - volunteer_project.settings - WARNING - [WARNING] SENTRY_DSN не установлен - мониторинг ошибок отключен
+2025-11-17 20:56:09,805 - __main__ - INFO - Загружен файл .env из C:\Users\User\Desktop\BirQadam\BirQadamDjango\bot
+2025-11-17 20:56:09,808 - __main__ - INFO - Добавлен путь к проекту: C:\Users\User\Desktop\BirQadam\BirQadamDjango
+2025-11-17 20:56:09,811 - bot.telegram_bot - INFO - Загружен файл .env из C:\Users\User\Desktop\BirQadam\BirQadamDjango\bot
+2025-11-17 20:56:09,811 - bot.telegram_bot - INFO - Загружен токен: 75857... (частично для безопасности)
+2025-11-17 20:56:10,332 - bot.telegram_bot - INFO - Приложение успешно создано с persistence
+2025-11-17 20:56:10,485 - volunteer_project.settings - WARNING - [WARNING] SENTRY_DSN не установлен - мониторинг ошибок отключен
+2025-11-17 20:59:58,869 - __main__ - INFO - Загружен файл .env из C:\Users\User\Desktop\BirQadam\BirQadamDjango\bot
+2025-11-17 20:59:58,871 - __main__ - INFO - Добавлен путь к проекту: C:\Users\User\Desktop\BirQadam\BirQadamDjango
+2025-11-17 20:59:58,873 - bot.telegram_bot - INFO - Загружен файл .env из C:\Users\User\Desktop\BirQadam\BirQadamDjango\bot
+2025-11-17 20:59:58,874 - bot.telegram_bot - INFO - Загружен токен: 75857... (частично для безопасности)
+2025-11-17 20:59:59,358 - bot.telegram_bot - INFO - Приложение успешно создано с persistence
+2025-11-17 20:59:59,522 - volunteer_project.settings - WARNING - [WARNING] SENTRY_DSN не установлен - мониторинг ошибок отключен
+2025-11-17 21:07:20,650 - __main__ - INFO - Загружен файл .env из C:\Users\User\Desktop\BirQadam\BirQadamDjango\bot
+2025-11-17 21:07:20,652 - __main__ - INFO - Добавлен путь к проекту: C:\Users\User\Desktop\BirQadam\BirQadamDjango
+2025-11-17 21:07:20,654 - bot.telegram_bot - INFO - Загружен файл .env из C:\Users\User\Desktop\BirQadam\BirQadamDjango\bot
+2025-11-17 21:07:20,654 - bot.telegram_bot - INFO - Загружен токен: 75857... (частично для безопасности)
+2025-11-17 21:07:21,110 - bot.telegram_bot - INFO - Приложение успешно создано с persistence
+2025-11-17 21:07:21,256 - volunteer_project.settings - WARNING - [WARNING] SENTRY_DSN не установлен - мониторинг ошибок отключен
+2025-11-17 21:13:06,827 - __main__ - INFO - Загружен файл .env из C:\Users\User\Desktop\BirQadam\BirQadamDjango\bot
+2025-11-17 21:13:06,828 - __main__ - INFO - Добавлен путь к проекту: C:\Users\User\Desktop\BirQadam\BirQadamDjango
+2025-11-17 21:13:06,831 - bot.telegram_bot - INFO - Загружен файл .env из C:\Users\User\Desktop\BirQadam\BirQadamDjango\bot
+2025-11-17 21:13:06,831 - bot.telegram_bot - INFO - Загружен токен: 75857... (частично для безопасности)
+2025-11-17 21:13:07,282 - bot.telegram_bot - INFO - Приложение успешно создано с persistence
+2025-11-17 21:13:07,414 - volunteer_project.settings - WARNING - [WARNING] SENTRY_DSN не установлен - мониторинг ошибок отключен
+2025-11-17 21:17:05,766 - __main__ - INFO - Загружен файл .env из C:\Users\User\Desktop\BirQadam\BirQadamDjango\bot
+2025-11-17 21:17:05,766 - __main__ - INFO - Добавлен путь к проекту: C:\Users\User\Desktop\BirQadam\BirQadamDjango
+2025-11-17 21:17:05,768 - bot.telegram_bot - INFO - Загружен файл .env из C:\Users\User\Desktop\BirQadam\BirQadamDjango\bot
+2025-11-17 21:17:05,769 - bot.telegram_bot - INFO - Загружен токен: 75857... (частично для безопасности)
+2025-11-17 21:17:06,228 - bot.telegram_bot - INFO - Приложение успешно создано с persistence
+2025-11-17 21:17:06,592 - volunteer_project.settings - WARNING - [WARNING] SENTRY_DSN не установлен - мониторинг ошибок отключен
+2025-11-17 21:26:11,823 - __main__ - INFO - Загружен файл .env из C:\Users\User\Desktop\BirQadam\BirQadamDjango\bot
+2025-11-17 21:26:11,823 - __main__ - INFO - Добавлен путь к проекту: C:\Users\User\Desktop\BirQadam\BirQadamDjango
+2025-11-17 21:26:11,826 - bot.telegram_bot - INFO - Загружен файл .env из C:\Users\User\Desktop\BirQadam\BirQadamDjango\bot
+2025-11-17 21:26:11,826 - bot.telegram_bot - INFO - Загружен токен: 75857... (частично для безопасности)
+2025-11-17 21:26:12,252 - bot.telegram_bot - INFO - Приложение успешно создано с persistence
+2025-11-17 21:26:12,391 - volunteer_project.settings - WARNING - [WARNING] SENTRY_DSN не установлен - мониторинг ошибок отключен
+2025-11-18 08:56:48,595 - __main__ - INFO - Загружен файл .env из C:\Users\User\Desktop\BirQadam\BirQadamDjango\bot
+2025-11-18 08:56:48,597 - __main__ - INFO - Добавлен путь к проекту: C:\Users\User\Desktop\BirQadam\BirQadamDjango
+2025-11-18 08:56:48,601 - bot.telegram_bot - INFO - Загружен файл .env из C:\Users\User\Desktop\BirQadam\BirQadamDjango\bot
+2025-11-18 08:56:48,601 - bot.telegram_bot - INFO - Загружен токен: 75857... (частично для безопасности)
+2025-11-18 08:56:49,099 - bot.telegram_bot - INFO - Приложение успешно создано с persistence
+2025-11-18 08:56:49,267 - volunteer_project.settings - WARNING - [WARNING] SENTRY_DSN не установлен - мониторинг ошибок отключен
+2025-11-18 12:09:34,322 - __main__ - INFO - Загружен файл .env из C:\Users\User\Desktop\BirQadam\BirQadamDjango\bot
+2025-11-18 12:09:34,324 - __main__ - INFO - Добавлен путь к проекту: C:\Users\User\Desktop\BirQadam\BirQadamDjango
+2025-11-18 12:09:34,328 - bot.telegram_bot - INFO - Загружен файл .env из C:\Users\User\Desktop\BirQadam\BirQadamDjango\bot
+2025-11-18 12:09:34,329 - bot.telegram_bot - INFO - Загружен токен: 75857... (частично для безопасности)
+2025-11-18 12:09:34,862 - bot.telegram_bot - INFO - Приложение успешно создано с persistence
+2025-11-18 12:09:35,065 - volunteer_project.settings - WARNING - [WARNING] SENTRY_DSN не установлен - мониторинг ошибок отключен
