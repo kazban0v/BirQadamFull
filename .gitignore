@@ -41,3 +41,10 @@ node_modules/
 # Исключаем только node_modules и другие временные файлы
 # BirQadamDjango/frontend/dist/ должен быть в git для production deployment
 build/
+
+# Backup files
+backup_DB/
+*.backup
+*.bak
+*.sql
+*.dump
