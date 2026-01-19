@@ -104,7 +104,8 @@ const submit = async () => {
       await authStore.loadUser();
       showSnackbar('Регистрация успешно завершена. Добро пожаловать!', 'success');
       resetForm();
-      const dashboardUrl = response?.dashboard_url || '/volunteer/dashboard';
+      // Используем имя роута вместо хардкода пути
+      const dashboardUrl = response?.dashboard_url || { name: 'volunteer-dashboard' };
       setTimeout(() => {
         router.push(dashboardUrl);
       }, 1000);

@@ -81,7 +81,14 @@ def get_volunteer_dashboard_data(user) -> Dict[str, Any]:  # type: ignore[no-any
         accepted = bool(assignment and assignment.accepted)
         completed = bool(assignment and assignment.completed)
         has_photo_report = bool(photo_map.get(task.id))
-        photo_status = photo_map[task.id][0].status if has_photo_report else getattr(task, 'photo_status', None)
+        # Исправление: проверяем, что список не пустой перед доступом к элементу
+        photo_status = None
+        if has_photo_report and photo_map.get(task.id):
+            photo_list = photo_map[task.id]
+            if photo_list and len(photo_list) > 0:
+                photo_status = photo_list[0].status
+        if photo_status is None:
+            photo_status = getattr(task, 'photo_status', None)
         can_upload_photo = accepted and not has_photo_report
 
         tasks_data.append(

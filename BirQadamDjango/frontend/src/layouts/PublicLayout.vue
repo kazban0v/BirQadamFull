@@ -24,11 +24,15 @@ const volunteerName = computed(() => {
   return authStore.user.full_name || authStore.user.username || 'Мой кабинет';
 });
 
-const dashboardRoute = computed(() =>
-  authStore.user && (authStore.user.role === 'organizer' || authStore.user.is_organizer)
-    ? '/organizer/dashboard'
-    : '/volunteer/dashboard',
-);
+const dashboardRoute = computed(() => {
+  const user = authStore.user;
+  const isOrganizer = !!user && 
+    (user.role === 'organizer' || user.is_organizer) && 
+    user.organizer_status === 'approved';
+  return isOrganizer 
+    ? { name: 'organizer-dashboard' }
+    : { name: 'volunteer-dashboard' };
+});
 
 const handleLogout = async () => {
   await authStore.logout();

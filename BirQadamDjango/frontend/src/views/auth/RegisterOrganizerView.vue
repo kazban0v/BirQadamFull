@@ -195,7 +195,8 @@ const submit = async () => {
       await authStore.loadUser();
       showSnackbar('Заявка отправлена. Вы автоматически вошли в систему.', 'success');
       resetForms();
-      const dashboardUrl = response?.dashboard_url || '/organizer/dashboard';
+      // Используем имя роута вместо хардкода пути
+      const dashboardUrl = response?.dashboard_url || { name: 'organizer-dashboard' };
       setTimeout(() => {
         router.push(dashboardUrl);
       }, 1000);

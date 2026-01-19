@@ -84,5 +84,24 @@ export interface VolunteerDashboardResponse {
 
 export async function fetchVolunteerDashboard(): Promise<VolunteerDashboardResponse> {
   const { data } = await httpClient.get<VolunteerDashboardResponse>('/api/web/volunteer/dashboard/');
-  return data;
+  // Защита от undefined/null - всегда возвращаем валидную структуру с массивами
+  return {
+    summary: data?.summary || {
+      active_tasks: 0,
+      completed_tasks: 0,
+      upcoming_tasks: 0,
+      active_projects: 0,
+      pending_photos: 0,
+      total_photos: 0,
+      unread_notifications: 0,
+    },
+    tasks: Array.isArray(data?.tasks) ? data.tasks : [],
+    projects: Array.isArray(data?.projects) ? data.projects : [],
+    photos: Array.isArray(data?.photos) ? data.photos : [],
+    notifications: Array.isArray(data?.notifications) ? data.notifications : [],
+    moderation: data?.moderation || {
+      pending_photo_reports: 0,
+      unread_notifications: 0,
+    },
+  };
 }

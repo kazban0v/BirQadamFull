@@ -755,15 +755,21 @@ class VolunteerDashboardAPIView(APIView):
 
     def get(self, request, *args, **kwargs):
         data = get_volunteer_dashboard_data(request.user)
+        # Гарантируем, что всегда возвращаются массивы, даже если данные отсутствуют
+        tasks_list = data.get('tasks') or []
+        projects_list = data.get('projects') or []
+        photos_list = data.get('photos') or []
+        notifications_list = data.get('notifications') or []
+        
         response = {
-            'summary': data['summary'],
-            'tasks': VolunteerTaskSummarySerializer(data['tasks'], many=True, context={'request': request}).data,
-            'projects': VolunteerProjectSerializer(data['projects'], many=True, context={'request': request}).data,
-            'photos': VolunteerPhotoSerializer(data['photos'], many=True, context={'request': request}).data,
-            'notifications': VolunteerNotificationSerializer(data['notifications'], many=True, context={'request': request}).data,
+            'summary': data.get('summary', {}),
+            'tasks': VolunteerTaskSummarySerializer(tasks_list, many=True, context={'request': request}).data or [],
+            'projects': VolunteerProjectSerializer(projects_list, many=True, context={'request': request}).data or [],
+            'photos': VolunteerPhotoSerializer(photos_list, many=True, context={'request': request}).data or [],
+            'notifications': VolunteerNotificationSerializer(notifications_list, many=True, context={'request': request}).data or [],
             'moderation': {
-                'pending_photo_reports': data['summary'].get('pending_photos', 0),
-                'unread_notifications': data['summary'].get('unread_notifications', 0),
+                'pending_photo_reports': data.get('summary', {}).get('pending_photos', 0),
+                'unread_notifications': data.get('summary', {}).get('unread_notifications', 0),
             },
         }
         return Response(response, status=status.HTTP_200_OK)

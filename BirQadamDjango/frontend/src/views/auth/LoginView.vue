@@ -36,7 +36,20 @@ const submit = async () => {
       password: formState.password,
     });
 
-    const redirect = (route.query.redirect as string) || data.dashboard_url || '/volunteer/dashboard';
+    // Определяем правильный дашборд на основе роли пользователя
+    const user = authStore.user;
+    const isOrganizer = !!user && 
+      (user.role === 'organizer' || user.is_organizer) && 
+      user.organizer_status === 'approved';
+    
+    const defaultDashboard = isOrganizer 
+      ? { name: 'organizer-dashboard' }
+      : { name: 'volunteer-dashboard' };
+    
+    const redirect = route.query.redirect 
+      ? route.query.redirect as string
+      : (data.dashboard_url || defaultDashboard);
+    
     router.push(redirect);
   } catch (error: any) {
     const detail = error?.response?.data?.detail || 'Не удалось выполнить вход.';

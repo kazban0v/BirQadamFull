@@ -17,8 +17,12 @@ def frontend_view(request, path=''):
     index_path = frontend_dist_path / 'index.html'
     
     if index_path.exists():
-        # Просто отдаем index.html - пути уже правильные после пересборки
-        return FileResponse(open(index_path, 'rb'), content_type='text/html; charset=utf-8')
+        # Для index.html отключаем кэширование, так как это SPA и файл может меняться
+        response = FileResponse(open(index_path, 'rb'), content_type='text/html; charset=utf-8')
+        response['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+        response['Pragma'] = 'no-cache'
+        response['Expires'] = '0'
+        return response
     else:
         return HttpResponse('Frontend not found. Please build the frontend first: cd frontend && npm run build', status=404)
 
@@ -29,6 +33,10 @@ def serve_frontend_file(request, path, document_root=None):
     Работает в production через FileResponse
     """
     from mimetypes import guess_type
+    import hashlib
+    from django.utils.http import http_date
+    from django.views.static import was_modified_since
+    from django.http import HttpResponseNotModified
     
     # Получаем document_root из kwargs если передан
     if document_root is None:
@@ -45,6 +53,23 @@ def serve_frontend_file(request, path, document_root=None):
     
     if not os.path.exists(file_path) or not os.path.isfile(file_path):
         return HttpResponse('File not found', status=404)
+    
+    # Получаем информацию о файле
+    stat = os.stat(file_path)
+    file_size = stat.st_size
+    file_mtime = stat.st_mtime
+    
+    # Проверяем If-Modified-Since заголовок
+    if not was_modified_since(request.META.get('HTTP_IF_MODIFIED_SINCE'), file_mtime):
+        return HttpResponseNotModified()
+    
+    # Генерируем ETag на основе размера файла и времени модификации
+    etag = hashlib.md5(f"{file_size}-{file_mtime}".encode()).hexdigest()
+    
+    # Проверяем If-None-Match заголовок
+    if_none_match = request.META.get('HTTP_IF_NONE_MATCH')
+    if if_none_match and if_none_match.strip('"') == etag:
+        return HttpResponseNotModified()
     
     # Определяем content-type
     content_type, _ = guess_type(file_path)
@@ -67,8 +92,14 @@ def serve_frontend_file(request, path, document_root=None):
         else:
             content_type = 'application/octet-stream'
     
-    # Отдаем файл
-    return FileResponse(open(file_path, 'rb'), content_type=content_type)
+    # Отдаем файл с заголовками кэширования
+    response = FileResponse(open(file_path, 'rb'), content_type=content_type)
+    response['Last-Modified'] = http_date(file_mtime)
+    response['ETag'] = f'"{etag}"'
+    # Кэшируем статические файлы на 1 год (они имеют хеш в имени, поэтому безопасно)
+    response['Cache-Control'] = 'public, max-age=31536000, immutable'
+    
+    return response
 
 
 # Создаем функции для обслуживания статических файлов с правильными document_root

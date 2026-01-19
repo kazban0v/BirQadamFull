@@ -1,9 +1,7 @@
 <script setup lang="ts">
 import { onMounted } from 'vue';
-import { useRouter } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
 
-const router = useRouter();
 const authStore = useAuthStore();
 
 onMounted(async () => {
@@ -11,18 +9,8 @@ onMounted(async () => {
   if (!authStore.initialized) {
     await authStore.initialize();
   }
-  
-  // Если пользователь уже залогинен, перенаправляем на соответствующий дашборд
-  if (authStore.isAuthenticated && authStore.user) {
-    // Проверяем, что пользователь организатор И одобрен администратором
-    const isOrganizer = (authStore.user.role === 'organizer' || authStore.user.is_organizer) && 
-      authStore.user.organizer_status === 'approved';
-    if (isOrganizer) {
-      router.push({ name: 'organizer-dashboard' });
-    } else {
-      router.push({ name: 'volunteer-dashboard' });
-    }
-  }
+  // Убрали автоматический редирект - пользователь может остаться на главной странице
+  // даже будучи залогиненным, чтобы увидеть информацию о портале
 });
 </script>
 
