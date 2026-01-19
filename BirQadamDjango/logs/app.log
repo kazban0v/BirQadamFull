@@ -14873,3 +14873,62 @@ INFO 2025-11-23 13:05:19,425 telegram_bot 1 129500701236096 Загружен т�
 INFO 2025-11-23 13:05:19,425 telegram_bot 7 139859353017216 Загружен токен: 75857... (частично для безопасности)
 INFO 2025-11-23 13:05:19,509 telegram_bot 1 129500701236096 Приложение успешно создано с persistence
 INFO 2025-11-23 13:05:19,544 telegram_bot 7 139859353017216 Приложение успешно создано с persistence
+INFO 2026-01-19 16:25:01,375 telegram_bot 55772 8398921856 Загружен файл .env из /Users/temirlankaribaev/BirQadamFull/BirQadamDjango
+ERROR 2026-01-19 16:25:01,375 telegram_bot 55772 8398921856 TELEGRAM_BOT_TOKEN не установлен в переменных окружения
+INFO 2026-01-19 16:27:22,721 telegram_bot 55938 8398921856 Загружен файл .env из /Users/temirlankaribaev/BirQadamFull/BirQadamDjango
+INFO 2026-01-19 16:27:22,722 telegram_bot 55938 8398921856 Загружен токен: 83653... (частично для безопасности)
+INFO 2026-01-19 16:27:22,807 telegram_bot 55938 8398921856 Приложение успешно создано с persistence
+INFO 2026-01-19 16:29:51,065 telegram_bot 55995 8398921856 Загружен файл .env из /Users/temirlankaribaev/BirQadamFull/BirQadamDjango
+INFO 2026-01-19 16:29:51,066 telegram_bot 55995 8398921856 Загружен токен: 83653... (частично для безопасности)
+INFO 2026-01-19 16:29:51,142 telegram_bot 55995 8398921856 Приложение успешно создано с persistence
+INFO 2026-01-19 16:30:10,139 signals 55995 8398921856 New user created: tim, skipping notification
+INFO 2026-01-19 16:30:19,055 telegram_bot 56033 8398921856 Загружен файл .env из /Users/temirlankaribaev/BirQadamFull/BirQadamDjango
+INFO 2026-01-19 16:30:19,055 telegram_bot 56033 8398921856 Загружен токен: 83653... (частично для безопасности)
+INFO 2026-01-19 16:30:19,130 telegram_bot 56033 8398921856 Приложение успешно создано с persistence
+INFO 2026-01-19 16:30:19,484 telegram_bot 56034 8398921856 Загружен файл .env из /Users/temirlankaribaev/BirQadamFull/BirQadamDjango
+INFO 2026-01-19 16:30:19,485 telegram_bot 56034 8398921856 Загружен токен: 83653... (частично для безопасности)
+INFO 2026-01-19 16:30:19,541 telegram_bot 56034 8398921856 Приложение успешно создано с persistence
+INFO 2026-01-19 16:30:19,566 autoreload 56034 8398921856 Watching for file changes with StatReloader
+INFO 2026-01-19 16:30:24,178 basehttp 56034 6191689728 "GET / HTTP/1.1" 200 6283
+INFO 2026-01-19 16:30:24,267 basehttp 56034 6191689728 "GET / HTTP/1.1" 200 6228
+INFO 2026-01-19 16:30:24,658 basehttp 56034 6208516096 "GET /static/about_site/js/jquery-3.3.1.min.js HTTP/1.1" 200 86926
+INFO 2026-01-19 16:30:24,660 basehttp 56034 6191689728 "GET /static/about_site/images/logob.png HTTP/1.1" 200 934097
+INFO 2026-01-19 16:30:24,677 basehttp 56034 6191689728 "GET /static/about_site/js/aos.js HTTP/1.1" 200 14244
+INFO 2026-01-19 16:30:25,458 basehttp 56034 6225342464 "GET /static/about_site/images/hero-bg2.jpg.webp HTTP/1.1" 200 37260
+INFO 2026-01-19 16:30:25,459 basehttp 56034 6208516096 "GET /static/about_site/images/hero-bg1.jpg HTTP/1.1" 200 192956
+INFO 2026-01-19 16:30:25,462 basehttp 56034 6191689728 "GET /static/about_site/images/hero-bg.jpg HTTP/1.1" 200 384561
+INFO 2026-01-19 16:30:25,468 basehttp 56034 6242168832 "GET /static/about_site/images/hero-bg3.jpg HTTP/1.1" 200 924443
+INFO 2026-01-19 16:30:40,309 basehttp 56034 6191689728 "GET / HTTP/1.1" 200 6273
+INFO 2026-01-19 16:30:40,383 basehttp 56034 6225342464 "GET /static/about_site/js/aos.js HTTP/1.1" 200 14244
+INFO 2026-01-19 16:30:40,385 basehttp 56034 6208516096 "GET /static/about_site/js/jquery-3.3.1.min.js HTTP/1.1" 200 86926
+INFO 2026-01-19 16:30:40,387 basehttp 56034 6191689728 "GET /static/about_site/images/logob.png HTTP/1.1" 200 934097
+INFO 2026-01-19 16:30:42,428 basehttp 56034 6208516096 "GET /static/about_site/images/hero-bg1.jpg HTTP/1.1" 200 192956
+INFO 2026-01-19 16:30:42,430 basehttp 56034 6225342464 "GET /static/about_site/images/hero-bg.jpg HTTP/1.1" 200 384561
+WARNING 2026-01-19 16:30:42,435 basehttp 56034 6208516096 "POST /api/track/data/ HTTP/1.1" 404 1360
+INFO 2026-01-19 16:30:42,436 basehttp 56034 6191689728 "GET /static/about_site/images/hero-bg2.jpg.webp HTTP/1.1" 200 37260
+INFO 2026-01-19 16:30:42,439 basehttp 56034 6225342464 "GET /static/about_site/images/hero-bg3.jpg HTTP/1.1" 200 924443
+WARNING 2026-01-19 16:30:46,160 basehttp 56034 6242168832 "GET /apple-touch-icon-precomposed.png HTTP/1.1" 404 1375
+WARNING 2026-01-19 16:30:46,160 basehttp 56034 6258995200 "GET /apple-touch-icon.png HTTP/1.1" 404 1314
+WARNING 2026-01-19 16:30:46,161 basehttp 56034 6275821568 "GET /favicon.ico HTTP/1.1" 404 1332
+INFO 2026-01-19 16:30:46,174 basehttp 56034 6292647936 "GET /static/about_site/images/logob.png HTTP/1.1" 200 934097
+INFO 2026-01-19 16:30:46,175 basehttp 56034 6309474304 "GET /static/about_site/images/logob.png HTTP/1.1" 200 934097
+WARNING 2026-01-19 16:30:51,728 basehttp 56034 6191689728 "POST /api/track/data/ HTTP/1.1" 404 1367
+INFO 2026-01-19 16:34:20,006 autoreload 56034 8398921856 /Users/temirlankaribaev/BirQadamFull/BirQadamDjango/volunteer_project/urls.py changed, reloading.
+INFO 2026-01-19 16:34:20,864 telegram_bot 56436 8398921856 Загружен файл .env из /Users/temirlankaribaev/BirQadamFull/BirQadamDjango
+INFO 2026-01-19 16:34:20,864 telegram_bot 56436 8398921856 Загружен токен: 83653... (частично для безопасности)
+INFO 2026-01-19 16:34:20,941 telegram_bot 56436 8398921856 Приложение успешно создано с persistence
+INFO 2026-01-19 16:34:20,984 autoreload 56436 8398921856 Watching for file changes with StatReloader
+INFO 2026-01-19 16:36:01,283 autoreload 56436 8398921856 /Users/temirlankaribaev/BirQadamFull/BirQadamDjango/volunteer_project/urls.py changed, reloading.
+INFO 2026-01-19 16:36:01,970 telegram_bot 56566 8398921856 Загружен файл .env из /Users/temirlankaribaev/BirQadamFull/BirQadamDjango
+INFO 2026-01-19 16:36:01,970 telegram_bot 56566 8398921856 Загружен токен: 83653... (частично для безопасности)
+INFO 2026-01-19 16:36:02,042 telegram_bot 56566 8398921856 Приложение успешно создано с persistence
+INFO 2026-01-19 16:36:02,082 autoreload 56566 8398921856 Watching for file changes with StatReloader
+INFO 2026-01-19 16:50:31,007 telegram_bot 61259 8398921856 Загружен файл .env из /Users/temirlankaribaev/BirQadamFull/BirQadamDjango
+INFO 2026-01-19 16:50:31,007 telegram_bot 61259 8398921856 Загружен токен: 83653... (частично для безопасности)
+INFO 2026-01-19 16:50:31,076 telegram_bot 61259 8398921856 Приложение успешно создано с persistence
+WARNING 2026-01-19 16:50:31,080 notification_service 61259 8398921856 Модуль requests не установлен. Push-уведомления будут отключены.
+INFO 2026-01-19 16:50:31,371 telegram_bot 61267 8398921856 Загружен файл .env из /Users/temirlankaribaev/BirQadamFull/BirQadamDjango
+INFO 2026-01-19 16:50:31,371 telegram_bot 61267 8398921856 Загружен токен: 83653... (частично для безопасности)
+INFO 2026-01-19 16:50:31,428 telegram_bot 61267 8398921856 Приложение успешно создано с persistence
+WARNING 2026-01-19 16:50:31,431 notification_service 61267 8398921856 Модуль requests не установлен. Push-уведомления будут отключены.
+INFO 2026-01-19 16:50:31,434 autoreload 61267 8398921856 Watching for file changes with StatReloader

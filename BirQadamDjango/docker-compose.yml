@@ -27,8 +27,10 @@ services:
 
   frontend:
     build:
-      context: ./frontend
+      context: ../BirQadamFrontend
       dockerfile: Dockerfile
     container_name: birqadam_frontend
     ports:
       - "127.0.0.1:4172:4173"
+    environment:
+      - VITE_API_BASE_URL=http://localhost:8002
