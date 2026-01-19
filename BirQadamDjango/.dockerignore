@@ -1,0 +1,14 @@
+# Ignore Dockerfile to force Railway to use Nixpacks
+Dockerfile
+*.dockerfile
+**/Dockerfile
+**/Dockerfile.*
+frontend/Dockerfile
+BirQadamDjango/Dockerfile
+./Dockerfile
+
+# Ignore macOS metadata files
+__MACOSX/
+._*
+.DS_Store
+

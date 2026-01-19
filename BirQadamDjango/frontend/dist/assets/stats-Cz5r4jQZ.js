@@ -1,0 +1,1 @@
+import{E as a}from"./index-OSiqDmk8.js";async function i(){const{data:t}=await a.get("/api/web/volunteer/stats/");return t}async function r(t=6){const{data:e}=await a.get("/api/web/volunteer/activity/",{params:{months:t}});return e}export{r as a,i as f};

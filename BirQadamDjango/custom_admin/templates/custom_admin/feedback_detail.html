@@ -1,0 +1,64 @@
+{% extends 'custom_admin/base.html' %} {% block extra_css %}
+<style>
+    .message {
+        padding: 10px;
+        margin-bottom: 10px;
+        border-radius: 5px;
+    }
+    
+    .message-sender {
+        font-weight: bold;
+    }
+    
+    .message-time {
+        font-size: 0.8em;
+        color: #6c757d;
+    }
+
+    /* MOBILE ADAPTATIONS */
+    @media (max-width: 768px) {
+        .card { border-radius: 10px; }
+        .card-header h2 { font-size: 1.3rem; }
+        .card-body { padding: 1rem; }
+        .card-body p { font-size: 0.95rem; margin-bottom: 0.75rem; }
+        .card-body h3 { font-size: 1.1rem; }
+        .message { padding: 0.75rem; margin-bottom: 0.75rem; border-radius: 8px; }
+        .message-sender { font-size: 0.95rem; }
+        .message-time { font-size: 0.75em; }
+        .btn { width: 100%; padding: 0.65rem 1rem; }
+    }
+
+    @media (max-width: 576px) {
+        .card-header { padding: 0.75rem 1rem; }
+        .card-header h2 { font-size: 1.1rem; }
+        .card-body { padding: 0.75rem; }
+        .card-body p { font-size: 0.9rem; }
+        .card-body h3 { font-size: 1rem; }
+        .message { padding: 0.65rem; }
+        .message-sender { font-size: 0.9rem; }
+    }
+</style>
+{% endblock %} {% block content %}
+<div class="card shadow">
+    <div class="card-header">
+        <h2>Сессия обратной связи для {{ session.project.title }}</h2>
+    </div>
+    <div class="card-body">
+        <p><strong>Волонтер:</strong> {{ session.volunteer.username }}</p>
+        <p><strong>Организатор:</strong> {{ session.organizer.username }}</p>
+        <p><strong>Оценка:</strong> {{ session.rating }}★</p>
+        <p><strong>Дата:</strong> {{ session.created_at|date:"d.m.Y H:i" }}</p>
+        <hr>
+        <h3>Сообщения</h3>
+        {% for message in messages %}
+        <div class="message bg-light">
+            <span class="message-sender">{{ message.sender.username }}</span>
+            <span class="message-time">({{ message.timestamp|date:"d.m.Y H:i" }})</span>: {{ message.text }}
+        </div>
+        {% empty %}
+        <p>Нет сообщений.</p>
+        {% endfor %}
+        <a href="{% url 'project_feedback' session.project.id %}" class="btn btn-secondary mt-3">Назад</a>
+    </div>
+</div>
+{% endblock %}

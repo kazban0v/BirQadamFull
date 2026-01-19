@@ -1,0 +1,1321 @@
+{% extends 'custom_admin/base.html' %} {% load static %} {% block extra_css %}
+<style>
+    :root {
+        --chart-height: 320px;
+        --filter-bar-bg: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        --card-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.15);
+        --card-hover-shadow: 0 0.3rem 2rem 0 rgba(58, 59, 69, 0.25);
+    }
+
+    .chart-area {
+        height: var(--chart-height);
+        position: relative;
+    }
+
+    /* Enhanced Filter Bar */
+    .filter-toolbar {
+        background: var(--filter-bar-bg);
+        border-radius: 15px;
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+        box-shadow: var(--card-shadow);
+        transition: all 0.3s ease;
+    }
+
+    .filter-toolbar:hover {
+        box-shadow: var(--card-hover-shadow);
+        transform: translateY(-2px);
+    }
+
+    .filter-toolbar .form-control,
+    .filter-toolbar .form-select {
+        border-radius: 10px;
+        border: 2px solid rgba(255, 255, 255, 0.3);
+        background: rgba(255, 255, 255, 0.95);
+        transition: all 0.3s ease;
+    }
+
+    .filter-toolbar .form-control:focus,
+    .filter-toolbar .form-select:focus {
+        border-color: #fff;
+        box-shadow: 0 0 0 0.2rem rgba(255, 255, 255, 0.25);
+        transform: scale(1.02);
+    }
+
+    .filter-toolbar .btn {
+        border-radius: 10px;
+        padding: 0.5rem 1.5rem;
+        font-weight: 600;
+        transition: all 0.3s ease;
+    }
+
+    .filter-toolbar label {
+        color: #fff;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+        display: block;
+    }
+
+    .quick-filter-btn {
+        background: rgba(255, 255, 255, 0.2);
+        border: 2px solid rgba(255, 255, 255, 0.3);
+        color: #fff;
+        border-radius: 25px;
+        padding: 0.5rem 1.5rem;
+        margin: 0.25rem;
+        transition: all 0.3s ease;
+        display: inline-block;
+    }
+
+    .quick-filter-btn:hover,
+    .quick-filter-btn.active {
+        background: rgba(255, 255, 255, 0.95);
+        color: #667eea;
+        border-color: #fff;
+        transform: translateY(-2px);
+    }
+
+    /* Enhanced Cards */
+    .analytics-card {
+        border-radius: 15px;
+        border: none;
+        box-shadow: var(--card-shadow);
+        transition: all 0.3s ease;
+        overflow: hidden;
+    }
+
+    .analytics-card:hover {
+        box-shadow: var(--card-hover-shadow);
+        transform: translateY(-5px);
+    }
+
+    .analytics-card .card-header {
+        border-radius: 15px 15px 0 0 !important;
+        border: none;
+        padding: 1.25rem 1.5rem;
+        font-weight: 700;
+        letter-spacing: 0.5px;
+    }
+
+    .analytics-card .card-body {
+        padding: 1.5rem;
+    }
+
+    /* Stat Badge */
+    .stat-badge {
+        position: absolute;
+        top: 15px;
+        right: 15px;
+        background: rgba(255, 255, 255, 0.95);
+        color: #333;
+        padding: 0.5rem 1rem;
+        border-radius: 25px;
+        font-weight: 700;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    /* Loading Spinner */
+    .chart-loading {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        z-index: 10;
+    }
+
+    .spinner-border-custom {
+        width: 3rem;
+        height: 3rem;
+        border-width: 0.3rem;
+    }
+
+    /* Export Button Enhancement */
+    .export-btn {
+        background: rgba(255, 255, 255, 0.2);
+        border: 2px solid rgba(255, 255, 255, 0.5);
+        color: #fff;
+        border-radius: 10px;
+        padding: 0.4rem 1rem;
+        transition: all 0.3s ease;
+    }
+
+    .export-btn:hover {
+        background: rgba(255, 255, 255, 0.95);
+        color: #667eea;
+        border-color: #fff;
+        transform: scale(1.05);
+    }
+
+    /* Table Enhancement */
+    .leaderboard-table {
+        border-radius: 10px;
+        overflow: hidden;
+    }
+
+    .leaderboard-table thead {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: #fff;
+    }
+
+    .leaderboard-table tbody tr {
+        transition: all 0.3s ease;
+    }
+
+    .leaderboard-table tbody tr:hover {
+        background: rgba(102, 126, 234, 0.1);
+        transform: scale(1.01);
+    }
+
+    .rank-badge {
+        background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
+        color: #fff;
+        width: 35px;
+        height: 35px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        font-weight: 700;
+        box-shadow: 0 4px 12px rgba(255, 215, 0, 0.4);
+    }
+
+    .rank-badge.rank-1 {
+        background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
+    }
+
+    .rank-badge.rank-2 {
+        background: linear-gradient(135deg, #C0C0C0 0%, #808080 100%);
+    }
+
+    .rank-badge.rank-3 {
+        background: linear-gradient(135deg, #CD7F32 0%, #8B4513 100%);
+    }
+
+    /* Progress Bar Enhancement */
+    .progress {
+        height: 25px;
+        border-radius: 15px;
+        background: rgba(0, 0, 0, 0.05);
+        box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    .progress-bar {
+        border-radius: 15px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        transition: width 0.6s ease;
+        font-weight: 600;
+    }
+
+    /* Empty State */
+    .empty-state {
+        padding: 4rem 2rem;
+        text-align: center;
+    }
+
+    .empty-state i {
+        font-size: 5rem;
+        color: rgba(0, 0, 0, 0.1);
+        margin-bottom: 1.5rem;
+    }
+
+    .empty-state p {
+        color: #6c757d;
+        font-size: 1.1rem;
+    }
+
+    /* Responsive Design */
+    @media (max-width: 768px) {
+        .col-xl-6 {
+            flex: 0 0 100%;
+            max-width: 100%;
+        }
+
+        .filter-toolbar {
+            padding: 1rem;
+        }
+
+        .analytics-card {
+            margin-bottom: 1.5rem;
+        }
+
+        .stat-badge {
+            position: static;
+            display: inline-block;
+            margin-top: 0.5rem;
+        }
+
+        .quick-filter-btn {
+            display: block;
+            width: 100%;
+            margin: 0.25rem 0;
+        }
+    }
+
+    /* Animation */
+    @keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .fade-in-up {
+        animation: fadeInUp 0.5s ease-out;
+    }
+</style>
+{% endblock %} {% block content %}
+<div class="container-fluid fade-in">
+    <h1 class="h3 mb-4 text-gray-800"><i class="fas fa-chart-bar me-2"></i>
+        {% if user.is_organizer %}
+        Аналитика моих проектов
+        {% else %}
+        Аналитика волонтерской активности
+        {% endif %}
+    </h1>
+
+    <!-- Enhanced Filter Toolbar -->
+    <div class="filter-toolbar fade-in-up">
+        <div class="row g-3">
+            <div class="col-md-8">
+                <label><i class="fas fa-calendar-alt me-2"></i>Период анализа</label>
+                <form method="GET" action="{% url 'analytics' %}" id="dateFilterForm">
+                    <div class="row g-2">
+                        <div class="col-md-5">
+                            <input type="date" name="date_from" class="form-control" value="{{ date_from|date:'Y-m-d' }}" placeholder="От">
+                        </div>
+                        <div class="col-md-5">
+                            <input type="date" name="date_to" class="form-control" value="{{ date_to|date:'Y-m-d' }}" placeholder="До">
+                        </div>
+                        <div class="col-md-2">
+                            <button type="submit" class="btn btn-light w-100">
+                                <i class="fas fa-search me-1"></i>Поиск
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="col-md-4">
+                <label><i class="fas fa-clock me-2"></i>Быстрые фильтры</label>
+                <form method="GET" action="{% url 'analytics' %}" id="quickFilterForm">
+                    <a href="?period=week" class="quick-filter-btn {% if period == 'week' %}active{% endif %}">
+                        <i class="fas fa-calendar-week me-1"></i>7 дней
+                    </a>
+                    <a href="?period=month" class="quick-filter-btn {% if period == 'month' %}active{% endif %}">
+                        <i class="fas fa-calendar-day me-1"></i>30 дней
+                    </a>
+                    <a href="?period=year" class="quick-filter-btn {% if period == 'year' %}active{% endif %}">
+                        <i class="fas fa-calendar me-1"></i>Год
+                    </a>
+                    <button type="button" class="export-btn ms-2" data-bs-toggle="modal" data-bs-target="#exportModal">
+                        <i class="fas fa-download me-1"></i>Экспорт
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Charts -->
+    <div class="row">
+        <div class="col-xl-6 fade-in-up" style="animation-delay: 0.1s;">
+            <div class="analytics-card card mb-4">
+                <div class="card-header bg-gradient-primary text-white">
+                    <h6 class="m-0"><i class="fas fa-project-diagram me-2"></i>Статусы проектов</h6>
+                </div>
+                <div class="card-body">
+                    <div class="chart-area">
+                        <div class="chart-loading" id="projectChartLoading">
+                            <div class="spinner-border spinner-border-custom text-primary" role="status">
+                                <span class="visually-hidden">Загрузка...</span>
+                            </div>
+                        </div>
+                        <canvas id="projectChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-6 fade-in-up" style="animation-delay: 0.2s;">
+            <div class="analytics-card card mb-4">
+                <div class="card-header bg-gradient-success text-white">
+                    <h6 class="m-0"><i class="fas fa-tasks me-2"></i>Статусы задач</h6>
+                </div>
+                <div class="card-body">
+                    <div class="chart-area">
+                        <div class="chart-loading" id="taskChartLoading">
+                            <div class="spinner-border spinner-border-custom text-success" role="status">
+                                <span class="visually-hidden">Загрузка...</span>
+                            </div>
+                        </div>
+                        <canvas id="taskChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Activity Timeline -->
+    <div class="row">
+        <div class="col-xl-12 fade-in-up" style="animation-delay: 0.3s;">
+            <div class="analytics-card card mb-4">
+                <div class="card-header bg-gradient-info text-white">
+                    <h6 class="m-0">
+                        <i class="fas fa-chart-line me-2"></i>
+                        {% if user.is_organizer %}
+                        Активность в моих проектах
+                        {% else %}
+                        Активность волонтеров
+                        {% endif %}
+                        {% if date_from and date_to %}
+                        <small class="ms-2 badge bg-light text-dark">
+                            <i class="far fa-calendar me-1"></i>
+                            {{ date_from|date:"d E Y" }} - {{ date_to|date:"d E Y" }}
+                        </small>
+                        {% elif period == 'week' %}
+                        <small class="ms-2 badge bg-light text-dark">Последние 7 дней</small>
+                        {% elif period == 'month' %}
+                        <small class="ms-2 badge bg-light text-dark">Последние 30 дней</small>
+                        {% elif period == 'year' %}
+                        <small class="ms-2 badge bg-light text-dark">Последний год</small>
+                        {% else %}
+                        <small class="ms-2 badge bg-light text-dark">За все время</small>
+                        {% endif %}
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="chart-area" style="height: 350px;">
+                        <div class="chart-loading" id="activityChartLoading">
+                            <div class="spinner-border spinner-border-custom text-info" role="status">
+                                <span class="visually-hidden">Загрузка...</span>
+                            </div>
+                        </div>
+                        <canvas id="activityChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Rating & Engagement -->
+    <div class="row">
+        <div class="col-xl-6 fade-in-up" style="animation-delay: 0.4s;">
+            <div class="analytics-card card mb-4">
+                <div class="card-header bg-gradient-warning text-white">
+                    <h6 class="m-0"><i class="fas fa-star me-2"></i>
+                        {% if user.is_organizer %}
+                        Распределение рейтинга
+                        {% else %}
+                        Распределение рейтинга волонтеров
+                        {% endif %}
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="chart-area">
+                        <div class="chart-loading" id="ratingChartLoading">
+                            <div class="spinner-border spinner-border-custom text-warning" role="status">
+                                <span class="visually-hidden">Загрузка...</span>
+                            </div>
+                        </div>
+                        <canvas id="ratingChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-6 fade-in-up" style="animation-delay: 0.5s;">
+            <div class="analytics-card card mb-4">
+                <div class="card-header bg-gradient-secondary text-white">
+                    <h6 class="m-0"><i class="fas fa-user-check me-2"></i>
+                        {% if user.is_organizer %}
+                        Вовлеченность волонтеров
+                        {% else %}
+                        Вовлеченность волонтеров
+                        {% endif %}
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="chart-area">
+                        <div class="chart-loading" id="engagementChartLoading">
+                            <div class="spinner-border spinner-border-custom text-secondary" role="status">
+                                <span class="visually-hidden">Загрузка...</span>
+                            </div>
+                        </div>
+                        <canvas id="engagementChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Top Volunteers Leaderboard -->
+    <div class="row">
+        <div class="col-xl-12 fade-in-up" style="animation-delay: 0.6s;">
+            <div class="analytics-card card mb-4">
+                <div class="card-header bg-gradient-dark text-white d-flex justify-content-between align-items-center">
+                    <h6 class="m-0"><i class="fas fa-trophy me-2"></i>
+                        {% if user.is_organizer %}
+                        Топ активных волонтеров
+                        {% else %}
+                        Лидеры волонтерства
+                        {% endif %}
+                    </h6>
+                    <span class="stat-badge">
+                        <i class="fas fa-users me-1"></i>{{ top_volunteers|length }}
+                    </span>
+                </div>
+                <div class="card-body">
+                    {% if top_volunteers %}
+                    <div class="table-responsive">
+                        <table class="table leaderboard-table table-hover align-middle">
+                            <thead>
+                                <tr>
+                                    <th style="width: 80px;" class="text-center">Место</th>
+                                    <th>Волонтер</th>
+                                    <th class="text-center">Задачи</th>
+                                    <th style="width: 30%;">Рейтинг</th>
+                                    <th class="text-center">Действия</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for volunteer in top_volunteers %}
+                                <tr>
+                                    <td class="text-center">
+                                        <span class="rank-badge rank-{{ forloop.counter }}">
+                                            {{ forloop.counter }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <div class="avatar-circle me-2 bg-primary text-white d-flex align-items-center justify-content-center" style="width: 40px; height: 40px; border-radius: 50%;">
+                                                {{ volunteer.username|slice:":1"|upper }}
+                                            </div>
+                                            <strong>{{ volunteer.username }}</strong>
+                                        </div>
+                                    </td>
+                                    <td class="text-center">
+                                        <span class="badge bg-info rounded-pill">
+                                            <i class="fas fa-check-circle me-1"></i>{{ volunteer.task_count }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <div class="progress">
+                                            {% with rating=volunteer.avg_rating|default:0 %}
+                                            <div class="progress-bar" role="progressbar" style="width: {{ rating }}%;" aria-valuenow="{{ rating }}" aria-valuemin="0" aria-valuemax="100">
+                                                <strong>{{ rating }}%</strong>
+                                            </div>
+                                            {% endwith %}
+                                        </div>
+                                    </td>
+                                    <td class="text-center">
+                                        <a href="{% url 'volunteer_analytics' volunteer.id %}" class="btn btn-sm btn-outline-primary">
+                                            <i class="fas fa-chart-line me-1"></i>Профиль
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="empty-state">
+                        <i class="fas fa-users"></i>
+                        <p>Нет данных о волонтерах за выбранный период</p>
+                        <a href="?period=year" class="btn btn-primary mt-3">
+                            <i class="fas fa-calendar me-2"></i>Показать за год
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ✅ УЛУЧШЕННОЕ Модальное окно экспорта -->
+<div class="modal fade" id="exportModal" tabindex="-1" aria-labelledby="exportModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content shadow-lg border-0" style="border-radius: 16px; overflow: hidden;">
+            <!-- Красивый заголовок с градиентом -->
+            <div class="modal-header" style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%); border: none; padding: 24px;">
+                <div>
+                    <h4 class="modal-title text-white mb-1" id="exportModalLabel">
+                        <i class="fas fa-file-export me-2"></i>Экспорт отчета
+                    </h4>
+                    <p class="text-white-50 mb-0 small">Выгрузите данные аналитики в удобном формате</p>
+                </div>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+
+            <div class="modal-body" style="padding: 32px;">
+                <form method="POST" action="{% url 'export_report' %}" id="exportForm">
+                    {% csrf_token %}
+
+                    <!-- Период -->
+                    <div class="mb-4">
+                        <label class="form-label fw-bold mb-3">
+                            <i class="fas fa-calendar-alt text-primary me-2"></i>Период отчета
+                        </label>
+                        <div class="d-flex gap-2">
+                            <label class="period-option flex-fill">
+                                <input type="radio" name="period" value="week" checked hidden>
+                                <div class="period-card text-center p-3 border rounded-3 cursor-pointer hover-shadow">
+                                    <i class="fas fa-calendar-week fa-2x mb-2 text-success"></i>
+                                    <div class="fw-bold">Неделя</div>
+                                    <small class="text-muted">7 дней</small>
+                                </div>
+                            </label>
+                            <label class="period-option flex-fill">
+                                <input type="radio" name="period" value="month" hidden>
+                                <div class="period-card text-center p-3 border rounded-3 cursor-pointer hover-shadow">
+                                    <i class="fas fa-calendar fa-2x mb-2 text-info"></i>
+                                    <div class="fw-bold">Месяц</div>
+                                    <small class="text-muted">30 дней</small>
+                                </div>
+                            </label>
+                            <label class="period-option flex-fill">
+                                <input type="radio" name="period" value="year" hidden>
+                                <div class="period-card text-center p-3 border rounded-3 cursor-pointer hover-shadow">
+                                    <i class="fas fa-calendar-alt fa-2x mb-2 text-warning"></i>
+                                    <div class="fw-bold">Год</div>
+                                    <small class="text-muted">365 дней</small>
+                                </div>
+                            </label>
+                            <label class="period-option flex-fill">
+                                <input type="radio" name="period" value="custom" hidden>
+                                <div class="period-card text-center p-3 border rounded-3 cursor-pointer hover-shadow">
+                                    <i class="fas fa-calendar-day fa-2x mb-2 text-danger"></i>
+                                    <div class="fw-bold">Произвольно</div>
+                                    <small class="text-muted">Свои даты</small>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- ✅ КАЛЕНДАРЬ для произвольных дат -->
+                    <div class="mb-4" id="customDateRange" style="display: none;">
+                        <div class="alert alert-info border-0" style="background-color: #e7f3ff;">
+                            <i class="fas fa-info-circle me-2"></i>
+                            <strong>Выберите период:</strong> Укажите начальную и конечную дату для отчета
+                        </div>
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">
+                                    <i class="fas fa-calendar-plus text-success me-2"></i>Дата начала
+                                </label>
+                                <input type="date" name="date_from" id="dateFrom" class="form-control form-control-lg" style="border-radius: 12px; border: 2px solid #28a745;">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">
+                                    <i class="fas fa-calendar-check text-danger me-2"></i>Дата окончания
+                                </label>
+                                <input type="date" name="date_to" id="dateTo" class="form-control form-control-lg" style="border-radius: 12px; border: 2px solid #dc3545;">
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr>
+
+                    <!-- Данные для экспорта -->
+                    <div class="mb-4">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <label class="form-label fw-bold mb-0">
+                                <i class="fas fa-database text-primary me-2"></i>Включить в отчет
+                            </label>
+                            <div>
+                                <button type="button" class="btn btn-sm btn-outline-primary" onclick="selectAllData(true)">
+                                    <i class="fas fa-check-square me-1"></i>Все
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="selectAllData(false)">
+                                    <i class="fas fa-square me-1"></i>Снять
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <div class="export-data-card p-3 border rounded-3 h-100">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="data_to_export" value="projects" id="exportProjects" checked>
+                                        <label class="form-check-label d-flex align-items-center cursor-pointer" for="exportProjects">
+                                            <i class="fas fa-project-diagram fa-lg me-3 text-primary"></i>
+                                            <div>
+                                                <div class="fw-bold">Статусы проектов</div>
+                                                <small class="text-muted">Распределение по статусам</small>
+                                            </div>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="col-md-6">
+                                <div class="export-data-card p-3 border rounded-3 h-100">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="data_to_export" value="tasks" id="exportTasks" checked>
+                                        <label class="form-check-label d-flex align-items-center cursor-pointer" for="exportTasks">
+                                            <i class="fas fa-tasks fa-lg me-3 text-success"></i>
+                                            <div>
+                                                <div class="fw-bold">Статусы задач</div>
+                                                <small class="text-muted">Анализ выполнения</small>
+                                            </div>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="col-md-6">
+                                <div class="export-data-card p-3 border rounded-3 h-100">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="data_to_export" value="activity" id="exportActivity" checked>
+                                        <label class="form-check-label d-flex align-items-center cursor-pointer" for="exportActivity">
+                                            <i class="fas fa-chart-line fa-lg me-3 text-info"></i>
+                                            <div>
+                                                <div class="fw-bold">Активность по дням</div>
+                                                <small class="text-muted">Динамика волонтёров</small>
+                                            </div>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="col-md-6">
+                                <div class="export-data-card p-3 border rounded-3 h-100">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="data_to_export" value="ratings" id="exportRatings" checked>
+                                        <label class="form-check-label d-flex align-items-center cursor-pointer" for="exportRatings">
+                                            <i class="fas fa-star fa-lg me-3 text-warning"></i>
+                                            <div>
+                                                <div class="fw-bold">Распределение рейтинга</div>
+                                                <small class="text-muted">Оценки волонтёров</small>
+                                            </div>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="col-md-6">
+                                <div class="export-data-card p-3 border rounded-3 h-100">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="data_to_export" value="engagement" id="exportEngagement" checked>
+                                        <label class="form-check-label d-flex align-items-center cursor-pointer" for="exportEngagement">
+                                            <i class="fas fa-user-check fa-lg me-3 text-purple"></i>
+                                            <div>
+                                                <div class="fw-bold">Вовлеченность</div>
+                                                <small class="text-muted">Активные/неактивные</small>
+                                            </div>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="col-md-6">
+                                <div class="export-data-card p-3 border rounded-3 h-100">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="data_to_export" value="top_volunteers" id="exportTopVolunteers" checked>
+                                        <label class="form-check-label d-flex align-items-center cursor-pointer" for="exportTopVolunteers">
+                                            <i class="fas fa-trophy fa-lg me-3 text-danger"></i>
+                                            <div>
+                                                <div class="fw-bold">Топ волонтёры</div>
+                                                <small class="text-muted">Рейтинг лучших</small>
+                                            </div>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr>
+
+                    <!-- Формат экспорта -->
+                    <div class="mb-4">
+                        <label class="form-label fw-bold mb-3">
+                            <i class="fas fa-file-download text-primary me-2"></i>Формат файла
+                        </label>
+                        <div class="d-flex gap-3">
+                            <label class="format-option flex-fill">
+                                <input type="radio" name="format" value="csv" checked hidden>
+                                <div class="format-card text-center p-4 border rounded-3 cursor-pointer hover-shadow">
+                                    <i class="fas fa-file-csv fa-3x mb-3" style="color: #1d8348;"></i>
+                                    <div class="fw-bold mb-2">CSV</div>
+                                    <small class="text-muted">Таблицы Excel/Sheets</small>
+                                    <div class="mt-2">
+                                        <span class="badge bg-success-soft text-success">Рекомендуется</span>
+                                    </div>
+                                </div>
+                            </label>
+                            <label class="format-option flex-fill">
+                                <input type="radio" name="format" value="pdf" hidden>
+                                <div class="format-card text-center p-4 border rounded-3 cursor-pointer hover-shadow">
+                                    <i class="fas fa-file-pdf fa-3x mb-3" style="color: #c0392b;"></i>
+                                    <div class="fw-bold mb-2">PDF</div>
+                                    <small class="text-muted">Красивый отчет</small>
+                                    <div class="mt-2">
+                                        <span class="badge bg-danger-soft text-danger">Профессионально</span>
+                                    </div>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Кнопка экспорта -->
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-success btn-lg shadow-sm" style="border-radius: 12px; padding: 14px;">
+                            <i class="fas fa-download me-2"></i>Скачать отчет
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* ✅ Стили для улучшенного экспорта */
+    .cursor-pointer {
+        cursor: pointer;
+    }
+
+    .hover-shadow:hover {
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        transition: all 0.3s;
+    }
+
+    .period-option input:checked+.period-card {
+        background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+        color: white;
+        border-color: #28a745 !important;
+    }
+
+    .period-option input:checked+.period-card i,
+    .period-option input:checked+.period-card small {
+        color: white !important;
+    }
+
+    .period-option:hover .period-card {
+        transform: translateY(-2px);
+        transition: all 0.2s;
+    }
+
+    .export-data-card:hover {
+        background-color: #f8f9fa;
+        transition: all 0.2s;
+    }
+
+    .export-data-card input:checked+label {
+        color: #28a745;
+    }
+
+    .format-option input:checked+.format-card {
+        border: 2px solid #28a745 !important;
+        background-color: #f0fff4;
+    }
+
+    .format-option:hover .format-card {
+        transform: scale(1.02);
+        transition: all 0.2s;
+    }
+
+    .bg-success-soft {
+        background-color: #d4edda;
+    }
+
+    .bg-danger-soft {
+        background-color: #f8d7da;
+    }
+
+    .text-purple {
+        color: #6f42c1;
+    }
+</style>
+
+<script>
+    function selectAllData(checked) {
+        document.querySelectorAll('input[name="data_to_export"]').forEach(checkbox => {
+            checkbox.checked = checked;
+        });
+    }
+
+    // ✅ Обработка выбора произвольного периода
+    document.addEventListener('DOMContentLoaded', function() {
+        const periodRadios = document.querySelectorAll('input[name="period"]');
+        const customDateRange = document.getElementById('customDateRange');
+        const dateFrom = document.getElementById('dateFrom');
+        const dateTo = document.getElementById('dateTo');
+
+        // Устанавливаем дефолтные значения (последние 30 дней)
+        const today = new Date();
+        const monthAgo = new Date(today);
+        monthAgo.setDate(today.getDate() - 30);
+
+        dateTo.valueAsDate = today;
+        dateFrom.valueAsDate = monthAgo;
+
+        // Устанавливаем максимальную дату = сегодня
+        dateTo.max = today.toISOString().split('T')[0];
+        dateFrom.max = today.toISOString().split('T')[0];
+
+        periodRadios.forEach(radio => {
+            radio.addEventListener('change', function() {
+                if (this.value === 'custom') {
+                    customDateRange.style.display = 'block';
+                    // Делаем анимацию появления
+                    customDateRange.style.opacity = '0';
+                    setTimeout(() => {
+                        customDateRange.style.transition = 'opacity 0.3s';
+                        customDateRange.style.opacity = '1';
+                    }, 10);
+                } else {
+                    customDateRange.style.display = 'none';
+                }
+            });
+        });
+
+        // Валидация дат
+        dateFrom.addEventListener('change', function() {
+            if (dateTo.value && this.value > dateTo.value) {
+                alert('❌ Дата начала не может быть позже даты окончания!');
+                this.value = '';
+            }
+        });
+
+        dateTo.addEventListener('change', function() {
+            if (dateFrom.value && this.value < dateFrom.value) {
+                alert('❌ Дата окончания не может быть раньше даты начала!');
+                this.value = '';
+            }
+        });
+    });
+</script>
+
+{% endblock %} {% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Parse chart data from Django template
+        const chartData = JSON.parse('{{ chart_data|escapejs }}');
+
+        // Hide loading spinners when chart is ready
+        function hideLoading(chartId) {
+            const loadingElement = document.getElementById(chartId + 'Loading');
+            if (loadingElement) {
+                loadingElement.style.display = 'none';
+            }
+        }
+
+        // Common chart options with modern styling
+        const commonChartOptions = {
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: {
+                duration: 1000,
+                easing: 'easeInOutQuart'
+            },
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        color: '#6c757d',
+                        padding: 15,
+                        font: {
+                            size: 13,
+                            family: "'Nunito', sans-serif",
+                            weight: '600'
+                        },
+                        usePointStyle: true,
+                        pointStyle: 'circle'
+                    }
+                },
+                tooltip: {
+                    backgroundColor: 'rgba(0, 0, 0, 0.85)',
+                    titleColor: '#fff',
+                    bodyColor: '#fff',
+                    borderColor: 'rgba(255, 255, 255, 0.2)',
+                    borderWidth: 1,
+                    padding: 15,
+                    displayColors: true,
+                    boxPadding: 6,
+                    usePointStyle: true,
+                    titleFont: {
+                        size: 14,
+                        weight: 'bold'
+                    },
+                    bodyFont: {
+                        size: 13
+                    },
+                    callbacks: {
+                        label: function(context) {
+                            let label = context.dataset.label || '';
+                            if (label) {
+                                label += ': ';
+                            }
+                            label += context.raw;
+                            return label;
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    grid: {
+                        color: 'rgba(0, 0, 0, 0.05)',
+                        drawBorder: false
+                    },
+                    ticks: {
+                        color: '#6c757d',
+                        font: {
+                            size: 12,
+                            family: "'Nunito', sans-serif"
+                        },
+                        padding: 10
+                    }
+                },
+                x: {
+                    grid: {
+                        display: false,
+                        drawBorder: false
+                    },
+                    ticks: {
+                        color: '#6c757d',
+                        font: {
+                            size: 12,
+                            family: "'Nunito', sans-serif"
+                        },
+                        padding: 10
+                    }
+                }
+            }
+        };
+
+        // Modern color palettes
+        const gradientColors = {
+            primary: ['#667eea', '#764ba2'],
+            success: ['#56ab2f', '#a8e063'],
+            danger: ['#eb3349', '#f45c43'],
+            warning: ['#f2994a', '#f2c94c'],
+            info: ['#2193b0', '#6dd5ed']
+        };
+
+        // Project Status Chart (Enhanced Doughnut)
+        const projectCtx = document.getElementById('projectChart').getContext('2d');
+        const projectChart = new Chart(projectCtx, {
+            type: 'doughnut',
+            data: {
+                labels: chartData.project_data.map(item => {
+                    const statusMap = {
+                        'pending': 'Ожидает проверки',
+                        'approved': 'Одобрено',
+                        'rejected': 'Отклонено'
+                    };
+                    return statusMap[item.status] || item.status;
+                }),
+                datasets: [{
+                    data: chartData.project_data.map(item => item.count),
+                    backgroundColor: [
+                        'rgba(102, 126, 234, 0.8)',
+                        'rgba(86, 171, 47, 0.8)',
+                        'rgba(235, 51, 73, 0.8)'
+                    ],
+                    hoverBackgroundColor: [
+                        'rgba(102, 126, 234, 1)',
+                        'rgba(86, 171, 47, 1)',
+                        'rgba(235, 51, 73, 1)'
+                    ],
+                    borderColor: '#fff',
+                    borderWidth: 3,
+                    hoverBorderWidth: 4
+                }],
+            },
+            options: {
+                ...commonChartOptions,
+                plugins: {
+                    ...commonChartOptions.plugins,
+                    tooltip: {
+                        ...commonChartOptions.plugins.tooltip,
+                        callbacks: {
+                            label: function(context) {
+                                const label = context.label || '';
+                                const value = context.raw || 0;
+                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                const percentage = total > 0 ? Math.round((value / total) * 100) : 0;
+                                return `${label}: ${value} (${percentage}%)`;
+                            }
+                        }
+                    }
+                },
+                cutout: '70%',
+                onComplete: function() {
+                    hideLoading('projectChart');
+                }
+            },
+        });
+        hideLoading('projectChart');
+
+        // Task Status Chart (Enhanced Doughnut with center text)
+        const taskCtx = document.getElementById('taskChart').getContext('2d');
+        const taskChart = new Chart(taskCtx, {
+            type: 'doughnut',
+            data: {
+                labels: chartData.task_data.map(item => {
+                    const statusMap = {
+                        'open': 'Открыто',
+                        'in_progress': 'В работе',
+                        'completed': 'Выполнено',
+                        'failed': 'Не выполнено',
+                        'closed': 'Закрыто'
+                    };
+                    return statusMap[item.status] || item.status;
+                }),
+                datasets: [{
+                    data: chartData.task_data.map(item => item.count),
+                    backgroundColor: [
+                        'rgba(33, 150, 243, 0.8)',
+                        'rgba(255, 193, 7, 0.8)',
+                        'rgba(76, 175, 80, 0.8)',
+                        'rgba(244, 67, 54, 0.8)',
+                        'rgba(158, 158, 158, 0.8)'
+                    ],
+                    hoverBackgroundColor: [
+                        'rgba(33, 150, 243, 1)',
+                        'rgba(255, 193, 7, 1)',
+                        'rgba(76, 175, 80, 1)',
+                        'rgba(244, 67, 54, 1)',
+                        'rgba(158, 158, 158, 1)'
+                    ],
+                    borderColor: '#fff',
+                    borderWidth: 3,
+                    hoverBorderWidth: 4
+                }],
+            },
+            options: {
+                ...commonChartOptions,
+                plugins: {
+                    ...commonChartOptions.plugins,
+                    tooltip: {
+                        ...commonChartOptions.plugins.tooltip,
+                        callbacks: {
+                            label: function(context) {
+                                const label = context.label || '';
+                                const value = context.raw || 0;
+                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                const percentage = total > 0 ? Math.round((value / total) * 100) : 0;
+                                return `${label}: ${value} (${percentage}%)`;
+                            }
+                        }
+                    }
+                },
+                cutout: '70%',
+                onComplete: function() {
+                    hideLoading('taskChart');
+                }
+            },
+        });
+        hideLoading('taskChart');
+
+        // Activity Chart (Area Chart with gradient)
+        const activityCtx = document.getElementById('activityChart').getContext('2d');
+        const activityGradient = activityCtx.createLinearGradient(0, 0, 0, 400);
+        activityGradient.addColorStop(0, 'rgba(102, 126, 234, 0.4)');
+        activityGradient.addColorStop(1, 'rgba(102, 126, 234, 0.0)');
+
+        const activityChart = new Chart(activityCtx, {
+            type: 'line',
+            data: {
+                labels: chartData.activity_data.map(item => item.day),
+                datasets: [{
+                    label: "Выполнено задач",
+                    data: chartData.activity_data.map(item => item.count),
+                    fill: true,
+                    backgroundColor: activityGradient,
+                    borderColor: 'rgba(102, 126, 234, 1)',
+                    borderWidth: 3,
+                    pointRadius: 5,
+                    pointBackgroundColor: 'rgba(102, 126, 234, 1)',
+                    pointBorderColor: '#fff',
+                    pointBorderWidth: 2,
+                    pointHoverRadius: 7,
+                    pointHoverBackgroundColor: 'rgba(102, 126, 234, 1)',
+                    pointHoverBorderColor: '#fff',
+                    pointHoverBorderWidth: 3,
+                    tension: 0.4
+                }],
+            },
+            options: {
+                ...commonChartOptions,
+                plugins: {
+                    ...commonChartOptions.plugins,
+                    legend: {
+                        display: true,
+                        position: 'top',
+                        labels: {
+                            ...commonChartOptions.plugins.legend.labels,
+                            boxWidth: 15,
+                            boxHeight: 15
+                        }
+                    },
+                    tooltip: {
+                        ...commonChartOptions.plugins.tooltip,
+                        callbacks: {
+                            title: function(context) {
+                                return `Дата: ${context[0].label}`;
+                            },
+                            label: function(context) {
+                                return `Выполнено задач: ${context.raw}`;
+                            }
+                        }
+                    }
+                },
+                interaction: {
+                    intersect: false,
+                    mode: 'index'
+                },
+                onComplete: function() {
+                    hideLoading('activityChart');
+                }
+            },
+        });
+        hideLoading('activityChart');
+
+        // Rating Distribution Chart (Gradient Bar Chart)
+        const ratingCtx = document.getElementById('ratingChart').getContext('2d');
+        const ratingChart = new Chart(ratingCtx, {
+            type: 'bar',
+            data: {
+                labels: chartData.rating_data.map(item => item.range),
+                datasets: [{
+                    label: "Количество волонтеров",
+                    data: chartData.rating_data.map(item => item.count),
+                    backgroundColor: [
+                        'rgba(255, 99, 132, 0.7)',
+                        'rgba(54, 162, 235, 0.7)',
+                        'rgba(255, 206, 86, 0.7)',
+                        'rgba(75, 192, 192, 0.7)',
+                        'rgba(153, 102, 255, 0.7)'
+                    ],
+                    hoverBackgroundColor: [
+                        'rgba(255, 99, 132, 1)',
+                        'rgba(54, 162, 235, 1)',
+                        'rgba(255, 206, 86, 1)',
+                        'rgba(75, 192, 192, 1)',
+                        'rgba(153, 102, 255, 1)'
+                    ],
+                    borderColor: [
+                        'rgb(255, 99, 132)',
+                        'rgb(54, 162, 235)',
+                        'rgb(255, 206, 86)',
+                        'rgb(75, 192, 192)',
+                        'rgb(153, 102, 255)'
+                    ],
+                    borderWidth: 2,
+                    borderRadius: 10,
+                    borderSkipped: false
+                }],
+            },
+            options: {
+                ...commonChartOptions,
+                plugins: {
+                    ...commonChartOptions.plugins,
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        ...commonChartOptions.plugins.tooltip,
+                        callbacks: {
+                            title: function(context) {
+                                return `Рейтинг: ${context[0].label}`;
+                            },
+                            label: function(context) {
+                                return `Волонтеров: ${context.raw}`;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        ...commonChartOptions.scales.y,
+                        ticks: {
+                            ...commonChartOptions.scales.y.ticks,
+                            stepSize: 1
+                        }
+                    },
+                    x: {
+                        ...commonChartOptions.scales.x
+                    }
+                },
+                onComplete: function() {
+                    hideLoading('ratingChart');
+                }
+            },
+        });
+        hideLoading('ratingChart');
+
+        // Engagement Chart (Doughnut with percentage)
+        const engagementCtx = document.getElementById('engagementChart').getContext('2d');
+        const engagementChart = new Chart(engagementCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Активные волонтеры', 'Неактивные'],
+                datasets: [{
+                    data: [chartData.engagement_data.active, chartData.engagement_data.inactive],
+                    backgroundColor: [
+                        'rgba(86, 171, 47, 0.8)',
+                        'rgba(220, 53, 69, 0.8)'
+                    ],
+                    hoverBackgroundColor: [
+                        'rgba(86, 171, 47, 1)',
+                        'rgba(220, 53, 69, 1)'
+                    ],
+                    borderColor: '#fff',
+                    borderWidth: 3,
+                    hoverBorderWidth: 4
+                }],
+            },
+            options: {
+                ...commonChartOptions,
+                plugins: {
+                    ...commonChartOptions.plugins,
+                    tooltip: {
+                        ...commonChartOptions.plugins.tooltip,
+                        callbacks: {
+                            label: function(context) {
+                                const label = context.label || '';
+                                const value = context.raw || 0;
+                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                const percentage = total > 0 ? Math.round((value / total) * 100) : 0;
+                                return `${label}: ${value} (${percentage}%)`;
+                            }
+                        }
+                    }
+                },
+                cutout: '70%',
+                onComplete: function() {
+                    hideLoading('engagementChart');
+                }
+            },
+        });
+        hideLoading('engagementChart');
+
+        // Smooth scroll to charts when filters change
+        const filterForm = document.getElementById('dateFilterForm');
+        if (filterForm) {
+            filterForm.addEventListener('submit', function() {
+                // Show loading spinners
+                document.querySelectorAll('.chart-loading').forEach(el => {
+                    el.style.display = 'flex';
+                });
+            });
+        }
+
+        // Add active class to current period filter
+        const currentPeriod = new URLSearchParams(window.location.search).get('period');
+        document.querySelectorAll('.quick-filter-btn').forEach(btn => {
+            if (btn.href && btn.href.includes(`period=${currentPeriod}`)) {
+                btn.classList.add('active');
+            }
+        });
+    });
+</script>
+{% endblock %}

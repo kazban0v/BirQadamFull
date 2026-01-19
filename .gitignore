@@ -1,0 +1,43 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Environments
+env/
+venv/
+.env
+.env.*
+/BirQadamDjango/.env
+/BirQadamDjango/.env.*
+
+# Django
+*.log
+*.pot
+*.pyc
+db.sqlite3
+media/
+staticfiles/
+static/
+
+# Secrets
+firebase-service-account.json
+*.pem
+*.key
+
+# VSCode
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+__MACOSX/
+._*
+.DS_Store
+
+# Node (если есть фронтенд в проекте)
+node_modules/
+# dist/ - раскомментировано, чтобы коммитить собранный фронтенд для Railway
+# Исключаем только node_modules и другие временные файлы
+# BirQadamDjango/frontend/dist/ должен быть в git для production deployment
+build/

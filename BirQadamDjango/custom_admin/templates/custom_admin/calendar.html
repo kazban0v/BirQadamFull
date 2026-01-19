@@ -1,0 +1,641 @@
+{% extends "custom_admin/base.html" %}
+{% load static %}
+
+{% block extra_css %}
+<!-- FullCalendar CSS -->
+<link href='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.css' rel='stylesheet' />
+<style>
+    .calendar-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 15px;
+        padding: 2rem;
+        margin-bottom: 2rem;
+        color: white;
+        box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.15);
+    }
+
+    .calendar-stats {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+        margin-bottom: 2rem;
+    }
+
+    .stat-card {
+        background: white;
+        border-radius: 10px;
+        padding: 1.5rem;
+        box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.15);
+        transition: all 0.3s;
+    }
+
+    .stat-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 0.3rem 2rem 0 rgba(58, 59, 69, 0.25);
+    }
+
+    .stat-icon {
+        font-size: 2rem;
+        margin-bottom: 1rem;
+    }
+
+    .event-card {
+        background: white;
+        border-radius: 10px;
+        padding: 1.5rem;
+        margin-bottom: 1rem;
+        box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.15);
+        transition: all 0.3s;
+        border-left: 5px solid;
+    }
+
+    .event-card:hover {
+        transform: translateX(5px);
+        box-shadow: 0 0.3rem 2rem 0 rgba(58, 59, 69, 0.25);
+    }
+
+    .event-card.project-start {
+        border-left-color: #4CAF50;
+    }
+
+    .event-card.project-end {
+        border-left-color: #2196F3;
+    }
+
+    .event-card.task-deadline {
+        border-left-color: #FF9800;
+    }
+
+    .event-card.meeting {
+        border-left-color: #9C27B0;
+    }
+
+    .event-card.reminder {
+        border-left-color: #FFC107;
+    }
+
+    .event-card.custom {
+        border-left-color: #607D8B;
+    }
+
+    .event-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: start;
+        margin-bottom: 1rem;
+    }
+
+    .event-title {
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: #333;
+    }
+
+    .event-badge {
+        padding: 0.25rem 0.75rem;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        font-weight: 600;
+    }
+
+    .event-info {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+        margin-top: 1rem;
+        padding-top: 1rem;
+        border-top: 1px solid #eee;
+    }
+
+    .event-info-item {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        color: #666;
+    }
+
+    .event-info-item i {
+        color: #667eea;
+    }
+
+    .filter-section {
+        background: white;
+        border-radius: 10px;
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+        box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.15);
+    }
+
+    .filter-group {
+        display: flex;
+        gap: 1rem;
+        flex-wrap: wrap;
+    }
+
+    .no-events {
+        text-align: center;
+        padding: 3rem;
+        color: #999;
+    }
+
+    .no-events i {
+        font-size: 4rem;
+        margin-bottom: 1rem;
+        opacity: 0.5;
+    }
+
+    /* FullCalendar customization */
+    #calendar {
+        background: white;
+        padding: 1.5rem;
+        border-radius: 10px;
+        box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.15);
+    }
+
+    .fc .fc-button-primary {
+        background-color: #667eea !important;
+        border-color: #667eea !important;
+    }
+
+    .fc .fc-button-primary:hover {
+        background-color: #5568d3 !important;
+        border-color: #5568d3 !important;
+    }
+
+    .fc-event {
+        cursor: pointer;
+        border-radius: 4px;
+    }
+
+    .fc-event.project-start {
+        background-color: #4CAF50 !important;
+        border-color: #4CAF50 !important;
+    }
+
+    .fc-event.project-end {
+        background-color: #2196F3 !important;
+        border-color: #2196F3 !important;
+    }
+
+    .fc-event.task-deadline {
+        background-color: #FF9800 !important;
+        border-color: #FF9800 !important;
+    }
+
+    .fc-event.meeting {
+        background-color: #9C27B0 !important;
+        border-color: #9C27B0 !important;
+    }
+
+    .fc-event.reminder {
+        background-color: #FFC107 !important;
+        border-color: #FFC107 !important;
+    }
+
+    .fc-event.custom {
+        background-color: #607D8B !important;
+        border-color: #607D8B !important;
+    }
+
+    .calendar-view-toggle {
+        display: flex;
+        gap: 1rem;
+        margin-bottom: 2rem;
+    }
+
+    .view-mode {
+        flex: 1;
+    }
+
+    .calendar-legend {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem;
+        padding: 1rem;
+        background: white;
+        border-radius: 10px;
+        margin-bottom: 1rem;
+        box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.15);
+    }
+
+    .legend-item {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .legend-color {
+        width: 20px;
+        height: 20px;
+        border-radius: 4px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="calendar-header">
+        <h1><i class="fas fa-calendar-alt me-2"></i>Календарь событий</h1>
+        <p class="mb-0">Управление всеми событиями и мероприятиями</p>
+    </div>
+
+    <!-- Statistics -->
+    <div class="calendar-stats">
+        <div class="stat-card">
+            <div class="stat-icon" style="color: #667eea;">
+                <i class="fas fa-calendar-check"></i>
+            </div>
+            <div class="stat-value" style="font-size: 2rem; font-weight: 700; color: #667eea;">{{ upcoming_events }}</div>
+            <div class="stat-label">Предстоящих событий</div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon" style="color: #4CAF50;">
+                <i class="fas fa-calendar-day"></i>
+            </div>
+            <div class="stat-value" style="font-size: 2rem; font-weight: 700; color: #4CAF50;">{{ today_events }}</div>
+            <div class="stat-label">Событий сегодня</div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon" style="color: #FF9800;">
+                <i class="fas fa-calendar"></i>
+            </div>
+            <div class="stat-value" style="font-size: 2rem; font-weight: 700; color: #FF9800;">{{ events.count }}</div>
+            <div class="stat-label">Всего событий</div>
+        </div>
+    </div>
+
+    <!-- Calendar Legend -->
+    <div class="calendar-legend">
+        <div class="legend-item">
+            <div class="legend-color" style="background-color: #4CAF50;"></div>
+            <span>🚀 Начало проекта</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background-color: #2196F3;"></div>
+            <span>🏁 Завершение проекта</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background-color: #FF9800;"></div>
+            <span>⏰ Дедлайн задачи</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background-color: #9C27B0;"></div>
+            <span>👥 Встреча</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background-color: #FFC107;"></div>
+            <span>🔔 Напоминание</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background-color: #607D8B;"></div>
+            <span>📝 Свое событие</span>
+        </div>
+    </div>
+
+    <!-- Visual Calendar -->
+    <div id='calendar'></div>
+
+    <br>
+
+    <!-- Filters for List View -->
+    <div class="filter-section">
+        <h5 class="mb-3"><i class="fas fa-filter me-2"></i>Фильтры списка</h5>
+        <div class="filter-group">
+            <select class="form-select" id="typeFilter" style="max-width: 200px;">
+                <option value="">Все типы</option>
+                <option value="project_start">Начало проекта</option>
+                <option value="project_end">Завершение проекта</option>
+                <option value="task_deadline">Дедлайн задачи</option>
+                <option value="meeting">Встреча</option>
+                <option value="reminder">Напоминание</option>
+                <option value="custom">Свое событие</option>
+            </select>
+
+            <select class="form-select" id="dateFilter" style="max-width: 200px;">
+                <option value="">Все даты</option>
+                <option value="today">Сегодня</option>
+                <option value="week">На этой неделе</option>
+                <option value="month">В этом месяце</option>
+                <option value="upcoming">Предстоящие</option>
+            </select>
+
+            <button class="btn btn-primary" onclick="location.reload()">
+                <i class="fas fa-sync me-2"></i>Сбросить
+            </button>
+        </div>
+    </div>
+
+    <!-- Events List -->
+    <div class="card">
+        <div class="card-header">
+            <h5><i class="fas fa-list me-2"></i>Все события</h5>
+        </div>
+        <div class="card-body" id="eventsList">
+            {% if events %}
+            {% for event in events %}
+            <div class="event-card event-{{ event.event_type }}" data-type="{{ event.event_type }}" data-date="{{ event.start_date|date:'Y-m-d' }}">
+                <div class="event-header">
+                    <div>
+                        <div class="event-title">{{ event.title }}</div>
+                        <span class="event-badge badge bg-{{ event.event_type }}">
+                            {% if event.event_type == 'project_start' %}
+                            🚀 Начало проекта
+                            {% elif event.event_type == 'project_end' %}
+                            🏁 Завершение проекта
+                            {% elif event.event_type == 'task_deadline' %}
+                            ⏰ Дедлайн задачи
+                            {% elif event.event_type == 'meeting' %}
+                            👥 Встреча
+                            {% elif event.event_type == 'reminder' %}
+                            🔔 Напоминание
+                            {% else %}
+                            📝 Свое событие
+                            {% endif %}
+                        </span>
+                    </div>
+                </div>
+
+                {% if event.description %}
+                <p class="mb-2">{{ event.description|truncatewords:30 }}</p>
+                {% endif %}
+
+                <div class="event-info">
+                    <div class="event-info-item">
+                        <i class="fas fa-calendar"></i>
+                        <span>{{ event.start_date|date:"d.m.Y" }}{% if event.start_time %} в {{ event.start_time|time:"H:i" }}{% endif %}</span>
+                    </div>
+
+                    {% if event.end_date %}
+                    <div class="event-info-item">
+                        <i class="fas fa-calendar-check"></i>
+                        <span>До {{ event.end_date|date:"d.m.Y" }}{% if event.end_time %} {{ event.end_time|time:"H:i" }}{% endif %}</span>
+                    </div>
+                    {% endif %}
+
+                    <div class="event-info-item">
+                        <i class="fas fa-user"></i>
+                        <span>Создатель: {{ event.creator.username }}</span>
+                    </div>
+
+                    {% if event.project %}
+                    <div class="event-info-item">
+                        <i class="fas fa-project-diagram"></i>
+                        <span>Проект: {{ event.project.title }}</span>
+                    </div>
+                    {% endif %}
+
+                    {% if event.location %}
+                    <div class="event-info-item">
+                        <i class="fas fa-map-marker-alt"></i>
+                        <span>{{ event.location }}</span>
+                    </div>
+                    {% endif %}
+
+                    <div class="event-info-item">
+                        <i class="fas fa-users"></i>
+                        <span>Участников: {{ event.participants.count }}</span>
+                    </div>
+
+                    <div class="event-info-item">
+                        <i class="fas fa-eye"></i>
+                        <span>
+                            {% if event.visibility == 'public' %}
+                            🌍 Публичное
+                            {% elif event.visibility == 'private' %}
+                            🔒 Приватное
+                            {% else %}
+                            👥 Только участники проекта
+                            {% endif %}
+                        </span>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+            {% else %}
+            <div class="no-events">
+                <i class="fas fa-calendar-times"></i>
+                <h4>Нет событий</h4>
+                <p>События будут отображаться здесь после создания волонтерами и организаторами</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- FullCalendar JS -->
+<script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js'></script>
+<script src='https://cdn.jsdelivr.net/npm/@fullcalendar/core@6.1.10/locales/ru.global.min.js'></script>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const calendarEl = document.getElementById('calendar');
+
+        // Prepare events data from Django template
+        const eventsData = [
+            {% for event in events %}
+            {
+                id: '{{ event.id }}',
+                title: '{{ event.title|escapejs }}',
+                start: '{{ event.start_date|date:"Y-m-d" }}{% if event.start_time %}T{{ event.start_time|time:"H:i" }}{% endif %}',
+                {% if event.end_date %}
+                end: '{{ event.end_date|date:"Y-m-d" }}{% if event.end_time %}T{{ event.end_time|time:"H:i" }}{% endif %}',
+                {% endif %}
+                className: '{{ event.event_type }}',
+                extendedProps: {
+                    type: '{{ event.event_type }}',
+                    description: '{{ event.description|escapejs|truncatewords:20 }}',
+                    creator: '{{ event.creator.username|escapejs }}',
+                    project: '{% if event.project %}{{ event.project.title|escapejs }}{% endif %}',
+                    location: '{{ event.location|escapejs }}',
+                    participants: {{ event.participants.count }},
+                    visibility: '{{ event.visibility }}'
+                }
+            }{% if not forloop.last %},{% endif %}
+            {% endfor %}
+        ];
+
+        // Initialize FullCalendar
+        const calendar = new FullCalendar.Calendar(calendarEl, {
+            initialView: 'dayGridMonth',
+            locale: 'ru',
+            headerToolbar: {
+                left: 'prev,next today',
+                center: 'title',
+                right: 'dayGridMonth,timeGridWeek,timeGridDay,listMonth'
+            },
+            buttonText: {
+                today: 'Сегодня',
+                month: 'Месяц',
+                week: 'Неделя',
+                day: 'День',
+                list: 'Список'
+            },
+            events: eventsData,
+            eventClick: function(info) {
+                const event = info.event;
+                const props = event.extendedProps;
+
+                let typeEmoji = '📝';
+                let typeName = 'Свое событие';
+
+                if (props.type === 'project_start') {
+                    typeEmoji = '🚀';
+                    typeName = 'Начало проекта';
+                } else if (props.type === 'project_end') {
+                    typeEmoji = '🏁';
+                    typeName = 'Завершение проекта';
+                } else if (props.type === 'task_deadline') {
+                    typeEmoji = '⏰';
+                    typeName = 'Дедлайн задачи';
+                } else if (props.type === 'meeting') {
+                    typeEmoji = '👥';
+                    typeName = 'Встреча';
+                } else if (props.type === 'reminder') {
+                    typeEmoji = '🔔';
+                    typeName = 'Напоминание';
+                }
+
+                let visibilityText = '🌍 Публичное';
+                if (props.visibility === 'private') {
+                    visibilityText = '🔒 Приватное';
+                } else if (props.visibility === 'project') {
+                    visibilityText = '👥 Только участники проекта';
+                }
+
+                let modalContent = `
+                    <div style="padding: 1rem;">
+                        <h4 style="color: #667eea; margin-bottom: 1rem;">${typeEmoji} ${event.title}</h4>
+                        <p><strong>Тип:</strong> ${typeName}</p>
+                        ${props.description ? `<p><strong>Описание:</strong> ${props.description}</p>` : ''}
+                        <p><strong>Дата:</strong> ${event.start.toLocaleDateString('ru-RU', { 
+                            year: 'numeric', 
+                            month: 'long', 
+                            day: 'numeric',
+                            hour: event.start.getHours() ? '2-digit' : undefined,
+                            minute: event.start.getMinutes() !== undefined ? '2-digit' : undefined
+                        })}</p>
+                        ${event.end ? `<p><strong>До:</strong> ${event.end.toLocaleDateString('ru-RU', { year: 'numeric', month: 'long', day: 'numeric' })}</p>` : ''}
+                        <p><strong>Создатель:</strong> ${props.creator}</p>
+                        ${props.project ? `<p><strong>Проект:</strong> ${props.project}</p>` : ''}
+                        ${props.location ? `<p><strong>Место:</strong> ${props.location}</p>` : ''}
+                        <p><strong>Участников:</strong> ${props.participants}</p>
+                        <p><strong>Видимость:</strong> ${visibilityText}</p>
+                    </div>
+                `;
+
+                // Show modal or alert
+                if (typeof bootstrap !== 'undefined') {
+                    // Use Bootstrap modal if available
+                    const modalHtml = `
+                        <div class="modal fade" id="eventModal" tabindex="-1">
+                            <div class="modal-dialog">
+                                <div class="modal-content">
+                                    <div class="modal-header">
+                                        <h5 class="modal-title">Детали события</h5>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                    </div>
+                                    <div class="modal-body">
+                                        ${modalContent}
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+
+                    // Remove existing modal
+                    const existingModal = document.getElementById('eventModal');
+                    if (existingModal) {
+                        existingModal.remove();
+                    }
+
+                    // Add new modal
+                    document.body.insertAdjacentHTML('beforeend', modalHtml);
+                    const modal = new bootstrap.Modal(document.getElementById('eventModal'));
+                    modal.show();
+                } else {
+                    alert(modalContent.replace(/<[^>]*>/g, '\n'));
+                }
+            },
+            eventDidMount: function(info) {
+                // Add tooltip
+                info.el.title = info.event.title;
+            },
+            height: 'auto',
+            contentHeight: 600,
+            aspectRatio: 2
+        });
+
+        calendar.render();
+
+        // List view filters
+        const typeFilter = document.getElementById('typeFilter');
+        const dateFilter = document.getElementById('dateFilter');
+        const eventCards = document.querySelectorAll('.event-card');
+
+        function filterEvents() {
+            const selectedType = typeFilter.value;
+            const selectedDate = dateFilter.value;
+            const today = new Date().toISOString().split('T')[0];
+
+            eventCards.forEach(card => {
+                const cardType = card.dataset.type;
+                const cardDate = card.dataset.date;
+
+                let showCard = true;
+
+                // Type filter
+                if (selectedType && cardType !== selectedType) {
+                    showCard = false;
+                }
+
+                // Date filter
+                if (selectedDate && showCard) {
+                    const eventDate = new Date(cardDate);
+                    const todayDate = new Date(today);
+
+                    if (selectedDate === 'today') {
+                        showCard = cardDate === today;
+                    } else if (selectedDate === 'week') {
+                        const weekFromNow = new Date(todayDate.getTime() + 7 * 24 * 60 * 60 * 1000);
+                        showCard = eventDate >= todayDate && eventDate <= weekFromNow;
+                    } else if (selectedDate === 'month') {
+                        const monthFromNow = new Date(todayDate.getTime() + 30 * 24 * 60 * 60 * 1000);
+                        showCard = eventDate >= todayDate && eventDate <= monthFromNow;
+                    } else if (selectedDate === 'upcoming') {
+                        showCard = eventDate >= todayDate;
+                    }
+                }
+
+                card.style.display = showCard ? 'block' : 'none';
+            });
+
+            // Show "no events" message if all filtered
+            const visibleCards = Array.from(eventCards).filter(card => card.style.display !== 'none');
+            const noEventsDiv = document.querySelector('.no-events');
+            if (visibleCards.length === 0 && !noEventsDiv) {
+                const container = document.getElementById('eventsList');
+                container.innerHTML = `
+                    <div class="no-events">
+                        <i class="fas fa-calendar-times"></i>
+                        <h4>Нет событий по выбранным фильтрам</h4>
+                        <p>Попробуйте изменить фильтры</p>
+                    </div>
+                `;
+            } else if (visibleCards.length > 0 && noEventsDiv) {
+                location.reload();
+            }
+        }
+
+        if (typeFilter && dateFilter) {
+            typeFilter.addEventListener('change', filterEvents);
+            dateFilter.addEventListener('change', filterEvents);
+        }
+    });
+</script>
+{% endblock %}

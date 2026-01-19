@@ -1,0 +1,876 @@
+{% extends 'custom_admin/base.html' %} {% load static %} {% block extra_css %}
+<style>
+    :root {
+        --card-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.15);
+        --card-hover-shadow: 0 0.3rem 2rem 0 rgba(58, 59, 69, 0.25);
+        --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        --success-gradient: linear-gradient(135deg, #56ab2f 0%, #a8e063 100%);
+        --info-gradient: linear-gradient(135deg, #2193b0 0%, #6dd5ed 100%);
+        --warning-gradient: linear-gradient(135deg, #f2994a 0%, #f2c94c 100%);
+    }
+
+    /* Page Header */
+    .page-header {
+        background: var(--primary-gradient);
+        border-radius: 15px;
+        padding: 2rem;
+        margin-bottom: 2rem;
+        color: white;
+        box-shadow: var(--card-shadow);
+    }
+
+    .page-header h1 {
+        margin: 0;
+        font-size: 2rem;
+        font-weight: 700;
+    }
+
+    /* Stats Cards */
+    .stats-card {
+        background: white;
+        border-radius: 15px;
+        box-shadow: var(--card-shadow);
+        transition: all 0.3s ease;
+        border: none;
+        overflow: hidden;
+        margin-bottom: 1.5rem;
+        height: 100%;
+    }
+
+    .stats-card:hover {
+        transform: translateY(-5px);
+        box-shadow: var(--card-hover-shadow);
+    }
+
+    .stats-card .card-body {
+        padding: 1.5rem;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .stats-card .icon-wrapper {
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 1rem;
+    }
+
+    .stats-card.primary .icon-wrapper {
+        background: var(--primary-gradient);
+    }
+
+    .stats-card.success .icon-wrapper {
+        background: var(--success-gradient);
+    }
+
+    .stats-card.info .icon-wrapper {
+        background: var(--info-gradient);
+    }
+
+    .stats-card.warning .icon-wrapper {
+        background: var(--warning-gradient);
+    }
+
+    .stats-card .icon-wrapper i {
+        color: white;
+        font-size: 1.8rem;
+    }
+
+    .stats-card h2 {
+        font-size: 2rem;
+        font-weight: 700;
+        margin: 0.5rem 0;
+        color: #333;
+    }
+
+    .stats-card .card-title {
+        font-size: 0.875rem;
+        color: #6c757d;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin: 0;
+    }
+
+    /* Chart Cards */
+    .chart-card {
+        background: white;
+        border-radius: 15px;
+        box-shadow: var(--card-shadow);
+        transition: all 0.3s ease;
+        border: none;
+        margin-bottom: 1.5rem;
+        overflow: hidden;
+    }
+
+    .chart-card:hover {
+        box-shadow: var(--card-hover-shadow);
+    }
+
+    .chart-card .card-header {
+        border-radius: 15px 15px 0 0 !important;
+        border: none;
+        padding: 1.25rem 1.5rem;
+        font-weight: 700;
+        color: white;
+    }
+
+    .chart-card.primary .card-header {
+        background: var(--primary-gradient);
+    }
+
+    .chart-card.success .card-header {
+        background: var(--success-gradient);
+    }
+
+    .chart-card.info .card-header {
+        background: var(--info-gradient);
+    }
+
+    .chart-card.warning .card-header {
+        background: var(--warning-gradient);
+    }
+
+    .chart-card .card-body {
+        padding: 1.5rem;
+    }
+
+    .chart-container {
+        position: relative;
+        height: 300px;
+    }
+
+    /* Tables */
+    .modern-table {
+        border-radius: 10px;
+        overflow: hidden;
+    }
+
+    .modern-table thead {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+    }
+
+    .modern-table thead th {
+        border: none;
+        padding: 1rem;
+        font-weight: 600;
+    }
+
+    .modern-table tbody tr {
+        transition: all 0.3s ease;
+        border-bottom: 1px solid #f0f0f0;
+    }
+
+    .modern-table tbody tr:hover {
+        background: rgba(102, 126, 234, 0.05);
+        transform: scale(1.01);
+    }
+
+    .modern-table tbody td {
+        padding: 1rem;
+        vertical-align: middle;
+    }
+
+    /* Photo Gallery */
+    .photo-gallery {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: 1rem;
+    }
+
+    .photo-card {
+        border-radius: 10px;
+        overflow: hidden;
+        box-shadow: var(--card-shadow);
+        transition: all 0.3s ease;
+    }
+
+    .photo-card:hover {
+        transform: translateY(-5px);
+        box-shadow: var(--card-hover-shadow);
+    }
+
+    .photo-card img {
+        width: 100%;
+        height: 180px;
+        object-fit: cover;
+    }
+
+    .photo-card .card-body {
+        padding: 1rem;
+    }
+
+    /* Back Button */
+    .back-button {
+        background: white;
+        border: 2px solid #667eea;
+        color: #667eea;
+        border-radius: 10px;
+        padding: 0.75rem 1.5rem;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .back-button:hover {
+        background: #667eea;
+        color: white;
+        transform: translateY(-2px);
+        box-shadow: var(--card-shadow);
+    }
+
+    /* Empty State */
+    .empty-state {
+        text-align: center;
+        padding: 3rem 1rem;
+        color: #6c757d;
+    }
+
+    .empty-state i {
+        font-size: 4rem;
+        opacity: 0.3;
+        margin-bottom: 1rem;
+    }
+
+    /* Mobile Responsive */
+    @media (max-width: 768px) {
+        .page-header {
+            padding: 1.5rem;
+        }
+
+        .page-header h1 {
+            font-size: 1.5rem;
+        }
+
+        .stats-card h2 {
+            font-size: 1.5rem;
+        }
+
+        .chart-container {
+            height: 250px;
+        }
+
+        .photo-gallery {
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+        }
+    }
+
+    @media (max-width: 576px) {
+        .stats-card .icon-wrapper {
+            width: 50px;
+            height: 50px;
+        }
+
+        .stats-card .icon-wrapper i {
+            font-size: 1.5rem;
+        }
+
+        .chart-container {
+            height: 200px;
+        }
+    }
+
+    /* Animation */
+    @keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .fade-in-up {
+        animation: fadeInUp 0.5s ease-out;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Header -->
+    <div class="page-header fade-in-up">
+        <div class="d-flex justify-content-between align-items-center flex-wrap">
+            <div>
+                <h1><i class="fas fa-user-chart me-2"></i>Аналитика волонтёра</h1>
+                <p class="mb-0 opacity-75">{{ volunteer.username }} - Детальная статистика</p>
+            </div>
+            <a href="{% url 'volunteers' %}" class="back-button mt-2 mt-md-0">
+                <i class="fas fa-arrow-left"></i>
+                Назад к списку
+            </a>
+        </div>
+    </div>
+
+    <!-- Stats Row -->
+    <div class="row">
+        <div class="col-xl-3 col-md-6 fade-in-up" style="animation-delay: 0.1s;">
+            <div class="stats-card card primary">
+                <div class="card-body">
+                    <div class="icon-wrapper">
+                        <i class="fas fa-star"></i>
+                    </div>
+                    <h2>{{ stats.rating|floatformat:1|default:"0" }}</h2>
+                    <p class="card-title">Рейтинг</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 fade-in-up" style="animation-delay: 0.2s;">
+            <div class="stats-card card success">
+                <div class="card-body">
+                    <div class="icon-wrapper">
+                        <i class="fas fa-project-diagram"></i>
+                    </div>
+                    <h2>{{ stats.project_count }}</h2>
+                    <p class="card-title">Проектов</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 fade-in-up" style="animation-delay: 0.3s;">
+            <div class="stats-card card info">
+                <div class="card-body">
+                    <div class="icon-wrapper">
+                        <i class="fas fa-tasks"></i>
+                    </div>
+                    <h2>{{ stats.task_count }}</h2>
+                    <p class="card-title">Выполнено задач</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 fade-in-up" style="animation-delay: 0.4s;">
+            <div class="stats-card card warning">
+                <div class="card-body">
+                    <div class="icon-wrapper">
+                        <i class="fas fa-camera"></i>
+                    </div>
+                    <h2>{{ stats.photo_count }}</h2>
+                    <p class="card-title">Фотоотчётов</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts Row 1 -->
+    <div class="row">
+        <div class="col-xl-6 fade-in-up" style="animation-delay: 0.5s;">
+            <div class="chart-card card primary">
+                <div class="card-header">
+                    <i class="fas fa-chart-line me-2"></i>Динамика рейтинга
+                </div>
+                <div class="card-body">
+                    <div class="chart-container">
+                        <canvas id="ratingChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-6 fade-in-up" style="animation-delay: 0.6s;">
+            <div class="chart-card card success">
+                <div class="card-header">
+                    <i class="fas fa-chart-bar me-2"></i>Активность по дням
+                </div>
+                <div class="card-body">
+                    <div class="chart-container">
+                        <canvas id="activityChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts Row 2 -->
+    <div class="row">
+        <div class="col-xl-6 fade-in-up" style="animation-delay: 0.7s;">
+            <div class="chart-card card info">
+                <div class="card-header">
+                    <i class="fas fa-chart-pie me-2"></i>Распределение задач по проектам
+                </div>
+                <div class="card-body">
+                    <div class="chart-container">
+                        <canvas id="projectsChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-6 fade-in-up" style="animation-delay: 0.8s;">
+            <div class="chart-card card warning">
+                <div class="card-header">
+                    <i class="fas fa-chart-area me-2"></i>Статистика фотоотчётов
+                </div>
+                <div class="card-body">
+                    <div class="chart-container">
+                        <canvas id="photosChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Projects Table -->
+    <div class="row">
+        <div class="col-12 fade-in-up" style="animation-delay: 0.9s;">
+            <div class="chart-card card info">
+                <div class="card-header">
+                    <i class="fas fa-project-diagram me-2"></i>Участие в проектах
+                </div>
+                <div class="card-body">
+                    {% if volunteer.volunteer_projects.exists %}
+                    <div class="table-responsive">
+                        <table class="table modern-table">
+                            <thead>
+                                <tr>
+                                    <th><i class="fas fa-project-diagram me-2"></i>Проект</th>
+                                    <th class="text-center"><i class="fas fa-calendar-alt me-2"></i>Дата присоединения</th>
+                                    <th class="text-center"><i class="fas fa-tasks me-2"></i>Задач в проекте</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for vp in volunteer.volunteer_projects.all %}
+                                <tr>
+                                    <td>
+                                        <strong>{{ vp.project.title }}</strong>
+                                    </td>
+                                    <td class="text-center">
+                                        <span class="badge bg-primary rounded-pill">
+                                            {{ vp.joined_at|date:"d.m.Y" }}
+                                        </span>
+                                    </td>
+                                    <td class="text-center">
+                                        <span class="badge bg-info rounded-pill">
+                                            {{ vp.project.tasks.count }}
+                                        </span>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="empty-state">
+                        <i class="fas fa-project-diagram"></i>
+                        <p>Нет участия в проектах</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Completed Tasks Table -->
+    <div class="row">
+        <div class="col-12 fade-in-up" style="animation-delay: 1s;">
+            <div class="chart-card card success">
+                <div class="card-header">
+                    <i class="fas fa-check-circle me-2"></i>Выполненные задачи
+                </div>
+                <div class="card-body">
+                    {% if completed_assignments %}
+                    <div class="table-responsive">
+                        <table class="table modern-table">
+                            <thead>
+                                <tr>
+                                    <th><i class="fas fa-tasks me-2"></i>Задача</th>
+                                    <th><i class="fas fa-project-diagram me-2"></i>Проект</th>
+                                    <th class="text-center"><i class="fas fa-calendar-check me-2"></i>Дата завершения</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for assignment in completed_assignments|slice:":10" %}
+                                <tr>
+                                    <td>
+                                        <strong>{{ assignment.task.text|truncatechars:50 }}</strong>
+                                    </td>
+                                    <td>
+                                        {{ assignment.task.project.title|truncatechars:30 }}
+                                    </td>
+                                    <td class="text-center">
+                                        <span class="badge bg-success rounded-pill">
+                                            {{ assignment.completed_at|date:"d.m.Y H:i" }}
+                                        </span>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="empty-state">
+                        <i class="fas fa-tasks"></i>
+                        <p>Нет выполненных задач</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Photo Gallery -->
+    <div class="row">
+        <div class="col-12 fade-in-up" style="animation-delay: 1.1s;">
+            <div class="chart-card card warning">
+                <div class="card-header">
+                    <i class="fas fa-camera me-2"></i>Последние фотоотчёты
+                </div>
+                <div class="card-body">
+                    {% if volunteer.photos.exists %}
+                    <div class="photo-gallery">
+                        {% for photo in volunteer.photos.all|slice:":8" %}
+                        <div class="photo-card card">
+                            {% if photo.image %}
+                            <img src="{{ photo.image.url }}" alt="Photo">
+                            {% else %}
+                            <div style="width: 100%; height: 180px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center;">
+                                <i class="fas fa-image fa-3x text-white opacity-50"></i>
+                            </div>
+                            {% endif %}
+                            <div class="card-body">
+                                <h6 class="mb-2">{{ photo.project.title|truncatechars:25 }}</h6>
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <span class="badge bg-{% if photo.status == 'approved' %}success{% elif photo.status == 'rejected' %}danger{% else %}warning{% endif %} rounded-pill">
+                                        {{ photo.get_status_display }}
+                                    </span>
+                                    {% if photo.rating %}
+                                    <span class="text-warning">
+                                        <i class="fas fa-star"></i> {{ photo.rating }}/5
+                                    </span>
+                                    {% endif %}
+                                </div>
+                                <small class="text-muted">{{ photo.uploaded_at|date:"d.m.Y" }}</small>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <div class="empty-state">
+                        <i class="fas fa-camera"></i>
+                        <p>Нет фотоотчётов</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('Analytics page loaded');
+
+        // Parse data
+        let ratingHistory = [];
+        let activityData = [];
+
+        try {
+            const ratingHistoryRaw = '{{ rating_history|escapejs }}';
+            const activityDataRaw = '{{ activity_data|escapejs }}';
+
+            ratingHistory = ratingHistoryRaw ? JSON.parse(ratingHistoryRaw) : [];
+            activityData = activityDataRaw ? JSON.parse(activityDataRaw) : [];
+
+            console.log('Rating History:', ratingHistory);
+            console.log('Activity Data:', activityData);
+        } catch (e) {
+            console.error('Error parsing data:', e);
+        }
+
+        // Common chart options
+        const commonOptions = {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        padding: 15,
+                        font: {
+                            size: window.innerWidth < 768 ? 11 : 13,
+                            family: "'Nunito', sans-serif",
+                            weight: '600'
+                        },
+                        usePointStyle: true
+                    }
+                },
+                tooltip: {
+                    backgroundColor: 'rgba(0, 0, 0, 0.85)',
+                    padding: 12,
+                    titleFont: {
+                        size: 14,
+                        weight: 'bold'
+                    },
+                    bodyFont: {
+                        size: 13
+                    },
+                    borderColor: 'rgba(255, 255, 255, 0.2)',
+                    borderWidth: 1
+                }
+            },
+            animation: {
+                duration: 1000,
+                easing: 'easeInOutQuart'
+            }
+        };
+
+        // Rating Chart
+        const ratingCtx = document.getElementById('ratingChart');
+        if (ratingCtx) {
+            const ctx = ratingCtx.getContext('2d');
+            const gradient = ctx.createLinearGradient(0, 0, 0, 300);
+            gradient.addColorStop(0, 'rgba(102, 126, 234, 0.4)');
+            gradient.addColorStop(1, 'rgba(102, 126, 234, 0.0)');
+
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: ratingHistory.length > 0 ? ratingHistory.map(item => item.period) : ['Нет данных'],
+                    datasets: [{
+                        label: 'Средний рейтинг',
+                        data: ratingHistory.length > 0 ? ratingHistory.map(item => parseFloat(item.rating) || 0) : [0],
+                        borderColor: '#667eea',
+                        backgroundColor: gradient,
+                        borderWidth: 3,
+                        tension: 0.4,
+                        fill: true,
+                        pointRadius: 5,
+                        pointBackgroundColor: '#667eea',
+                        pointBorderColor: '#fff',
+                        pointBorderWidth: 2,
+                        pointHoverRadius: 7
+                    }]
+                },
+                options: {
+                    ...commonOptions,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 5,
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.05)'
+                            },
+                            ticks: {
+                                font: {
+                                    size: 11
+                                }
+                            }
+                        },
+                        x: {
+                            grid: {
+                                display: false
+                            },
+                            ticks: {
+                                font: {
+                                    size: 11
+                                },
+                                maxRotation: 45,
+                                minRotation: 45
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Activity Chart
+        const activityCtx = document.getElementById('activityChart');
+        if (activityCtx) {
+            new Chart(activityCtx, {
+                type: 'bar',
+                data: {
+                    labels: activityData.length > 0 ? activityData.map(item => item.day) : ['Нет данных'],
+                    datasets: [{
+                        label: 'Выполненные задачи',
+                        data: activityData.length > 0 ? activityData.map(item => item.count || 0) : [0],
+                        backgroundColor: 'rgba(86, 171, 47, 0.8)',
+                        borderColor: '#56ab2f',
+                        borderWidth: 2,
+                        borderRadius: 8,
+                        hoverBackgroundColor: 'rgba(86, 171, 47, 1)'
+                    }]
+                },
+                options: {
+                    ...commonOptions,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.05)'
+                            },
+                            ticks: {
+                                font: {
+                                    size: 11
+                                },
+                                stepSize: 1
+                            }
+                        },
+                        x: {
+                            grid: {
+                                display: false
+                            },
+                            ticks: {
+                                font: {
+                                    size: 10
+                                },
+                                maxRotation: 45,
+                                minRotation: 45
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Projects Distribution Chart
+        const projectsData = {
+            labels: [],
+            counts: []
+        };
+
+        {% for vp in volunteer.volunteer_projects.all %}
+            projectsData.labels.push('{{ vp.project.title|escapejs|truncatechars:20 }}');
+            projectsData.counts.push({{ vp.project.tasks.count }});
+        {% endfor %}
+
+        const projectsCtx = document.getElementById('projectsChart');
+        if (projectsCtx) {
+            if (projectsData.labels.length === 0) {
+                projectsData.labels.push('Нет проектов');
+                projectsData.counts.push(1);
+            }
+
+            new Chart(projectsCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: projectsData.labels,
+                    datasets: [{
+                        data: projectsData.counts,
+                        backgroundColor: [
+                            'rgba(102, 126, 234, 0.8)',
+                            'rgba(86, 171, 47, 0.8)',
+                            'rgba(33, 147, 176, 0.8)',
+                            'rgba(242, 153, 74, 0.8)',
+                            'rgba(235, 51, 73, 0.8)',
+                            'rgba(133, 135, 150, 0.8)',
+                            'rgba(90, 92, 105, 0.8)'
+                        ],
+                        hoverBackgroundColor: [
+                            'rgba(102, 126, 234, 1)',
+                            'rgba(86, 171, 47, 1)',
+                            'rgba(33, 147, 176, 1)',
+                            'rgba(242, 153, 74, 1)',
+                            'rgba(235, 51, 73, 1)',
+                            'rgba(133, 135, 150, 1)',
+                            'rgba(90, 92, 105, 1)'
+                        ],
+                        borderWidth: 3,
+                        borderColor: '#fff'
+                    }]
+                },
+                options: {
+                    ...commonOptions,
+                    cutout: '60%',
+                    plugins: {
+                        ...commonOptions.plugins,
+                        tooltip: {
+                            ...commonOptions.plugins.tooltip,
+                            callbacks: {
+                                label: function(context) {
+                                    const label = context.label || '';
+                                    const value = context.raw || 0;
+                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                    const percentage = total > 0 ? Math.round((value / total) * 100) : 0;
+                                    return `${label}: ${value} задач (${percentage}%)`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Photos Statistics Chart
+        let approvedCount = 0;
+        let pendingCount = 0;
+        let rejectedCount = 0;
+
+        {% for photo in volunteer.photos.all %}
+            {% if photo.status == 'approved' %}
+                approvedCount++;
+            {% elif photo.status == 'pending' %}
+                pendingCount++;
+            {% elif photo.status == 'rejected' %}
+                rejectedCount++;
+            {% endif %}
+        {% endfor %}
+
+        const photosCtx = document.getElementById('photosChart');
+        if (photosCtx) {
+            new Chart(photosCtx, {
+                type: 'bar',
+                data: {
+                    labels: ['Одобрено', 'На модерации', 'Отклонено'],
+                    datasets: [{
+                        label: 'Количество',
+                        data: [approvedCount, pendingCount, rejectedCount],
+                        backgroundColor: [
+                            'rgba(86, 171, 47, 0.8)',
+                            'rgba(242, 153, 74, 0.8)',
+                            'rgba(235, 51, 73, 0.8)'
+                        ],
+                        borderColor: [
+                            '#56ab2f',
+                            '#f2994a',
+                            '#eb3349'
+                        ],
+                        borderWidth: 2,
+                        borderRadius: 8
+                    }]
+                },
+                options: {
+                    ...commonOptions,
+                    indexAxis: 'y',
+                    scales: {
+                        x: {
+                            beginAtZero: true,
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.05)'
+                            },
+                            ticks: {
+                                font: {
+                                    size: 11
+                                },
+                                stepSize: 1
+                            }
+                        },
+                        y: {
+                            grid: {
+                                display: false
+                            },
+                            ticks: {
+                                font: {
+                                    size: 11
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+    });
+</script>
+{% endblock %}

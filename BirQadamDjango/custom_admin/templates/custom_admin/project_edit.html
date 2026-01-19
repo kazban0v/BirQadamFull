@@ -1,0 +1,555 @@
+{% extends 'custom_admin/base.html' %} {% load static %} {% block extra_css %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css" />
+<style>
+    :root {
+        --card-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.15);
+        --card-hover-shadow: 0 0.3rem 2rem 0 rgba(58, 59, 69, 0.25);
+        --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        --success-gradient: linear-gradient(135deg, #56ab2f 0%, #a8e063 100%);
+    }
+
+    /* Page Header */
+    .page-header {
+        background: var(--primary-gradient);
+        border-radius: 15px;
+        padding: 2rem;
+        margin-bottom: 2rem;
+        color: white;
+        box-shadow: var(--card-shadow);
+    }
+
+    .page-header h1 {
+        margin: 0;
+        font-size: 2rem;
+        font-weight: 700;
+    }
+
+    /* Form Card */
+    .form-card {
+        background: white;
+        border-radius: 15px;
+        box-shadow: var(--card-shadow);
+        border: none;
+        margin-bottom: 1.5rem;
+        overflow: hidden;
+    }
+
+    .form-card .card-header {
+        background: var(--primary-gradient);
+        color: white;
+        padding: 1.25rem 1.5rem;
+        border: none;
+        font-weight: 700;
+    }
+
+    .form-card .card-body {
+        padding: 2rem;
+    }
+
+    /* Form Controls */
+    .form-label {
+        font-weight: 600;
+        color: #4a5568;
+        margin-bottom: 0.5rem;
+        font-size: 0.9rem;
+    }
+
+    .form-control, .form-select {
+        border-radius: 10px;
+        border: 2px solid #e2e8f0;
+        padding: 0.75rem 1rem;
+        transition: all 0.3s ease;
+        font-size: 0.95rem;
+    }
+
+    .form-control:focus, .form-select:focus {
+        border-color: #667eea;
+        box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.15);
+    }
+
+    textarea.form-control {
+        min-height: 120px;
+    }
+
+    .form-text {
+        font-size: 0.85rem;
+        color: #718096;
+        margin-top: 0.25rem;
+    }
+
+    /* Map Container */
+    #form-map {
+        height: 450px;
+        width: 100%;
+        border-radius: 15px;
+        border: 2px solid #e2e8f0;
+        box-shadow: var(--card-shadow);
+        overflow: hidden;
+    }
+
+    .map-wrapper {
+        position: relative;
+        margin-bottom: 1rem;
+    }
+
+    .map-hint {
+        position: absolute;
+        top: 10px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: rgba(255, 255, 255, 0.95);
+        padding: 0.75rem 1.5rem;
+        border-radius: 10px;
+        box-shadow: var(--card-shadow);
+        z-index: 1000;
+        font-size: 0.9rem;
+        color: #4a5568;
+        font-weight: 600;
+        display: none;
+    }
+
+    .map-hint.show {
+        display: block;
+        animation: fadeIn 0.3s ease;
+    }
+
+    /* Buttons */
+    .btn-custom {
+        border-radius: 10px;
+        padding: 0.75rem 1.5rem;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        border: none;
+    }
+
+    .btn-custom-primary {
+        background: var(--primary-gradient);
+        color: white;
+    }
+
+    .btn-custom-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--card-shadow);
+        color: white;
+    }
+
+    .btn-custom-success {
+        background: var(--success-gradient);
+        color: white;
+    }
+
+    .btn-custom-success:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--card-shadow);
+        color: white;
+    }
+
+    .btn-custom-secondary {
+        background: #e2e8f0;
+        color: #4a5568;
+    }
+
+    .btn-custom-secondary:hover {
+        background: #cbd5e0;
+        transform: translateY(-2px);
+        color: #4a5568;
+    }
+
+    .btn-custom-danger {
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        color: white;
+    }
+
+    .btn-custom-danger:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--card-shadow);
+        color: white;
+    }
+
+    .back-button {
+        background: white;
+        border: 2px solid #667eea;
+        color: #667eea;
+        border-radius: 10px;
+        padding: 0.75rem 1.5rem;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .back-button:hover {
+        background: #667eea;
+        color: white;
+        transform: translateY(-2px);
+        box-shadow: var(--card-shadow);
+    }
+
+    /* Alert */
+    .custom-alert {
+        border-radius: 10px;
+        border: none;
+        padding: 1rem 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .custom-alert-warning {
+        background: linear-gradient(135deg, #fff3cd 0%, #ffe69c 100%);
+        color: #856404;
+    }
+
+    /* Error Messages */
+    .text-danger {
+        font-size: 0.85rem;
+        margin-top: 0.25rem;
+    }
+
+    /* Input Group */
+    .input-icon {
+        position: relative;
+    }
+
+    .input-icon i {
+        position: absolute;
+        top: 50%;
+        left: 1rem;
+        transform: translateY(-50%);
+        color: #a0aec0;
+    }
+
+    .input-icon .form-control {
+        padding-left: 2.75rem;
+    }
+
+    /* Mobile Responsive */
+    @media (max-width: 768px) {
+        .page-header {
+            padding: 1.5rem;
+        }
+
+        .page-header h1 {
+            font-size: 1.5rem;
+        }
+
+        .form-card .card-body {
+            padding: 1.5rem;
+        }
+
+        #form-map {
+            height: 350px;
+        }
+
+        .btn-custom {
+            width: 100%;
+            margin-bottom: 0.5rem;
+        }
+    }
+
+    /* Animation */
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+            transform: translateX(-50%) translateY(-10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+    }
+
+    .fade-in-up {
+        animation: fadeInUp 0.5s ease-out;
+    }
+
+    @keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    /* Section Divider */
+    .section-divider {
+        height: 2px;
+        background: linear-gradient(90deg, transparent, #e2e8f0, transparent);
+        margin: 2rem 0;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Header -->
+    <div class="page-header fade-in-up">
+        <div class="d-flex justify-content-between align-items-center flex-wrap">
+            <div>
+                <h1><i class="fas fa-{% if is_edit %}edit{% else %}plus-circle{% endif %} me-2"></i>{% if is_edit %}Редактирование проекта{% else %}Создание нового проекта{% endif %}</h1>
+                <p class="mb-0 opacity-75">{% if is_edit %}Обновите информацию о проекте{% else %}Заполните форму для создания проекта{% endif %}</p>
+            </div>
+            <a href="{% url 'project_list' %}" class="back-button mt-2 mt-md-0">
+                <i class="fas fa-arrow-left"></i>
+                К списку проектов
+            </a>
+        </div>
+    </div>
+
+    <!-- Alert for deleted projects -->
+    {% if form.instance.deleted_at %}
+    <div class="custom-alert custom-alert-warning fade-in-up">
+        <i class="fas fa-exclamation-triangle me-2"></i>
+        <strong>Внимание!</strong> Проект был удалён: {{ form.instance.deleted_at|date:"d.m.Y H:i" }}
+    </div>
+    {% endif %}
+
+    <!-- Form Card -->
+    <div class="form-card fade-in-up" style="animation-delay: 0.1s;">
+        <div class="card-header">
+            <i class="fas fa-file-alt me-2"></i>Основная информация
+        </div>
+        <div class="card-body">
+            <form method="POST" enctype="multipart/form-data">
+                {% csrf_token %}
+
+                <!-- Title and City Row -->
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <label for="{{ form.title.id_for_label }}" class="form-label">
+                            <i class="fas fa-heading me-1"></i>Название проекта *
+                        </label>
+                        {{ form.title }}
+                        {% if form.title.errors %}
+                        <div class="text-danger">{{ form.title.errors }}</div>
+                        {% endif %}
+                        <small class="form-text">Укажите краткое и понятное название</small>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="{{ form.city.id_for_label }}" class="form-label">
+                            <i class="fas fa-city me-1"></i>Город *
+                        </label>
+                        {{ form.city }}
+                        {% if form.city.errors %}
+                        <div class="text-danger">{{ form.city.errors }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Description -->
+                <div class="mb-4">
+                    <label for="{{ form.description.id_for_label }}" class="form-label">
+                        <i class="fas fa-align-left me-1"></i>Описание проекта *
+                    </label>
+                    {{ form.description }}
+                    {% if form.description.errors %}
+                    <div class="text-danger">{{ form.description.errors }}</div>
+                    {% endif %}
+                    <small class="form-text">Подробно опишите цели и задачи проекта (минимум 100 символов)</small>
+                </div>
+
+                <!-- Status and Registration Date Row -->
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <label for="{{ form.status.id_for_label }}" class="form-label">
+                            <i class="fas fa-flag me-1"></i>Статус проекта
+                        </label>
+                        {{ form.status }}
+                        {% if form.status.errors %}
+                        <div class="text-danger">{{ form.status.errors }}</div>
+                        {% endif %}
+                    </div>
+                    {% if is_edit and form.instance.registration_date %}
+                    <div class="col-md-6">
+                        <label class="form-label">
+                            <i class="fas fa-calendar-alt me-1"></i>Дата регистрации
+                        </label>
+                        <div class="form-control" style="background: #f7fafc; cursor: not-allowed;">
+                            {{ form.instance.registration_date|date:"d.m.Y" }}
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <div class="section-divider"></div>
+
+                <!-- Map Section -->
+                <div class="mb-4">
+                    <label class="form-label mb-3">
+                        <i class="fas fa-map-marker-alt me-1"></i>Местоположение на карте *
+                    </label>
+                    <div class="map-wrapper">
+                        <div class="map-hint" id="mapHint">
+                            <i class="fas fa-hand-pointer me-2"></i>Кликните на карте для выбора местоположения
+                        </div>
+                        <div id="form-map"></div>
+                    </div>
+                    <small class="form-text">
+                        <i class="fas fa-info-circle me-1"></i>
+                        Используйте поиск или кликните на карте для точного указания местоположения проекта
+                    </small>
+                    {{ form.latitude }}
+                    {{ form.longitude }}
+                </div>
+
+                <div class="section-divider"></div>
+
+                <!-- Action Buttons -->
+                <div class="d-flex flex-wrap gap-2 justify-content-between">
+                    <div class="d-flex flex-wrap gap-2">
+                        <button type="submit" class="btn btn-custom btn-custom-success">
+                            <i class="fas fa-save me-2"></i>{% if is_edit %}Сохранить изменения{% else %}Создать проект{% endif %}
+                        </button>
+                        <a href="{% url 'project_list' %}" class="btn btn-custom btn-custom-secondary">
+                            <i class="fas fa-times me-2"></i>Отмена
+                        </a>
+                    </div>
+                    {% if is_edit %}
+                    <button type="button" class="btn btn-custom btn-custom-danger" data-bs-toggle="modal" data-bs-target="#deleteModal">
+                        <i class="fas fa-trash-alt me-2"></i>Удалить проект
+                    </button>
+                    {% endif %}
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Delete Modal -->
+    {% if is_edit %}
+    <div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content" style="border-radius: 15px; border: none; overflow: hidden;">
+                <div class="modal-header" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; border: none;">
+                    <h5 class="modal-title" id="deleteModalLabel">
+                        <i class="fas fa-exclamation-triangle me-2"></i>Подтверждение удаления
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body" style="padding: 2rem;">
+                    <div class="text-center mb-3">
+                        <i class="fas fa-trash-alt fa-3x" style="color: #f5576c;"></i>
+                    </div>
+                    <p class="text-center mb-3" style="font-size: 1.1rem;">Вы уверены, что хотите удалить проект<br><strong>"{{ form.instance.title }}"</strong>?</p>
+                    <div class="alert alert-danger" style="border-radius: 10px; border: none;">
+                        <i class="fas fa-exclamation-circle me-2"></i>
+                        <strong>Внимание!</strong> Это действие нельзя отменить!
+                    </div>
+                </div>
+                <div class="modal-footer" style="border: none; padding: 1rem 2rem;">
+                    <button type="button" class="btn btn-custom btn-custom-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times me-2"></i>Отмена
+                    </button>
+                    <form method="POST" action="{% url 'project_delete' pk=form.instance.pk %}" style="display: inline;">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-custom btn-custom-danger">
+                            <i class="fas fa-trash-alt me-2"></i>Да, удалить
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const latField = document.getElementById('{{ form.latitude.id_for_label }}');
+        const lonField = document.getElementById('{{ form.longitude.id_for_label }}');
+        const mapHint = document.getElementById('mapHint');
+
+        let initialLat = parseFloat(latField.value) || 43.2389;
+        let initialLon = parseFloat(lonField.value) || 76.8897;
+        let initialZoom = latField.value ? 15 : 11;
+
+        const map = L.map('form-map').setView([initialLat, initialLon], initialZoom);
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+            maxZoom: 19
+        }).addTo(map);
+
+        let marker = null;
+        if (latField.value && lonField.value) {
+            marker = L.marker([initialLat, initialLon], {
+                icon: L.icon({
+                    iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-violet.png',
+                    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+                    iconSize: [25, 41],
+                    iconAnchor: [12, 41],
+                    popupAnchor: [1, -34],
+                    shadowSize: [41, 41]
+                })
+            }).addTo(map);
+        } else {
+            // Show hint if no location selected
+            mapHint.classList.add('show');
+            setTimeout(() => {
+                mapHint.classList.remove('show');
+            }, 3000);
+        }
+
+        function updateMarkerAndFields(latlng) {
+            latField.value = latlng.lat.toFixed(6);
+            lonField.value = latlng.lng.toFixed(6);
+
+            if (marker) {
+                marker.setLatLng(latlng);
+            } else {
+                marker = L.marker(latlng, {
+                    icon: L.icon({
+                        iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-violet.png',
+                        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+                        iconSize: [25, 41],
+                        iconAnchor: [12, 41],
+                        popupAnchor: [1, -34],
+                        shadowSize: [41, 41]
+                    })
+                }).addTo(map);
+            }
+
+            map.panTo(latlng);
+
+            // Show success hint
+            mapHint.innerHTML = '<i class="fas fa-check-circle me-2"></i>Местоположение установлено!';
+            mapHint.classList.add('show');
+            setTimeout(() => {
+                mapHint.classList.remove('show');
+            }, 2000);
+        }
+
+        map.on('click', function(e) {
+            updateMarkerAndFields(e.latlng);
+        });
+
+        // Geocoder control
+        const geocoder = L.Control.geocoder({
+            defaultMarkGeocode: false,
+            placeholder: 'Поиск адреса...',
+            errorMessage: 'Адрес не найден'
+        }).on('markgeocode', function(e) {
+            const latlng = e.geocode.center;
+            updateMarkerAndFields(latlng);
+            map.setView(latlng, 15);
+        }).addTo(map);
+
+        // Make form controls look better
+        const formControls = document.querySelectorAll('.form-control, .form-select');
+        formControls.forEach(control => {
+            control.classList.add('form-control');
+        });
+
+        // Hide lat/lon fields
+        latField.type = 'hidden';
+        lonField.type = 'hidden';
+    });
+</script>
+{% endblock %}
