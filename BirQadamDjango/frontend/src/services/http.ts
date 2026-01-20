@@ -1,15 +1,12 @@
 import axios from 'axios';
 
-// ✅ PRODUCTION: VITE_API_BASE_URL должен быть задан через переменную окружения
-// В development используем относительный путь (проксируется через vite.config.ts)
-// В production используем полный URL из переменной окружения
-// ⚠️ ВНИМАНИЕ: Если VITE_API_BASE_URL не задан в production, будет ошибка - это намеренно для безопасности
-const apiBaseUrl = import.meta.env.DEV 
-  ? '' // В разработке используем относительный путь (проксируется через vite)
-  : (import.meta.env.VITE_API_BASE_URL || (() => {
-      console.error('❌ VITE_API_BASE_URL не задан! Установите переменную окружения перед сборкой.');
-      return '';
-    })());
+// ✅ PRODUCTION: Frontend на /portal/, API на /api/web/ (в корне домена)
+// Абсолютные пути /api/web/... всегда идут на корень домена: https://birqadam.almau.edu.kz/api/web/...
+// В development проксируется через vite.config.ts
+// В production: страница на https://birqadam.almau.edu.kz/portal/, запросы на https://birqadam.almau.edu.kz/api/web/...
+// Пустой baseURL гарантирует, что абсолютные пути из сервисов не будут изменены
+// Можно задать VITE_API_BASE_URL для использования другого домена для API
+const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || '';
 
 export const httpClient = axios.create({
   baseURL: apiBaseUrl,
@@ -54,6 +51,20 @@ httpClient.interceptors.request.use((config) => {
   }
   // Убеждаемся, что cookies отправляются
   config.withCredentials = true;
+  
+  // Логирование для отладки (только в development)
+  if (import.meta.env.DEV) {
+    const fullURL = config.baseURL && config.url 
+      ? `${config.baseURL}${config.url}` 
+      : (config.url || config.baseURL);
+    console.log('🌐 Request:', {
+      method: config.method?.toUpperCase(),
+      url: config.url,
+      baseURL: config.baseURL,
+      fullURL: fullURL,
+    });
+  }
+  
   return config;
 });
 
@@ -61,13 +72,18 @@ httpClient.interceptors.request.use((config) => {
 httpClient.interceptors.response.use(
   (response) => response,
   (error) => {
+    // Формируем полный URL правильно
+    const baseURL = error?.config?.baseURL || '';
+    const url = error?.config?.url || '';
+    const fullURL = baseURL && url ? `${baseURL}${url}` : (url || baseURL);
+    
     // Логируем все ошибки в консоль для отладки
     console.error('HTTP Error:', {
       message: error?.message,
       url: error?.config?.url,
       method: error?.config?.method,
       baseURL: error?.config?.baseURL,
-      fullURL: error?.config?.baseURL + error?.config?.url,
+      fullURL: fullURL,
       status: error?.response?.status,
       statusText: error?.response?.statusText,
       data: error?.response?.data,
