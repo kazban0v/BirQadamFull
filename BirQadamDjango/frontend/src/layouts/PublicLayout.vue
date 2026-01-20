@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
-import { RouterLink, RouterView } from 'vue-router';
+import { RouterLink, RouterView, useRouter } from 'vue-router';
 
 import { useAuthStore } from '@/stores/auth';
 
 const drawer = ref(false);
 const authStore = useAuthStore();
+const router = useRouter();
 
 onMounted(() => {
   authStore.initialize();
@@ -36,6 +37,8 @@ const dashboardRoute = computed(() => {
 
 const handleLogout = async () => {
   await authStore.logout();
+  // Редиректим на главную после выхода
+  router.push({ name: 'home' });
 };
 </script>
 

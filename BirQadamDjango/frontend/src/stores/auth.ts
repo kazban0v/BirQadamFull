@@ -27,9 +27,21 @@ export const useAuthStore = defineStore('auth', () => {
   async function loadUser() {
     try {
       const response = await fetchCurrentUser();
-      user.value = response;
-    } catch (error) {
-      user.value = null;
+      // Проверяем, что ответ содержит данные пользователя
+      if (response && response.id) {
+        user.value = response;
+      } else {
+        user.value = null;
+      }
+    } catch (error: any) {
+      // При ошибке авторизации (401, 403) очищаем данные
+      if (error?.response?.status === 401 || error?.response?.status === 403) {
+        user.value = null;
+        localStorage.removeItem('access');
+      } else {
+        // Для других ошибок тоже очищаем, чтобы не было ложных данных
+        user.value = null;
+      }
     }
   }
 
@@ -52,8 +64,19 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   async function logout() {
-    await apiLogout();
-    user.value = null;
+    try {
+      await apiLogout();
+    } catch (error) {
+      // Игнорируем ошибки при logout (может быть уже разлогинен)
+      console.warn('Logout error:', error);
+    } finally {
+      // Всегда очищаем данные пользователя
+      user.value = null;
+      // Очищаем localStorage
+      localStorage.removeItem('access');
+      // Сбрасываем флаг инициализации для повторной проверки при следующем входе
+      initialized.value = false;
+    }
   }
 
   async function refreshProfile() {

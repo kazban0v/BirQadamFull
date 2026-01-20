@@ -112,7 +112,7 @@ const handleLogout = async () => {
   await authStore.logout();
   dashboardStore.reset();
   organizerStore.reset();
-  router.push('/');
+  router.push({ name: 'home' });
 };
 </script>
 
