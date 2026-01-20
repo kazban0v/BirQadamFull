@@ -1,11 +1,12 @@
 import axios from 'axios';
 
-// ✅ PRODUCTION: Всегда используем window.location.origin для гарантии правильного домена
+// ✅ PRODUCTION: Бэкенд на cleanup.almau.edu.kz, фронтенд на birqadam.almau.edu.kz
 // В development пустой baseURL (проксируется через vite.config.ts)
-// В production явно устанавливаем baseURL = window.location.origin
+// В production используем cleanup.almau.edu.kz для API запросов
+// Можно переопределить через переменную окружения VITE_API_BASE_URL
 const apiBaseUrl = import.meta.env.DEV
   ? '' // В разработке пустой - проксируется через Vite
-  : (import.meta.env.VITE_API_BASE_URL || (typeof window !== 'undefined' ? window.location.origin : ''));
+  : (import.meta.env.VITE_API_BASE_URL || 'https://cleanup.almau.edu.kz');
 
 export const httpClient = axios.create({
   baseURL: apiBaseUrl,
@@ -29,11 +30,10 @@ httpClient.interceptors.request.use((config) => {
   if (config.url && typeof window !== 'undefined') {
     // Если URL абсолютный (начинается с /), гарантируем правильный baseURL
     if (config.url.startsWith('/')) {
-      // В production всегда используем window.location.origin
-      // Это гарантирует, что запросы идут на https://birqadam.almau.edu.kz/api/web/...
-      // а не на https://birqadam.almau.edu.kz/portal/register/192.168.45.232:8002/...
-      if (import.meta.env.PROD) {
-        config.baseURL = window.location.origin;
+      // В production используем cleanup.almau.edu.kz для API запросов
+      // (бэкенд и фронтенд на разных доменах)
+      if (import.meta.env.PROD && !config.baseURL) {
+        config.baseURL = import.meta.env.VITE_API_BASE_URL || 'https://cleanup.almau.edu.kz';
       }
       // В development baseURL остается пустым (проксируется через Vite)
     }
