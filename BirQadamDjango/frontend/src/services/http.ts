@@ -1,12 +1,11 @@
 import axios from 'axios';
 
-// ✅ PRODUCTION: Frontend на /portal/, API на /api/web/ (в корне домена)
-// Абсолютные пути /api/web/... всегда идут на корень домена: https://birqadam.almau.edu.kz/api/web/...
-// В development проксируется через vite.config.ts
-// В production: страница на https://birqadam.almau.edu.kz/portal/, запросы на https://birqadam.almau.edu.kz/api/web/...
-// Пустой baseURL гарантирует, что абсолютные пути из сервисов не будут изменены
-// Можно задать VITE_API_BASE_URL для использования другого домена для API
-const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || '';
+// ✅ PRODUCTION: VITE_API_BASE_URL должен быть задан через переменную окружения
+// В development используем относительный путь (проксируется через vite.config.ts)
+// В production используем полный URL из переменной окружения или текущий домен
+const apiBaseUrl = import.meta.env.DEV 
+  ? '' // В разработке используем относительный путь (проксируется через vite)
+  : (import.meta.env.VITE_API_BASE_URL || (typeof window !== 'undefined' ? window.location.origin : ''));
 
 export const httpClient = axios.create({
   baseURL: apiBaseUrl,
@@ -42,6 +41,17 @@ export function getCookie(name: string): string | null {
 //
 
 httpClient.interceptors.request.use((config) => {
+  // ✅ КРИТИЧНО: Нормализуем URL для правильного формирования абсолютных путей
+  // Когда baseURL = window.location.origin, а URL абсолютный (начинается с /),
+  // axios правильно объединяет их: origin + /api/web/... = https://domain.com/api/web/...
+  // Но нужно убедиться, что baseURL установлен для всех случаев
+  if (config.url && typeof window !== 'undefined') {
+    // Если URL абсолютный (начинается с /), убеждаемся что baseURL установлен
+    if (config.url.startsWith('/') && !config.baseURL) {
+      config.baseURL = window.location.origin;
+    }
+  }
+  
   // Используем сессионную авторизацию через cookies
   // Токен не нужен, так как используется CsrfExemptSessionAuthentication
   // Но если токен есть, используем его
@@ -55,7 +65,7 @@ httpClient.interceptors.request.use((config) => {
   // Логирование для отладки (только в development)
   if (import.meta.env.DEV) {
     const fullURL = config.baseURL && config.url 
-      ? `${config.baseURL}${config.url}` 
+      ? `${config.baseURL}${config.url}`
       : (config.url || config.baseURL);
     console.log('🌐 Request:', {
       method: config.method?.toUpperCase(),
