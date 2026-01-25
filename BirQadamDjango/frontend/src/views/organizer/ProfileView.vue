@@ -5,11 +5,9 @@ import type { VForm } from 'vuetify/components';
 import { httpClient } from '@/services/http';
 import { getTelegramSyncStatus, generateTelegramLinkCode } from '@/services/auth';
 import { useAuthStore } from '@/stores/auth';
-import { useOrganizerStore } from '@/stores/organizer';
 import { getOrganizerProfile, updateOrganizerProfile, type OrganizerProfile } from '@/services/webPortal';
 
 const authStore = useAuthStore();
-const organizerStore = useOrganizerStore();
 const loading = ref(false);
 const formRef = ref<VForm | null>(null);
 const snackbar = reactive({
@@ -23,6 +21,8 @@ const formState = reactive({
   organization_name: '',
 });
 
+const profileData = ref<OrganizerProfile | null>(null);
+
 const portfolioState = reactive({
   age: null as number | null,
   gender: null as string | null,
@@ -31,6 +31,7 @@ const portfolioState = reactive({
   work_history: '',
   portfolio_photo: null as File | null,
   portfolio_photo_url: null as string | null,
+  portfolio_photo_preview: null as string | null,
 });
 
 const portfolioFormRef = ref<VForm | null>(null);
@@ -105,6 +106,7 @@ const loadProfile = async () => {
   try {
     // Используем правильный API endpoint для организатора
     const profile = await getOrganizerProfile();
+    profileData.value = profile;
     formState.name = profile.full_name || '';
     formState.organization_name = profile.organization_name || '';
     
@@ -113,6 +115,20 @@ const loadProfile = async () => {
   } finally {
     loading.value = false;
   }
+};
+
+// Функция для преобразования относительного URL в полный
+const getFullImageUrl = (url: string | null | undefined): string | null => {
+  if (!url) return null;
+  // Если уже полный URL, возвращаем как есть
+  if (url.startsWith('http://') || url.startsWith('https://')) {
+    return url;
+  }
+  // Если относительный путь, добавляем базовый URL
+  const baseUrl = 'https://cleanup.almau.edu.kz';
+  // Убираем двойные слеши и формируем правильный URL
+  const cleanUrl = url.startsWith('/') ? url : `/${url}`;
+  return `${baseUrl}${cleanUrl}`;
 };
 
 const loadPortfolio = async () => {
@@ -124,7 +140,8 @@ const loadPortfolio = async () => {
     portfolioState.bio = profile.portfolio?.bio || '';
     portfolioState.work_experience_years = profile.portfolio?.work_experience_years || null;
     portfolioState.work_history = profile.portfolio?.work_history || '';
-    portfolioState.portfolio_photo_url = profile.portfolio?.portfolio_photo_url || null;
+    // Преобразуем URL в полный, если нужно
+    portfolioState.portfolio_photo_url = getFullImageUrl(profile.portfolio?.portfolio_photo_url) || null;
   } catch (error: any) {
     console.error('Failed to load portfolio:', error);
   } finally {
@@ -138,7 +155,7 @@ const submitPortfolio = async () => {
 
   portfolioLoading.value = true;
   try {
-    await updateOrganizerProfile({
+    const updatedProfile = await updateOrganizerProfile({
       portfolio: {
         age: portfolioState.age,
         gender: portfolioState.gender,
@@ -149,8 +166,14 @@ const submitPortfolio = async () => {
       portfolio_photo: portfolioState.portfolio_photo || undefined,
     });
 
-    await loadPortfolio();
+    // Обновляем URL фото из ответа API и преобразуем в полный URL
+    if (updatedProfile.portfolio?.portfolio_photo_url) {
+      portfolioState.portfolio_photo_url = getFullImageUrl(updatedProfile.portfolio.portfolio_photo_url) || null;
+    }
+    
+    // Сбрасываем выбранный файл и превью
     portfolioState.portfolio_photo = null;
+    portfolioState.portfolio_photo_preview = null;
 
     snackbar.message = 'Портфолио успешно обновлено';
     snackbar.color = 'success';
@@ -169,6 +192,22 @@ const handlePortfolioPhotoChange = (event: Event) => {
   const target = event.target as HTMLInputElement;
   if (target.files && target.files[0]) {
     portfolioState.portfolio_photo = target.files[0];
+    // Создаем превью для нового файла
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      portfolioState.portfolio_photo_preview = e.target?.result as string;
+    };
+    reader.readAsDataURL(target.files[0]);
+  }
+};
+
+const removePortfolioPhoto = () => {
+  portfolioState.portfolio_photo = null;
+  portfolioState.portfolio_photo_preview = null;
+  // Сбрасываем input файла
+  const fileInput = document.querySelector('input[type="file"][accept="image/*"]') as HTMLInputElement;
+  if (fileInput) {
+    fileInput.value = '';
   }
 };
 
@@ -246,7 +285,7 @@ const submit = async () => {
   loading.value = true;
   try {
     // Используем правильный API endpoint для организатора
-    const { data } = await updateOrganizerProfile({
+    await updateOrganizerProfile({
       full_name: formState.name,
       organization_name: formState.organization_name,
     });
@@ -390,16 +429,7 @@ onMounted(async () => {
     <v-card class="profile-header" elevation="0" rounded="xl">
       <div class="header-gradient"></div>
       <div class="header-content">
-        <div class="d-flex flex-column flex-md-row align-center align-md-start ga-6">
-          <v-avatar size="100" color="primary" class="avatar-main">
-            <v-icon size="50" color="white">mdi-office-building</v-icon>
-          </v-avatar>
-          <div class="flex-grow-1">
-            <h1 class="text-h4 font-weight-bold mb-2">{{ formState.name || authStore.user?.name || authStore.user?.full_name || authStore.user?.username || 'Организатор' }}</h1>
-            <p class="text-body-1 text-medium-emphasis mb-0">
-              {{ formState.organization_name || authStore.user?.organization_name || 'Организация' }}
-            </p>
-          </div>
+        <div class="header-status-wrapper">
           <v-chip
             :color="statusConfig.color"
             size="large"
@@ -409,6 +439,54 @@ onMounted(async () => {
           >
             {{ statusConfig.title }}
           </v-chip>
+        </div>
+        <div class="d-flex flex-column flex-md-row align-center align-md-start ga-6">
+          <v-avatar 
+            size="100" 
+            color="primary" 
+            class="avatar-main"
+          >
+            <v-img
+              v-if="portfolioState.portfolio_photo_preview || portfolioState.portfolio_photo_url"
+              :src="(portfolioState.portfolio_photo_preview || portfolioState.portfolio_photo_url)!"
+              cover
+              alt="Фото профиля"
+            />
+            <v-icon v-else size="50" color="white">mdi-office-building</v-icon>
+          </v-avatar>
+          <div class="flex-grow-1" style="min-width: 0;">
+            <h1 class="text-h4 font-weight-bold mb-2">{{ formState.name || authStore.user?.full_name || authStore.user?.username || 'Организатор' }}</h1>
+            <p class="text-body-1 text-medium-emphasis mb-2">
+              {{ formState.organization_name || authStore.user?.organization_name || 'Организация' }}
+            </p>
+            <div class="text-body-2 text-white">
+              <div v-if="authStore.user?.phone_number || profileData?.phone_number" class="d-flex align-center mb-1">
+                <v-icon size="18" class="mr-2">mdi-phone</v-icon>
+                <span>{{ authStore.user?.phone_number || profileData?.phone_number }}</span>
+              </div>
+              <div v-if="authStore.user?.email || profileData?.email" class="d-flex align-center mb-1">
+                <v-icon size="18" class="mr-2">mdi-email</v-icon>
+                <span>{{ authStore.user?.email || profileData?.email }}</span>
+              </div>
+              <!-- Информация из портфолио -->
+              <div v-if="portfolioState.age" class="d-flex align-center mb-1">
+                <v-icon size="18" class="mr-2">mdi-calendar</v-icon>
+                <span>{{ portfolioState.age }} лет</span>
+              </div>
+              <div v-if="portfolioState.gender" class="d-flex align-center mb-1">
+                <v-icon size="18" class="mr-2">mdi-gender-male-female</v-icon>
+                <span>{{ portfolioState.gender === 'male' ? 'Мужской' : portfolioState.gender === 'female' ? 'Женский' : 'Другое' }}</span>
+              </div>
+              <div v-if="portfolioState.work_experience_years" class="d-flex align-center mb-1">
+                <v-icon size="18" class="mr-2">mdi-briefcase-clock</v-icon>
+                <span>Стаж: {{ portfolioState.work_experience_years }} {{ portfolioState.work_experience_years === 1 ? 'год' : portfolioState.work_experience_years < 5 ? 'года' : 'лет' }}</span>
+              </div>
+              <div v-if="portfolioState.bio" class="d-flex align-start mb-1 mt-2">
+                <v-icon size="18" class="mr-2 mt-1 flex-shrink-0">mdi-account-circle</v-icon>
+                <span class="text-body-2 bio-text">{{ portfolioState.bio }}</span>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </v-card>
@@ -613,6 +691,34 @@ onMounted(async () => {
               autocomplete="organization"
             />
           </v-col>
+          <v-col cols="12" md="6">
+            <v-text-field
+              :model-value="profileData?.phone_number || authStore.user?.phone_number || ''"
+              label="Номер телефона"
+              prepend-inner-icon="mdi-phone"
+              variant="solo-filled"
+              flat
+              readonly
+              bg-color="grey-lighten-5"
+              rounded="lg"
+              hide-details="auto"
+              class="input-field"
+            />
+          </v-col>
+          <v-col cols="12" md="6">
+            <v-text-field
+              :model-value="profileData?.email || authStore.user?.email || ''"
+              label="Email"
+              prepend-inner-icon="mdi-email"
+              variant="solo-filled"
+              flat
+              readonly
+              bg-color="grey-lighten-5"
+              rounded="lg"
+              hide-details="auto"
+              class="input-field"
+            />
+          </v-col>
         </v-row>
 
         <div class="d-flex flex-wrap ga-3 mt-8">
@@ -745,14 +851,30 @@ onMounted(async () => {
               class="input-field"
               @change="handlePortfolioPhotoChange"
             />
-            <div v-if="portfolioState.portfolio_photo_url" class="mt-2">
-              <v-img
-                :src="portfolioState.portfolio_photo_url"
-                max-width="150"
-                max-height="200"
-                cover
-                class="rounded-lg"
-              />
+            <!-- Превью выбранного файла или текущего фото -->
+            <div v-if="portfolioState.portfolio_photo_preview || portfolioState.portfolio_photo_url" class="mt-3">
+              <div class="d-flex align-center ga-3">
+                <v-img
+                  :src="(portfolioState.portfolio_photo_preview || portfolioState.portfolio_photo_url)!"
+                  max-width="150"
+                  max-height="200"
+                  cover
+                  class="rounded-lg"
+                />
+                <v-btn
+                  v-if="portfolioState.portfolio_photo_preview"
+                  icon="mdi-delete"
+                  color="error"
+                  variant="text"
+                  size="small"
+                  @click="removePortfolioPhoto"
+                  title="Удалить выбранное фото"
+                />
+              </div>
+              <div class="text-caption text-medium-emphasis mt-2">
+                <span v-if="portfolioState.portfolio_photo_preview">Выбрано новое фото. Нажмите "Сохранить портфолио" для применения.</span>
+                <span v-else>Текущее фото. Выберите новое для замены.</span>
+              </div>
             </div>
           </v-col>
           <v-col cols="12">
@@ -807,20 +929,23 @@ onMounted(async () => {
         <v-icon color="primary" size="28" class="mr-3">mdi-lock-reset</v-icon>
         <h2 class="text-h5 font-weight-bold">Изменение пароля</h2>
       </div>
-      <p class="text-body-1 text-medium-emphasis mb-4">
-        Вы можете изменить свой пароль для входа в систему.
-      </p>
-      <v-btn
-        color="primary"
-        size="large"
-        class="text-none font-weight-bold px-8"
-        rounded="lg"
-        elevation="0"
-        @click="passwordDialog = true"
-      >
-        <v-icon start>mdi-lock-reset</v-icon>
-        Изменить пароль
-      </v-btn>
+      <div class="password-change-content">
+        <p class="text-body-1 text-medium-emphasis mb-6">
+          Вы можете изменить свой пароль для входа в систему.
+        </p>
+        <v-btn
+          color="primary"
+          size="large"
+          class="text-none font-weight-bold"
+          rounded="lg"
+          elevation="0"
+          block
+          @click="passwordDialog = true"
+        >
+          <v-icon start>mdi-lock-reset</v-icon>
+          Изменить пароль
+        </v-btn>
+      </div>
     </v-card>
 
     <!-- Синхронизация с Telegram -->
@@ -882,7 +1007,7 @@ onMounted(async () => {
             </v-card>
             <div class="text-body-2 mt-3 mb-3">
               <v-icon size="16" class="mr-1">mdi-information-outline</v-icon>
-              Откройте Telegram бот и используйте команду <strong>/link {{ linkCode }}</strong> или просто отправьте код <strong>{{ linkCode }}</strong>
+              Откройте Telegram бот и используйте команду <strong>/link {{ linkCode }}</strong>
             </div>
             <v-btn
               color="primary"
@@ -1031,9 +1156,30 @@ onMounted(async () => {
   padding: 32px;
 }
 
+.header-status-wrapper {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  z-index: 2;
+}
+
+.chip-status {
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  white-space: nowrap;
+}
+
 .avatar-main {
   border: 4px solid rgba(255, 255, 255, 0.3);
   box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+
+.bio-text {
+  word-wrap: break-word;
+  word-break: break-word;
+  overflow-wrap: break-word;
+  max-width: 100%;
+  white-space: pre-wrap;
 }
 
 .chip-status {
@@ -1140,6 +1286,16 @@ onMounted(async () => {
   border: 1px solid rgba(0, 0, 0, 0.08);
 }
 
+.password-change-card {
+  padding: 32px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  background: linear-gradient(145deg, #ffffff, #f8f9fa);
+}
+
+.password-change-content {
+  padding-top: 8px;
+}
+
 .telegram-linked .telegram-info {
   display: flex;
   flex-direction: column;
@@ -1172,6 +1328,15 @@ onMounted(async () => {
 @media (max-width: 960px) {
   .header-content {
     padding: 24px;
+  }
+
+  .header-status-wrapper {
+    position: relative;
+    top: 0;
+    right: 0;
+    margin-bottom: 16px;
+    display: flex;
+    justify-content: flex-end;
   }
 
   .profile-form {

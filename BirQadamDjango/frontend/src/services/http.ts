@@ -26,21 +26,23 @@ export function getCookie(name: string): string | null {
   return value ? decodeURIComponent(value) : null;
 }
 
-// httpClient.interceptors.request.use((config) => {
-//   const method = config.method?.toLowerCase();
-//   if (method && !CSRF_SAFE_METHODS.includes(method)) {
-//     const csrfToken = getCookie('csrftoken');
-//     if (csrfToken) {
-//       if (!config.headers) config.headers = {};
-//       config.headers['X-CSRFToken'] = csrfToken;
-//     }
-//   }
-//   return config;
-// });
-//
+const CSRF_SAFE_METHODS = ['get', 'head', 'options', 'trace'];
 
 httpClient.interceptors.request.use((config) => {
-  const token = localStorage.getItem("access"); // или где хранишь
-  if (token) config.headers.Authorization = `Bearer ${token}`;
+  const token = localStorage.getItem("access");
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  
+  // Добавляем CSRF токен для POST, PUT, PATCH, DELETE запросов
+  const method = config.method?.toLowerCase();
+  if (method && !CSRF_SAFE_METHODS.includes(method)) {
+    const csrfToken = getCookie('csrftoken');
+    if (csrfToken) {
+      if (!config.headers) config.headers = {};
+      config.headers['X-CSRFToken'] = csrfToken;
+    }
+  }
+  
   return config;
 });

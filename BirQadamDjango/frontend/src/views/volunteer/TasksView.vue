@@ -74,8 +74,15 @@ async function loadTasks() {
   try {
     tasks.value = await fetchVolunteerTasks();
   } catch (error: any) {
-    const errorMessage = error?.response?.data?.error || error?.response?.data?.detail || 'Не удалось загрузить задачи.';
-    showSnackbar(errorMessage, 'error');
+    // Обрабатываем ошибку 429
+    if (error?.response?.status === 429) {
+      showSnackbar('Слишком много запросов. Пожалуйста, подождите немного.', 'warning');
+      // Пытаемся использовать кеш если есть
+      setTimeout(() => loadTasks(), 2000);
+    } else {
+      const errorMessage = error?.response?.data?.error || error?.response?.data?.detail || 'Не удалось загрузить задачи.';
+      showSnackbar(errorMessage, 'error');
+    }
   } finally {
     loading.value = false;
   }

@@ -497,6 +497,8 @@ const submitEditProject = async () => {
         ? editFormState.cover_image[0]
         : editFormState.cover_image || undefined,
     });
+    // Перезагружаем проекты для обновления фото
+    await organizerStore.loadProjects(true);
     snackbar.message = 'Проект успешно обновлён.';
     snackbar.color = 'success';
     snackbar.show = true;

@@ -2065,6 +2065,49 @@ def approve_organizer(request: HttpRequest, user_id: int) -> HttpResponse:
     except Exception as e:
         logger.error(f"❌ Ошибка при отправке FCM уведомления организатору {organizer.username}: {e}")
     
+    # 3. Email уведомление
+    try:
+        if organizer.email:
+            from django.core.mail import send_mail
+            from django.conf import settings
+            from datetime import datetime
+            
+            subject = "Статус организатора одобрен! 🎉"
+            message = f"""
+Здравствуйте, {organizer.name or organizer.username}!
+
+Поздравляем! Ваш запрос на статус организатора был одобрен администратором.
+
+Теперь вы можете:
+✓ Создавать и управлять проектами
+✓ Принимать и модератировать фотоотчёты от волонтёров
+✓ Управлять командой волонтёров в ваших проектах
+
+Войдите в свой личный кабинет организатора для начала работы.
+
+─────────────────────────────────────────────────────────
+
+📅 Дата одобрения: {datetime.now().strftime('%d.%m.%Y в %H:%M')}
+
+─────────────────────────────────────────────────────────
+С уважением,
+Команда BirQadam
+🌱 Вместе делаем город чище!
+"""
+            
+            send_mail(
+                subject=f"📧 BirQadam - {subject}",
+                message=message,
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[organizer.email],
+                fail_silently=False,
+            )
+            logger.info(f"✅ Email уведомление об одобрении организатора {organizer.username} отправлено на {organizer.email}")
+        else:
+            logger.warning(f"⚠️ У организатора {organizer.username} нет email адреса, email уведомление не отправлено")
+    except Exception as e:
+        logger.error(f"❌ Ошибка при отправке email уведомления организатору {organizer.username}: {e}")
+    
     messages.success(request, f'Организатор {organizer.username} одобрен')
     return redirect('organizers')
 

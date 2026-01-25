@@ -167,20 +167,20 @@ router.beforeEach(async (to, from, next) => {
 
   // Редиректы по ролям только для авторизованных пользователей
   if (auth.isAuthenticated) {
-    const user = auth.user;
-    // Проверяем, что пользователь организатор И одобрен администратором
-    const isOrganizer = !!user && 
-      (user.role === 'organizer' || user.is_organizer) && 
-      user.organizer_status === 'approved';
+  const user = auth.user;
+  // Проверяем, что пользователь организатор И одобрен администратором
+  const isOrganizer = !!user && 
+    (user.role === 'organizer' || user.is_organizer) && 
+    user.organizer_status === 'approved';
 
-    if (isOrganizer && to.path.startsWith('/volunteer')) {
-      next({ name: 'organizer-dashboard' });
-      return;
-    }
+  if (isOrganizer && to.path.startsWith('/volunteer')) {
+    next({ name: 'organizer-dashboard' });
+    return;
+  }
 
-    if (!isOrganizer && to.path.startsWith('/organizer')) {
-      next({ name: 'volunteer-dashboard' });
-      return;
+  if (!isOrganizer && to.path.startsWith('/organizer')) {
+    next({ name: 'volunteer-dashboard' });
+    return;
     }
   }
 

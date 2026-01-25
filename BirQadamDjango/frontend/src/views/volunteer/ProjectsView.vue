@@ -137,6 +137,24 @@ function formatDate(value: string | null) {
   }).format(date);
 }
 
+// Функция для преобразования относительного URL в полный
+const getFullImageUrl = (url: string | null | undefined): string | null => {
+  if (!url) {
+    return null;
+  }
+  // Если уже полный URL, исправляем http на https
+  if (url.startsWith('http://')) {
+    return url.replace('http://', 'https://');
+  }
+  if (url.startsWith('https://')) {
+    return url;
+  }
+  // Если относительный путь, добавляем базовый URL
+  const baseUrl = 'https://cleanup.almau.edu.kz';
+  const cleanUrl = url.startsWith('/') ? url : `/${url}`;
+  return `${baseUrl}${cleanUrl}`;
+};
+
 function formatDateTime(value: string | null) {
   if (!value) return '—';
   const date = new Date(value);
@@ -184,11 +202,22 @@ async function loadProjects() {
   loading.value = true;
   try {
     const data = await fetchVolunteerProjects();
-    projects.value = data.projects;
+    // Преобразуем URL фото проектов в полные, если нужно
+    projects.value = data.projects.map(project => ({
+      ...project,
+      cover_image_url: project.cover_image_url ? getFullImageUrl(project.cover_image_url) : null,
+    }));
     summary.total_available = data.summary.total_available;
     summary.joined_count = data.summary.joined_count;
     if (!availableTags.value.length) {
       selectedTags.value = [];
+    }
+  } catch (error: any) {
+    // Обрабатываем ошибку 429
+    if (error?.response?.status === 429) {
+      showMessage('Слишком много запросов. Пожалуйста, подождите немного.', 'warning');
+    } else {
+      showMessage('Не удалось загрузить проекты.', 'error');
     }
   } finally {
     loading.value = false;
@@ -203,18 +232,21 @@ async function openProjectDialog(projectId: number) {
   projectDetail.value = null;
   
   try {
-    projectDetail.value = await fetchProjectDetail(projectId);
-    console.log('Project detail loaded:', {
-      id: projectDetail.value.id,
-      start_date: projectDetail.value.start_date,
-      end_date: projectDetail.value.end_date,
-      formatted_start: projectDetail.value.start_date ? formatDate(projectDetail.value.start_date) : null,
-      formatted_end: projectDetail.value.end_date ? formatDate(projectDetail.value.end_date) : null,
-    });
+    const detail = await fetchProjectDetail(projectId);
+    // Преобразуем URL фото проекта в полный, если нужно
+    if (detail.cover_image_url) {
+      detail.cover_image_url = getFullImageUrl(detail.cover_image_url) || null;
+    }
+    projectDetail.value = detail;
   } catch (error: any) {
     console.error('Failed to load project detail:', error);
-    const errorMessage = error?.response?.data?.detail || 'Не удалось загрузить детали проекта.';
-    showMessage(errorMessage, 'error');
+    // Обрабатываем ошибку 429
+    if (error?.response?.status === 429) {
+      showMessage('Слишком много запросов. Пожалуйста, подождите немного.', 'warning');
+    } else {
+      const errorMessage = error?.response?.data?.detail || 'Не удалось загрузить детали проекта.';
+      showMessage(errorMessage, 'error');
+    }
     projectDialog.value = false;
   } finally {
     loadingProject.value = false;
@@ -229,11 +261,21 @@ async function openOrganizerPortfolio(organizerId: number) {
   organizerPortfolio.value = null;
   
   try {
-    organizerPortfolio.value = await getOrganizerPortfolio(organizerId);
+    const portfolio = await getOrganizerPortfolio(organizerId);
+    // Преобразуем URL фото в полный, если нужно
+    if (portfolio.portfolio?.portfolio_photo_url) {
+      portfolio.portfolio.portfolio_photo_url = getFullImageUrl(portfolio.portfolio.portfolio_photo_url) || null;
+    }
+    organizerPortfolio.value = portfolio;
   } catch (error: any) {
     console.error('Failed to load organizer portfolio:', error);
-    const errorMessage = error?.response?.data?.detail || 'Не удалось загрузить портфолио организатора.';
-    showMessage(errorMessage, 'error');
+    // Обрабатываем ошибку 429
+    if (error?.response?.status === 429) {
+      showMessage('Слишком много запросов. Пожалуйста, подождите немного.', 'warning');
+    } else {
+      const errorMessage = error?.response?.data?.detail || 'Не удалось загрузить портфолио организатора.';
+      showMessage(errorMessage, 'error');
+    }
     organizerPortfolioDialog.value = false;
   } finally {
     loadingPortfolio.value = false;
@@ -436,6 +478,15 @@ onMounted(async () => {
   // Загружаем счетчики непрочитанных сообщений
   await loadUnreadCounts();
   
+  // Проверяем, нужно ли открыть чат из query параметра
+  const openChatParam = route.query.openChat;
+  if (openChatParam) {
+    const projectId = Number(openChatParam);
+    if (projectId && !isNaN(projectId)) {
+      await openProjectChat(projectId);
+    }
+  }
+  
   // Проверяем query параметр для раскрытия проекта
   const projectIdParam = route.query.project_id;
   if (projectIdParam) {
@@ -637,11 +688,27 @@ onUnmounted(() => {
             >
           <v-img
             v-if="project.cover_image_url"
-            :src="project.cover_image_url"
+            :src="getFullImageUrl(project.cover_image_url) || ''"
             height="160"
             class="mb-4 rounded-lg"
             cover
-          />
+            @error="(e) => {
+              // Скрываем ошибку в консоли, просто не показываем изображение
+              const img = e.target as HTMLImageElement;
+              if (img) {
+                img.style.display = 'none';
+              }
+            }"
+          >
+            <template #placeholder>
+              <div class="d-flex align-center justify-center fill-height bg-grey-lighten-4">
+                <v-icon icon="mdi-image-off" size="48" color="grey-lighten-1" />
+              </div>
+            </template>
+          </v-img>
+          <div v-else class="d-flex align-center justify-center mb-4 rounded-lg bg-grey-lighten-4" style="height: 160px;">
+            <v-icon icon="mdi-image-off" size="48" color="grey-lighten-1" />
+          </div>
           <div class="d-flex justify-space-between align-start mb-4">
             <div>
               <h2 class="text-h6 font-weight-bold mb-2">{{ project.title }}</h2>
@@ -926,12 +993,14 @@ onUnmounted(() => {
 
           <div v-else>
             <!-- Обложка проекта -->
-            <v-img
-              v-if="projectDetail.cover_image_url"
-              :src="projectDetail.cover_image_url"
+              <v-img
+                v-if="projectDetail.cover_image_url"
+                :src="getFullImageUrl(projectDetail.cover_image_url) || ''"
               height="200"
               class="mb-6 rounded-lg"
               cover
+              @error="(e) => console.error('Error loading project cover:', e, projectDetail.cover_image_url)"
+              @load="() => console.log('Project cover loaded successfully')"
             />
 
             <!-- Описание -->
@@ -1126,11 +1195,22 @@ onUnmounted(() => {
         <v-card-title class="d-flex justify-space-between align-center mb-4">
           <div class="d-flex align-center ga-3">
             <v-avatar 
-              :color="organizerPortfolio.portfolio?.portfolio_photo_url ? undefined : 'primary'" 
+              color="primary" 
               size="56"
-              :image="organizerPortfolio.portfolio?.portfolio_photo_url"
             >
-              <v-icon v-if="!organizerPortfolio.portfolio?.portfolio_photo_url" icon="mdi-account-tie" color="white" size="32" />
+            <v-img
+              v-if="organizerPortfolio.portfolio?.portfolio_photo_url"
+              :src="getFullImageUrl(organizerPortfolio.portfolio.portfolio_photo_url) || ''"
+              cover
+              alt="Фото организатора"
+              :lazy-src="getFullImageUrl(organizerPortfolio.portfolio.portfolio_photo_url) || ''"
+              @error="(e) => {
+                console.error('Error loading organizer photo:', e);
+                console.error('URL:', getFullImageUrl(organizerPortfolio.portfolio.portfolio_photo_url));
+              }"
+              @load="() => console.log('Organizer photo loaded successfully')"
+            />
+              <v-icon v-else icon="mdi-account-tie" color="white" size="32" />
             </v-avatar>
             <div>
               <h2 class="text-h5 font-weight-bold mb-0">{{ organizerPortfolio.full_name || organizerPortfolio.username }}</h2>
@@ -1146,6 +1226,21 @@ onUnmounted(() => {
           <v-skeleton-loader v-if="loadingPortfolio" type="article@5" />
 
           <div v-else>
+            <!-- Фото 3x4 -->
+            <div v-if="organizerPortfolio.portfolio?.portfolio_photo_url" class="mb-6 d-flex justify-center">
+              <v-avatar
+                size="200"
+                color="primary"
+              >
+                <v-img
+                  :src="getFullImageUrl(organizerPortfolio.portfolio.portfolio_photo_url) || ''"
+                  cover
+                  alt="Фото организатора"
+                  @error="(e) => console.error('Error loading organizer portfolio photo:', e, organizerPortfolio.portfolio?.portfolio_photo_url, getFullImageUrl(organizerPortfolio.portfolio.portfolio_photo_url))"
+                  @load="() => console.log('Organizer portfolio photo loaded successfully')"
+                />
+              </v-avatar>
+            </div>
 
             <!-- Основная информация -->
             <v-row class="mb-4">
@@ -1178,7 +1273,7 @@ onUnmounted(() => {
                 <v-icon icon="mdi-account-circle" size="20" class="me-2" />
                 О себе
               </h3>
-              <p class="text-body-1">{{ organizerPortfolio.portfolio.bio }}</p>
+              <p class="text-body-1" style="word-wrap: break-word; word-break: break-word; overflow-wrap: break-word; white-space: pre-wrap;">{{ organizerPortfolio.portfolio.bio }}</p>
             </div>
 
             <!-- Опыт работы -->
@@ -1187,11 +1282,11 @@ onUnmounted(() => {
                 <v-icon icon="mdi-briefcase-edit" size="20" class="me-2" />
                 Опыт работы
               </h3>
-              <p class="text-body-1" style="white-space: pre-line">{{ organizerPortfolio.portfolio.work_history }}</p>
+              <p class="text-body-1" style="word-wrap: break-word; word-break: break-word; overflow-wrap: break-word; white-space: pre-line;">{{ organizerPortfolio.portfolio.work_history }}</p>
             </div>
 
             <v-alert
-              v-if="!organizerPortfolio.portfolio?.bio && !organizerPortfolio.portfolio?.work_history && !organizerPortfolio.portfolio?.age"
+              v-if="!organizerPortfolio.portfolio?.bio && !organizerPortfolio.portfolio?.work_history && !organizerPortfolio.portfolio?.age && !organizerPortfolio.portfolio?.portfolio_photo_url"
               type="info"
               variant="tonal"
               class="mb-0"
@@ -1251,12 +1346,12 @@ onUnmounted(() => {
                   class="message-item"
                   :class="{ 'message-item--own': message.sender_id === currentUser.value?.id }"
                 >
-                  <div class="d-flex ga-2" :class="{ 'flex-row-reverse': message.sender_id === currentUser.value?.id }">
+                  <div class="d-flex ga-2" :class="{ 'flex-row-reverse': message.sender_id === currentUser.value?.id, 'justify-end': message.sender_id === currentUser.value?.id }">
                     <v-avatar size="32" color="primary-lighten-4">
                       <v-icon icon="mdi-account" color="primary" />
                     </v-avatar>
                     <div class="message-content" :class="{ 'text-right': message.sender_id === currentUser.value?.id }">
-                      <div class="d-flex align-center ga-2 mb-1" :class="{ 'flex-row-reverse': message.sender_id === currentUser.value?.id }">
+                      <div class="d-flex align-center ga-2 mb-1" :class="{ 'flex-row-reverse': message.sender_id === currentUser.value?.id, 'justify-end': message.sender_id === currentUser.value?.id }">
                         <span class="text-caption font-weight-medium">{{ message.sender_name }}</span>
                         <v-chip v-if="message.sender_is_organizer" size="x-small" color="primary" variant="tonal" class="text-none">
                           Организатор
@@ -1265,7 +1360,7 @@ onUnmounted(() => {
                       </div>
                       <v-card
                         class="message-bubble pa-3"
-                        :color="message.sender_id === currentUser.value?.id ? 'primary' : 'grey-lighten-4'"
+                        :color="message.sender_id === currentUser.value?.id ? 'blue' : 'grey-lighten-4'"
                         variant="flat"
                       >
                         <p 
@@ -1389,17 +1484,40 @@ onUnmounted(() => {
   width: 100%;
 }
 
+.message-item {
+  display: flex;
+  width: 100%;
+  align-items: flex-start;
+}
+
 .message-item--own {
-  align-items: flex-end;
+  justify-content: flex-end;
+}
+
+.message-item--own > div {
+  flex-direction: row-reverse;
 }
 
 .message-content {
   max-width: 70%;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.message-item:not(.message-item--own) .message-content {
+  align-items: flex-start;
+}
+
+.message-item--own .message-content {
+  align-items: flex-end;
 }
 
 .message-bubble {
   border-radius: 12px;
   word-wrap: break-word;
+  display: inline-block;
+  max-width: 100%;
 }
 
 .chat-input {

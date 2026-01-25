@@ -29,7 +29,7 @@ export const useAuthStore = defineStore('auth', () => {
       const response = await fetchCurrentUser();
       // Проверяем, что ответ содержит данные пользователя
       if (response && response.id) {
-        user.value = response;
+      user.value = response;
       } else {
         user.value = null;
       }
@@ -40,7 +40,7 @@ export const useAuthStore = defineStore('auth', () => {
         localStorage.removeItem('access');
       } else {
         // Для других ошибок тоже очищаем, чтобы не было ложных данных
-        user.value = null;
+      user.value = null;
       }
     }
   }
@@ -65,13 +65,13 @@ export const useAuthStore = defineStore('auth', () => {
 
   async function logout() {
     try {
-      await apiLogout();
+    await apiLogout();
     } catch (error) {
       // Игнорируем ошибки при logout (может быть уже разлогинен)
       console.warn('Logout error:', error);
     } finally {
       // Всегда очищаем данные пользователя
-      user.value = null;
+    user.value = null;
       // Очищаем localStorage
       localStorage.removeItem('access');
       // Сбрасываем флаг инициализации для повторной проверки при следующем входе

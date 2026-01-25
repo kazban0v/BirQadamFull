@@ -1,10 +1,12 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, reactive } from 'vue';
 import { RouterView, useRouter } from 'vue-router';
 
 import { useAuthStore } from '@/stores/auth';
 import { useDashboardStore } from '@/stores/dashboard';
 import { useOrganizerStore } from '@/stores/organizer';
+import { getProjectChat, getChatMessages, type ChatMessage } from '@/services/chat';
+import { fetchVolunteerProjects } from '@/services/projects';
 
 const authStore = useAuthStore();
 const dashboardStore = useDashboardStore();
@@ -18,6 +20,100 @@ const handleResize = () => {
   drawer.value = !isMobile.value;
 };
 
+// Уведомления о новых сообщениях в чате (только для волонтеров)
+const chatNotification = reactive({
+  show: false,
+  message: '',
+  projectTitle: '',
+  projectId: null as number | null,
+  chatId: null as number | null,
+});
+
+let chatPollingInterval: ReturnType<typeof setInterval> | null = null;
+const lastCheckedMessages = ref<Record<number, number>>({}); // chatId -> last message id
+
+async function checkForNewChatMessages() {
+  if (isOrganizer.value || !authStore.isAuthenticated) return;
+  
+  try {
+    // Получаем список проектов, в которых волонтер участвует
+    const data = await fetchVolunteerProjects();
+    const joinedProjects = data.projects.filter(p => p.joined);
+    
+    for (const project of joinedProjects) {
+      try {
+        const chat = await getProjectChat(project.id);
+        if (!chat || !chat.id) continue;
+        
+        // Получаем последние сообщения
+        const response = await getChatMessages(chat.id, 5, 0);
+        if (!response.messages || response.messages.length === 0) continue;
+        
+        // Находим последнее сообщение от организатора
+        const lastOrganizerMessage = response.messages
+          .filter(msg => msg.sender_is_organizer && !msg.is_read)
+          .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0];
+        
+        if (lastOrganizerMessage) {
+          const lastMessageId = lastOrganizerMessage.id;
+          const lastCheckedId = lastCheckedMessages.value[chat.id] || 0;
+          
+          // Если это новое сообщение (больше последнего проверенного)
+          if (lastMessageId > lastCheckedId) {
+            chatNotification.show = true;
+            chatNotification.message = lastOrganizerMessage.text;
+            chatNotification.projectTitle = project.title;
+            chatNotification.projectId = project.id;
+            chatNotification.chatId = chat.id;
+            
+            lastCheckedMessages.value[chat.id] = lastMessageId;
+            
+            // Автоматически скрываем через 10 секунд
+            setTimeout(() => {
+              chatNotification.show = false;
+            }, 10000);
+          }
+        }
+      } catch (error) {
+        // Игнорируем ошибки для отдельных проектов
+        console.error(`Failed to check chat for project ${project.id}:`, error);
+      }
+    }
+  } catch (error) {
+    console.error('Failed to check for new chat messages:', error);
+  }
+}
+
+function startChatPolling() {
+  if (isOrganizer.value) return;
+  stopChatPolling();
+  // Проверяем каждые 5 секунд
+  chatPollingInterval = setInterval(checkForNewChatMessages, 5000);
+  // Первая проверка сразу
+  checkForNewChatMessages();
+}
+
+function stopChatPolling() {
+  if (chatPollingInterval) {
+    clearInterval(chatPollingInterval);
+    chatPollingInterval = null;
+  }
+}
+
+function closeChatNotification() {
+  chatNotification.show = false;
+}
+
+function openChatFromNotification() {
+  if (chatNotification.projectId) {
+    chatNotification.show = false;
+    router.push({
+      name: 'volunteer-projects',
+      query: { openChat: chatNotification.projectId.toString() }
+    });
+  }
+}
+
 onMounted(async () => {
   authStore.initialize();
   handleResize();
@@ -29,12 +125,15 @@ onMounted(async () => {
       await organizerStore.loadPhotoReports();
     } else {
       await dashboardStore.loadDashboard();
+      // Запускаем проверку новых сообщений для волонтеров
+      startChatPolling();
     }
   }
 });
 
 onBeforeUnmount(() => {
   window.removeEventListener('resize', handleResize);
+  stopChatPolling();
 });
 
 const isOrganizer = computed(
@@ -215,6 +314,47 @@ const handleLogout = async () => {
         <RouterView />
       </v-container>
     </v-main>
+
+    <!-- Уведомление о новом сообщении в чате (только для волонтеров) -->
+    <v-snackbar
+      v-model="chatNotification.show"
+      :timeout="10000"
+      location="top right"
+      color="primary"
+      elevation="8"
+      class="chat-notification-snackbar"
+    >
+      <div class="d-flex align-center ga-3">
+        <v-icon icon="mdi-chat" size="24" />
+        <div class="flex-grow-1">
+          <div class="text-subtitle-2 font-weight-bold mb-1">
+            Новое сообщение от организатора
+          </div>
+          <div class="text-body-2 mb-1">
+            {{ chatNotification.projectTitle }}
+          </div>
+          <div class="text-caption text-medium-emphasis">
+            {{ chatNotification.message.length > 50 ? chatNotification.message.substring(0, 50) + '...' : chatNotification.message }}
+          </div>
+        </div>
+        <v-btn
+          icon="mdi-close"
+          variant="text"
+          size="small"
+          @click="closeChatNotification"
+        />
+      </div>
+      <template #actions>
+        <v-btn
+          color="white"
+          variant="text"
+          class="text-none font-weight-bold"
+          @click="openChatFromNotification"
+        >
+          Открыть чат
+        </v-btn>
+      </template>
+    </v-snackbar>
   </v-app>
 </template>
 
@@ -260,6 +400,13 @@ const handleLogout = async () => {
 .main-container {
   padding-left: clamp(16px, 5vw, 48px);
   padding-right: clamp(16px, 5vw, 48px);
+}
+
+@media (min-width: 1920px) {
+  .main-container {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
 }
 
 @media (max-width: 960px) {

@@ -17,6 +17,8 @@ const snackbar = reactive({
 
 const formState = reactive({
   name: '',
+  phone_number: '',
+  email: '',
 });
 
 const passwordDialog = ref(false);
@@ -52,6 +54,8 @@ const loadProfile = async () => {
   try {
     const profile = await fetchVolunteerProfile();
     formState.name = profile.name || '';
+    formState.phone_number = profile.phone_number || '';
+    formState.email = profile.email || '';
   } finally {
     loading.value = false;
   }
@@ -108,15 +112,18 @@ const submit = async () => {
   try {
     const updated = await updateVolunteerProfile({
       name: formState.name,
+      phone_number: formState.phone_number,
     });
 
-    authStore.refreshProfile();
+    await authStore.refreshProfile();
 
     snackbar.message = 'Профиль успешно обновлён';
     snackbar.color = 'success';
     snackbar.show = true;
 
     formState.name = updated.name || '';
+    formState.phone_number = updated.phone_number || '';
+    formState.email = updated.email || '';
   } catch (error: any) {
     const detail = error?.response?.data?.detail || 'Не удалось сохранить профиль.';
     snackbar.message = detail;
@@ -217,8 +224,20 @@ onMounted(async () => {
             <v-icon size="50" color="white">mdi-account-circle</v-icon>
           </v-avatar>
           <div class="flex-grow-1">
-            <h1 class="text-h4 font-weight-bold mb-2">{{ authStore.user?.username }}</h1>
-            <p class="text-body-1 text-medium-emphasis mb-0">
+            <h1 class="text-h4 font-weight-bold mb-2 text-white">
+              {{ authStore.user?.full_name || formState.name || authStore.user?.username || 'Волонтёр' }}
+            </h1>
+            <div class="text-body-2 text-white mb-3">
+              <div v-if="authStore.user?.phone_number || formState.phone_number" class="d-flex align-center mb-2">
+                <v-icon size="18" class="mr-2">mdi-phone</v-icon>
+                <span class="font-weight-medium">{{ authStore.user?.phone_number || formState.phone_number }}</span>
+              </div>
+              <div v-if="authStore.user?.email || formState.email" class="d-flex align-center mb-2">
+                <v-icon size="18" class="mr-2">mdi-email</v-icon>
+                <span class="font-weight-medium">{{ authStore.user?.email || formState.email }}</span>
+              </div>
+            </div>
+            <p class="text-body-2 text-white opacity-90 mb-0">
               Обновите личные данные для быстрой связи с организаторами
             </p>
           </div>
@@ -258,6 +277,39 @@ onMounted(async () => {
               rounded="lg"
               hide-details="auto"
               class="input-field"
+            />
+          </v-col>
+          <v-col cols="12" md="6">
+            <v-text-field
+              v-model="formState.phone_number"
+              label="Номер телефона"
+              prepend-inner-icon="mdi-phone"
+              variant="solo-filled"
+              flat
+              :rules="[rules.required]"
+              autocomplete="tel"
+              :loading="loading"
+              bg-color="grey-lighten-5"
+              rounded="lg"
+              hide-details="auto"
+              class="input-field"
+            />
+          </v-col>
+          <v-col cols="12" md="6">
+            <v-text-field
+              v-model="formState.email"
+              label="Email"
+              prepend-inner-icon="mdi-email"
+              variant="solo-filled"
+              flat
+              :rules="[rules.required]"
+              autocomplete="email"
+              :loading="loading"
+              bg-color="grey-lighten-5"
+              rounded="lg"
+              hide-details="auto"
+              class="input-field"
+              disabled
             />
           </v-col>
         </v-row>

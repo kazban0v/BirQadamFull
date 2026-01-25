@@ -112,6 +112,49 @@ class UserAdmin(admin.ModelAdmin):
                     logger.info(f"✅ FCM уведомление об одобрении организатора {user.username} отправлено")
                 except Exception as e:
                     logger.error(f"❌ Ошибка при отправке FCM уведомления организатору {user.username}: {e}")
+                
+                # 3. Email уведомление
+                try:
+                    if user.email:
+                        from django.core.mail import send_mail
+                        from django.conf import settings
+                        from datetime import datetime
+                        
+                        subject = "Статус организатора одобрен! 🎉"
+                        message = f"""
+Здравствуйте, {user.name or user.username}!
+
+Поздравляем! Ваш запрос на статус организатора был одобрен администратором.
+
+Теперь вы можете:
+✓ Создавать и управлять проектами
+✓ Принимать и модератировать фотоотчёты от волонтёров
+✓ Управлять командой волонтёров в ваших проектах
+
+Войдите в свой личный кабинет организатора для начала работы.
+
+─────────────────────────────────────────────────────────
+
+📅 Дата одобрения: {datetime.now().strftime('%d.%m.%Y в %H:%M')}
+
+─────────────────────────────────────────────────────────
+С уважением,
+Команда BirQadam
+🌱 Вместе делаем город чище!
+"""
+                        
+                        send_mail(
+                            subject=f"📧 BirQadam - {subject}",
+                            message=message,
+                            from_email=settings.DEFAULT_FROM_EMAIL,
+                            recipient_list=[user.email],
+                            fail_silently=False,
+                        )
+                        logger.info(f"✅ Email уведомление об одобрении организатора {user.username} отправлено на {user.email}")
+                    else:
+                        logger.warning(f"⚠️ У организатора {user.username} нет email адреса, email уведомление не отправлено")
+                except Exception as e:
+                    logger.error(f"❌ Ошибка при отправке email уведомления организатору {user.username}: {e}")
         
         self.message_user(request, f"Одобрен статус организатора для {updated} пользователей.", messages.SUCCESS)
     approve_organizer.short_description = "Одобрить статус организатора"
@@ -210,6 +253,50 @@ class OrganizerApplicationAdmin(admin.ModelAdmin):
                 )
             except Exception as exc:
                 logger.error("Failed to send FCM notification for user %s: %s", user.username, exc)
+
+            # Email уведомление при одобрении
+            if status_value == 'approved':
+                try:
+                    if user.email:
+                        from django.core.mail import send_mail
+                        from django.conf import settings
+                        from datetime import datetime
+                        
+                        subject = "Статус организатора одобрен! 🎉"
+                        message = f"""
+Здравствуйте, {user.name or user.username}!
+
+Поздравляем! Ваш запрос на статус организатора был одобрен администратором.
+
+Теперь вы можете:
+✓ Создавать и управлять проектами
+✓ Принимать и модератировать фотоотчёты от волонтёров
+✓ Управлять командой волонтёров в ваших проектах
+
+Войдите в свой личный кабинет организатора для начала работы.
+
+─────────────────────────────────────────────────────────
+
+📅 Дата одобрения: {datetime.now().strftime('%d.%m.%Y в %H:%M')}
+
+─────────────────────────────────────────────────────────
+С уважением,
+Команда BirQadam
+🌱 Вместе делаем город чище!
+"""
+                        
+                        send_mail(
+                            subject=f"📧 BirQadam - {subject}",
+                            message=message,
+                            from_email=settings.DEFAULT_FROM_EMAIL,
+                            recipient_list=[user.email],
+                            fail_silently=False,
+                        )
+                        logger.info(f"✅ Email уведомление об одобрении организатора {user.username} отправлено на {user.email}")
+                    else:
+                        logger.warning(f"⚠️ У организатора {user.username} нет email адреса, email уведомление не отправлено")
+                except Exception as exc:
+                    logger.error("Failed to send email notification for user %s: %s", user.username, exc)
 
         return updated
 

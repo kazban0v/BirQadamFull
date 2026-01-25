@@ -200,7 +200,10 @@ onMounted(async () => {
 
 const canAcceptTask = (task: VolunteerTaskSummary) => task.status === 'open' && !task.accepted;
 const canCompleteTask = (task: VolunteerTaskSummary) => task.accepted && !task.completed;
-const canDeclineTask = (task: VolunteerTaskSummary) => task.status !== 'completed';
+const canDeclineTask = (task: VolunteerTaskSummary) => {
+  // Можно отклонить, если задача не завершена и (не принята или принята)
+  return task.status !== 'completed';
+};
 const isActionLoading = (task: VolunteerTaskSummary) => taskActionLoading.value === task.task_id;
 
 const uploadAllowed = computed(() => {

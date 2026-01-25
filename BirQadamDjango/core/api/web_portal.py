@@ -780,6 +780,7 @@ class VolunteerTaskPhotoReportAPIView(APIView):
     permission_classes = [IsAuthenticated]
     authentication_classes = (CsrfExemptSessionAuthentication,)
     parser_classes = (MultiPartParser, FormParser)
+    http_method_names = ['get', 'post', 'delete', 'head', 'options']
 
     def get(self, request, task_id: int, *args, **kwargs):
         try:
@@ -871,6 +872,48 @@ class VolunteerTaskPhotoReportAPIView(APIView):
                 'photos': serializer.data,
             },
             status=status.HTTP_201_CREATED,
+        )
+
+    def delete(self, request, task_id: int, *args, **kwargs):
+        """Удаление (отзыв) фотоотчета для задачи"""
+        try:
+            task = Task.objects.select_related('project').get(
+                id=task_id,
+                assignments__volunteer=request.user,
+                is_deleted=False,
+            )
+        except Task.DoesNotExist:
+            return Response({'detail': 'Задача не найдена или не назначена вам.'}, status=status.HTTP_404_NOT_FOUND)
+
+        # Находим все фотоотчеты для этой задачи от текущего волонтера
+        photos = Photo.objects.filter(
+            task=task,
+            volunteer=request.user,
+            is_deleted=False,
+        )
+
+        if not photos.exists():
+            return Response(
+                {'detail': 'Фотоотчёт не найден.'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        # Мягкое удаление всех фотоотчетов
+        photos_count = photos.count()
+        for photo in photos:
+            photo.delete()  # Использует мягкое удаление (is_deleted=True)
+
+        Activity.objects.create(
+            user=request.user,
+            type='photo_withdrawn',
+            title='Фотоотчёт отозван',
+            description=f'Вы отозвали фотоотчёт для задачи "{task.text}"',
+            project=task.project,
+        )
+
+        return Response(
+            {'message': f'Фотоотчёт успешно отозван ({photos_count} фото). Теперь вы можете загрузить новый фотоотчёт.'},
+            status=status.HTTP_200_OK,
         )
 
 
@@ -1314,6 +1357,23 @@ class OrganizerProfileAPIView(APIView):
         if not (user.is_organizer or user.role == 'organizer'):
             return Response({'detail': 'Доступ запрещен. Только для организаторов.'}, status=status.HTTP_403_FORBIDDEN)
         
+        portfolio_photo_url = None
+        if user.portfolio_photo and user.portfolio_photo.url:
+            try:
+                portfolio_photo_url = request.build_absolute_uri(user.portfolio_photo.url)
+                # Убеждаемся, что это полный URL и используем https
+                if not portfolio_photo_url.startswith('http'):
+                    scheme = 'https'  # Всегда используем https
+                    host = request.get_host() if hasattr(request, 'get_host') else ''
+                    if host:
+                        portfolio_photo_url = f'{scheme}://{host}{user.portfolio_photo.url}'
+                # Заменяем http на https, если есть
+                elif portfolio_photo_url.startswith('http://'):
+                    portfolio_photo_url = portfolio_photo_url.replace('http://', 'https://')
+            except Exception:
+                # Fallback на относительный путь, если не удалось построить абсолютный
+                portfolio_photo_url = user.portfolio_photo.url
+        
         return Response({
             'id': user.id,
             'username': user.username,
@@ -1327,7 +1387,7 @@ class OrganizerProfileAPIView(APIView):
                 'bio': user.bio,
                 'work_experience_years': user.work_experience_years,
                 'work_history': user.work_history,
-                'portfolio_photo_url': user.portfolio_photo.url if user.portfolio_photo else None,
+                'portfolio_photo_url': portfolio_photo_url,
             },
         }, status=status.HTTP_200_OK)
 
@@ -1365,6 +1425,23 @@ class OrganizerProfileAPIView(APIView):
         
         user.save()
         
+        portfolio_photo_url = None
+        if user.portfolio_photo and user.portfolio_photo.url:
+            try:
+                portfolio_photo_url = request.build_absolute_uri(user.portfolio_photo.url)
+                # Убеждаемся, что это полный URL и используем https
+                if not portfolio_photo_url.startswith('http'):
+                    scheme = 'https'  # Всегда используем https
+                    host = request.get_host() if hasattr(request, 'get_host') else ''
+                    if host:
+                        portfolio_photo_url = f'{scheme}://{host}{user.portfolio_photo.url}'
+                # Заменяем http на https, если есть
+                elif portfolio_photo_url.startswith('http://'):
+                    portfolio_photo_url = portfolio_photo_url.replace('http://', 'https://')
+            except Exception:
+                # Fallback на относительный путь, если не удалось построить абсолютный
+                portfolio_photo_url = user.portfolio_photo.url
+        
         return Response({
             'id': user.id,
             'username': user.username,
@@ -1378,7 +1455,7 @@ class OrganizerProfileAPIView(APIView):
                 'bio': user.bio,
                 'work_experience_years': user.work_experience_years,
                 'work_history': user.work_history,
-                'portfolio_photo_url': user.portfolio_photo.url if user.portfolio_photo else None,
+                'portfolio_photo_url': portfolio_photo_url,
             },
         }, status=status.HTTP_200_OK)
 
@@ -1404,7 +1481,20 @@ class OrganizerPortfolioAPIView(APIView):
         
         portfolio_photo_url = None
         if organizer.portfolio_photo and organizer.portfolio_photo.url:
-            portfolio_photo_url = request.build_absolute_uri(organizer.portfolio_photo.url)
+            try:
+                portfolio_photo_url = request.build_absolute_uri(organizer.portfolio_photo.url)
+                # Убеждаемся, что это полный URL и используем https
+                if not portfolio_photo_url.startswith('http'):
+                    scheme = 'https'  # Всегда используем https
+                    host = request.get_host() if hasattr(request, 'get_host') else ''
+                    if host:
+                        portfolio_photo_url = f'{scheme}://{host}{organizer.portfolio_photo.url}'
+                # Заменяем http на https, если есть
+                elif portfolio_photo_url.startswith('http://'):
+                    portfolio_photo_url = portfolio_photo_url.replace('http://', 'https://')
+            except Exception:
+                # Fallback на относительный путь, если не удалось построить абсолютный
+                portfolio_photo_url = organizer.portfolio_photo.url
         
         return Response({
             'id': organizer.id,
@@ -1427,6 +1517,26 @@ class OrganizerPortfolioAPIView(APIView):
 class VolunteerProjectDetailAPIView(APIView):
     permission_classes = [IsAuthenticated]
     authentication_classes = (CsrfExemptSessionAuthentication,)
+
+    def _get_full_image_url(self, request, image_field):
+        """Вспомогательный метод для получения полного URL изображения"""
+        if not image_field or not image_field.url:
+            return None
+        try:
+            url = request.build_absolute_uri(image_field.url)
+            # Убеждаемся, что это полный URL и используем https
+            if not url.startswith('http'):
+                scheme = 'https'  # Всегда используем https
+                host = request.get_host() if hasattr(request, 'get_host') else ''
+                if host:
+                    url = f'{scheme}://{host}{image_field.url}'
+            # Заменяем http на https, если есть
+            elif url.startswith('http://'):
+                url = url.replace('http://', 'https://')
+            return url
+        except Exception:
+            # Fallback на относительный путь, если не удалось построить абсолютный
+            return image_field.url if image_field.url else None
 
     def get(self, request, project_id: int, *args, **kwargs):
         """Получить детальную информацию о проекте"""
@@ -1487,7 +1597,7 @@ class VolunteerProjectDetailAPIView(APIView):
                     'contact_telegram': project.contact_telegram,
                     'info_url': project.info_url,
                     'tags': list(project.tags.names()),
-                    'cover_image_url': request.build_absolute_uri(project.cover_image.url) if project.cover_image and project.cover_image.url else None,
+                    'cover_image_url': self._get_full_image_url(request, project.cover_image) if project.cover_image else None,
                     'created_at': project.created_at.isoformat() if project.created_at else None,
                 },
                 status=status.HTTP_200_OK,

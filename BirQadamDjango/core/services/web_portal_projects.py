@@ -7,6 +7,27 @@ from django.db.models import Count, Exists, OuterRef, Q
 from core.models import Project, Task, VolunteerProject
 
 
+def _get_full_image_url(request, image_field):
+    """Вспомогательная функция для получения полного URL изображения"""
+    if not image_field or not image_field.url:
+        return None
+    try:
+        url = request.build_absolute_uri(image_field.url)
+        # Убеждаемся, что это полный URL и используем https
+        if not url.startswith('http'):
+            scheme = 'https'  # Всегда используем https
+            host = request.get_host() if hasattr(request, 'get_host') else ''
+            if host:
+                url = f'{scheme}://{host}{image_field.url}'
+        # Заменяем http на https, если есть
+        elif url.startswith('http://'):
+            url = url.replace('http://', 'https://')
+        return url
+    except Exception:
+        # Fallback на относительный путь, если не удалось построить абсолютный
+        return image_field.url if image_field.url else None
+
+
 def get_projects_catalog(user, request=None) -> Dict[str, Any]:  # type: ignore[no-any-unimported]
     joined_projects = VolunteerProject.objects.filter(
         volunteer=user,
@@ -68,7 +89,7 @@ def get_projects_catalog(user, request=None) -> Dict[str, Any]:  # type: ignore[
                 'contact_telegram': project.contact_telegram,
                 'info_url': project.info_url,
                 'tags': list(project.tags.names()),
-                'cover_image_url': request.build_absolute_uri(project.cover_image.url) if project.cover_image and request else (project.cover_image.url if project.cover_image else None),
+                'cover_image_url': _get_full_image_url(request, project.cover_image) if project.cover_image and request else None,
                 'created_at': project.created_at.isoformat() if project.created_at else None,
             }
         )

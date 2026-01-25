@@ -4,7 +4,8 @@ import { useRoute, useRouter } from 'vue-router';
 import type { VForm } from 'vuetify/components';
 
 import { fetchTaskDetail, acceptTask, declineTask, completeTask, type VolunteerTask } from '@/services/tasks';
-import { uploadPhotoReport } from '@/services/photoReports';
+import { uploadPhotoReport, fetchTaskPhotos } from '@/services/photoReports';
+import { httpClient } from '@/services/http';
 import { useDashboardStore } from '@/stores/dashboard';
 
 const route = useRoute();
@@ -34,7 +35,10 @@ const photoFile = ref<File | null>(null);
 const photoPreview = ref<string | null>(null);
 const photoComment = ref('');
 const uploadingPhoto = ref(false);
+const withdrawingPhoto = ref(false);
 const photoFormRef = ref<VForm | null>(null);
+const hasUploadedPhoto = ref(false);
+const taskPhotos = ref<any[]>([]);
 
 function showSnackbar(message: string, color: string = 'success') {
   snackbar.message = message;
@@ -70,20 +74,47 @@ function formatTime(value: string | null) {
   return value;
 }
 
-async function loadTask() {
+async function loadTask(forceRefresh = false) {
   loading.value = true;
   try {
-    task.value = await fetchTaskDetail(taskId.value);
+    task.value = await fetchTaskDetail(taskId.value, forceRefresh);
     if (!task.value) {
       showSnackbar('Задача не найдена.', 'error');
       router.push({ name: 'volunteer-tasks' });
+      return;
     }
+    // Проверяем наличие загруженных фото
+    await checkPhotoStatus();
   } catch (error: any) {
-    const errorMessage = error?.response?.data?.error || error?.response?.data?.detail || 'Не удалось загрузить задачу.';
-    showSnackbar(errorMessage, 'error');
-    router.push({ name: 'volunteer-tasks' });
+    // Обрабатываем ошибку 429 отдельно
+    if (error?.response?.status === 429) {
+      showSnackbar('Слишком много запросов. Пожалуйста, подождите немного.', 'warning');
+      // Пытаемся загрузить с кешем
+      if (!task.value) {
+        setTimeout(() => loadTask(false), 2000);
+      }
+    } else {
+      const errorMessage = error?.response?.data?.error || error?.response?.data?.detail || 'Не удалось загрузить задачу.';
+      showSnackbar(errorMessage, 'error');
+      if (!task.value) {
+        router.push({ name: 'volunteer-tasks' });
+      }
+    }
   } finally {
     loading.value = false;
+  }
+}
+
+async function checkPhotoStatus() {
+  if (!task.value) return;
+  try {
+    const response = await fetchTaskPhotos(task.value.id);
+    hasUploadedPhoto.value = response && response.photos && response.photos.length > 0;
+    taskPhotos.value = response?.photos || [];
+  } catch (error) {
+    console.error('Failed to check photo status:', error);
+    hasUploadedPhoto.value = false;
+    taskPhotos.value = [];
   }
 }
 
@@ -107,12 +138,23 @@ async function handleAcceptTask() {
 async function handleDeclineTask() {
   if (!task.value) return;
 
+  const isAccepted = task.value.is_assigned;
+  const message = isAccepted 
+    ? 'Вы отказались от принятой задачи. Задача будет скрыта из ваших активных.'
+    : 'Задача отклонена.';
+
   loading.value = true;
   try {
     await declineTask(task.value.id);
-    showSnackbar('Задача отклонена.', 'success');
+    showSnackbar(message, 'success');
     await loadTask();
     await dashboardStore.loadDashboard(true);
+    // Перенаправляем на страницу задач, если задача была отклонена
+    if (isAccepted) {
+      setTimeout(() => {
+        router.push({ name: 'volunteer-tasks' });
+      }, 1500);
+    }
   } catch (error: any) {
     const errorMessage = error?.response?.data?.error || error?.response?.data?.detail || 'Не удалось отклонить задачу.';
     showSnackbar(errorMessage, 'error');
@@ -188,6 +230,7 @@ async function handleUploadPhoto() {
     photoComment.value = '';
     const input = document.querySelector('#photo-input') as HTMLInputElement;
     if (input) input.value = '';
+    hasUploadedPhoto.value = true; // Отмечаем, что фото загружено
     await loadTask();
     await dashboardStore.loadDashboard(true);
   } catch (error: any) {
@@ -198,15 +241,52 @@ async function handleUploadPhoto() {
   }
 }
 
+async function handleWithdrawPhoto() {
+  if (!task.value) return;
+
+  if (!confirm('Вы уверены, что хотите отозвать фотоотчёт? После отзыва вы сможете загрузить новый фотоотчёт.')) {
+    return;
+  }
+
+  withdrawingPhoto.value = true;
+  try {
+    const response = await deletePhotoReport(task.value.id);
+    showSnackbar(response.message || 'Фотоотчёт успешно отозван. Теперь вы можете загрузить новый фотоотчёт.', 'success');
+    // Сбрасываем состояние сразу
+    hasUploadedPhoto.value = false;
+    taskPhotos.value = [];
+    // Очищаем форму
+    photoFile.value = null;
+    photoPreview.value = null;
+    photoComment.value = '';
+    const input = document.querySelector('#photo-input') as HTMLInputElement;
+    if (input) input.value = '';
+    // Обновляем данные задачи и фото
+    await checkPhotoStatus();
+    await loadTask(false); // Используем кеш для быстрого обновления
+    await dashboardStore.loadDashboard(true);
+  } catch (error: any) {
+    console.error('Error withdrawing photo:', error);
+    const errorMessage = error?.response?.data?.error || error?.response?.data?.detail || 'Не удалось отозвать фотоотчёт.';
+    showSnackbar(errorMessage, 'error');
+  } finally {
+    withdrawingPhoto.value = false;
+  }
+}
+
 const canAcceptTask = computed(() => {
   return task.value && task.value.status === 'open' && !task.value.is_assigned;
 });
 
 const canCompleteTask = computed(() => {
-  return task.value && task.value.is_assigned && task.value.status !== 'completed';
+  return task.value && task.value.is_assigned && task.value.status !== 'completed' && hasUploadedPhoto.value;
 });
 
 const canUploadPhoto = computed(() => {
+  return task.value && task.value.is_assigned && task.value.status !== 'completed';
+});
+
+const canDeclineAcceptedTask = computed(() => {
   return task.value && task.value.is_assigned && task.value.status !== 'completed';
 });
 
@@ -325,8 +405,27 @@ onMounted(async () => {
             Отклонить задачу
           </v-btn>
 
+          <v-tooltip v-if="task && task.is_assigned && task.status !== 'completed' && !hasUploadedPhoto" location="top">
+            <template #activator="{ props }">
+              <v-btn
+                v-bind="props"
+                v-if="task && task.is_assigned && task.status !== 'completed'"
+                color="primary"
+                variant="flat"
+                size="large"
+                class="text-none font-weight-bold"
+                :loading="loading"
+                :disabled="!hasUploadedPhoto"
+                @click="handleCompleteTask"
+              >
+                <v-icon icon="mdi-check-all" start />
+                Отметить как выполненную
+              </v-btn>
+            </template>
+            <span>Сначала загрузите фотоотчет</span>
+          </v-tooltip>
           <v-btn
-            v-if="canCompleteTask"
+            v-if="task && task.is_assigned && task.status !== 'completed' && hasUploadedPhoto"
             color="primary"
             variant="flat"
             size="large"
@@ -336,6 +435,19 @@ onMounted(async () => {
           >
             <v-icon icon="mdi-check-all" start />
             Отметить как выполненную
+          </v-btn>
+
+          <v-btn
+            v-if="canDeclineAcceptedTask"
+            color="error"
+            variant="outlined"
+            size="large"
+            class="text-none font-weight-bold"
+            :loading="loading"
+            @click="handleDeclineTask"
+          >
+            <v-icon icon="mdi-close-circle" start />
+            Отклонить задачу
           </v-btn>
 
           <v-btn
@@ -350,6 +462,68 @@ onMounted(async () => {
             Задача выполнена
           </v-btn>
         </div>
+      </v-card>
+
+      <!-- Информация о загруженном фотоотчете (режим просмотра) -->
+      <v-card
+        v-if="hasUploadedPhoto && task && task.is_assigned && task.status !== 'completed'"
+        elevation="4"
+        class="pa-6 photo-upload-card"
+      >
+        <h2 class="text-h5 font-weight-bold mb-4">Фотоотчет</h2>
+        
+        <v-alert
+          type="info"
+          variant="tonal"
+          class="mb-4"
+        >
+          Вы уже отправили фотоотчёт для этой задачи.
+        </v-alert>
+
+        <div v-if="taskPhotos.length > 0" class="mb-4">
+          <div v-for="photo in taskPhotos" :key="photo.id" class="mb-3">
+            <div class="d-flex align-center ga-2 mb-2">
+              <v-chip
+                :color="photo.status === 'approved' ? 'success' : photo.status === 'rejected' ? 'error' : 'warning'"
+                size="small"
+                variant="tonal"
+              >
+                {{ photo.status === 'approved' ? 'Одобрено' : photo.status === 'rejected' ? 'Отклонено' : 'На проверке' }}
+              </v-chip>
+              <span class="text-caption text-medium-emphasis">
+                Загружено: {{ formatDateTime(photo.uploaded_at) }}
+              </span>
+            </div>
+            <v-img
+              v-if="photo.image_url"
+              :src="photo.image_url"
+              max-height="200"
+              class="rounded-lg mb-2"
+              cover
+            />
+            <p v-if="photo.volunteer_comment" class="text-body-2 mb-2">
+              <strong>Ваш комментарий:</strong> {{ photo.volunteer_comment }}
+            </p>
+            <p v-if="photo.organizer_comment" class="text-body-2 mb-2 text-success">
+              <strong>Ответ организатора:</strong> {{ photo.organizer_comment }}
+            </p>
+            <p v-if="photo.rejection_reason" class="text-body-2 mb-2 text-error">
+              <strong>Причина отклонения:</strong> {{ photo.rejection_reason }}
+            </p>
+          </div>
+        </div>
+
+        <v-btn
+          color="error"
+          variant="outlined"
+          size="large"
+          class="text-none font-weight-bold"
+          :loading="withdrawingPhoto"
+          @click="handleWithdrawPhoto"
+        >
+          <v-icon icon="mdi-undo" start />
+          Отозвать фотоотчет
+        </v-btn>
       </v-card>
 
       <!-- Загрузка фото -->

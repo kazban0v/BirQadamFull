@@ -5,6 +5,22 @@ import { useDisplay } from 'vuetify';
 
 import { useOrganizerStore } from '@/stores/organizer';
 
+// Функция для преобразования относительного URL в полный
+const getFullImageUrl = (url: string | null | undefined): string | null => {
+  if (!url) return null;
+  // Если уже полный URL, исправляем http на https
+  if (url.startsWith('http://')) {
+    return url.replace('http://', 'https://');
+  }
+  if (url.startsWith('https://')) {
+    return url;
+  }
+  // Если относительный путь, добавляем базовый URL
+  const baseUrl = 'https://cleanup.almau.edu.kz';
+  const cleanUrl = url.startsWith('/') ? url : `/${url}`;
+  return `${baseUrl}${cleanUrl}`;
+};
+
 const { mobile } = useDisplay();
 const organizerStore = useOrganizerStore();
 
@@ -371,10 +387,11 @@ watch(
                       <div class="photo-card__media">
                         <v-img
                           v-if="photo.image_url"
-                          :src="photo.image_url"
+                          :src="getFullImageUrl(photo.image_url) || ''"
                           aspect-ratio="4/3"
                           cover
                           class="rounded-lg"
+                          @error="(e) => console.error('Error loading photo:', e, photo.image_url, getFullImageUrl(photo.image_url))"
                         />
                         <div v-else class="photo-card__placeholder">
                           <v-icon icon="mdi-image-off-outline" size="36" />
@@ -526,6 +543,7 @@ watch(
                               size="small"
                               :loading="photoActionLoading(photo.id)"
                               @click="openRejectDialog(photo.id)"
+                              style="display: flex !important; visibility: visible !important;"
                             >
                               <v-icon icon="mdi-close-circle" start size="18" />
                               <span class="photo-card__action-text">Отклонить</span>
@@ -651,12 +669,13 @@ watch(
                   >
                     <v-img
                       v-if="item.image_url"
-                      :src="item.image_url"
+                      :src="getFullImageUrl(item.image_url) || ''"
                       aspect-ratio="4/3"
                       rounded="lg"
                       contain
                       class="detail-dialog__image"
-                      :lazy-src="item.image_url"
+                      :lazy-src="getFullImageUrl(item.image_url) || ''"
+                      @error="(e) => console.error('Error loading detail photo:', e, item.image_url, getFullImageUrl(item.image_url))"
                     />
                     <div v-else class="detail-dialog__placeholder">
                       <v-icon icon="mdi-image-off-outline" size="40" />
@@ -669,12 +688,13 @@ watch(
               <template v-else>
                 <v-img
                   v-if="currentDetail.image_url"
-                  :src="currentDetail.image_url"
+                  :src="getFullImageUrl(currentDetail.image_url) || ''"
                   aspect-ratio="4/3"
                   rounded="lg"
                   contain
                   class="detail-dialog__image"
-                  :lazy-src="currentDetail.image_url"
+                  :lazy-src="getFullImageUrl(currentDetail.image_url) || ''"
+                  @error="(e) => console.error('Error loading current detail photo:', e, currentDetail.image_url, getFullImageUrl(currentDetail.image_url))"
                 />
                 <div v-else class="detail-dialog__placeholder">
                   <v-icon icon="mdi-image-off-outline" size="40" />
@@ -717,7 +737,7 @@ watch(
               >
                 <v-img
                   v-if="item.image_url"
-                  :src="item.image_url"
+                  :src="getFullImageUrl(item.image_url) || ''"
                   cover
                 />
                 <v-icon v-else icon="mdi-image-off-outline" />
@@ -914,20 +934,24 @@ watch(
             {{ rejectDialog.error }}
           </v-alert>
         </v-card-text>
-        <v-card-actions class="px-6 pb-5 d-flex flex-column flex-sm-row ga-3">
+        <v-card-actions class="px-6 pb-5 d-flex flex-column ga-3">
           <v-btn
             block
             color="error"
+            variant="flat"
+            size="large"
             class="text-none font-weight-semibold"
             :loading="rejectDialog.photoId ? photoActionLoading(rejectDialog.photoId) : false"
             @click="submitReject"
           >
+            <v-icon icon="mdi-close-circle" start />
             Отклонить
           </v-btn>
           <v-btn
             block
-            variant="text"
+            variant="outlined"
             color="primary"
+            size="large"
             class="text-none font-weight-semibold"
             @click="rejectDialog.open = false"
           >
@@ -1125,12 +1149,18 @@ watch(
     flex-direction: row;
     width: auto;
     flex: 0;
+    gap: 8px;
   }
   
   .photo-card__action-btn {
     width: auto;
     flex: 0;
     min-width: 120px;
+  }
+  
+  .photo-card__action-reject {
+    display: flex !important;
+    visibility: visible !important;
   }
 }
 

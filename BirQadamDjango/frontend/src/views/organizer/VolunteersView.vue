@@ -643,12 +643,12 @@ onUnmounted(() => {
                     class="message-item"
                     :class="{ 'message-item--own': message.sender_id === currentUser.value?.id }"
                   >
-                    <div class="d-flex ga-2" :class="{ 'flex-row-reverse': message.sender_id === currentUser.value?.id }">
+                    <div class="d-flex ga-2" :class="{ 'flex-row-reverse': message.sender_id === currentUser.value?.id, 'justify-end': message.sender_id === currentUser.value?.id }">
                       <v-avatar size="32" color="primary-lighten-4">
                         <v-icon icon="mdi-account" color="primary" />
                       </v-avatar>
                       <div class="message-content" :class="{ 'text-right': message.sender_id === currentUser.value?.id }">
-                        <div class="d-flex align-center ga-2 mb-1" :class="{ 'flex-row-reverse': message.sender_id === currentUser.value?.id }">
+                        <div class="d-flex align-center ga-2 mb-1" :class="{ 'flex-row-reverse': message.sender_id === currentUser.value?.id, 'justify-end': message.sender_id === currentUser.value?.id }">
                           <span class="text-caption font-weight-medium">{{ message.sender_name }}</span>
                           <v-chip v-if="message.sender_is_organizer" size="x-small" color="primary" variant="tonal" class="text-none">
                             Организатор
@@ -657,7 +657,7 @@ onUnmounted(() => {
                         </div>
                         <v-card
                           class="message-bubble pa-3"
-                          :color="message.sender_id === currentUser.value?.id ? 'primary' : 'grey-lighten-4'"
+                          :color="message.sender_id === currentUser.value?.id ? 'blue' : 'grey-lighten-4'"
                           :variant="message.sender_id === currentUser.value?.id ? 'flat' : 'flat'"
                         >
                           <p 
@@ -836,20 +836,39 @@ onUnmounted(() => {
 }
 
 .message-item {
+  display: flex;
   width: 100%;
+  align-items: flex-start;
 }
 
 .message-item--own {
-  align-items: flex-end;
+  justify-content: flex-end;
+}
+
+.message-item--own > div {
+  flex-direction: row-reverse;
 }
 
 .message-content {
   max-width: 70%;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.message-item:not(.message-item--own) .message-content {
+  align-items: flex-start;
+}
+
+.message-item--own .message-content {
+  align-items: flex-end;
 }
 
 .message-bubble {
   border-radius: 12px;
   word-wrap: break-word;
+  display: inline-block;
+  max-width: 100%;
 }
 
 .chat-input {

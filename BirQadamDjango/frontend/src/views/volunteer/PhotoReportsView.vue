@@ -4,6 +4,22 @@ import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { fetchVolunteerPhotoReports } from '@/services/photoReports';
 import type { VolunteerPhotoSummary } from '@/services/dashboard';
 
+// Функция для преобразования относительного URL в полный
+const getFullImageUrl = (url: string | null | undefined): string | null => {
+  if (!url) return null;
+  // Если уже полный URL, исправляем http на https
+  if (url.startsWith('http://')) {
+    return url.replace('http://', 'https://');
+  }
+  if (url.startsWith('https://')) {
+    return url;
+  }
+  // Если относительный путь, добавляем базовый URL
+  const baseUrl = 'https://cleanup.almau.edu.kz';
+  const cleanUrl = url.startsWith('/') ? url : `/${url}`;
+  return `${baseUrl}${cleanUrl}`;
+};
+
 const loading = ref(false);
 const reports = ref<VolunteerPhotoSummary[]>([]);
 const summary = reactive({
@@ -170,11 +186,12 @@ watch(filter, async () => {
           </div>
           <v-img
             v-if="report.image_url"
-            :src="report.image_url"
+            :src="getFullImageUrl(report.image_url) || ''"
             height="180"
             cover
             class="rounded-lg mb-3"
             @click="openPreview(report)"
+            @error="(e) => console.error('Error loading photo:', e, report.image_url, getFullImageUrl(report.image_url))"
           />
           <div class="text-body-2 text-medium-emphasis mb-2" v-if="report.volunteer_comment">
             Комментарий: {{ report.volunteer_comment }}
@@ -221,10 +238,11 @@ watch(filter, async () => {
         <v-divider class="opacity-10" />
         <v-card-text>
           <v-img
-            :src="previewPhoto.image_url"
+            :src="getFullImageUrl(previewPhoto.image_url) || ''"
             height="360"
             cover
             class="rounded-lg mb-4"
+            @error="(e) => console.error('Error loading preview photo:', e, previewPhoto.image_url, getFullImageUrl(previewPhoto.image_url))"
           />
           <div class="text-body-2 text-medium-emphasis mb-2">
             Статус: {{ previewPhoto.status }}

@@ -42,3 +42,43 @@ export async function fetchVolunteerPhotoReports(params?: { status?: string; lim
   });
   return data;
 }
+
+export async function deletePhotoReport(taskId: number) {
+  // Сначала пробуем DELETE
+  try {
+    const { data } = await httpClient.delete<{ message: string }>(
+      `/api/web/volunteer/tasks/${taskId}/photo-reports/`,
+    );
+    return data;
+  } catch (error: any) {
+    // Если DELETE не разрешен (405 Method Not Allowed или 403 Forbidden), используем POST с action
+    if (error?.response?.status === 405 || error?.response?.status === 403) {
+      const formData = new FormData();
+      formData.append('action', 'withdraw');
+      const { data } = await httpClient.post<{ message: string }>(
+        `/api/web/volunteer/tasks/${taskId}/photo-reports/`,
+        formData,
+        {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        },
+      );
+      return data;
+    }
+    // Если это другая ошибка, пробуем также через POST
+    try {
+      const formData = new FormData();
+      formData.append('action', 'withdraw');
+      const { data } = await httpClient.post<{ message: string }>(
+        `/api/web/volunteer/tasks/${taskId}/photo-reports/`,
+        formData,
+        {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        },
+      );
+      return data;
+    } catch (postError: any) {
+      // Если и POST не работает, выбрасываем оригинальную ошибку
+      throw error;
+    }
+  }
+}
