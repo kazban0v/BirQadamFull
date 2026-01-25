@@ -17,6 +17,15 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+def build_https_absolute_uri(request: Request, path: str) -> str:
+    """Строит абсолютный URL с принудительным использованием HTTPS"""
+    url = request.build_absolute_uri(path)
+    # Заменяем http на https, если есть
+    if url.startswith('http://'):
+        url = url.replace('http://', 'https://')
+    return url
+
+
 class SubmitPhotoReportAPIView(APIView):
     """Отправка фотоотчета волонтером"""
     permission_classes = [IsAuthenticated]
@@ -74,7 +83,7 @@ class SubmitPhotoReportAPIView(APIView):
                 )
                 created_photos.append({
                     'id': photo.id,  # type: ignore[attr-defined]
-                    'image_url': request.build_absolute_uri(photo.image.url) if photo.image else None,
+                    'image_url': build_https_absolute_uri(request, photo.image.url) if photo.image else None,
                     'uploaded_at': photo.uploaded_at.isoformat()
                 })
 
@@ -239,7 +248,7 @@ class OrganizerPhotoReportsAPIView(APIView):
                         'title': project.title,
                         'city': project.city,
                     },
-                    'image_url': request.build_absolute_uri(photo.image.url) if photo.image else None,
+                    'image_url': build_https_absolute_uri(request, photo.image.url) if photo.image else None,
                     'volunteer_comment': photo.volunteer_comment or '',
                     'organizer_comment': photo.organizer_comment or '',
                     'rejection_reason': photo.rejection_reason or '',
@@ -312,7 +321,7 @@ class PhotoReportDetailAPIView(APIView):
             for p in related_photos:
                 photos_list.append({
                     'id': p.id,  # type: ignore[attr-defined]
-                    'image_url': request.build_absolute_uri(p.image.url) if p.image else None,
+                    'image_url': build_https_absolute_uri(request, p.image.url) if p.image else None,
                     'uploaded_at': p.uploaded_at.isoformat()
                 })
 
@@ -324,7 +333,7 @@ class PhotoReportDetailAPIView(APIView):
                 'task_id': photo.task.id if photo.task else None,
                 'project_title': photo.project.title,
                 'project_id': photo.project.id,
-                'image_url': request.build_absolute_uri(photo.image.url) if photo.image else None,
+                'image_url': build_https_absolute_uri(request, photo.image.url) if photo.image else None,
                 'volunteer_comment': photo.volunteer_comment if photo.volunteer_comment else '',
                 'organizer_comment': photo.organizer_comment if photo.organizer_comment else '',
                 'rejection_reason': photo.rejection_reason if photo.rejection_reason else '',
@@ -414,13 +423,27 @@ class RatePhotoReportAPIView(APIView):
             else:
                 rating_value = None
 
-            # Одобряем фото с рейтингом или без
-            updated = photo.approve(rating=rating_value, feedback=feedback if feedback else None)
-            if not updated:
+            # Валидация статуса перед сохранением
+            if photo.status and len(photo.status) > 20:
+                logger.error(f"Photo status too long: {photo.status} (length: {len(photo.status)})")
                 return Response(
-                    {'error': 'Фотоотчет уже обработан'},
-                    status=status.HTTP_400_BAD_REQUEST
+                    {'error': 'Некорректный статус фотоотчета'},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
                 )
+            
+            # Одобряем фото с рейтингом или без
+            try:
+                updated = photo.approve(rating=rating_value, feedback=feedback if feedback else None)
+                if not updated:
+                    return Response(
+                        {'error': 'Фотоотчет уже обработан'},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+            except Exception as approve_error:
+                logger.error(f"Error in photo.approve(): {approve_error}")
+                import traceback
+                logger.error(traceback.format_exc())
+                raise
 
             photo.refresh_from_db()
 
@@ -450,9 +473,14 @@ class RatePhotoReportAPIView(APIView):
                 status=status.HTTP_404_NOT_FOUND
             )
         except Exception as e:
-            logger.error(f"Error rating photo: {e}")
+            import traceback
+            error_details = traceback.format_exc()
+            logger.error(f"Error rating photo: {e}\n{error_details}")
+            # Логируем детали запроса для отладки
+            logger.error(f"Request data: {request.data}")
+            logger.error(f"Photo ID: {photo_id}")
             return Response(
-                {'error': str(e)},
+                {'error': str(e), 'details': error_details if logger.level <= logging.DEBUG else None},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
@@ -553,7 +581,7 @@ class VolunteerPhotoReportsAPIView(APIView):
                     'task_id': photo.task.id if photo.task else None,
                     'project_title': photo.project.title,
                     'project_id': photo.project.id,
-                    'image_url': request.build_absolute_uri(photo.image.url) if photo.image else None,
+                    'image_url': build_https_absolute_uri(request, photo.image.url) if photo.image else None,
                     'volunteer_comment': photo.volunteer_comment if photo.volunteer_comment else '',
                     'organizer_comment': photo.organizer_comment if photo.organizer_comment else '',
                     'rejection_reason': photo.rejection_reason if photo.rejection_reason else '',
@@ -605,7 +633,7 @@ class TaskPhotosAPIView(APIView):
                 'count': photos.count(),
                 'photos': [{
                     'id': p.id,  # type: ignore[attr-defined]
-                    'image_url': request.build_absolute_uri(p.image.url) if p.image else None,
+                    'image_url': build_https_absolute_uri(request, p.image.url) if p.image else None,
                     'status': p.status,
                     'rating': p.rating,
                     'volunteer_comment': p.volunteer_comment if p.volunteer_comment else '',

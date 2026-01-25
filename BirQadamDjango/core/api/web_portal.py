@@ -1360,7 +1360,7 @@ class OrganizerProfileAPIView(APIView):
         portfolio_photo_url = None
         if user.portfolio_photo and user.portfolio_photo.url:
             try:
-                portfolio_photo_url = request.build_absolute_uri(user.portfolio_photo.url)
+                portfolio_photo_url = self._get_full_image_url(request, user.portfolio_photo)
                 # Убеждаемся, что это полный URL и используем https
                 if not portfolio_photo_url.startswith('http'):
                     scheme = 'https'  # Всегда используем https
@@ -1428,7 +1428,7 @@ class OrganizerProfileAPIView(APIView):
         portfolio_photo_url = None
         if user.portfolio_photo and user.portfolio_photo.url:
             try:
-                portfolio_photo_url = request.build_absolute_uri(user.portfolio_photo.url)
+                portfolio_photo_url = self._get_full_image_url(request, user.portfolio_photo)
                 # Убеждаемся, что это полный URL и используем https
                 if not portfolio_photo_url.startswith('http'):
                     scheme = 'https'  # Всегда используем https
@@ -1468,6 +1468,19 @@ class OrganizerPortfolioAPIView(APIView):
     permission_classes = [IsAuthenticated]
     authentication_classes = (CsrfExemptSessionAuthentication,)
 
+    def _get_full_image_url(self, request, image_field):
+        """Вспомогательный метод для получения полного URL изображения"""
+        if not image_field or not image_field.url:
+            return None
+        try:
+            url = request.build_absolute_uri(image_field.url)
+            # Заменяем http на https, если есть
+            if url.startswith('http://'):
+                url = url.replace('http://', 'https://')
+            return url
+        except Exception:
+            return image_field.url if image_field.url else None
+
     def get(self, request, organizer_id: int, *args, **kwargs):
         """Получить портфолио организатора"""
         try:
@@ -1482,16 +1495,7 @@ class OrganizerPortfolioAPIView(APIView):
         portfolio_photo_url = None
         if organizer.portfolio_photo and organizer.portfolio_photo.url:
             try:
-                portfolio_photo_url = request.build_absolute_uri(organizer.portfolio_photo.url)
-                # Убеждаемся, что это полный URL и используем https
-                if not portfolio_photo_url.startswith('http'):
-                    scheme = 'https'  # Всегда используем https
-                    host = request.get_host() if hasattr(request, 'get_host') else ''
-                    if host:
-                        portfolio_photo_url = f'{scheme}://{host}{organizer.portfolio_photo.url}'
-                # Заменяем http на https, если есть
-                elif portfolio_photo_url.startswith('http://'):
-                    portfolio_photo_url = portfolio_photo_url.replace('http://', 'https://')
+                portfolio_photo_url = self._get_full_image_url(request, organizer.portfolio_photo)
             except Exception:
                 # Fallback на относительный путь, если не удалось построить абсолютный
                 portfolio_photo_url = organizer.portfolio_photo.url

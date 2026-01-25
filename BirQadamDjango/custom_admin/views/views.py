@@ -1272,6 +1272,15 @@ class OrganizerProjectsAPIView(APIView):
     authentication_classes = [CsrfExemptSessionAuthentication]  # важно
 
     @staticmethod
+    def _build_https_absolute_uri(request: HttpRequest, path: str) -> str:
+        """Строит абсолютный URL с принудительным использованием HTTPS"""
+        url = request.build_absolute_uri(path)
+        # Заменяем http на https, если есть
+        if url.startswith('http://'):
+            url = url.replace('http://', 'https://')
+        return url
+
+    @staticmethod
     def _is_approved_organizer(user: Any) -> bool:
         is_organizer = getattr(user, 'is_organizer', False)
         is_approved_flag = getattr(user, 'is_approved', False)
@@ -1366,7 +1375,7 @@ class OrganizerProjectsAPIView(APIView):
                 'contact_telegram': project.contact_telegram,
                 'info_url': project.info_url,
                 'tags': list(project.tags.names()),
-                'cover_image_url': request.build_absolute_uri(project.cover_image.url) if project.cover_image and project.cover_image.url else None,
+                'cover_image_url': OrganizerProjectsAPIView._build_https_absolute_uri(request, project.cover_image.url) if project.cover_image and project.cover_image.url else None,
             })
 
         return Response(projects, status=status.HTTP_200_OK)
