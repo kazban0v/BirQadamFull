@@ -431,19 +431,64 @@ class RatePhotoReportAPIView(APIView):
                     status=status.HTTP_500_INTERNAL_SERVER_ERROR
                 )
             
+            # Проверяем текущий статус фото
+            logger.info(f"Rating photo {photo_id}: current status='{photo.status}', rating={rating_value}, skip={skip}")
+            
             # Одобряем фото с рейтингом или без
             try:
-                updated = photo.approve(rating=rating_value, feedback=feedback if feedback else None)
-                if not updated:
-                    return Response(
-                        {'error': 'Фотоотчет уже обработан'},
-                        status=status.HTTP_400_BAD_REQUEST
+                # Используем прямой update для избежания проблем с ограничениями БД
+                from django.db import transaction
+                with transaction.atomic():
+                    # Проверяем, что статус действительно pending
+                    photo_check = Photo.objects.select_for_update().get(pk=photo.pk)
+                    if photo_check.status != 'pending':
+                        return Response(
+                            {'error': 'Фотоотчет уже обработан'},
+                            status=status.HTTP_400_BAD_REQUEST
+                        )
+                    
+                    # Обновляем напрямую через update, чтобы избежать проблем с валидацией модели
+                    updated = Photo.objects.filter(
+                        pk=photo.pk,
+                        status='pending'
+                    ).update(
+                        status='approved',  # 8 символов, должно поместиться даже в varchar(15)
+                        rating=rating_value,
+                        organizer_comment=feedback if feedback else None,
+                        moderated_at=timezone.now()
                     )
+                    
+                    if updated == 0:
+                        return Response(
+                            {'error': 'Фотоотчет уже обработан'},
+                            status=status.HTTP_400_BAD_REQUEST
+                        )
+                    
+                    # Обновляем объект из БД
+                    photo.refresh_from_db()
+                    
+                    # Обновляем рейтинг волонтера, если есть
+                    if rating_value and photo.volunteer:
+                        from core.models import User
+                        volunteer = User.objects.select_for_update().get(pk=photo.volunteer.pk)
+                        volunteer.update_rating(rating_value)
+                    
+                    # Обновляем статус задачи, если есть
+                    if photo.task:
+                        task = photo.task
+                        task.status = 'completed'
+                        task.save()
+                        
             except Exception as approve_error:
-                logger.error(f"Error in photo.approve(): {approve_error}")
                 import traceback
-                logger.error(traceback.format_exc())
-                raise
+                error_details = traceback.format_exc()
+                logger.error(f"Error in photo approval: {approve_error}")
+                logger.error(f"Error details: {error_details}")
+                logger.error(f"Photo ID: {photo_id}, Photo status: {photo.status}, Rating: {rating_value}")
+                return Response(
+                    {'error': f'Ошибка при оценке фотоотчета: {str(approve_error)}'},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                )
 
             photo.refresh_from_db()
 

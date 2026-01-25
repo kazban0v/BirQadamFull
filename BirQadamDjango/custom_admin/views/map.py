@@ -116,7 +116,11 @@ class MapProjectsView(APIView):
                 
                 # Добавляем аватар создателя если есть
                 if project.creator.avatar:
-                    marker_data['creator_avatar'] = request.build_absolute_uri(project.creator.avatar.url)
+                    url = request.build_absolute_uri(project.creator.avatar.url)
+                    # Заменяем http на https, если есть
+                    if url.startswith('http://'):
+                        url = url.replace('http://', 'https://')
+                    marker_data['creator_avatar'] = url
                 
                 markers.append(marker_data)
             

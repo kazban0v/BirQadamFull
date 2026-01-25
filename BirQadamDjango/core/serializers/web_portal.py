@@ -158,7 +158,11 @@ class VolunteerPhotoSerializer(serializers.ModelSerializer):
         request = self.context.get('request') if hasattr(self, 'context') else None
         if obj.image:
             if request:
-                return request.build_absolute_uri(obj.image.url)
+                url = request.build_absolute_uri(obj.image.url)
+                # Заменяем http на https, если есть
+                if url.startswith('http://'):
+                    url = url.replace('http://', 'https://')
+                return url
             return obj.image.url
         return None
 
