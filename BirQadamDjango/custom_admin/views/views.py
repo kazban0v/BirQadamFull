@@ -1140,7 +1140,7 @@ class ProjectsAPIView(APIView):
     def get(self, request: HttpRequest) -> Response:
         from core.services.web_portal_projects import get_projects_catalog
 
-        catalog = get_projects_catalog(request.user)
+        catalog = get_projects_catalog(request.user, request=request)
         return Response(catalog, status=status.HTTP_200_OK)
 
     def post(self, request: HttpRequest, project_id: int) -> Response:
@@ -1166,7 +1166,7 @@ class ProjectsAPIView(APIView):
             else:
                 message = 'Already joined'
 
-            catalog = get_projects_catalog(request.user)
+            catalog = get_projects_catalog(request.user, request=request)
             catalog['message'] = message
             return Response(catalog, status=status.HTTP_200_OK)
         except Project.DoesNotExist:  # type: ignore[attr-defined]

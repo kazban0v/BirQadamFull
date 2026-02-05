@@ -349,13 +349,60 @@ class _AchievementsGalleryScreenState extends State<AchievementsGalleryScreen> w
       ),
       body: achievementsProvider.isLoading
           ? const Center(child: CircularProgressIndicator())
-          : TabBarView(
-              controller: _tabController,
-              children: [
-                _buildAllAchievementsTab(achievementsProvider.achievements),
-                _buildUnlockedAchievementsTab(achievementsProvider.unlockedAchievements),
-              ],
-            ),
+          : achievementsProvider.errorMessage != null
+              ? Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.error_outline_rounded,
+                          size: 64,
+                          color: Colors.grey[400],
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          'Ошибка загрузки достижений',
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.grey[700],
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          achievementsProvider.errorMessage!,
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey[600],
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 24),
+                        ElevatedButton.icon(
+                          onPressed: () {
+                            achievementsProvider.clearError();
+                            achievementsProvider.loadAchievements();
+                          },
+                          icon: const Icon(Icons.refresh),
+                          label: const Text('Повторить'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF4CAF50),
+                            foregroundColor: Colors.white,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                )
+              : TabBarView(
+                  controller: _tabController,
+                  children: [
+                    _buildAllAchievementsTab(achievementsProvider.achievements),
+                    _buildUnlockedAchievementsTab(achievementsProvider.unlockedAchievements),
+                  ],
+                ),
     );
   }
 

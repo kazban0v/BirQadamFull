@@ -17,6 +17,7 @@ class Project {
   final int taskCount;
   final bool isJoined;
   final String volunteerType;
+  final String? coverImageUrl;
 
   Project({
     required this.id,
@@ -30,6 +31,7 @@ class Project {
     required this.taskCount,
     required this.isJoined,
     this.volunteerType = 'environmental',
+    this.coverImageUrl,
   });
 
   factory Project.fromJson(Map<String, dynamic> json) {
@@ -41,10 +43,11 @@ class Project {
       startDate: json['start_date'],
       endDate: json['end_date'],
       creatorName: json['creator_name'] ?? '',
-      volunteerCount: int.tryParse(json['volunteer_count'].toString()) ?? 0,
-      taskCount: int.tryParse(json['task_count'].toString()) ?? 0,
-      isJoined: json['is_joined'] ?? false,
+      volunteerCount: int.tryParse((json['active_members'] ?? json['volunteer_count'] ?? 0).toString()) ?? 0,
+      taskCount: int.tryParse((json['tasks_count'] ?? json['task_count'] ?? 0).toString()) ?? 0,
+      isJoined: json['is_joined'] ?? json['joined'] ?? false,
       volunteerType: json['volunteer_type'] ?? 'environmental',
+      coverImageUrl: json['cover_image_url'],
     );
   }
 
@@ -60,6 +63,7 @@ class Project {
     int? taskCount,
     bool? isJoined,
     String? volunteerType,
+    String? coverImageUrl,
   }) {
     return Project(
       id: id ?? this.id,
@@ -73,6 +77,7 @@ class Project {
       taskCount: taskCount ?? this.taskCount,
       isJoined: isJoined ?? this.isJoined,
       volunteerType: volunteerType ?? this.volunteerType,
+      coverImageUrl: coverImageUrl ?? this.coverImageUrl,
     );
   }
 }
