@@ -1,33 +1,78 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 
 import { useDashboardStore } from '@/stores/dashboard';
+import { fetchVolunteerStats, type VolunteerAchievement } from '@/services/stats';
+import { useAuthStore } from '@/stores/auth';
 
 const dashboardStore = useDashboardStore();
-const loading = computed(() => dashboardStore.loading);
-const achievements = ref([
-  {
-    title: 'Первые шаги',
-    description: 'Выполните первое задание и получите благодарность от команды BirQadam.',
-    progress: 0,
-    reward: 'Бейдж «Новичок»',
-    unlocked: false,
-  },
-  {
-    title: 'Фото эксперт',
-    description: 'Отправьте 5 успешных фотоотчётов и помогите проекту с визуальными материалами.',
-    progress: 0,
-    reward: 'Дополнительные 25 рейтинга',
-    unlocked: false,
-  },
-  {
-    title: 'Командный игрок',
-    description: 'Примите участие в трёх проектах подряд без пропусков и задержек.',
-    progress: 0,
-    reward: 'Доступ к закрытым мероприятиям',
-    unlocked: false,
-  },
-]);
+const authStore = useAuthStore();
+const loading = ref(false);
+const stats = ref<Awaited<ReturnType<typeof fetchVolunteerStats>> | null>(null);
+const achievements = ref<VolunteerAchievement[]>([]);
+
+const loadAchievements = async () => {
+  loading.value = true;
+  try {
+    const response = await fetchVolunteerStats();
+    console.log('🔍 Full response:', response);
+    console.log('🔍 Response type:', typeof response);
+    console.log('🔍 Response.achievements:', response?.achievements);
+    console.log('🔍 Response.achievements type:', typeof response?.achievements);
+    console.log('🔍 Is array?', Array.isArray(response?.achievements));
+    console.log('🔍 Achievements length:', response?.achievements?.length);
+    
+    if (response) {
+      stats.value = response;
+      // Проверяем наличие achievements в ответе
+      if (response.achievements !== undefined && Array.isArray(response.achievements)) {
+        achievements.value = response.achievements;
+        console.log('✅ Achievements loaded:', achievements.value.length);
+        console.log('✅ First achievement:', achievements.value[0]);
+      } else {
+        console.warn('⚠️ Achievements is not an array or undefined');
+        console.warn('⚠️ Response.achievements:', response.achievements);
+        console.warn('⚠️ Response keys:', Object.keys(response));
+        achievements.value = [];
+      }
+    } else {
+      console.warn('⚠️ Empty response');
+      achievements.value = [];
+    }
+  } catch (error: any) {
+    console.error('❌ Failed to load achievements:', error);
+    achievements.value = [];
+    stats.value = null;
+  } finally {
+    loading.value = false;
+    console.log('Loading finished. Achievements count:', achievements.value.length);
+  }
+};
+
+const getProgress = (achievement: VolunteerAchievement): number => {
+  if (achievement.unlocked) return 100;
+  if (!stats.value) return 0;
+  const currentRating = stats.value.rating || 0;
+  const requiredRating = achievement.required_rating || 0;
+  if (requiredRating === 0) return 0;
+  return Math.min(100, Math.round((currentRating / requiredRating) * 100));
+};
+
+const getIcon = (achievement: VolunteerAchievement): string => {
+  if (achievement.icon) return achievement.icon;
+  return achievement.unlocked ? 'mdi-trophy' : 'mdi-trophy-outline';
+};
+
+// Computed для отладки
+const hasAchievements = computed(() => {
+  const has = achievements.value.length > 0;
+  console.log('hasAchievements computed:', has, 'count:', achievements.value.length);
+  return has;
+});
+
+onMounted(async () => {
+  await loadAchievements();
+});
 </script>
 
 <template>
@@ -40,10 +85,15 @@ const achievements = ref([
               <v-icon icon="mdi-trophy-outline" size="20" />
               Личные достижения
             </div>
-            <h1 class="text-h5 text-md-h4 font-weight-bold mb-3">Здесь будут ваши награды и прогресс</h1>
+            <h1 class="text-h5 text-md-h4 font-weight-bold mb-3">Ваши достижения</h1>
             <p class="text-body-1 text-medium-emphasis mb-0">
-              Раздел подключится к основному трекеру рейтинга после интеграции. Пока вы можете посмотреть, какие награды
-              будут доступны в ближайших релизах.
+              <template v-if="stats">
+                Вы разблокировали <strong>{{ stats.unlocked_achievements }}</strong> из <strong>{{ stats.total_achievements }}</strong> достижений.
+                Ваш текущий рейтинг: <strong>{{ stats.rating }}</strong> очков (Уровень {{ stats.level }}).
+              </template>
+              <template v-else>
+                Загружаем информацию о ваших достижениях...
+              </template>
             </p>
           </div>
           <div class="hero-card__visual">
@@ -78,7 +128,7 @@ const achievements = ref([
       <v-col cols="12">
         <v-card class="achievements-card" elevation="6" rounded="xl">
           <div class="d-flex align-center justify-space-between flex-wrap ga-4 mb-4">
-            <h2 class="text-h6 font-weight-bold mb-0">Предстоящие награды</h2>
+            <h2 class="text-h6 font-weight-bold mb-0">Все достижения</h2>
             <v-progress-circular
               v-if="loading"
               indeterminate
@@ -86,22 +136,47 @@ const achievements = ref([
             />
           </div>
           <v-divider class="mb-4" />
-          <v-row class="ga-4">
+          
+          <v-alert
+            v-if="!loading && achievements.length === 0"
+            type="info"
+            variant="tonal"
+            rounded="lg"
+          >
+            <div class="font-weight-bold mb-1">Достижения не найдены</div>
+            <div class="text-caption">
+              <template v-if="stats">
+                <template v-if="stats.total_achievements === 0">
+                  В системе пока нет достижений. Обратитесь к администратору для их добавления.
+                </template>
+                <template v-else>
+                  Загружено {{ stats.total_achievements }} достижений, но они не отображаются. Попробуйте обновить страницу.
+                </template>
+              </template>
+              <template v-else>
+                Не удалось загрузить данные. Проверьте подключение к интернету и обновите страницу.
+              </template>
+            </div>
+          </v-alert>
+          
+          <v-row v-else class="ga-4">
             <v-col
               v-for="achievement in achievements"
-              :key="achievement.title"
+              :key="achievement.id"
               cols="12"
-              md="4"
+              md="6"
+              lg="4"
             >
               <v-sheet
                 class="achievement-card pa-4"
                 rounded="lg"
                 border
-                :color="achievement.unlocked ? 'primary-lighten-5' : 'grey-lighten-5'"
+                :color="achievement.unlocked ? 'success-lighten-5' : 'grey-lighten-5'"
+                :class="{ 'achievement-unlocked': achievement.unlocked }"
               >
                 <div class="d-flex align-center justify-space-between mb-3">
-                  <v-avatar size="40" :color="achievement.unlocked ? 'primary' : 'grey'">
-                    <v-icon icon="mdi-trophy-variant-outline" color="white" />
+                  <v-avatar size="48" :color="achievement.unlocked ? 'success' : 'grey'">
+                    <v-icon :icon="getIcon(achievement)" color="white" size="24" />
                   </v-avatar>
                   <v-chip
                     size="small"
@@ -112,18 +187,42 @@ const achievements = ref([
                     {{ achievement.unlocked ? 'Получено' : 'В процессе' }}
                   </v-chip>
                 </div>
-                <h3 class="text-subtitle-1 font-weight-semibold mb-2">{{ achievement.title }}</h3>
+                <h3 class="text-subtitle-1 font-weight-semibold mb-2">{{ achievement.name }}</h3>
                 <p class="text-body-2 text-medium-emphasis mb-4">{{ achievement.description }}</p>
-                <v-progress-linear
-                  :model-value="achievement.progress"
-                  :color="achievement.unlocked ? 'success' : 'primary'"
-                  height="8"
-                  rounded
-                  class="mb-3"
-                />
-                <div class="d-flex align-center justify-space-between">
-                  <span class="text-caption text-medium-emphasis">{{ achievement.progress }}% прогресса</span>
-                  <span class="text-caption font-weight-semibold">{{ achievement.reward }}</span>
+                
+                <div class="mb-3">
+                  <div class="d-flex align-center justify-space-between mb-2">
+                    <span class="text-caption text-medium-emphasis">Требуется рейтинг:</span>
+                    <span class="text-caption font-weight-bold">{{ achievement.required_rating }} очков</span>
+                  </div>
+                  <v-progress-linear
+                    :model-value="getProgress(achievement)"
+                    :color="achievement.unlocked ? 'success' : 'primary'"
+                    height="8"
+                    rounded
+                    class="mb-2"
+                  />
+                  <div class="d-flex align-center justify-space-between mb-1">
+                    <span class="text-caption text-medium-emphasis">
+                      <template v-if="achievement.unlocked">
+                        Получено!
+                      </template>
+                      <template v-else>
+                        {{ stats?.rating || 0 }} / {{ achievement.required_rating }} очков
+                        <span class="ml-1">(осталось {{ Math.max(0, achievement.required_rating - (stats?.rating || 0)) }} очков)</span>
+                      </template>
+                    </span>
+                    <span class="text-caption font-weight-semibold text-success">+{{ achievement.xp }} XP</span>
+                  </div>
+                  <div class="d-flex align-center justify-space-between">
+                    <span class="text-caption text-medium-emphasis">{{ getProgress(achievement) }}% прогресса</span>
+                  </div>
+                </div>
+                
+                <div v-if="achievement.unlocked && achievement.unlocked_at" class="mt-2 pt-2" style="border-top: 1px solid rgba(0,0,0,0.1);">
+                  <span class="text-caption text-medium-emphasis">
+                    Получено: {{ new Date(achievement.unlocked_at).toLocaleDateString('ru-RU', { day: '2-digit', month: 'long', year: 'numeric' }) }}
+                  </span>
                 </div>
               </v-sheet>
             </v-col>
@@ -192,10 +291,21 @@ const achievements = ref([
 .achievement-card {
   background: #ffffff;
   border: 1px solid rgba(33, 33, 33, 0.06);
-  min-height: 240px;
+  min-height: 280px;
   display: flex;
   flex-direction: column;
   gap: 12px;
+  transition: all 0.3s ease;
+}
+
+.achievement-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+}
+
+.achievement-unlocked {
+  border-color: rgb(var(--v-theme-success));
+  border-width: 2px;
 }
 
 @media (max-width: 960px) {

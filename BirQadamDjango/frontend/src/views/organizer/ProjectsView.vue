@@ -6,6 +6,7 @@ import type { VForm } from 'vuetify/components';
 import { useAuthStore } from '@/stores/auth';
 import { useOrganizerStore } from '@/stores/organizer';
 import type { OrganizerProject } from '@/services/organizer';
+import YandexMapPicker from '@/components/YandexMapPicker.vue';
 
 const router = useRouter();
 const authStore = useAuthStore();
@@ -396,6 +397,14 @@ const goToTasks = (projectId: number) => {
 
 const openEditDialog = (project: OrganizerProject) => {
   try {
+    // Проверяем наличие участников в проекте
+    if (project.volunteer_count && project.volunteer_count > 0) {
+      snackbar.message = 'Редактирование проекта запрещено, так как в проекте уже есть участники. Удалите всех участников перед редактированием.';
+      snackbar.color = 'error';
+      snackbar.show = true;
+      return;
+    }
+    
     console.log('Opening edit dialog for project:', project);
     projectToEdit.value = project;
     editFormState.title = project.title || '';
@@ -497,12 +506,13 @@ const submitEditProject = async () => {
         ? editFormState.cover_image[0]
         : editFormState.cover_image || undefined,
     });
-    // Перезагружаем проекты для обновления фото
+    // Закрываем диалог перед перезагрузкой
+    closeEditDialog();
+    // Перезагружаем проекты для обновления статуса и фото
     await organizerStore.loadProjects(true);
-    snackbar.message = 'Проект успешно обновлён.';
+    snackbar.message = 'Проект успешно обновлён и отправлен на модерацию.';
     snackbar.color = 'success';
     snackbar.show = true;
-    closeEditDialog();
   } catch (error: any) {
     const detail =
       error?.response?.data?.error ||
@@ -702,17 +712,33 @@ const submitDeleteProject = async () => {
                       <v-icon icon="mdi-map" end size="16" />
                     </v-btn>
                   </div>
-                  <div class="d-flex ga-2 flex-wrap">
+                  <div class="d-flex ga-2 flex-wrap align-center">
                     <v-btn
                       color="warning"
                       variant="outlined"
                       size="small"
                       class="text-none"
+                      :disabled="(project.volunteer_count || 0) > 0"
                       @click="openEditDialog(project)"
                     >
                       <v-icon icon="mdi-pencil" start size="16" />
                       Редактировать
                     </v-btn>
+                    <v-tooltip
+                      v-if="project.volunteer_count && project.volunteer_count > 0"
+                      text="Редактирование запрещено, так как в проекте уже есть участники"
+                      location="top"
+                    >
+                      <template #activator="{ props }">
+                        <v-icon
+                          v-bind="props"
+                          icon="mdi-information-outline"
+                          color="warning"
+                          size="20"
+                          class="ml-1"
+                        />
+                      </template>
+                    </v-tooltip>
                     <v-btn
                       color="error"
                       variant="outlined"
@@ -831,11 +857,12 @@ const submitDeleteProject = async () => {
               />
             </v-col>
             <v-col cols="12">
-              <v-text-field
-                v-model="createFormState.address"
-                label="Адрес / место проведения"
-                variant="outlined"
-                prepend-inner-icon="mdi-map-marker-outline"
+              <YandexMapPicker
+                v-model:latitude="createFormState.latitude"
+                v-model:longitude="createFormState.longitude"
+                :city="createFormState.city"
+                height="300px"
+                @update:address="(address) => { createFormState.address = address; }"
               />
             </v-col>
             <v-col cols="12">
@@ -983,7 +1010,7 @@ const submitDeleteProject = async () => {
                 </template>
               </v-dialog>
             </v-col>
-            <v-col cols="12" md="6">
+            <v-col cols="12" md="6" class="d-none">
               <v-text-field
                 v-model="createFormState.latitude"
                 type="number"
@@ -992,7 +1019,7 @@ const submitDeleteProject = async () => {
                 prepend-inner-icon="mdi-crosshairs-gps"
               />
             </v-col>
-            <v-col cols="12" md="6">
+            <v-col cols="12" md="6" class="d-none">
               <v-text-field
                 v-model="createFormState.longitude"
                 type="number"
@@ -1000,53 +1027,6 @@ const submitDeleteProject = async () => {
                 variant="outlined"
                 prepend-inner-icon="mdi-crosshairs"
               />
-            </v-col>
-            <v-col cols="12" class="d-flex flex-wrap ga-3">
-              <v-btn
-                variant="tonal"
-                color="primary"
-                class="text-none font-weight-semibold"
-                @click="detectCoordinates"
-                :loading="geolocationLoading"
-                :disabled="!geolocationSupported || geolocationLoading"
-              >
-                Определить по текущему местоположению
-              </v-btn>
-              <v-btn
-                variant="tonal"
-                color="primary"
-                class="text-none font-weight-semibold"
-                @click="geocodeAddress"
-                :loading="geolocationLoading"
-                :disabled="geolocationLoading || !createFormState.city"
-              >
-                Определить по адресу
-              </v-btn>
-              <v-btn
-                v-if="mapPreviewUrl"
-                variant="outlined"
-                color="primary"
-                class="text-none font-weight-semibold"
-                :href="mapPreviewUrl"
-                target="_blank"
-              >
-                Открыть адрес в Яндекс Картах
-                <v-icon icon="mdi-map-search-outline" end size="18" />
-              </v-btn>
-            </v-col>
-            <v-col cols="12" v-if="mapPreviewUrl">
-              <v-responsive aspect-ratio="16/9" class="map-preview rounded-lg">
-                <iframe
-                  :src="mapPreviewUrl"
-                  frameborder="0"
-                  allowfullscreen
-                  loading="lazy"
-                  referrerpolicy="no-referrer-when-downgrade"
-                />
-              </v-responsive>
-              <p class="text-caption text-medium-emphasis mt-2 mb-0">
-                Проверьте, что карта показывает нужное место. При необходимости уточните адрес или координаты.
-              </p>
             </v-col>
             <v-col cols="12" md="6">
               <v-text-field

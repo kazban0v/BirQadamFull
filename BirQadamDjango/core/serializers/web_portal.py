@@ -214,7 +214,33 @@ class VolunteerStatsSerializer(serializers.Serializer):
     progress = serializers.FloatField()
     unlocked_achievements = serializers.IntegerField()
     total_achievements = serializers.IntegerField()
-    achievements = VolunteerAchievementSerializer(many=True)
+    achievements = VolunteerAchievementSerializer(many=True, required=False, allow_null=True)
+    
+    def to_representation(self, instance):
+        """Переопределяем для гарантии, что achievements всегда список"""
+        import logging
+        logger = logging.getLogger(__name__)
+        
+        logger.info(f'to_representation called with instance type: {type(instance)}')
+        logger.info(f'Instance achievements count: {len(instance.get("achievements", [])) if isinstance(instance, dict) else 0}')
+        
+        try:
+            data = super().to_representation(instance)
+            logger.info(f'After super().to_representation, achievements count: {len(data.get("achievements", []))}')
+        except Exception as e:
+            # Если сериализация не удалась, возвращаем данные напрямую
+            logger.error(f'Error in to_representation: {e}')
+            import traceback
+            logger.error(traceback.format_exc())
+            data = dict(instance) if isinstance(instance, dict) else {}
+        
+        if 'achievements' not in data or data['achievements'] is None:
+            logger.warning('Achievements missing or None in serialized data, setting to empty list')
+            data['achievements'] = []
+        else:
+            logger.info(f'Final achievements count in data: {len(data.get("achievements", []))}')
+        
+        return data
 
 
 class VolunteerActivitySeriesSerializer(serializers.Serializer):

@@ -32,8 +32,36 @@ export async function fetchVolunteerProfile() {
 }
 
 export async function updateVolunteerProfile(payload: Partial<{ name: string; phone_number: string; email: string }>) {
-  const { data } = await httpClient.patch('/api/web/volunteer/profile/', payload);
-  return data;
+  // Очищаем payload от пустых значений и null
+  const cleanPayload: Record<string, string> = {};
+  
+  if (payload.name !== undefined && payload.name !== null && payload.name.trim() !== '') {
+    cleanPayload.name = payload.name.trim();
+  }
+  if (payload.phone_number !== undefined && payload.phone_number !== null && payload.phone_number.trim() !== '') {
+    cleanPayload.phone_number = payload.phone_number.trim();
+  }
+  if (payload.email !== undefined && payload.email !== null && payload.email.trim() !== '') {
+    cleanPayload.email = payload.email.trim();
+  }
+  
+  // Проверяем, что есть хотя бы одно поле для обновления
+  if (Object.keys(cleanPayload).length === 0) {
+    console.warn('Попытка обновить профиль без данных');
+    throw new Error('Нет данных для обновления профиля');
+  }
+  
+  console.log('Отправка данных для обновления профиля:', cleanPayload);
+  
+  try {
+    const { data } = await httpClient.patch('/api/web/volunteer/profile/', cleanPayload);
+    return data;
+  } catch (error: any) {
+    console.error('Ошибка при обновлении профиля:', error);
+    console.error('Отправленные данные:', cleanPayload);
+    console.error('Ответ сервера:', error?.response?.data);
+    throw error;
+  }
 }
 
 export interface TelegramSyncStatus {

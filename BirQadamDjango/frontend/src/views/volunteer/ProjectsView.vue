@@ -817,18 +817,18 @@ onUnmounted(() => {
           <v-spacer />
 
           <div class="d-flex flex-column ga-3 mt-auto">
-            <div class="d-flex justify-space-between align-center">
-              <div class="text-caption text-medium-emphasis" v-if="project.joined">
+            <div class="d-flex flex-wrap justify-space-between align-center ga-2 project-join-section">
+              <div class="text-caption text-medium-emphasis project-status-text" v-if="project.joined">
                 Вы присоединились к проекту
               </div>
-              <div class="text-caption text-medium-emphasis" v-else>
+              <div class="text-caption text-medium-emphasis project-status-text" v-else>
                 Нажмите, чтобы вступить и получать задания
               </div>
               <v-btn
                 v-if="!project.joined"
                 color="primary"
                 variant="flat"
-                class="text-none font-weight-bold"
+                class="text-none font-weight-bold project-join-btn"
                 :disabled="loading"
                 @click="handleJoin(project.id)"
               >
@@ -838,7 +838,7 @@ onUnmounted(() => {
                 v-else
                 color="error"
                 variant="outlined"
-                class="text-none font-weight-bold"
+                class="text-none font-weight-bold project-join-btn"
                 :disabled="loading"
                 @click="handleLeave(project.id)"
               >
@@ -846,12 +846,12 @@ onUnmounted(() => {
               </v-btn>
             </div>
 
-            <div class="d-flex ga-2">
+            <div class="d-flex flex-wrap ga-2 project-actions">
               <!-- Кнопка для просмотра деталей проекта -->
               <v-btn
                 variant="outlined"
                 color="primary"
-                class="text-none font-weight-bold"
+                class="text-none font-weight-bold project-action-btn"
                 @click="openProjectDialog(project.id)"
               >
                 <v-icon icon="mdi-information-outline" start />
@@ -863,7 +863,7 @@ onUnmounted(() => {
                 v-if="project.joined"
                 variant="outlined"
                 color="primary"
-                class="text-none font-weight-bold"
+                class="text-none font-weight-bold project-action-btn"
                 @click="openProjectChat(project.id)"
               >
                 <v-icon icon="mdi-chat-outline" start />
@@ -880,15 +880,15 @@ onUnmounted(() => {
                 v-if="project.joined"
                 variant="outlined"
                 color="primary"
-                class="text-none font-weight-bold"
+                class="text-none font-weight-bold project-action-btn tasks-btn"
                 @click="toggleProjectDetails(project.id)"
               >
-                <v-icon :icon="expandedProjectId === project.id ? 'mdi-chevron-up' : 'mdi-chevron-down'" start />
-                {{ expandedProjectId === project.id ? 'Скрыть' : 'Задания' }}
+                <v-icon :icon="expandedProjectId === project.id ? 'mdi-chevron-up' : 'mdi-chevron-down'" start class="flex-shrink-0" />
+                <span class="tasks-btn-text">{{ expandedProjectId === project.id ? 'Скрыть' : 'Задания' }}</span>
                 <v-chip
                   v-if="project.tasks_count > 0"
-                  size="small"
-                  class="ms-2"
+                  size="x-small"
+                  class="ms-2 tasks-count-chip flex-shrink-0"
                   color="primary"
                   variant="flat"
                 >
@@ -916,20 +916,20 @@ onUnmounted(() => {
                   variant="outlined"
                   class="mb-3 pa-4 task-card"
                 >
-                  <div class="d-flex justify-space-between align-start mb-3">
-                    <div class="flex-grow-1">
+                  <div class="d-flex justify-space-between align-start mb-3 flex-wrap ga-2">
+                    <div class="flex-grow-1 min-width-0">
                       <div class="text-body-1 font-weight-medium mb-2">{{ task.text }}</div>
-                      <div class="d-flex flex-wrap ga-3 text-body-2 text-medium-emphasis">
-                        <span v-if="task.deadline_date">
-                          <v-icon icon="mdi-calendar-clock" size="16" class="me-1" />
-                          Срок: {{ formatDate(task.deadline_date) }}
-                          <span v-if="task.start_time && task.end_time">
+                      <div class="d-flex flex-column flex-md-row flex-wrap ga-2 text-body-2 text-medium-emphasis task-info">
+                        <span v-if="task.deadline_date" class="d-flex align-center task-info-item">
+                          <v-icon icon="mdi-calendar-clock" size="16" class="me-1 flex-shrink-0" />
+                          <span class="text-nowrap">Срок: {{ formatDate(task.deadline_date) }}</span>
+                          <span v-if="task.start_time && task.end_time" class="ms-1">
                             ({{ task.start_time }} - {{ task.end_time }})
                           </span>
                         </span>
-                        <span>
-                          <v-icon icon="mdi-clock-outline" size="16" class="me-1" />
-                          Создано: {{ formatDateTime(task.created_at) }}
+                        <span class="d-flex align-center task-info-item">
+                          <v-icon icon="mdi-clock-outline" size="16" class="me-1 flex-shrink-0" />
+                          <span>Создано: {{ formatDateTime(task.created_at) }}</span>
                         </span>
                       </div>
                     </div>
@@ -937,7 +937,7 @@ onUnmounted(() => {
                       :color="taskStatusMap[task.status]?.color || 'primary'"
                       variant="tonal"
                       size="small"
-                      class="ml-3"
+                      class="ml-3 flex-shrink-0 task-status-chip"
                     >
                       {{ taskStatusMap[task.status]?.text || task.status }}
                     </v-chip>
@@ -947,11 +947,11 @@ onUnmounted(() => {
                       color="primary"
                       variant="outlined"
                       size="small"
-                      class="text-none font-weight-bold"
+                      class="text-none font-weight-bold task-action-btn"
                       :to="{ name: 'volunteer-task-detail', params: { id: task.id } }"
                     >
                       Перейти к задаче
-                      <v-icon icon="mdi-arrow-right" end size="16" />
+                      <v-icon icon="mdi-arrow-right" end size="16" class="flex-shrink-0" />
                     </v-btn>
                   </div>
                 </v-card>
@@ -981,10 +981,10 @@ onUnmounted(() => {
     </v-snackbar>
 
     <!-- Диалог с деталями проекта -->
-    <v-dialog v-model="projectDialog" max-width="800" scrollable>
+    <v-dialog v-model="projectDialog" max-width="800" scrollable :fullscreen="$vuetify.display.mobile">
       <v-card v-if="projectDetail" class="pa-6">
-        <v-card-title class="d-flex justify-space-between align-center mb-4">
-          <h2 class="text-h5 font-weight-bold">{{ projectDetail.title }}</h2>
+        <v-card-title class="d-flex justify-space-between align-center mb-4 flex-wrap">
+          <h2 class="text-h5 text-md-h4 font-weight-bold">{{ projectDetail.title }}</h2>
           <v-btn icon="mdi-close" variant="text" @click="projectDialog = false" />
         </v-card-title>
 
@@ -1012,7 +1012,7 @@ onUnmounted(() => {
             <v-divider class="my-6" />
 
             <!-- Основная информация -->
-            <v-row class="mb-6">
+            <v-row class="mb-6 ga-4">
               <v-col cols="12" md="6">
                 <div class="mb-3">
                   <v-icon icon="mdi-map-marker" size="20" class="me-2" />
@@ -1153,7 +1153,7 @@ onUnmounted(() => {
           </div>
         </v-card-text>
 
-        <v-card-actions class="pa-6 pt-0">
+        <v-card-actions class="pa-6 pt-0 flex-wrap ga-2">
           <v-spacer />
           <v-btn
             v-if="!projectDetail.joined"
@@ -1162,6 +1162,7 @@ onUnmounted(() => {
             class="text-none font-weight-bold"
             :disabled="loading"
             @click="handleJoinFromDialog"
+            block
           >
             Присоединиться к проекту
             <v-icon icon="mdi-account-plus" end />
@@ -1173,6 +1174,7 @@ onUnmounted(() => {
             class="text-none font-weight-bold"
             :disabled="loading"
             @click="handleLeaveFromDialog"
+            block
           >
             Выйти из проекта
             <v-icon icon="mdi-exit-to-app" end />
@@ -1182,6 +1184,7 @@ onUnmounted(() => {
             variant="text"
             class="text-none"
             @click="projectDialog = false"
+            block
           >
             Закрыть
           </v-btn>
@@ -1311,25 +1314,28 @@ onUnmounted(() => {
     </v-dialog>
 
     <!-- Диалог чата -->
-    <v-dialog v-model="chatDialog" max-width="900" fullscreen hide-overlay transition="dialog-bottom-transition">
-      <v-card v-if="chat" class="chat-dialog d-flex flex-column h-100">
-        <v-card-title class="d-flex justify-space-between align-center pa-4">
-          <div class="d-flex align-center ga-3">
-            <v-avatar color="primary" size="40">
+    <v-dialog v-model="chatDialog" max-width="900" :fullscreen="$vuetify.display.mobile" hide-overlay transition="dialog-bottom-transition" content-class="chat-dialog-wrapper">
+      <v-card v-if="chat" class="chat-dialog d-flex flex-column">
+        <v-card-title class="d-flex justify-space-between align-center pa-3 pa-md-4 chat-header flex-shrink-0">
+          <div class="d-flex align-center ga-2 ga-md-3 flex-grow-1 min-width-0">
+            <v-avatar color="primary" size="32" class="d-md-none">
+              <v-icon icon="mdi-chat" color="white" size="18" />
+            </v-avatar>
+            <v-avatar color="primary" size="40" class="d-none d-md-flex">
               <v-icon icon="mdi-chat" color="white" />
             </v-avatar>
-            <div>
-              <h2 class="text-h6 font-weight-bold mb-0">{{ chat.project_title }}</h2>
-              <p class="text-caption text-medium-emphasis mb-0">Чат с организатором</p>
+            <div class="flex-grow-1 min-width-0">
+              <h2 class="text-subtitle-1 text-md-h6 font-weight-bold mb-0 text-truncate">{{ chat.project_title }}</h2>
+              <p class="text-caption text-medium-emphasis mb-0 d-none d-md-block">Чат с организатором</p>
             </div>
           </div>
-          <v-btn icon="mdi-close" variant="text" @click="closeChatDialog" />
+          <v-btn icon="mdi-close" variant="text" size="small" class="ml-2 flex-shrink-0" @click="closeChatDialog" />
         </v-card-title>
 
-        <v-divider />
+        <v-divider class="flex-shrink-0" />
 
-        <div class="chat-messages-container d-flex flex-column flex-grow-1">
-          <v-card-text class="chat-messages pa-4 flex-grow-1" style="overflow-y: auto; max-height: calc(100vh - 250px);">
+        <div class="chat-messages-container d-flex flex-column flex-grow-1 overflow-hidden">
+          <div class="chat-messages pa-3 pa-md-4 flex-grow-1 overflow-y-auto">
             <v-skeleton-loader v-if="chatLoading" type="list-item-three-line@5" />
             
             <template v-else>
@@ -1347,11 +1353,14 @@ onUnmounted(() => {
                   :class="{ 'message-item--own': message.sender_id === currentUser.value?.id }"
                 >
                   <div class="d-flex ga-2" :class="{ 'flex-row-reverse': message.sender_id === currentUser.value?.id, 'justify-end': message.sender_id === currentUser.value?.id }">
-                    <v-avatar size="32" color="primary-lighten-4">
+                    <v-avatar size="28" class="d-md-none flex-shrink-0" color="primary-lighten-4">
+                      <v-icon icon="mdi-account" color="primary" size="16" />
+                    </v-avatar>
+                    <v-avatar size="32" class="d-none d-md-flex flex-shrink-0" color="primary-lighten-4">
                       <v-icon icon="mdi-account" color="primary" />
                     </v-avatar>
-                    <div class="message-content" :class="{ 'text-right': message.sender_id === currentUser.value?.id }">
-                      <div class="d-flex align-center ga-2 mb-1" :class="{ 'flex-row-reverse': message.sender_id === currentUser.value?.id, 'justify-end': message.sender_id === currentUser.value?.id }">
+                    <div class="message-content flex-grow-1 min-width-0" :class="{ 'text-right': message.sender_id === currentUser.value?.id }">
+                      <div class="d-flex align-center flex-wrap ga-1 ga-md-2 mb-1" :class="{ 'flex-row-reverse': message.sender_id === currentUser.value?.id, 'justify-end': message.sender_id === currentUser.value?.id }">
                         <span class="text-caption font-weight-medium">{{ message.sender_name }}</span>
                         <v-chip v-if="message.sender_is_organizer" size="x-small" color="primary" variant="tonal" class="text-none">
                           Организатор
@@ -1359,13 +1368,14 @@ onUnmounted(() => {
                         <span class="text-caption text-medium-emphasis">{{ new Date(message.created_at).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }) }}</span>
                       </div>
                       <v-card
-                        class="message-bubble pa-3"
+                        class="message-bubble pa-2 pa-md-3"
                         :color="message.sender_id === currentUser.value?.id ? 'blue' : 'grey-lighten-4'"
                         variant="flat"
                       >
                         <p 
-                          class="text-body-2 mb-0" 
+                          class="text-body-2 text-caption text-md-body-2 mb-0" 
                           :class="message.sender_id === currentUser.value?.id ? 'text-white' : 'text-grey-darken-1'"
+                          style="word-wrap: break-word; overflow-wrap: break-word;"
                         >
                           {{ message.text }}
                         </p>
@@ -1375,12 +1385,14 @@ onUnmounted(() => {
                 </div>
               </div>
             </template>
-          </v-card-text>
+          </div>
+        </div>
 
-          <v-divider />
+        <v-divider class="flex-shrink-0" />
 
-          <v-card-text class="chat-input pa-4">
-            <div class="d-flex ga-2">
+        <div class="chat-input-wrapper flex-shrink-0">
+          <div class="chat-input pa-3 pa-md-4">
+            <div class="d-flex ga-2 align-end">
               <v-textarea
                 v-model="newMessageText"
                 placeholder="Напишите сообщение..."
@@ -1388,19 +1400,22 @@ onUnmounted(() => {
                 rows="1"
                 auto-grow
                 hide-details
-                class="flex-grow-1"
+                density="compact"
+                class="flex-grow-1 chat-textarea"
                 @keydown.enter.exact.prevent="handleSendMessage"
               />
               <v-btn
                 color="primary"
                 variant="flat"
                 icon="mdi-send"
+                size="large"
                 :disabled="!newMessageText.trim() || sendingMessage"
                 :loading="sendingMessage"
+                class="flex-shrink-0 chat-send-btn"
                 @click="handleSendMessage"
               />
             </div>
-          </v-card-text>
+          </div>
         </div>
       </v-card>
     </v-dialog>
@@ -1472,21 +1487,46 @@ onUnmounted(() => {
   text-decoration: none;
 }
 
+.chat-dialog-wrapper {
+  height: 100vh;
+  max-height: 100vh;
+}
+
 .chat-dialog {
   background: #f8ecc4; /* BirQadam background */
+  height: 100%;
+  max-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.chat-header {
+  background: #f8ecc4;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+  z-index: 10;
 }
 
 .chat-messages-container {
   background: rgba(255, 255, 255, 0.98);
-}
-
-.message-item {
-  width: 100%;
-}
-
-.message-item {
+  overflow: hidden;
+  flex: 1 1 auto;
+  min-height: 0;
   display: flex;
+  flex-direction: column;
+}
+
+.chat-messages {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+}
+
+.message-item {
   width: 100%;
+  display: flex;
   align-items: flex-start;
 }
 
@@ -1499,7 +1539,7 @@ onUnmounted(() => {
 }
 
 .message-content {
-  max-width: 70%;
+  max-width: 75%;
   display: flex;
   flex-direction: column;
   min-width: 0;
@@ -1516,12 +1556,95 @@ onUnmounted(() => {
 .message-bubble {
   border-radius: 12px;
   word-wrap: break-word;
+  overflow-wrap: break-word;
   display: inline-block;
   max-width: 100%;
+  word-break: break-word;
+}
+
+.chat-input-wrapper {
+  background: rgba(255, 255, 255, 0.95);
+  border-top: 1px solid rgba(0, 0, 0, 0.1);
+  position: sticky;
+  bottom: 0;
+  z-index: 10;
+  width: 100%;
 }
 
 .chat-input {
-  background: rgba(255, 255, 255, 0.95);
+  background: transparent;
+}
+
+/* Мобильная адаптация чата */
+@media (max-width: 960px) {
+  .chat-dialog-wrapper {
+    height: 100vh;
+    max-height: 100vh;
+  }
+  
+  .chat-dialog {
+    height: 100vh;
+    max-height: 100vh;
+  }
+  
+  .chat-messages {
+    padding: 12px !important;
+  }
+  
+  .message-content {
+    max-width: 85%;
+  }
+  
+  .message-bubble {
+    border-radius: 10px;
+    padding: 10px 12px !important;
+  }
+  
+  .chat-textarea :deep(.v-field) {
+    font-size: 14px;
+  }
+  
+  .chat-send-btn {
+    min-width: 48px !important;
+    width: 48px !important;
+    height: 48px !important;
+  }
+  
+  .chat-input-wrapper {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    max-width: 100%;
+  }
+}
+
+@media (max-width: 600px) {
+  .chat-messages {
+    padding: 8px !important;
+  }
+  
+  .message-content {
+    max-width: 90%;
+  }
+  
+  .message-bubble {
+    border-radius: 8px;
+    padding: 8px 10px !important;
+  }
+  
+  .chat-input {
+    padding: 12px !important;
+  }
+  
+  .chat-textarea :deep(.v-field__input) {
+    min-height: 40px;
+    padding: 8px 12px;
+  }
+  
+  .chat-input-wrapper {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
 }
 
 .link:hover {
@@ -1555,11 +1678,98 @@ onUnmounted(() => {
   transform: translateY(-2px);
 }
 
+.task-info {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.task-info-item {
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.task-info-item .v-icon {
+  flex-shrink: 0;
+  min-width: 16px;
+}
+
+.task-status-chip {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+/* Мобильная адаптация карточек задач */
+@media (max-width: 600px) {
+  .task-card {
+    padding: 12px !important;
+  }
+  
+  .task-info {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+  }
+  
+  .task-info-item {
+    width: 100%;
+    white-space: normal;
+  }
+  
+  .task-info-item span {
+    word-break: break-word;
+  }
+  
+  .task-status-chip {
+    margin-left: 0 !important;
+    margin-top: 8px;
+    align-self: flex-start;
+  }
+  
+  .task-action-btn {
+    width: 100%;
+    justify-content: center;
+  }
+  
+  .task-action-btn :deep(.v-icon) {
+    flex-shrink: 0;
+    margin-left: 4px;
+  }
+}
+
 .project-map-container {
   width: 100%;
   border-radius: 8px;
   overflow: hidden;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Мобильная адаптация диалога */
+@media (max-width: 960px) {
+  .projects-page :deep(.v-dialog > .v-card) {
+    margin: 0;
+    border-radius: 0;
+  }
+  
+  .projects-page :deep(.v-card-title) {
+    padding: 16px;
+  }
+  
+  .projects-page :deep(.v-card-text) {
+    padding: 16px;
+  }
+  
+  .projects-page :deep(.v-card-actions) {
+    padding: 16px;
+    flex-direction: column;
+  }
+  
+  .projects-page :deep(.v-card-actions .v-btn) {
+    width: 100%;
+    margin: 4px 0;
+  }
 }
 
 .cursor-pointer {
@@ -1604,6 +1814,117 @@ onUnmounted(() => {
 .stats-card:hover {
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(76, 175, 80, 0.15);
+}
+
+/* Адаптация кнопок действий проекта для мобильных */
+@media (max-width: 960px) {
+  .project-actions {
+    width: 100%;
+  }
+  
+  .project-action-btn {
+    flex: 1 1 auto;
+    min-width: 0;
+    font-size: 0.875rem !important;
+  }
+  
+  .project-action-btn :deep(.v-btn__content) {
+    font-size: 0.875rem;
+    white-space: nowrap;
+    overflow: visible;
+    text-overflow: ellipsis;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  
+  .project-action-btn :deep(.v-icon) {
+    font-size: 20px !important;
+    width: 20px !important;
+    height: 20px !important;
+    min-width: 20px !important;
+    flex-shrink: 0 !important;
+    display: inline-flex !important;
+  }
+  
+  .tasks-btn :deep(.v-btn__content) {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-wrap: nowrap;
+  }
+  
+  .tasks-btn-text {
+    flex-shrink: 1;
+    min-width: 0;
+    white-space: nowrap;
+  }
+  
+  .tasks-count-chip {
+    flex-shrink: 0;
+    min-width: 20px;
+    height: 20px;
+    padding: 0 6px;
+    font-size: 11px;
+    line-height: 20px;
+  }
+  
+  .tasks-count-chip :deep(.v-chip__content) {
+    padding: 0;
+    min-width: auto;
+  }
+}
+
+@media (max-width: 600px) {
+  .project-action-btn {
+    flex: 1 1 100%;
+    width: 100%;
+    margin-bottom: 8px;
+    padding: 12px 16px !important;
+  }
+  
+  .project-action-btn:last-child {
+    margin-bottom: 0;
+  }
+  
+  .project-action-btn :deep(.v-btn__content) {
+    justify-content: flex-start;
+    gap: 8px;
+  }
+  
+  .project-action-btn :deep(.v-icon) {
+    font-size: 22px !important;
+    width: 22px !important;
+    height: 22px !important;
+    min-width: 22px !important;
+    margin-right: 4px !important;
+  }
+  
+  .tasks-btn :deep(.v-btn__content) {
+    justify-content: flex-start;
+    gap: 6px;
+    flex-wrap: nowrap;
+  }
+  
+  .tasks-count-chip {
+    margin-left: 4px !important;
+    flex-shrink: 0;
+  }
+  
+  .project-join-section {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .project-status-text {
+    width: 100%;
+    margin-bottom: 8px;
+    text-align: center;
+  }
+  
+  .project-join-btn {
+    width: 100%;
+  }
 }
 </style>
 

@@ -100,91 +100,97 @@ def feedback_detail(request: HttpRequest, session_id: int) -> HttpResponse:
 
 @login_required
 def dashboard(request: HttpRequest) -> HttpResponse:
-    period = request.GET.get('period', 'month')  # Изменено на 'month' по умолчанию (30 дней)
-    date_from = request.GET.get('date_from')
-    date_to = request.GET.get('date_to')
-    
-    # ✅ ИСПРАВЛЕНИЕ: Используем локальное время вместо UTC
-    now = timezone.localtime(timezone.now())
-    today = now.date()
+    try:
+        period = request.GET.get('period', 'month')  # Изменено на 'month' по умолчанию (30 дней)
+        date_from = request.GET.get('date_from')
+        date_to = request.GET.get('date_to')
+        
+        # ✅ ИСПРАВЛЕНИЕ: Используем локальное время вместо UTC
+        now = timezone.localtime(timezone.now())
+        today = now.date()
 
-    if date_from and date_to:
-        try:
-            date_from = datetime.strptime(date_from, '%Y-%m-%d').date()
-            date_to = datetime.strptime(date_to, '%Y-%m-%d').date()
-        except ValueError:
-            date_from = today - timedelta(days=30)
-            date_to = today
-    else:
-        if period == 'week':
-            days = 7
-        elif period == 'month':
-            days = 30
-        elif period == 'year':
-            days = 365
+        if date_from and date_to:
+            try:
+                date_from = datetime.strptime(date_from, '%Y-%m-%d').date()
+                date_to = datetime.strptime(date_to, '%Y-%m-%d').date()
+            except ValueError:
+                date_from = today - timedelta(days=30)
+                date_to = today
         else:
-            days = 30  # По умолчанию 30 дней
-        date_from = today - timedelta(days=days)
-        date_to = today
+            if period == 'week':
+                days = 7
+            elif period == 'month':
+                days = 30
+            elif period == 'year':
+                days = 365
+            else:
+                days = 30  # По умолчанию 30 дней
+            date_from = today - timedelta(days=days)
+            date_to = today
 
-    # ✅ ИСПРАВЛЕНИЕ: Преобразуем даты в datetime с локальной timezone для правильной фильтрации
-    # Используем timezone.make_aware с правильной локальной датой
-    date_from_dt = timezone.make_aware(datetime.combine(date_from, datetime.min.time()))
-    date_to_dt = timezone.make_aware(datetime.combine(date_to, datetime.max.time()))
+        # ✅ ИСПРАВЛЕНИЕ: Преобразуем даты в datetime с локальной timezone для правильной фильтрации
+        # Используем timezone.make_aware с правильной локальной датой
+        date_from_dt = timezone.make_aware(datetime.combine(date_from, datetime.min.time()))
+        date_to_dt = timezone.make_aware(datetime.combine(date_to, datetime.max.time()))
 
-    stats = {
-        'total_volunteers': User.objects.filter(is_organizer=False).count(),  # type: ignore[attr-defined]
-        'active_projects': Project.objects.filter(status='approved', deleted_at__isnull=True).count(),  # type: ignore[attr-defined]
-        'pending_projects': Project.objects.filter(status='pending', deleted_at__isnull=True).count(),  # type: ignore[attr-defined]
-        'pending_tasks': Task.objects.filter(status='open').count(),  # type: ignore[attr-defined]
-        'completed_tasks': Task.objects.filter(status='completed').count(),  # type: ignore[attr-defined]
-        'photos': Photo.objects.select_related('volunteer', 'project').order_by('-uploaded_at')[:5]  # type: ignore[attr-defined]
-    }
+        stats = {
+            'total_volunteers': User.objects.filter(is_organizer=False).count(),  # type: ignore[attr-defined]
+            'active_projects': Project.objects.filter(status='approved', deleted_at__isnull=True).count(),  # type: ignore[attr-defined]
+            'pending_projects': Project.objects.filter(status='pending', deleted_at__isnull=True).count(),  # type: ignore[attr-defined]
+            'pending_tasks': Task.objects.filter(status='open').count(),  # type: ignore[attr-defined]
+            'completed_tasks': Task.objects.filter(status='completed').count(),  # type: ignore[attr-defined]
+            'photos': Photo.objects.select_related('volunteer', 'project').order_by('-uploaded_at')[:5]  # type: ignore[attr-defined]
+        }
 
-    # Используем datetime для правильной фильтрации с timezone
-    project_stats = list(Project.objects.filter(created_at__gte=date_from_dt, created_at__lte=date_to_dt, deleted_at__isnull=True)  # type: ignore[attr-defined]
-                        .values('status').annotate(count=Count('id')))
-    task_stats = list(Task.objects.filter(created_at__gte=date_from_dt, created_at__lte=date_to_dt)  # type: ignore[attr-defined]
-                     .values('status').annotate(count=Count('id')))
-    activity_stats = []
-    delta = (date_to - date_from).days
-    for i in range(delta, -1, -1):
-        date = date_from + timedelta(days=i)
-        count = TaskAssignment.objects.filter(completed_at__date=date).count()  # type: ignore[attr-defined]
-        activity_stats.append({
-            'day': date.strftime('%Y-%m-%d'),
-            'count': count
-        })
+        # Используем datetime для правильной фильтрации с timezone
+        project_stats = list(Project.objects.filter(created_at__gte=date_from_dt, created_at__lte=date_to_dt, deleted_at__isnull=True)  # type: ignore[attr-defined]
+                            .values('status').annotate(count=Count('id')))
+        task_stats = list(Task.objects.filter(created_at__gte=date_from_dt, created_at__lte=date_to_dt)  # type: ignore[attr-defined]
+                         .values('status').annotate(count=Count('id')))
+        activity_stats = []
+        delta = (date_to - date_from).days
+        for i in range(delta, -1, -1):
+            date = date_from + timedelta(days=i)
+            count = TaskAssignment.objects.filter(completed_at__date=date).count()  # type: ignore[attr-defined]
+            activity_stats.append({
+                'day': date.strftime('%Y-%m-%d'),
+                'count': count
+            })
 
-    # Таблица лидеров
-    top_volunteers = (
-        User.objects.filter(is_organizer=False)  # type: ignore[attr-defined]
-        .annotate(task_count=Count('assignments', filter=Q(assignments__completed=True, assignments__completed_at__gte=date_from_dt, assignments__completed_at__lte=date_to_dt)))  # type: ignore[attr-defined]
-        .filter(task_count__gt=0)  # type: ignore[attr-defined]
-        .order_by('-task_count')[:5]  # type: ignore[attr-defined]
-    )
+        # Таблица лидеров
+        top_volunteers = (
+            User.objects.filter(is_organizer=False)  # type: ignore[attr-defined]
+            .annotate(task_count=Count('assignments', filter=Q(assignments__completed=True, assignments__completed_at__gte=date_from_dt, assignments__completed_at__lte=date_to_dt)))  # type: ignore[attr-defined]
+            .filter(task_count__gt=0)  # type: ignore[attr-defined]
+            .order_by('-task_count')[:5]  # type: ignore[attr-defined]
+        )
 
-    # Данные для карты
-    projects_for_map = Project.objects.filter(  # type: ignore[attr-defined]
-        status='approved',
-        deleted_at__isnull=True,
-        latitude__isnull=False,
-        longitude__isnull=False
-    ).distinct().values('title', 'latitude', 'longitude')
+        # Данные для карты
+        projects_for_map = Project.objects.filter(  # type: ignore[attr-defined]
+            status='approved',
+            deleted_at__isnull=True,
+            latitude__isnull=False,
+            longitude__isnull=False
+        ).distinct().values('title', 'latitude', 'longitude')
 
-    context = {
-        'stats': stats,
-        'project_stats': json.dumps(project_stats, cls=DjangoJSONEncoder),
-        'task_stats': json.dumps(task_stats, cls=DjangoJSONEncoder),
-        'activity_stats': json.dumps(activity_stats, cls=DjangoJSONEncoder),
-        'top_volunteers': top_volunteers,
-        'projects_for_map': json.dumps(list(projects_for_map), cls=DjangoJSONEncoder),
-        'period': period,
-        'date_from': date_from,
-        'date_to': date_to
-    }
+        context = {
+            'stats': stats,
+            'project_stats': json.dumps(project_stats, cls=DjangoJSONEncoder),
+            'task_stats': json.dumps(task_stats, cls=DjangoJSONEncoder),
+            'activity_stats': json.dumps(activity_stats, cls=DjangoJSONEncoder),
+            'top_volunteers': top_volunteers,
+            'projects_for_map': json.dumps(list(projects_for_map), cls=DjangoJSONEncoder),
+            'period': period,
+            'date_from': date_from,
+            'date_to': date_to
+        }
 
-    return render(request, 'custom_admin/dashboard.html', context)
+        return render(request, 'custom_admin/dashboard.html', context)
+    except Exception as e:
+        logger.error(f"Ошибка в dashboard: {e}", exc_info=True)
+        from django.http import HttpResponseServerError
+        import traceback
+        return HttpResponseServerError(f"Ошибка при загрузке dashboard: {str(e)}\n\n{traceback.format_exc()}")
 
 @login_required
 def analytics(request: HttpRequest) -> HttpResponse:
@@ -1342,10 +1348,15 @@ class OrganizerProjectsAPIView(APIView):
         if not self._is_approved_organizer(request.user):
             return Response({'error': 'Not authorized'}, status=status.HTTP_403_FORBIDDEN)
 
+        from core.models import VolunteerProject
         projects_qs = (
             Project.objects.filter(creator=request.user, deleted_at__isnull=True)
             .annotate(
-                volunteer_count=Count('volunteer_projects', distinct=True),
+                volunteer_count=Count(
+                    'volunteer_projects',
+                    filter=Q(volunteer_projects__is_active=True),
+                    distinct=True
+                ),
                 task_count=Count('tasks', distinct=True),
             )
             .prefetch_related('tags')
@@ -1465,8 +1476,19 @@ class OrganizerProjectsAPIView(APIView):
         except Project.DoesNotExist:
             return Response({'error': 'Project not found'}, status=status.HTTP_404_NOT_FOUND)
 
-        # Разрешаем редактирование для всех проектов организатора
-        # Статус проекта сохраняется (одобренные остаются одобренными)
+        # Проверяем наличие участников в проекте
+        from core.models import VolunteerProject
+        participants_count = VolunteerProject.objects.filter(
+            project=project,
+            is_active=True
+        ).count()
+        
+        if participants_count > 0:
+            return Response({
+                'error': 'Редактирование проекта запрещено, так как в проекте уже есть участники. Удалите всех участников перед редактированием.'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        # Разрешаем редактирование только если нет участников
         data = request.data
         from datetime import datetime
 
@@ -1511,16 +1533,50 @@ class OrganizerProjectsAPIView(APIView):
         if cover_image:
             project.cover_image = cover_image
 
-        # Сохраняем изменения
-        project.save()
-
         # Обновляем теги
         if 'tags' in data:
             tags = self._parse_tags(data.get('tags'))
             project.tags.set(tags)
 
-        # Перезагружаем проект для получения актуальных данных
+        # При редактировании проекта отправляем его на модерацию заново
+        # Сохраняем старый статус для логирования
+        old_status = project.status
+        
+        # Логируем для отладки
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.info(f'Project {project.id} editing: current status is {old_status}')
+        
+        # ВАЖНО: Обновляем статус через прямой SQL запрос ПЕРЕД сохранением через ORM
+        # Это гарантирует, что статус будет сохранен, даже если что-то пойдет не так с ORM
+        from django.db import connection, transaction
+        with transaction.atomic():
+            # Обновляем статус напрямую в БД
+            with connection.cursor() as cursor:
+                cursor.execute("UPDATE core_project SET status = 'pending' WHERE id = %s", [project.id])
+                logger.info(f'Project {project.id} status updated to pending via SQL')
+            
+            # Сохраняем все остальные изменения через ORM
+            # Статус уже обновлен через SQL, поэтому он не будет перезаписан
+            project.save()
+            logger.info(f'Project {project.id} other fields saved via ORM')
+        
+        # Перезагружаем проект для получения актуальных данных из БД
         project.refresh_from_db()
+        
+        # Проверяем статус после перезагрузки
+        logger.info(f'Project {project.id} status after refresh_from_db: {project.status}')
+        
+        # Финальная проверка - если статус все еще не 'pending', это критическая ошибка
+        if project.status != 'pending':
+            logger.error(f'CRITICAL: Project {project.id} status is {project.status}, expected pending after SQL update!')
+            # Еще раз пытаемся обновить через SQL
+            with connection.cursor() as cursor:
+                cursor.execute("UPDATE core_project SET status = 'pending' WHERE id = %s", [project.id])
+            project.refresh_from_db()
+            logger.info(f'Project {project.id} status after second SQL update: {project.status}')
+        
+        logger.info(f'Project {project.id} final status before response: {project.status}')
 
         return Response({
             'id': project.id,

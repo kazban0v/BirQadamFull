@@ -32,6 +32,13 @@ const passwordFormState = reactive({
 
 const rules = {
   required: (value: string) => !!value || 'Поле обязательно для заполнения.',
+  phoneMaxLength: (value: string) => {
+    if (!value) return true;
+    if (value.length > 15) {
+      return 'Номер телефона не должен превышать 15 символов.';
+    }
+    return true;
+  },
 };
 
 const stats = ref<Awaited<ReturnType<typeof fetchVolunteerStats>> | null>(null);
@@ -80,11 +87,26 @@ const loadActivity = async () => {
 };
 
 const activityMonths = computed(() => activity.value?.months ?? []);
-const taskCompletedSeries = computed(() => activity.value?.series?.task_completed ?? []);
-const photoUploadedSeries = computed(() => activity.value?.series?.photo_uploaded ?? []);
-const projectJoinedSeries = computed(() => activity.value?.series?.project_joined ?? []);
 
-const hasTaskCompletedSeries = computed(() => taskCompletedSeries.value.some((value) => value > 0));
+// Комбинированная серия для графика (сумма всех активностей)
+const combinedActivitySeries = computed(() => {
+  if (!activity.value?.series) return [];
+  const series = activity.value.series;
+  
+  // Используем длину месяцев как основу
+  const monthsLength = activity.value.months?.length ?? 0;
+  if (monthsLength === 0) return [];
+  
+  const combined = [];
+  for (let i = 0; i < monthsLength; i++) {
+    const taskCompleted = Array.isArray(series.task_completed) ? (series.task_completed[i] ?? 0) : 0;
+    const photoUploaded = Array.isArray(series.photo_uploaded) ? (series.photo_uploaded[i] ?? 0) : 0;
+    const projectJoined = Array.isArray(series.project_joined) ? (series.project_joined[i] ?? 0) : 0;
+    const taskAssigned = Array.isArray(series.task_assigned) ? (series.task_assigned[i] ?? 0) : 0;
+    combined.push(taskCompleted + photoUploaded + projectJoined + taskAssigned);
+  }
+  return combined;
+});
 
 const copyToClipboard = async (text: string | null) => {
   if (!text) return;
@@ -100,6 +122,17 @@ const copyToClipboard = async (text: string | null) => {
   }
 };
 
+function formatMonthLabel(monthStr: string): string {
+  if (!monthStr) return '';
+  const parts = monthStr.split('-');
+  if (parts.length < 2 || !parts[1]) return monthStr;
+  const month = parts[1];
+  const monthNum = parseInt(month, 10);
+  if (isNaN(monthNum) || monthNum < 1 || monthNum > 12) return monthStr;
+  const monthNames = ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн', 'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек'];
+  return monthNames[monthNum - 1] || monthStr;
+}
+
 const openTelegramBot = () => {
   window.open('https://t.me/VolunteerDlyaLyudei_bot', '_blank');
 };
@@ -110,10 +143,29 @@ const submit = async () => {
 
   loading.value = true;
   try {
-    const updated = await updateVolunteerProfile({
-      name: formState.name,
-      phone_number: formState.phone_number,
-    });
+    // Проверяем длину номера телефона перед отправкой
+    if (formState.phone_number && formState.phone_number.trim().length > 15) {
+      snackbar.message = 'Номер телефона слишком длинный. Максимальная длина - 15 символов.';
+      snackbar.color = 'error';
+      snackbar.show = true;
+      loading.value = false;
+      return;
+    }
+    
+    // Формируем payload только с заполненными полями
+    const payload: Partial<{ name: string; phone_number: string; email: string }> = {};
+    
+    if (formState.name && formState.name.trim()) {
+      payload.name = formState.name.trim();
+    }
+    if (formState.phone_number && formState.phone_number.trim()) {
+      payload.phone_number = formState.phone_number.trim();
+    }
+    if (formState.email && formState.email.trim()) {
+      payload.email = formState.email.trim();
+    }
+    
+    const updated = await updateVolunteerProfile(payload);
 
     await authStore.refreshProfile();
 
@@ -125,8 +177,33 @@ const submit = async () => {
     formState.phone_number = updated.phone_number || '';
     formState.email = updated.email || '';
   } catch (error: any) {
-    const detail = error?.response?.data?.detail || 'Не удалось сохранить профиль.';
-    snackbar.message = detail;
+    console.error('Ошибка обновления профиля:', error);
+    let errorMessage = 'Не удалось сохранить профиль.';
+    
+    // Проверяем, является ли ошибка связанной с длиной номера телефона
+    const errorResponse = error?.response?.data;
+    if (typeof errorResponse === 'string' && errorResponse.includes('value too long for type character varying(15)')) {
+      errorMessage = 'Номер телефона слишком длинный. Максимальная длина - 15 символов.';
+    } else if (error?.response?.status === 500) {
+      // Проверяем HTML ответ на наличие информации об ошибке
+      if (typeof errorResponse === 'string' && errorResponse.includes('DataError')) {
+        if (errorResponse.includes('value too long')) {
+          errorMessage = 'Номер телефона слишком длинный. Максимальная длина - 15 символов.';
+        } else {
+          errorMessage = 'Ошибка базы данных. Проверьте правильность введенных данных.';
+        }
+      } else {
+        errorMessage = 'Ошибка сервера. Пожалуйста, попробуйте позже или обратитесь в поддержку.';
+      }
+    } else if (error?.response?.data?.detail) {
+      errorMessage = error.response.data.detail;
+    } else if (error?.response?.data?.error) {
+      errorMessage = error.response.data.error;
+    } else if (error?.message) {
+      errorMessage = error.message;
+    }
+    
+    snackbar.message = errorMessage;
     snackbar.color = 'error';
     snackbar.show = true;
   } finally {
@@ -286,13 +363,15 @@ onMounted(async () => {
               prepend-inner-icon="mdi-phone"
               variant="solo-filled"
               flat
-              :rules="[rules.required]"
+              :rules="[rules.required, rules.phoneMaxLength]"
               autocomplete="tel"
               :loading="loading"
               bg-color="grey-lighten-5"
               rounded="lg"
               hide-details="auto"
               class="input-field"
+              maxlength="15"
+              counter="15"
             />
           </v-col>
           <v-col cols="12" md="6">
@@ -476,32 +555,63 @@ onMounted(async () => {
             </div>
             <template v-else>
               <div class="stat-icon-wrapper">
-                <v-icon size="32" color="success">mdi-chart-timeline-variant</v-icon>
+                <v-icon size="32" color="success">mdi-chart-line</v-icon>
               </div>
-              <div class="stat-title">График активности</div>
-              <div class="chart-container">
-                <v-sparkline
-                  v-if="hasTaskCompletedSeries"
-                  :value="taskCompletedSeries"
-                  color="success"
-                  :labels="activityMonths"
-                  line-width="3"
-                  padding="16"
-                  auto-draw
-                  smooth
-                  height="120"
-                />
-                <div v-else class="no-data">
-                  <v-icon size="40" color="grey-lighten-1">mdi-chart-line-variant</v-icon>
-                  <div class="text-caption mt-2">Нет активности за выбранный период</div>
+              <div class="stat-title">Активность по месяцам</div>
+              
+              <template v-if="activityMonths.length > 0 && combinedActivitySeries.length > 0">
+                <div class="chart-summary mb-3">
+                  <div class="chart-summary-value">
+                    {{ combinedActivitySeries.reduce((a, b) => a + b, 0) }}
+                  </div>
+                  <div class="chart-summary-label">всего действий</div>
                 </div>
-              </div>
-              <v-divider class="my-3" />
-              <div class="chart-legend">
-                <div class="d-flex align-center">
-                  <div class="legend-dot success"></div>
-                  <span class="text-caption">Выполненные задачи по месяцам</span>
+                
+                <div class="chart-container">
+                  <v-sparkline
+                    :model-value="combinedActivitySeries"
+                    color="success"
+                    line-width="4"
+                    padding="20"
+                    auto-draw
+                    smooth
+                    height="100"
+                    :gradient="['#4CAF50', '#8BC34A', '#CDDC39']"
+                  />
                 </div>
+                
+                <div class="chart-months mt-3">
+                    <div 
+                      v-for="(month, index) in activityMonths" 
+                      :key="index"
+                      class="chart-month-item"
+                    >
+                      <div class="chart-month-bar">
+                        <div 
+                          class="chart-month-fill"
+                          :style="{ height: `${Math.max(10, combinedActivitySeries[index] && combinedActivitySeries.length > 0 ? (combinedActivitySeries[index] / Math.max(...combinedActivitySeries, 1)) * 100 : 10)}%` }"
+                        ></div>
+                      </div>
+                      <div class="chart-month-label">
+                        {{ formatMonthLabel(month) }}
+                      </div>
+                      <div class="chart-month-value">
+                        {{ combinedActivitySeries[index] ?? 0 }}
+                      </div>
+                    </div>
+                </div>
+                
+                <div class="chart-footer mt-3 pt-3">
+                  <div class="text-caption text-medium-emphasis" style="font-size: 0.65rem; line-height: 1.4;">
+                    Учитываются: выполненные задачи, отправленные фотоотчёты, присоединения к проектам, взятые задачи
+                  </div>
+                </div>
+              </template>
+              
+              <div v-else class="no-data">
+                <v-icon size="48" color="grey-lighten-1">mdi-chart-line-variant</v-icon>
+                <div class="text-body-2 mt-3 text-medium-emphasis">Пока нет активности</div>
+                <div class="text-caption mt-1 text-medium-emphasis">Выполняйте задачи и отправляйте фотоотчёты</div>
               </div>
             </template>
           </v-card>
@@ -540,21 +650,18 @@ onMounted(async () => {
         </div>
         
         <div v-else class="telegram-not-linked">
-          <v-alert type="info" variant="tonal" rounded="lg" class="mb-4">
-            <div class="d-flex align-center">
-              <v-icon class="mr-3">mdi-information</v-icon>
-              <div>
-                <div class="font-weight-bold mb-1">Telegram не привязан</div>
-                <div class="text-caption">Привяжите аккаунт для синхронизации прогресса</div>
-              </div>
+          <v-alert type="info" variant="tonal" rounded="lg" class="mb-4 telegram-alert">
+            <div class="telegram-alert-text">
+              <div class="font-weight-bold mb-1">Telegram не привязан</div>
+              <div class="text-caption">Привяжите аккаунт для синхронизации прогресса</div>
             </div>
           </v-alert>
           
           <div v-if="linkCode" class="link-code-section mb-4">
             <div class="text-subtitle-2 font-weight-bold mb-2">Код для привязки:</div>
             <v-card class="code-card" elevation="0" rounded="lg">
-              <div class="d-flex align-center justify-space-between pa-4">
-                <div>
+              <div class="d-flex align-center justify-space-between code-card-content">
+                <div class="code-card-text">
                   <div class="text-h4 font-weight-bold code-text">{{ linkCode }}</div>
                   <div class="text-caption text-medium-emphasis mt-1">Код действителен 10 минут</div>
                 </div>
@@ -562,13 +669,14 @@ onMounted(async () => {
                   icon="mdi-content-copy"
                   variant="text"
                   size="small"
+                  class="code-copy-btn"
                   @click="copyToClipboard(linkCode)"
                 />
               </div>
             </v-card>
-            <div class="text-body-2 mt-3 mb-3">
+            <div class="text-body-2 mt-3 mb-3 code-instruction">
               <v-icon size="16" class="mr-1">mdi-information-outline</v-icon>
-              Откройте Telegram бот и используйте команду <strong>/link {{ linkCode }}</strong> или просто отправьте код <strong>{{ linkCode }}</strong>
+              <span>Откройте Telegram бот и используйте команду <strong>/link {{ linkCode }}</strong> или просто отправьте код <strong>{{ linkCode }}</strong></span>
             </div>
             <v-btn
               color="primary"
@@ -655,7 +763,7 @@ onMounted(async () => {
     </v-card>
 
     <!-- Диалог изменения пароля -->
-    <v-dialog v-model="passwordDialog" max-width="500">
+    <v-dialog v-model="passwordDialog" :max-width="$vuetify.display.mobile ? '100%' : '500'" :fullscreen="$vuetify.display.mobile">
       <v-card class="pa-6">
         <v-card-title class="d-flex align-center justify-space-between mb-4">
           <div class="d-flex align-center">
@@ -923,38 +1031,115 @@ onMounted(async () => {
 }
 
 /* График */
+.chart-summary {
+  text-align: center;
+  padding: 12px;
+  background: linear-gradient(135deg, rgba(76, 175, 80, 0.1), rgba(139, 195, 74, 0.1));
+  border-radius: 12px;
+  margin-bottom: 16px;
+}
+
+.chart-summary-value {
+  font-size: 2rem;
+  font-weight: 800;
+  color: rgb(var(--v-theme-success));
+  line-height: 1;
+  margin-bottom: 4px;
+}
+
+.chart-summary-label {
+  font-size: 0.75rem;
+  color: #666;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 600;
+}
+
 .chart-container {
   margin-top: 16px;
-  min-height: 140px;
+  min-height: 100px;
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: 8px 0;
+}
+
+.chart-months {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 4px;
+  margin-top: 16px;
+  padding: 8px 0;
+}
+
+.chart-month-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.chart-month-bar {
+  width: 100%;
+  height: 60px;
+  background: rgb(var(--v-theme-grey-lighten-4));
+  border-radius: 4px 4px 0 0;
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  overflow: hidden;
+}
+
+.chart-month-fill {
+  width: 100%;
+  background: linear-gradient(180deg, rgb(var(--v-theme-success)), rgba(76, 175, 80, 0.8));
+  border-radius: 4px 4px 0 0;
+  transition: height 0.3s ease;
+  min-height: 4px;
+}
+
+.chart-month-label {
+  font-size: 0.7rem;
+  color: #666;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.chart-month-value {
+  font-size: 0.75rem;
+  color: rgb(var(--v-theme-success));
+  font-weight: 700;
+}
+
+.chart-footer {
+  border-top: 1px solid rgb(var(--v-theme-grey-lighten-4));
+  text-align: center;
+}
+
+.chart-footer .text-caption {
+  color: #999;
+  opacity: 0.8;
 }
 
 .no-data {
   text-align: center;
-  padding: 32px;
+  padding: 40px 20px;
+}
+
+.no-data .v-icon {
+  opacity: 0.5;
+}
+
+.no-data .text-body-2 {
+  color: #666;
+  font-weight: 500;
 }
 
 .no-data .text-caption {
-  color: #1f1f1f;
-}
-
-.chart-legend {
-  background: rgb(var(--v-theme-grey-lighten-5));
-  padding: 12px;
-  border-radius: 8px;
-}
-
-.legend-dot {
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  margin-right: 8px;
-}
-
-.legend-dot.success {
-  background-color: rgb(var(--v-theme-success));
+  color: #999;
 }
 
 /* Telegram синхронизация */
@@ -1048,8 +1233,29 @@ onMounted(async () => {
     padding: 20px;
   }
   
+  .telegram-sync-card {
+    padding: 20px;
+  }
+  
   .quick-links {
     padding: 20px;
+  }
+  
+  .form-header {
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  
+  .form-header h2 {
+    font-size: 1.25rem;
+  }
+  
+  .profile-form .d-flex.flex-wrap {
+    flex-direction: column;
+  }
+  
+  .profile-form .d-flex.flex-wrap .v-btn {
+    width: 100%;
   }
 }
 
@@ -1060,11 +1266,39 @@ onMounted(async () => {
   }
   
   .profile-header {
-    padding: 20px;
+    padding: 16px;
   }
   
   .header-content .d-flex {
+    flex-direction: column;
     text-align: center;
+  }
+  
+  .avatar-main {
+    margin-bottom: 16px;
+  }
+  
+  .chip-verified {
+    margin-top: 12px;
+  }
+  
+  .profile-form {
+    padding: 16px;
+  }
+  
+  .form-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  
+  .form-header .v-icon {
+    margin-right: 0;
+    margin-bottom: 8px;
+  }
+  
+  .form-header h2 {
+    font-size: 1.125rem;
   }
   
   .rating-number {
@@ -1072,7 +1306,148 @@ onMounted(async () => {
   }
   
   .section-title {
-    font-size: 1.25rem;
+    font-size: 1.125rem;
+    flex-wrap: wrap;
+  }
+  
+  .section-title .v-icon {
+    margin-right: 8px;
+    margin-bottom: 4px;
+  }
+  
+  .stat-card {
+    padding: 16px;
+  }
+  
+  .stat-icon-wrapper {
+    width: 48px;
+    height: 48px;
+  }
+  
+  .stat-icon-wrapper .v-icon {
+    font-size: 24px !important;
+  }
+  
+  .telegram-sync-card {
+    padding: 16px;
+  }
+  
+  .telegram-sync-card .form-header {
+    margin-bottom: 16px;
+  }
+  
+  .telegram-linked .v-alert,
+  .telegram-not-linked .v-alert {
+    padding: 12px;
+  }
+  
+  .telegram-linked .v-alert .d-flex,
+  .telegram-not-linked .v-alert .d-flex {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  
+  .telegram-linked .v-alert .v-icon,
+  .telegram-not-linked .v-alert .v-icon {
+    margin-right: 0;
+    margin-bottom: 8px;
+  }
+  
+  .link-code-section {
+    margin-bottom: 16px;
+  }
+  
+  .code-card {
+    padding: 12px !important;
+  }
+  
+  .code-card-content {
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  
+  .code-card-text {
+    flex: 1 1 auto;
+    min-width: 200px;
+  }
+  
+  .code-copy-btn {
+    flex-shrink: 0;
+  }
+  
+  .code-text {
+    font-size: 1.5rem !important;
+    letter-spacing: 2px;
+    word-break: break-all;
+  }
+  
+  .code-instruction {
+    word-break: break-word;
+    line-height: 1.5;
+  }
+  
+  .code-instruction .v-icon {
+    vertical-align: middle;
+  }
+  
+  .telegram-not-linked .text-body-2 {
+    font-size: 0.8125rem;
+    line-height: 1.5;
+  }
+  
+  .telegram-not-linked .v-btn {
+    width: 100%;
+    margin-top: 8px;
+  }
+  
+  .telegram-alert {
+    padding: 12px !important;
+  }
+  
+  .telegram-alert-text {
+    width: 100%;
+  }
+  
+  .quick-links {
+    padding: 16px;
+  }
+  
+  .link-card {
+    padding: 16px;
+  }
+  
+  .link-card .d-flex {
+    flex-wrap: wrap;
+  }
+  
+  .link-card .v-avatar {
+    margin-bottom: 8px;
+  }
+  
+  /* Диалог изменения пароля */
+  .profile-page :deep(.v-dialog .v-card) {
+    padding: 16px !important;
+  }
+  
+  .profile-page :deep(.v-dialog .v-card-title) {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  
+  .profile-page :deep(.v-dialog .v-card-title .d-flex) {
+    width: 100%;
+  }
+  
+  .profile-page :deep(.v-dialog .v-card-actions) {
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  .profile-page :deep(.v-dialog .v-card-actions .v-btn) {
+    width: 100%;
+    margin: 0 !important;
   }
 }
 </style>

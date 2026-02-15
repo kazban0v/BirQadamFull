@@ -7,6 +7,7 @@ import { useDashboardStore } from '@/stores/dashboard';
 import { useOrganizerStore } from '@/stores/organizer';
 import { getProjectChat, getChatMessages, type ChatMessage } from '@/services/chat';
 import { fetchVolunteerProjects } from '@/services/projects';
+import AIChatWidget from '@/components/AIChatWidget.vue';
 
 const authStore = useAuthStore();
 const dashboardStore = useDashboardStore();
@@ -14,10 +15,54 @@ const organizerStore = useOrganizerStore();
 const router = useRouter();
 const drawer = ref(true);
 const isMobile = ref(false);
+const lastScrollY = ref(0);
+const isHeaderVisible = ref(true);
+const isScrollingDown = ref(false);
 
 const handleResize = () => {
   isMobile.value = window.matchMedia('(max-width: 960px)').matches;
   drawer.value = !isMobile.value;
+};
+
+const handleScroll = () => {
+  // Только на мобильных устройствах
+  if (!isMobile.value) {
+    isHeaderVisible.value = true;
+    return;
+  }
+
+  // Получаем позицию скролла из разных источников
+  const currentScrollY = Math.max(
+    window.scrollY || 0,
+    document.documentElement.scrollTop || 0,
+    document.body.scrollTop || 0
+  );
+  
+  const scrollDifference = currentScrollY - lastScrollY.value;
+  const threshold = 5; // Порог для определения направления скролла
+  
+  // Если прокрутили вниз больше чем на threshold и не в самом верху - скрываем
+  if (scrollDifference > threshold && currentScrollY > 50) {
+    if (!isScrollingDown.value) {
+      isScrollingDown.value = true;
+      isHeaderVisible.value = false;
+    }
+  } 
+  // Если прокрутили вверх - показываем
+  else if (scrollDifference < -threshold) {
+    if (isScrollingDown.value) {
+      isScrollingDown.value = false;
+      isHeaderVisible.value = true;
+    }
+  }
+  
+  // Если в самом верху - всегда показываем
+  if (currentScrollY <= 50) {
+    isHeaderVisible.value = true;
+    isScrollingDown.value = false;
+  }
+  
+  lastScrollY.value = currentScrollY;
 };
 
 // Уведомления о новых сообщениях в чате (только для волонтеров)
@@ -117,7 +162,14 @@ function openChatFromNotification() {
 onMounted(async () => {
   authStore.initialize();
   handleResize();
+  lastScrollY.value = window.scrollY || document.documentElement.scrollTop || 0;
   window.addEventListener('resize', handleResize, { passive: true });
+  window.addEventListener('scroll', handleScroll, { passive: true });
+  // Также отслеживаем скролл в основном контейнере
+  const mainElement = document.querySelector('.v-main');
+  if (mainElement) {
+    mainElement.addEventListener('scroll', handleScroll, { passive: true });
+  }
   // Загружаем данные дашборда для счетчиков
   if (authStore.isAuthenticated) {
     if (isOrganizer.value) {
@@ -133,6 +185,7 @@ onMounted(async () => {
 
 onBeforeUnmount(() => {
   window.removeEventListener('resize', handleResize);
+  window.removeEventListener('scroll', handleScroll);
   stopChatPolling();
 });
 
@@ -207,6 +260,16 @@ const accountName = computed(() => {
 
 const profileRoute = computed(() => (isOrganizer.value ? '/organizer/profile' : '/volunteer/profile'));
 
+const headerStyle = computed(() => {
+  if (!isMobile.value) {
+    return {};
+  }
+  return {
+    transform: isHeaderVisible.value ? 'translateY(0)' : 'translateY(-100%)',
+    transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+  };
+});
+
 const handleLogout = async () => {
   await authStore.logout();
   dashboardStore.reset();
@@ -263,7 +326,15 @@ const handleLogout = async () => {
       </v-list>
     </v-navigation-drawer>
 
-    <v-app-bar app elevation="0" color="white" height="72" class="protected-app-bar">
+    <v-app-bar 
+      app 
+      elevation="2" 
+      color="white" 
+      height="72" 
+      class="protected-app-bar"
+      :class="{ 'header-hidden': !isHeaderVisible && isMobile }"
+      :style="headerStyle"
+    >
       <v-container class="app-bar__container">
         <div class="app-bar__title-block d-flex align-center ga-3">
           <v-btn
@@ -355,6 +426,9 @@ const handleLogout = async () => {
         </v-btn>
       </template>
     </v-snackbar>
+
+    <!-- AI Чат виджет -->
+    <AIChatWidget />
   </v-app>
 </template>
 
@@ -363,10 +437,17 @@ const handleLogout = async () => {
   backdrop-filter: blur(8px);
 }
 
+.protected-app-bar {
+  background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%) !important;
+  border-bottom: 1px solid rgba(76, 175, 80, 0.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04) !important;
+  backdrop-filter: blur(10px);
+}
+
 .protected-app-bar :deep(.v-toolbar__content) {
   min-height: 72px;
-  padding-top: 6px;
-  padding-bottom: 6px;
+  padding-top: 8px;
+  padding-bottom: 8px;
 }
 
 .app-bar__container {
@@ -374,27 +455,68 @@ const handleLogout = async () => {
   align-items: center;
   justify-content: space-between;
   gap: 16px;
+  max-width: 100%;
 }
 
 .app-bar__title-block {
   flex: 1 1 auto;
   min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
 .app-bar__title-text {
   display: flex;
   flex-direction: column;
   min-width: 0;
+  gap: 2px;
 }
 
-.app-bar__title-text h1,
+.app-bar__title-text h1 {
+  white-space: normal;
+  word-break: break-word;
+  color: #1a1a1a;
+  font-weight: 700;
+  line-height: 1.2;
+  margin: 0;
+}
+
 .app-bar__title-text span {
   white-space: normal;
   word-break: break-word;
+  color: #6c757d;
+  font-size: 0.875rem;
+  font-weight: 500;
 }
 
 .app-bar__actions {
   flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.app-bar__actions :deep(.v-btn) {
+  border-radius: 8px;
+  text-transform: none;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  transition: all 0.2s ease;
+}
+
+.app-bar__actions :deep(.v-btn--variant-text) {
+  padding: 8px 16px;
+}
+
+.app-bar__actions :deep(.v-btn--variant-outlined) {
+  border-width: 1.5px;
+  padding: 8px 20px;
+}
+
+.app-bar__actions :deep(.v-btn:hover) {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(76, 175, 80, 0.2);
 }
 
 .main-container {
@@ -419,10 +541,13 @@ const handleLogout = async () => {
 @media (max-width: 600px) {
   .protected-app-bar {
     height: 96px;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1), 0 1px 3px rgba(0, 0, 0, 0.06) !important;
   }
 
   .protected-app-bar :deep(.v-toolbar__content) {
     min-height: 96px;
+    padding-top: 10px;
+    padding-bottom: 10px;
   }
 
   .app-bar__container {
@@ -441,13 +566,62 @@ const handleLogout = async () => {
     flex: 1 1 auto;
   }
 
+  .app-bar__title-text h1 {
+    font-size: 1.1rem;
+  }
+
   .app-bar__title-text span {
-    font-size: 0.85rem;
+    font-size: 0.8rem;
   }
 
   .app-bar__actions {
     width: 100%;
     justify-content: space-between;
+    gap: 8px;
+  }
+
+  .app-bar__actions :deep(.v-btn) {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+}
+
+/* Анимация скрытия/показа header при скролле (только мобильные) */
+@media (max-width: 960px) {
+  .protected-app-bar {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    z-index: 1000 !important;
+    will-change: transform;
+  }
+
+  .protected-app-bar :deep(.v-toolbar__content),
+  .protected-app-bar :deep(.v-toolbar__prepend),
+  .protected-app-bar :deep(.v-toolbar__append) {
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .protected-app-bar.header-hidden {
+    transform: translateY(-100%) !important;
+  }
+
+  .protected-app-bar.header-hidden :deep(.v-toolbar__content),
+  .protected-app-bar.header-hidden :deep(.v-toolbar__prepend),
+  .protected-app-bar.header-hidden :deep(.v-toolbar__append) {
+    transform: translateY(-100%) !important;
+  }
+
+  /* Компенсируем высоту header для контента */
+  .protected-layout :deep(.v-main) {
+    padding-top: 72px !important;
+  }
+
+  @media (max-width: 600px) {
+    .protected-layout :deep(.v-main) {
+      padding-top: 96px !important;
+    }
   }
 }
 </style>

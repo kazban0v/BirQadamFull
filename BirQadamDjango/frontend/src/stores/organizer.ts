@@ -72,7 +72,8 @@ export const useOrganizerStore = defineStore('organizer', () => {
       }
       return;
     }
-    if (loadingProjects.value) return;
+    // Если force=true, всегда перезагружаем, даже если уже загружено
+    if (!force && loadingProjects.value) return;
     if (!force && projects.value.length > 0) return;
 
     loadingProjects.value = true;
@@ -81,6 +82,7 @@ export const useOrganizerStore = defineStore('organizer', () => {
       const data = await fetchOrganizerProjects();
       // Убеждаемся, что data - это массив
       projects.value = Array.isArray(data) ? data : [];
+      console.log('Projects loaded:', projects.value.length, 'projects');
     } catch (error: any) {
       const detail = error?.response?.data?.error || error?.message || 'Не удалось загрузить проекты.';
       projectError.value = detail;

@@ -247,9 +247,25 @@ export async function approveOrganizerPhotoReport(
   photoId: number,
   payload: { rating?: number; feedback?: string; skip?: boolean },
 ): Promise<PhotoMutationResponse> {
+  // Очищаем payload от undefined значений
+  const cleanPayload: Record<string, any> = {};
+  
+  if (payload.skip !== undefined) {
+    cleanPayload.skip = payload.skip;
+  }
+  
+  // Если skip = true, не отправляем rating
+  if (!payload.skip && payload.rating !== undefined && payload.rating !== null) {
+    cleanPayload.rating = payload.rating;
+  }
+  
+  if (payload.feedback !== undefined && payload.feedback !== null && payload.feedback.trim() !== '') {
+    cleanPayload.feedback = payload.feedback.trim();
+  }
+  
   const { data } = await httpClient.post<PhotoMutationResponse>(
     `/custom-admin/api/v1/photo-reports/${photoId}/rate/`,
-    payload,
+    cleanPayload,
   );
   return data;
 }

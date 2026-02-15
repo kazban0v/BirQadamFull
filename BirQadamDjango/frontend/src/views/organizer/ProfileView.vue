@@ -625,28 +625,6 @@ onMounted(async () => {
           </v-card>
         </v-col>
 
-        <!-- Рейтинг -->
-        <v-col cols="12" sm="6" md="4">
-          <v-card class="stat-card" elevation="0" rounded="xl">
-            <div v-if="statsLoading" class="loading-state">
-              <v-progress-circular indeterminate color="primary" size="40" />
-            </div>
-            <template v-else>
-              <div class="stat-icon-wrapper">
-                <v-icon size="32" color="amber">mdi-star</v-icon>
-              </div>
-              <div class="stat-title">Рейтинг организатора</div>
-              <div class="stat-main-value">
-                <span class="rating-number">{{ stats.current_rating.toFixed(1) }}</span>
-                <v-icon color="amber" size="24" class="ml-2">mdi-star</v-icon>
-              </div>
-              <v-divider class="my-3" />
-              <div class="stat-detail text-medium-emphasis">
-                Средняя оценка от волонтёров
-              </div>
-            </template>
-          </v-card>
-        </v-col>
       </v-row>
     </div>
 
@@ -980,13 +958,8 @@ onMounted(async () => {
         
         <div v-else class="telegram-not-linked">
           <v-alert type="info" variant="tonal" rounded="lg" class="mb-4">
-            <div class="d-flex align-center">
-              <v-icon class="mr-3">mdi-information</v-icon>
-              <div>
-                <div class="font-weight-bold mb-1">Telegram не привязан</div>
-                <div class="text-caption">Привяжите аккаунт для синхронизации прогресса</div>
-              </div>
-            </div>
+            <div class="font-weight-bold mb-1">Telegram не привязан</div>
+            <div class="text-caption">Привяжите аккаунт для синхронизации прогресса</div>
           </v-alert>
           
           <div v-if="linkCode" class="link-code-section mb-4">

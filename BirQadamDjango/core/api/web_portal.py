@@ -1321,9 +1321,50 @@ class VolunteerStatsAPIView(APIView):
     authentication_classes = (CsrfExemptSessionAuthentication,)
 
     def get(self, request, *args, **kwargs):
-        stats = get_volunteer_stats(request.user)
-        serializer = VolunteerStatsSerializer(stats)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        try:
+            stats = get_volunteer_stats(request.user)
+            
+            # Логируем для отладки ДО сериализации
+            logger.info(f'Stats for user {request.user.username}: achievements count = {len(stats.get("achievements", []))}')
+            if stats.get("achievements"):
+                logger.info(f'First achievement sample: {stats.get("achievements", [])[0] if stats.get("achievements") else None}')
+            
+            # Гарантируем, что achievements всегда является списком
+            if 'achievements' not in stats or stats['achievements'] is None:
+                stats['achievements'] = []
+            
+            # ВРЕМЕННО: возвращаем данные напрямую для диагностики
+            # TODO: Включить сериализацию после исправления проблемы
+            logger.warning('⚠️ TEMPORARY: Returning raw stats data without serializer for debugging')
+            return Response(stats, status=status.HTTP_200_OK)
+            
+            # Закомментировано для диагностики:
+            # try:
+            #     # Для Serializer (не ModelSerializer) данные передаются в конструктор
+            #     serializer = VolunteerStatsSerializer(instance=stats)
+            #     
+            #     # Проверяем сериализованные данные
+            #     serialized_data = serializer.data
+            #     logger.info(f'Serialized achievements count: {len(serialized_data.get("achievements", []))}')
+            #     if serialized_data.get("achievements"):
+            #         logger.info(f'First serialized achievement: {serialized_data.get("achievements", [])[0]}')
+            #     
+            #     return Response(serialized_data, status=status.HTTP_200_OK)
+            # except Exception as ser_error:
+            #     logger.error(f'Serializer error: {ser_error}')
+            #     import traceback
+            #     logger.error(traceback.format_exc())
+            #     # Если сериализация не удалась, возвращаем данные напрямую
+            #     logger.warning('Returning raw stats data due to serializer error')
+            #     return Response(stats, status=status.HTTP_200_OK)
+        except Exception as e:
+            import traceback
+            logger.error(f'Error in VolunteerStatsAPIView: {e}')
+            logger.error(traceback.format_exc())
+            return Response(
+                {'detail': f'Ошибка при загрузке статистики: {str(e)}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
 
 @method_decorator(csrf_exempt, name='dispatch')
@@ -1613,6 +1654,56 @@ class VolunteerProjectDetailAPIView(APIView):
             return Response({'detail': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
+class AIAssistantAPIView(APIView):
+    """
+    API для вопросов к AI ассистенту BirQadam
+    """
+    permission_classes = [IsAuthenticated]
+    authentication_classes = (CsrfExemptSessionAuthentication,)
+
+    def post(self, request, *args, **kwargs):
+        """
+        Задать вопрос AI ассистенту
+        """
+        question = request.data.get('question')
+        
+        if not question:
+            return Response(
+                {'detail': 'Поле "question" обязательно.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        if len(question.strip()) == 0:
+            return Response(
+                {'detail': 'Вопрос не может быть пустым.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            from core.services.ai_agent_service import AIAgentService
+            
+            service = AIAgentService()
+            # Передаем пользователя для доступа к инструментам, max_turns=3 для работы с инструментами
+            answer = service.ask_question(question, max_turns=3, user=request.user)
+            
+            return Response({
+                'question': question,
+                'answer': answer
+            }, status=status.HTTP_200_OK)
+        except ValueError as e:
+            logger.error(f"AI Agent configuration error: {e}")
+            return Response(
+                {'detail': 'AI ассистент временно недоступен. Обратитесь к администратору.'},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE
+            )
+        except Exception as e:
+            logger.error(f"Error asking AI assistant: {e}", exc_info=True)
+            return Response(
+                {'detail': f'Ошибка при обработке запроса: {str(e)}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
 urlpatterns = [
     path('register/volunteer/', VolunteerRegistrationAPIView.as_view(), name='register_volunteer'),
     path('register/organizer/', OrganizerRegistrationAPIView.as_view(), name='register_organizer'),
@@ -1643,5 +1734,6 @@ urlpatterns = [
     path('password-reset/request/', PasswordResetRequestAPIView.as_view(), name='password_reset_request'),
     path('password-reset/confirm/', PasswordResetConfirmAPIView.as_view(), name='password_reset_confirm'),
     path('change-password/', ChangePasswordAPIView.as_view(), name='change_password'),
+    path('ai/ask/', AIAssistantAPIView.as_view(), name='ai_assistant'),
 ]
 

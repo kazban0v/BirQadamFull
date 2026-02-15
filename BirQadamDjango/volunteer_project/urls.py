@@ -115,7 +115,7 @@ def serve_frontend_root(request, path):
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('', include('about_site.urls')),
-    path('custom-admin/', include('custom_admin.urls')),
+    path('custom-admin/', include('custom_admin.urls', namespace='custom_admin')),
     path('api/web/', include(('core.api.web_portal', 'web_portal'), namespace='web_portal')),
     
     # Frontend на пути /portal

@@ -2,10 +2,11 @@
 from typing import Any
 from django.db.models.signals import post_save, m2m_changed
 from django.dispatch import receiver
-from core.models import User, VolunteerProject, Event, GeofenceReminder, Project, Chat
+from core.models import User, VolunteerProject, Event, GeofenceReminder, Project, Chat, SupportTicket
 from bot.organization_handlers import notify_organizer_status
 from asgiref.sync import async_to_sync
 import logging
+# from core.services.ticket_notification_service import notify_user_about_ticket_update  # Временно отключено
 
 logger = logging.getLogger(__name__)
 
@@ -158,3 +159,44 @@ def create_geofence_for_event(sender, instance, action, pk_set, **kwargs):
             logger.info(f"✅ Created geofence reminder {reminder.id if hasattr(reminder, 'id') else 'unknown'} for user {user.username if hasattr(user, 'username') else 'unknown'} and event {event.title}")  # type: ignore[attr-defined]
         except Exception as e:
             logger.error(f"Error creating geofence reminder for user {user_id}: {e}")
+
+
+# Временно отключен сигнал для SupportTicket
+# @receiver(post_save, sender=SupportTicket)
+# def support_ticket_saved(sender, instance, created, **kwargs):
+#     """
+#     Сигнал для отправки уведомлений при создании или изменении тикета
+#     """
+#     try:
+#         # Временно отключаем автоматические уведомления через сигнал
+#         # Уведомления будут отправляться вручную в views
+#         pass
+        # if created:
+        #     # При создании тикета отправляем подтверждение пользователю
+        #     notify_user_about_ticket_update(instance, 'status_updated')
+        # else:
+        #     # При обновлении тикета проверяем, что изменилось
+        #     # Для этого сравниваем текущее состояние с предыдущим
+        #     # (предполагаем, что у модели есть механизм отслеживания изменений)
+
+        #     # Отправляем уведомление, если изменился статус или добавлен ответ администратора
+        #     if hasattr(instance, '_state') and hasattr(instance._state, 'fields_cache'):
+        #         previous_state = instance._state.fields_cache
+        #         if 'status' in previous_state and previous_state['status'] != instance.status:
+        #             # Статус изменился
+        #             status_actions = {
+        #                 'resolved': 'resolved',
+        #                 'closed': 'closed'
+        #             }
+        #             action = status_actions.get(instance.status, 'status_updated')
+        #             notify_user_about_ticket_update(instance, action)
+
+        #         if 'admin_response' in previous_state and previous_state['admin_response'] != instance.admin_response and instance.admin_response:
+        #             # Добавлен ответ администратора
+        #             notify_user_about_ticket_update(instance, 'new_response')
+        #     else:
+        #         # Если нет механизма отслеживания изменений, отправляем уведомление при любом обновлении
+        #         if not created:
+        #             notify_user_about_ticket_update(instance, 'status_updated')
+        # except Exception as e:
+        #     logger.error(f"Error in support_ticket_saved signal: {e}")

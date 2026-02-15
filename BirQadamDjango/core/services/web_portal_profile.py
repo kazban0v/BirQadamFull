@@ -25,10 +25,23 @@ def get_volunteer_stats(user) -> Dict[str, Any]:  # type: ignore[no-any-unimport
 
     achievements_data: List[Dict[str, Any]] = []
     achievements_qs = Achievement.objects.all().order_by('required_rating')
+    
+    # Логируем для отладки
+    import logging
+    logger = logging.getLogger(__name__)
+    achievements_count = achievements_qs.count()
+    logger.info(f'Found {achievements_count} achievements in database')
+    if achievements_count > 0:
+        logger.info(f'First achievement: {achievements_qs.first().name if achievements_qs.first() else None}')
 
     for achievement in achievements_qs:
         unlocked = achievement.id in unlocked_map
-        unlocked_at = unlocked_map[achievement.id].unlocked_at if unlocked else None
+        unlocked_at = None
+        if unlocked and achievement.id in unlocked_map:
+            unlocked_at_obj = unlocked_map[achievement.id].unlocked_at
+            if unlocked_at_obj:
+                # Оставляем как datetime объект, сериализатор сам преобразует
+                unlocked_at = unlocked_at_obj
         achievements_data.append(
             {
                 'id': achievement.id,
@@ -42,7 +55,7 @@ def get_volunteer_stats(user) -> Dict[str, Any]:  # type: ignore[no-any-unimport
             }
         )
 
-    return {
+    result = {
         'rating': rating,
         'level': level,
         'next_level_rating': next_level_rating,
@@ -52,6 +65,15 @@ def get_volunteer_stats(user) -> Dict[str, Any]:  # type: ignore[no-any-unimport
         'unlocked_achievements': len(unlocked_map),
         'total_achievements': achievements_qs.count(),
     }
+    
+    # Логируем для отладки
+    import logging
+    logger = logging.getLogger(__name__)
+    logger.info(f'get_volunteer_stats: returning {len(achievements_data)} achievements')
+    if achievements_data:
+        logger.info(f'First achievement: {achievements_data[0]}')
+    
+    return result
 
 
 def _generate_month_sequence(months: int) -> List[Tuple[int, int]]:

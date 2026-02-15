@@ -19,7 +19,10 @@ from .api.stats import UserStatsAPIView, UserActivityStatsAPIView
 from .api.chat import (
     ProjectChatAPIView, ChatMessagesAPIView, SendMessageAPIView, MarkMessagesReadAPIView
 )
+from .views.ticket_views import support_tickets, update_ticket_status, add_ticket_response, ticket_detail
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
+
+app_name = 'custom_admin'
 
 urlpatterns = [
     # JWT токены
@@ -185,4 +188,10 @@ urlpatterns = [
     path('api/tasks/<int:task_id>/accept/', AcceptTaskAPIView.as_view(), name='api_accept_task'),
     path('api/tasks/<int:task_id>/decline/', DeclineTaskAPIView.as_view(), name='api_decline_task'),
     path('api/tasks/<int:task_id>/photos/', TaskPhotosAPIView.as_view(), name='api_task_photos'),
+
+    # Тикеты поддержки
+    path('support-tickets/', support_tickets, name='support_tickets'),
+    path('support-tickets/<int:ticket_id>/', ticket_detail, name='ticket_detail'),
+    path('support-tickets/<int:ticket_id>/update-status/', update_ticket_status, name='update_ticket_status'),
+    path('support-tickets/<int:ticket_id>/add-response/', add_ticket_response, name='add_ticket_response'),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

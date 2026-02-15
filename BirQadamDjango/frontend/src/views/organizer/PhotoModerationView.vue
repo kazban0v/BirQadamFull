@@ -190,8 +190,20 @@ async function submitApprove(skip = false) {
     snackbar.color = skip ? 'primary' : 'success';
     snackbar.show = true;
   } catch (error: any) {
-    approveDialog.error =
-      error?.response?.data?.error || error?.message || 'Не удалось одобрить фото. Попробуйте еще раз.';
+    console.error('Ошибка одобрения фото:', error);
+    let errorMessage = 'Не удалось одобрить фото. Попробуйте еще раз.';
+    
+    if (error?.response?.status === 500) {
+      errorMessage = 'Ошибка сервера. Пожалуйста, попробуйте позже или обратитесь в поддержку.';
+    } else if (error?.response?.data?.error) {
+      errorMessage = error.response.data.error;
+    } else if (error?.response?.data?.detail) {
+      errorMessage = error.response.data.detail;
+    } else if (error?.message) {
+      errorMessage = error.message;
+    }
+    
+    approveDialog.error = errorMessage;
   }
 }
 

@@ -35,6 +35,7 @@ const snackbar = reactive({
   color: 'success',
 });
 const previewPhoto = ref<VolunteerPhotoSummary | null>(null);
+const previewDialogOpen = ref(false);
 
 const filteredReports = computed(() => {
   if (filter.value === 'all') return reports.value;
@@ -71,6 +72,19 @@ function statusColor(status: string) {
   }
 }
 
+function getStatusText(status: string): string {
+  switch (status) {
+    case 'pending':
+      return 'Ожидает';
+    case 'approved':
+      return 'Одобрено';
+    case 'rejected':
+      return 'Отклонено';
+    default:
+      return status;
+  }
+}
+
 async function loadReports() {
   loading.value = true;
   try {
@@ -89,10 +103,12 @@ async function loadReports() {
 
 function openPreview(report: VolunteerPhotoSummary) {
   previewPhoto.value = report;
+  previewDialogOpen.value = true;
 }
 
 function closePreview() {
   previewPhoto.value = null;
+  previewDialogOpen.value = false;
 }
 
 onMounted(async () => {
@@ -114,17 +130,17 @@ watch(filter, async () => {
             Просматривайте историю отправленных фото, статусы модерации и комментарии организаторов.
           </p>
         </div>
-        <div class="d-flex ga-2 align-center">
-          <v-chip color="primary" variant="tonal">
+        <div class="d-flex flex-wrap ga-2 align-center stats-chips">
+          <v-chip color="primary" variant="tonal" size="small" class="stat-chip">
             Всего: {{ summary.total }}
           </v-chip>
-          <v-chip color="warning" variant="tonal">
+          <v-chip color="warning" variant="tonal" size="small" class="stat-chip">
             Ожидают: {{ summary.pending }}
           </v-chip>
-          <v-chip color="success" variant="tonal">
+          <v-chip color="success" variant="tonal" size="small" class="stat-chip">
             Одобрено: {{ summary.approved }}
           </v-chip>
-          <v-chip color="error" variant="tonal">
+          <v-chip color="error" variant="tonal" size="small" class="stat-chip">
             Отклонено: {{ summary.rejected }}
           </v-chip>
         </div>
@@ -173,9 +189,9 @@ watch(filter, async () => {
               :color="statusColor(report.status)"
               variant="tonal"
               size="small"
-              class="text-uppercase font-weight-medium"
+              class="font-weight-medium"
             >
-              {{ report.status }}
+              {{ getStatusText(report.status) }}
             </v-chip>
           </div>
           <div class="text-caption text-medium-emphasis mb-2">
@@ -224,7 +240,7 @@ watch(filter, async () => {
       </v-col>
     </v-row>
 
-    <v-dialog v-model="previewPhoto" max-width="640">
+    <v-dialog v-model="previewDialogOpen" max-width="640">
       <v-card v-if="previewPhoto">
         <v-card-title class="d-flex align-center justify-space-between">
           <div>
@@ -245,7 +261,7 @@ watch(filter, async () => {
             @error="(e) => console.error('Error loading preview photo:', e, previewPhoto.image_url, getFullImageUrl(previewPhoto.image_url))"
           />
           <div class="text-body-2 text-medium-emphasis mb-2">
-            Статус: {{ previewPhoto.status }}
+            Статус: {{ getStatusText(previewPhoto.status) }}
           </div>
           <div class="text-body-2 text-medium-emphasis mb-2">
             Отправлено: {{ formatDateTime(previewPhoto.uploaded_at) }}
@@ -298,6 +314,35 @@ watch(filter, async () => {
 @media (max-width: 600px) {
   .photo-reports-page :deep(.v-chip) {
     margin-bottom: 4px;
+  }
+  
+  .stats-chips {
+    width: 100%;
+    margin-top: 12px;
+  }
+  
+  .stat-chip {
+    font-size: 0.75rem !important;
+    height: 28px !important;
+    padding: 0 8px !important;
+    min-width: auto !important;
+  }
+  
+  .photo-reports-page :deep(.stats-chips .v-chip__content) {
+    font-size: 0.75rem;
+    white-space: nowrap;
+  }
+}
+
+@media (max-width: 400px) {
+  .stats-chips {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .stat-chip {
+    width: 100%;
+    justify-content: center;
   }
 }
 </style>

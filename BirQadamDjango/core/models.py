@@ -797,6 +797,50 @@ class Activity(models.Model):
         return f"{self.user.username} - {self.get_type_display()} - {self.created_at.strftime('%Y-%m-%d %H:%M')}"  # type: ignore[attr-defined]
 
 
+class SupportTicket(models.Model):
+    """Модель для тикетов поддержки от пользователей"""
+    STATUS_CHOICES = (
+        ('open', 'Открыт'),
+        ('in_progress', 'В обработке'),
+        ('resolved', 'Решен'),
+        ('closed', 'Закрыт'),
+    )
+    
+    SOURCE_CHOICES = (
+        ('ai_chat', 'AI Чат'),
+        ('manual', 'Ручное создание'),
+        ('email', 'Email'),
+    )
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='support_tickets', verbose_name='Пользователь')
+    message = models.TextField(verbose_name='Сообщение')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='open', db_index=True, verbose_name='Статус')
+    source = models.CharField(max_length=20, choices=SOURCE_CHOICES, default='ai_chat', verbose_name='Источник')
+    admin_response = models.TextField(blank=True, null=True, verbose_name='Ответ администратора')
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True, verbose_name='Создан')
+    updated_at = models.DateTimeField(auto_now=True, verbose_name='Обновлен')
+    resolved_at = models.DateTimeField(null=True, blank=True, verbose_name='Решен')
+
+    class Meta:
+        verbose_name = 'Тикет поддержки'
+        verbose_name_plural = 'Тикеты поддержки'
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['user', 'status'], name='support_user_status_idx'),
+            models.Index(fields=['status', 'created_at'], name='support_status_created_idx'),
+        ]
+
+    def __str__(self) -> str:
+        return f"Тикет #{self.id} от {self.user.username} - {self.get_status_display()}"
+
+    def mark_resolved(self) -> None:
+        """Пометить тикет как решенный"""
+        from django.utils import timezone
+        self.status = 'resolved'
+        self.resolved_at = timezone.now()
+        self.save(update_fields=['status', 'resolved_at'])
+
+
 class Achievement(models.Model):
     """Модель достижений для волонтеров"""
     name = models.CharField(max_length=100, verbose_name='Название')

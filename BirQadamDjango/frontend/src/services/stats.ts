@@ -23,8 +23,11 @@ export interface VolunteerStats {
 }
 
 export async function fetchVolunteerStats(): Promise<VolunteerStats> {
-  const { data } = await httpClient.get<VolunteerStats>('/api/web/volunteer/stats/');
-  return data;
+  const response = await httpClient.get<VolunteerStats>('/api/web/volunteer/stats/');
+  console.log('🔍 httpClient response:', response);
+  console.log('🔍 response.data:', response.data);
+  console.log('🔍 response.data.achievements:', response.data?.achievements);
+  return response.data;
 }
 
 export interface VolunteerActivity {

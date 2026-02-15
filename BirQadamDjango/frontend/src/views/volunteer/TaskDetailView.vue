@@ -4,7 +4,7 @@ import { useRoute, useRouter } from 'vue-router';
 import type { VForm } from 'vuetify/components';
 
 import { fetchTaskDetail, acceptTask, declineTask, completeTask, type VolunteerTask } from '@/services/tasks';
-import { uploadPhotoReport, fetchTaskPhotos } from '@/services/photoReports';
+import { uploadPhotoReport, fetchTaskPhotos, deletePhotoReport } from '@/services/photoReports';
 import { httpClient } from '@/services/http';
 import { useDashboardStore } from '@/stores/dashboard';
 
@@ -314,17 +314,17 @@ onMounted(async () => {
 
     <template v-else-if="task">
       <!-- Информация о задаче -->
-      <v-card elevation="4" class="pa-6 mb-6 task-info-card">
-        <div class="d-flex justify-space-between align-start mb-4">
-          <div class="flex-grow-1">
-            <h1 class="text-h4 text-md-h3 font-weight-bold mb-4">{{ task.text }}</h1>
+      <v-card elevation="4" class="pa-4 pa-md-6 mb-4 mb-md-6 task-info-card">
+        <div class="d-flex justify-space-between align-start mb-4 flex-wrap ga-2">
+          <div class="flex-grow-1 min-width-0">
+            <h1 class="text-h6 text-md-h5 font-weight-bold mb-3 mb-md-4 task-title">{{ task.text }}</h1>
             
-            <div class="d-flex flex-wrap ga-4 mb-4">
+            <div class="d-flex flex-wrap ga-2 ga-md-4 mb-3 mb-md-4">
               <v-chip
                 :color="taskStatusMap[task.status]?.color || 'primary'"
                 variant="tonal"
-                size="large"
-                class="text-uppercase font-weight-medium"
+                size="small"
+                class="text-md-body-2 text-uppercase font-weight-medium"
               >
                 {{ taskStatusMap[task.status]?.text || task.status }}
               </v-chip>
@@ -332,7 +332,8 @@ onMounted(async () => {
                 v-if="task.is_assigned"
                 color="success"
                 variant="tonal"
-                size="large"
+                size="small"
+                class="text-md-body-2"
               >
                 Вы приняли задачу
               </v-chip>
@@ -342,53 +343,54 @@ onMounted(async () => {
 
         <v-divider class="my-4" />
 
-        <v-row class="ga-4">
+        <v-row class="ga-3 ga-md-4">
           <v-col cols="12" md="6">
-            <div class="text-body-1 mb-2">
-              <v-icon icon="mdi-folder-outline" size="20" class="me-2" />
-              <strong>Проект:</strong> {{ task.project_title }}
+            <div class="text-body-2 text-md-body-1 mb-2 task-detail-item">
+              <v-icon icon="mdi-folder-outline" size="18" class="me-2 flex-shrink-0" />
+              <span><strong>Проект:</strong> {{ task.project_title }}</span>
             </div>
-            <div class="text-body-1 mb-2">
-              <v-icon icon="mdi-account-outline" size="20" class="me-2" />
-              <strong>Создатель:</strong> {{ task.creator_name }}
+            <div class="text-body-2 text-md-body-1 mb-2 task-detail-item">
+              <v-icon icon="mdi-account-outline" size="18" class="me-2 flex-shrink-0" />
+              <span><strong>Создатель:</strong> {{ task.creator_name }}</span>
             </div>
-            <div class="text-body-1 mb-2">
-              <v-icon icon="mdi-clock-outline" size="20" class="me-2" />
-              <strong>Создано:</strong> {{ formatDateTime(task.created_at) }}
+            <div class="text-body-2 text-md-body-1 mb-2 task-detail-item">
+              <v-icon icon="mdi-clock-outline" size="18" class="me-2 flex-shrink-0" />
+              <span><strong>Создано:</strong> {{ formatDateTime(task.created_at) }}</span>
             </div>
           </v-col>
           <v-col cols="12" md="6">
-            <div v-if="task.deadline_date" class="text-body-1 mb-2">
-              <v-icon icon="mdi-calendar-clock" size="20" class="me-2" />
-              <strong>Срок выполнения:</strong> {{ formatDate(task.deadline_date) }}
+            <div v-if="task.deadline_date" class="text-body-2 text-md-body-1 mb-2 task-detail-item">
+              <v-icon icon="mdi-calendar-clock" size="18" class="me-2 flex-shrink-0" />
+              <span><strong>Срок выполнения:</strong> {{ formatDate(task.deadline_date) }}</span>
             </div>
-            <div v-if="task.start_time && task.end_time" class="text-body-1 mb-2">
-              <v-icon icon="mdi-clock-time-four-outline" size="20" class="me-2" />
-              <strong>Время:</strong> {{ formatTime(task.start_time) }} - {{ formatTime(task.end_time) }}
+            <div v-if="task.start_time && task.end_time" class="text-body-2 text-md-body-1 mb-2 task-detail-item">
+              <v-icon icon="mdi-clock-time-four-outline" size="18" class="me-2 flex-shrink-0" />
+              <span><strong>Время:</strong> {{ formatTime(task.start_time) }} - {{ formatTime(task.end_time) }}</span>
             </div>
-            <div class="text-body-1">
-              <v-icon icon="mdi-information-outline" size="20" class="me-2" />
-              <strong>ID задачи:</strong> {{ task.id }}
+            <div class="text-body-2 text-md-body-1 task-detail-item">
+              <v-icon icon="mdi-information-outline" size="18" class="me-2 flex-shrink-0" />
+              <span><strong>ID задачи:</strong> {{ task.id }}</span>
             </div>
           </v-col>
         </v-row>
       </v-card>
 
       <!-- Действия с задачей -->
-      <v-card elevation="4" class="pa-6 mb-6 action-card">
-        <h2 class="text-h5 font-weight-bold mb-4">Действия с задачей</h2>
+      <v-card elevation="4" class="pa-4 pa-md-6 mb-4 mb-md-6 action-card">
+        <h2 class="text-h6 text-md-h5 font-weight-bold mb-3 mb-md-4">Действия с задачей</h2>
         
-        <div class="d-flex flex-wrap ga-3">
+        <div class="d-flex flex-column flex-md-row flex-wrap ga-2 ga-md-3">
           <v-btn
             v-if="canAcceptTask"
             color="success"
             variant="flat"
-            size="large"
-            class="text-none font-weight-bold"
+            size="default"
+            class="text-none font-weight-bold task-action-button"
             :loading="loading"
+            block
             @click="handleAcceptTask"
           >
-            <v-icon icon="mdi-check-circle" start />
+            <v-icon icon="mdi-check-circle" start size="20" />
             Принять задачу
           </v-btn>
 
@@ -396,12 +398,13 @@ onMounted(async () => {
             v-if="canAcceptTask"
             color="error"
             variant="outlined"
-            size="large"
-            class="text-none font-weight-bold"
+            size="default"
+            class="text-none font-weight-bold task-action-button"
             :loading="loading"
+            block
             @click="handleDeclineTask"
           >
-            <v-icon icon="mdi-close-circle" start />
+            <v-icon icon="mdi-close-circle" start size="20" />
             Отклонить задачу
           </v-btn>
 
@@ -412,13 +415,14 @@ onMounted(async () => {
                 v-if="task && task.is_assigned && task.status !== 'completed'"
                 color="primary"
                 variant="flat"
-                size="large"
-                class="text-none font-weight-bold"
+                size="default"
+                class="text-none font-weight-bold task-action-button"
                 :loading="loading"
                 :disabled="!hasUploadedPhoto"
+                block
                 @click="handleCompleteTask"
               >
-                <v-icon icon="mdi-check-all" start />
+                <v-icon icon="mdi-check-all" start size="20" />
                 Отметить как выполненную
               </v-btn>
             </template>
@@ -428,12 +432,13 @@ onMounted(async () => {
             v-if="task && task.is_assigned && task.status !== 'completed' && hasUploadedPhoto"
             color="primary"
             variant="flat"
-            size="large"
-            class="text-none font-weight-bold"
+            size="default"
+            class="text-none font-weight-bold task-action-button"
             :loading="loading"
+            block
             @click="handleCompleteTask"
           >
-            <v-icon icon="mdi-check-all" start />
+            <v-icon icon="mdi-check-all" start size="20" />
             Отметить как выполненную
           </v-btn>
 
@@ -441,12 +446,13 @@ onMounted(async () => {
             v-if="canDeclineAcceptedTask"
             color="error"
             variant="outlined"
-            size="large"
-            class="text-none font-weight-bold"
+            size="default"
+            class="text-none font-weight-bold task-action-button"
             :loading="loading"
+            block
             @click="handleDeclineTask"
           >
-            <v-icon icon="mdi-close-circle" start />
+            <v-icon icon="mdi-close-circle" start size="20" />
             Отклонить задачу
           </v-btn>
 
@@ -454,11 +460,12 @@ onMounted(async () => {
             v-if="task.is_assigned && task.status === 'completed'"
             color="success"
             variant="tonal"
-            size="large"
-            class="text-none font-weight-bold"
+            size="default"
+            class="text-none font-weight-bold task-action-button"
             disabled
+            block
           >
-            <v-icon icon="mdi-check-circle" start />
+            <v-icon icon="mdi-check-circle" start size="20" />
             Задача выполнена
           </v-btn>
         </div>
@@ -627,5 +634,61 @@ onMounted(async () => {
 
 .photo-upload-card {
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(255, 250, 246, 0.9)); /* BirQadam background */
+}
+
+.task-title {
+  word-break: break-word;
+  line-height: 1.3;
+}
+
+.task-detail-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.task-detail-item span {
+  word-break: break-word;
+  flex: 1;
+}
+
+.task-action-button {
+  min-width: 0;
+}
+
+/* Мобильная адаптация */
+@media (max-width: 960px) {
+  .task-info-card {
+    padding: 16px !important;
+  }
+  
+  .action-card {
+    padding: 16px !important;
+  }
+  
+  .task-action-button {
+    width: 100%;
+    margin-bottom: 8px;
+  }
+  
+  .task-action-button:last-child {
+    margin-bottom: 0;
+  }
+}
+
+@media (max-width: 600px) {
+  .task-title {
+    font-size: 1.1rem !important;
+    line-height: 1.4;
+  }
+  
+  .task-detail-item {
+    font-size: 0.875rem;
+  }
+  
+  .task-detail-item :deep(.v-icon) {
+    font-size: 16px !important;
+    margin-top: 2px;
+  }
 }
 </style>

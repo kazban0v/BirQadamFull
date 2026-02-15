@@ -233,26 +233,26 @@ onMounted(async () => {
 
 <template>
   <div class="notifications-page">
-    <v-card elevation="4" class="pa-6 mb-6">
-      <div class="d-flex flex-wrap justify-space-between align-center ga-4">
-        <div>
-          <h1 class="text-h5 text-md-h4 font-weight-bold mb-2">Уведомления</h1>
-          <p class="text-body-2 text-medium-emphasis mb-0">
+    <v-card elevation="4" class="notifications-header-card mb-6">
+      <div class="notifications-header">
+        <div class="notifications-header-content">
+          <h1 class="notifications-title">Уведомления</h1>
+          <p class="notifications-description">
             Здесь отображаются все важные события, связанные с проектами, заданиями и модерацией.
           </p>
         </div>
-        <div class="d-flex ga-2">
+        <div class="notifications-actions">
           <v-chip
             color="primary"
             variant="tonal"
-            class="text-none font-weight-medium"
+            class="text-none font-weight-medium unread-chip"
           >
             Непрочитанных: {{ computedUnreadCount }}
           </v-chip>
           <v-btn
             color="primary"
             variant="flat"
-            class="text-none font-weight-bold"
+            class="text-none font-weight-bold mark-all-btn"
             :disabled="computedUnreadCount === 0 || loading"
             @click="handleMarkAllRead"
           >
@@ -283,8 +283,8 @@ onMounted(async () => {
         :dot-color="statusColor(notification.status)"
         size="small"
       >
-        <div class="d-flex justify-space-between align-center mb-2">
-          <div class="text-subtitle-2 font-weight-semibold">
+        <div class="notification-header-row">
+          <div class="notification-subject">
             {{ notification.subject }}
           </div>
           <v-chip
@@ -292,7 +292,7 @@ onMounted(async () => {
             size="x-small"
             :color="statusColor(notification.status)"
             variant="tonal"
-            class="text-uppercase font-weight-medium"
+            class="notification-status-chip text-uppercase font-weight-medium"
           >
             {{ notification.status === 'pending' ? 'Новое' : notification.status === 'sent' ? 'Отправлено' : notification.status }}
           </v-chip>
@@ -328,13 +328,13 @@ onMounted(async () => {
           </div>
         </v-card>
         
-        <div class="d-flex ga-2">
+        <div class="notification-actions">
           <v-btn
             v-if="(notification.status === 'pending' || notification.status === 'sent') && notification.status !== 'opened' && notification.status !== 'clicked'"
             color="primary"
             variant="text"
             size="small"
-            class="text-none"
+            class="text-none notification-action-btn"
             @click="handleMarkRead(notification.id, notification.activity_id)"
           >
             Отметить прочитанным
@@ -344,7 +344,7 @@ onMounted(async () => {
             color="primary"
             variant="outlined"
             size="small"
-            class="text-none"
+            class="text-none notification-action-btn"
             @click="openProjectDialog(notification.project_id!)"
           >
             Перейти в проект
@@ -359,14 +359,14 @@ onMounted(async () => {
     </v-snackbar>
 
     <!-- Диалог с деталями проекта -->
-    <v-dialog v-model="projectDialog" max-width="800" scrollable>
-      <v-card v-if="projectDetail" class="pa-6">
-        <v-card-title class="d-flex justify-space-between align-center mb-4">
-          <h2 class="text-h5 font-weight-bold">{{ projectDetail.title }}</h2>
-          <v-btn icon="mdi-close" variant="text" @click="projectDialog = false" />
+    <v-dialog v-model="projectDialog" :max-width="$vuetify.display.mobile ? '100%' : '800'" :fullscreen="$vuetify.display.mobile" scrollable>
+      <v-card v-if="projectDetail" class="project-dialog-card">
+        <v-card-title class="project-dialog-title">
+          <h2 class="project-dialog-title-text">{{ projectDetail.title }}</h2>
+          <v-btn icon="mdi-close" variant="text" @click="projectDialog = false" class="project-dialog-close-btn" />
         </v-card-title>
 
-        <v-card-text>
+        <v-card-text class="project-dialog-content">
           <v-skeleton-loader v-if="loadingProject" type="article@3" />
 
           <div v-else>
@@ -374,8 +374,8 @@ onMounted(async () => {
             <v-img
               v-if="projectDetail.cover_image_url"
               :src="projectDetail.cover_image_url"
-              height="200"
-              class="mb-6 rounded-lg"
+              :height="$vuetify.display.mobile ? '150' : '200'"
+              class="mb-6 rounded-lg project-cover-image"
               cover
             />
 
@@ -500,26 +500,28 @@ onMounted(async () => {
           </div>
         </v-card-text>
 
-        <v-card-actions class="pa-6 pt-0">
+        <v-card-actions class="project-dialog-actions">
           <v-spacer />
-          <v-btn
-            color="primary"
-            variant="flat"
-            class="text-none font-weight-bold"
-            :to="{ name: 'volunteer-projects', query: { project_id: projectDetail.project_id } }"
-            @click="projectDialog = false"
-          >
-            Перейти к проекту
-            <v-icon icon="mdi-arrow-right" end />
-          </v-btn>
-          <v-btn
-            color="grey"
-            variant="text"
-            class="text-none"
-            @click="projectDialog = false"
-          >
-            Закрыть
-          </v-btn>
+          <div class="project-dialog-buttons">
+            <v-btn
+              color="primary"
+              variant="flat"
+              class="text-none font-weight-bold project-dialog-btn"
+              :to="{ name: 'volunteer-projects', query: { project_id: projectDetail.project_id } }"
+              @click="projectDialog = false"
+            >
+              Перейти к проекту
+              <v-icon icon="mdi-arrow-right" end />
+            </v-btn>
+            <v-btn
+              color="grey"
+              variant="text"
+              class="text-none project-dialog-btn"
+              @click="projectDialog = false"
+            >
+              Закрыть
+            </v-btn>
+          </div>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -533,11 +535,312 @@ onMounted(async () => {
   gap: 24px;
 }
 
+/* Заголовок страницы */
+.notifications-header-card {
+  padding: 24px;
+}
+
+.notifications-header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+}
+
+.notifications-header-content {
+  flex: 1 1 auto;
+  min-width: 200px;
+}
+
+.notifications-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-bottom: 8px;
+  line-height: 1.2;
+}
+
+.notifications-description {
+  font-size: 0.875rem;
+  color: rgba(0, 0, 0, 0.6);
+  margin: 0;
+  line-height: 1.5;
+}
+
+.notifications-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.unread-chip {
+  white-space: nowrap;
+}
+
+.mark-all-btn {
+  white-space: nowrap;
+}
+
+/* Элементы уведомлений */
+.notification-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+
+.notification-subject {
+  font-size: 0.875rem;
+  font-weight: 600;
+  flex: 1 1 auto;
+  min-width: 150px;
+  word-break: break-word;
+  line-height: 1.4;
+}
+
+.notification-status-chip {
+  flex-shrink: 0;
+}
+
+.notification-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+
+.notification-action-btn {
+  flex: 1 1 auto;
+  min-width: 120px;
+}
+
+/* Карточка с деталями проекта в уведомлении */
+.notifications-page :deep(.v-timeline-item .v-card) {
+  word-break: break-word;
+}
+
+/* Мобильная адаптация */
 @media (max-width: 960px) {
-  .notifications-page :deep(.v-card-title),
-  .notifications-page > :deep(.d-flex) {
-    flex-wrap: wrap;
+  .notifications-header-card {
+    padding: 16px;
+  }
+  
+  .notifications-header {
+    flex-direction: column;
+    align-items: flex-start;
     gap: 12px;
+  }
+  
+  .notifications-header-content {
+    width: 100%;
+  }
+  
+  .notifications-title {
+    font-size: 1.25rem;
+  }
+  
+  .notifications-description {
+    font-size: 0.8125rem;
+  }
+  
+  .notifications-actions {
+    width: 100%;
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .unread-chip {
+    width: 100%;
+    justify-content: center;
+  }
+  
+  .mark-all-btn {
+    width: 100%;
+  }
+  
+  .notification-header-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  
+  .notification-subject {
+    width: 100%;
+    font-size: 0.8125rem;
+  }
+  
+  .notification-actions {
+    flex-direction: column;
+    width: 100%;
+  }
+  
+  .notification-action-btn {
+    width: 100%;
+    min-width: 100%;
+  }
+  
+  /* Timeline адаптация */
+  .notifications-page :deep(.v-timeline) {
+    padding-left: 0;
+  }
+  
+  .notifications-page :deep(.v-timeline-item__body) {
+    padding-left: 16px;
+  }
+  
+  .notifications-page :deep(.v-timeline-item__opposite) {
+    display: none;
+  }
+}
+
+@media (max-width: 600px) {
+  .notifications-header-card {
+    padding: 12px;
+  }
+  
+  .notifications-title {
+    font-size: 1.125rem;
+  }
+  
+  .notifications-description {
+    font-size: 0.75rem;
+  }
+  
+  .notification-subject {
+    font-size: 0.75rem;
+  }
+  
+  .notifications-page :deep(.v-timeline-item__body) {
+    padding-left: 12px;
+  }
+  
+  /* Карточка с деталями проекта */
+  .notifications-page :deep(.v-timeline-item .v-card) {
+    padding: 12px !important;
+  }
+  
+  .notifications-page :deep(.v-timeline-item .v-card .text-subtitle-2) {
+    font-size: 0.75rem !important;
+  }
+  
+  .notifications-page :deep(.v-timeline-item .v-card .text-body-2) {
+    font-size: 0.75rem !important;
+  }
+}
+
+/* Диалог проекта */
+.project-dialog-card {
+  padding: 24px;
+}
+
+.project-dialog-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  gap: 16px;
+}
+
+.project-dialog-title-text {
+  font-size: 1.5rem;
+  font-weight: 700;
+  flex: 1 1 auto;
+  word-break: break-word;
+  line-height: 1.3;
+}
+
+.project-dialog-close-btn {
+  flex-shrink: 0;
+}
+
+.project-dialog-content {
+  word-break: break-word;
+}
+
+.project-cover-image {
+  width: 100%;
+  object-fit: cover;
+}
+
+.project-dialog-actions {
+  padding: 24px;
+  padding-top: 0;
+}
+
+.project-dialog-buttons {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.project-dialog-btn {
+  flex: 1 1 auto;
+  min-width: 120px;
+}
+
+/* Мобильная адаптация диалога */
+@media (max-width: 960px) {
+  .project-dialog-card {
+    padding: 16px;
+  }
+  
+  .project-dialog-title {
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+  }
+  
+  .project-dialog-title-text {
+    font-size: 1.25rem;
+    width: 100%;
+  }
+  
+  .project-dialog-actions {
+    padding: 16px;
+    padding-top: 0;
+  }
+  
+  .project-dialog-buttons {
+    width: 100%;
+    flex-direction: column;
+  }
+  
+  .project-dialog-btn {
+    width: 100%;
+    min-width: 100%;
+  }
+}
+
+@media (max-width: 600px) {
+  .project-dialog-card {
+    padding: 12px;
+  }
+  
+  .project-dialog-title {
+    margin-bottom: 12px;
+  }
+  
+  .project-dialog-title-text {
+    font-size: 1.125rem;
+  }
+  
+  .project-dialog-actions {
+    padding: 12px;
+    padding-top: 0;
+  }
+  
+  .project-dialog-content :deep(.text-h6) {
+    font-size: 1rem !important;
+  }
+  
+  .project-dialog-content :deep(.text-body-1) {
+    font-size: 0.875rem !important;
+  }
+  
+  .project-dialog-content :deep(.v-icon) {
+    font-size: 18px !important;
   }
 }
 </style>
