@@ -15,6 +15,8 @@ export interface AuthUser {
   organizer_status?: 'pending' | 'approved' | 'rejected' | null;
   is_approved?: boolean;
   organization_name?: string | null;
+  trust_factor?: number;
+  average_rating?: number;
 }
 
 export const useAuthStore = defineStore('auth', () => {
@@ -81,14 +83,31 @@ export const useAuthStore = defineStore('auth', () => {
 
   async function refreshProfile() {
     const profile = await fetchVolunteerProfile();
-    user.value = {
-      ...user.value,
-      ...{
-        full_name: profile.name,
-        phone_number: profile.phone_number,
-        email: profile.email,
-      },
-    } as AuthUser | null;
+    if (user.value) {
+      // Обновляем существующие поля
+      user.value.full_name = profile.name;
+      user.value.phone_number = profile.phone_number;
+      user.value.email = profile.email;
+      // Обновляем TF и рейтинг, если они есть в профиле
+      if (profile.trust_factor !== undefined) {
+        user.value.trust_factor = profile.trust_factor;
+      }
+      if (profile.average_rating !== undefined) {
+        user.value.average_rating = profile.average_rating;
+      }
+    } else {
+      // Если user.value null, создаем новый объект
+      user.value = {
+        id: profile.id || 0,
+        username: profile.username || '',
+        full_name: profile.name || '',
+        phone_number: profile.phone_number || '',
+        email: profile.email || null,
+        registration_source: null,
+        trust_factor: profile.trust_factor,
+        average_rating: profile.average_rating,
+      } as AuthUser;
+    }
     return profile;
   }
 

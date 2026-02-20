@@ -2,7 +2,9 @@ from django.contrib import admin
 from django.urls import include, path, re_path
 from django.conf import settings
 from django.conf.urls.static import static
-from django.http import FileResponse, HttpResponse
+from django.http import FileResponse, HttpResponse, Http404
+from django.views.static import serve
+from urllib.parse import unquote
 import os
 
 
@@ -129,4 +131,86 @@ urlpatterns = [
     path('portal/', frontend_view, name='frontend'),
     # Все остальные пути /portal/* отдаем index.html (SPA routing) - должен быть ПОСЛЕДНИМ
     re_path(r'^portal/.*$', frontend_view),
-] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+]
+
+# Кастомное обслуживание медиа-файлов с поддержкой URL-encoded путей
+def serve_media(request, path):
+    """Обслуживание медиа-файлов с декодированием URL-encoded путей"""
+    import logging
+    logger = logging.getLogger(__name__)
+    
+    try:
+        # Декодируем URL-encoded путь (поддерживает кириллицу)
+        decoded_path = unquote(path, encoding='utf-8')
+        
+        # Убираем ведущий /media/ если он есть (URL уже содержит /media/)
+        if decoded_path.startswith('media/'):
+            decoded_path = decoded_path[6:]  # Убираем 'media/'
+        elif decoded_path.startswith('/media/'):
+            decoded_path = decoded_path[7:]  # Убираем '/media/'
+        
+        # Нормализуем путь (убираем двойные слеши, обрабатываем .. и т.д.)
+        # Разделяем путь на части и обрабатываем каждую часть отдельно
+        path_parts = decoded_path.split('/')
+        # Убираем пустые части и обрабатываем относительные пути
+        path_parts = [p for p in path_parts if p and p != '.']
+        
+        # Защита от path traversal (..)
+        if '..' in path_parts:
+            logger.warning(f"[serve_media] Path traversal attempt detected: {path}")
+            return HttpResponse('Forbidden', status=403)
+        
+        # Собираем путь обратно
+        normalized_path = '/'.join(path_parts)
+        
+        # Логирование для отладки
+        logger.info(f"[serve_media] Original path: {path}")
+        logger.info(f"[serve_media] Decoded path: {decoded_path}")
+        logger.info(f"[serve_media] Normalized path: {normalized_path}")
+        
+        # Строим полный путь к файлу
+        # Используем os.path.normpath для правильной обработки путей на Windows
+        media_root = os.path.normpath(str(settings.MEDIA_ROOT))
+        
+        # Для Windows: заменяем прямые слеши на обратные при построении пути
+        # Но normalized_path должен использовать прямые слеши для URL
+        # При объединении с media_root используем os.path.join, который правильно обработает разделители
+        if normalized_path.startswith('/'):
+            normalized_path = normalized_path[1:]  # Убираем ведущий слеш для os.path.join
+        
+        file_path = os.path.normpath(os.path.join(media_root, normalized_path))
+        logger.info(f"[serve_media] Media root: {media_root}")
+        logger.info(f"[serve_media] File path: {file_path}")
+        
+        # Дополнительная проверка безопасности: убеждаемся, что файл внутри MEDIA_ROOT
+        # Преобразуем в абсолютные пути для сравнения
+        media_root_abs = os.path.abspath(media_root)
+        file_path_abs = os.path.abspath(file_path)
+        
+        if not file_path_abs.startswith(media_root_abs + os.sep) and file_path_abs != media_root_abs:
+            logger.warning(f"[serve_media] Path traversal attempt: {file_path_abs} not in {media_root_abs}")
+            return HttpResponse('Forbidden', status=403)
+        
+        # Проверяем существование файла
+        if not os.path.exists(file_path) or not os.path.isfile(file_path):
+            logger.warning(f"[serve_media] File not found: {file_path}")
+            # Попробуем найти файл с альтернативными путями
+            # Иногда путь может быть закодирован по-другому
+            logger.warning(f"[serve_media] MEDIA_ROOT: {media_root}")
+            logger.warning(f"[serve_media] Attempted file path: {file_path}")
+            return HttpResponse(f'File not found: {file_path}', status=404)
+        
+        # Используем стандартную функцию serve
+        # serve ожидает путь относительно document_root, поэтому передаем normalized_path
+        # normalized_path уже без ведущего слеша после обработки выше
+        logger.info(f"[serve_media] Serving file: {file_path} via path: {normalized_path}")
+        return serve(request, normalized_path, document_root=settings.MEDIA_ROOT)
+        
+    except Exception as e:
+        logger.error(f"[serve_media] Error serving media file: {e}", exc_info=True)
+        return HttpResponse(f'Internal server error: {str(e)}', status=500)
+
+# Добавляем маршрут для медиа-файлов (всегда используем кастомный view для правильной обработки URL-encoded путей)
+urlpatterns += [
+    re_path(r'^media/(?P<path>.*)$', serve_media),
+]

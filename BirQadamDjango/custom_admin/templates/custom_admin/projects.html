@@ -367,7 +367,7 @@
                     <tr data-project-id="{{ project.id }}" data-status="{{ project.status }}" data-title="{{ project.title }}" data-city="{{ project.city }}" data-volunteers="{{ project.volunteer_count }}" data-tasks="{{ project.task_count }}">
                         <td><strong>#{{ project.id }}</strong></td>
                         <td>
-                            <a href="{% url 'project_detail' project.id %}" class="text-decoration-none">
+                            <a href="{% url 'custom_admin:project_detail' project.id %}" class="text-decoration-none">
                                 <strong>{{ project.title|truncatechars:50 }}</strong>
                             </a>
                         </td>
@@ -389,13 +389,13 @@
                         </td>
                         <td>
                             <div class="btn-group" role="group">
-                                <a href="{% url 'project_detail' project.id %}" class="btn btn-sm btn-info" title="Аналитика">
+                                <a href="{% url 'custom_admin:project_detail' project.id %}" class="btn btn-sm btn-info" title="Аналитика">
                                     <i class="fas fa-chart-bar"></i>
                                 </a>
-                                <a href="{% url 'project_edit' project.id %}" class="btn btn-sm btn-warning" title="Редактировать">
+                                <a href="{% url 'custom_admin:project_edit' project.id %}" class="btn btn-sm btn-warning" title="Редактировать">
                                     <i class="fas fa-edit"></i>
                                 </a>
-                                <a href="{% url 'project_feedback' project.id %}" class="btn btn-sm btn-primary" title="Обратная связь">
+                                <a href="{% url 'custom_admin:project_feedback' project.id %}" class="btn btn-sm btn-primary" title="Обратная связь">
                                     <i class="fas fa-comments"></i>
                                 </a>
                             </div>
@@ -425,7 +425,7 @@
                 <span class="project-status-badge">
                     {{ project.get_status_display }}
                 </span>
-                <a href="{% url 'project_detail' project.id %}" class="project-card-title">
+                <a href="{% url 'custom_admin:project_detail' project.id %}" class="project-card-title">
                     {{ project.title }}
                 </a>
                 <small style="opacity: 0.9;"><i class="fas fa-city me-1"></i>{{ project.city }}</small>
@@ -452,15 +452,15 @@
                     </div>
                 </div>
                 <div class="project-actions">
-                    <a href="{% url 'project_detail' project.id %}" class="action-btn btn-analytics">
+                    <a href="{% url 'custom_admin:project_detail' project.id %}" class="action-btn btn-analytics">
                         <i class="fas fa-chart-bar"></i>
                         <span>Аналитика</span>
                     </a>
-                    <a href="{% url 'project_edit' project.id %}" class="action-btn btn-edit">
+                    <a href="{% url 'custom_admin:project_edit' project.id %}" class="action-btn btn-edit">
                         <i class="fas fa-edit"></i>
                         <span>Изменить</span>
                     </a>
-                    <a href="{% url 'project_feedback' project.id %}" class="action-btn btn-feedback">
+                    <a href="{% url 'custom_admin:project_feedback' project.id %}" class="action-btn btn-feedback">
                         <i class="fas fa-comments"></i>
                         <span>Отзывы</span>
                     </a>

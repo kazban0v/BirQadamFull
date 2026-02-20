@@ -28,6 +28,10 @@ app.conf.beat_schedule = {
         'task': 'core.tasks.tasks.cleanup_old_device_tokens',
         'schedule': crontab(hour=0, minute=0, day_of_week='sunday'),  # Каждое воскресенье в 00:00
     },
+    'check-daily-activity': {
+        'task': 'core.tasks.tasks.check_daily_activity',
+        'schedule': crontab(hour=0, minute=0),  # Каждый день в 00:00
+    },
 }
 
 @app.task(bind=True)

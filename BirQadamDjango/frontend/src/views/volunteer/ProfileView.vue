@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue';
+import { computed, onMounted, reactive, ref, watch } from 'vue';
 import type { VForm } from 'vuetify/components';
 
 import { fetchVolunteerProfile, updateVolunteerProfile, getTelegramSyncStatus, generateTelegramLinkCode } from '@/services/auth';
 import { fetchVolunteerStats, fetchVolunteerActivity } from '@/services/stats';
 import { useAuthStore } from '@/stores/auth';
+import { fetchTrustFactorHistory, type TrustFactorHistoryResponse } from '@/services/trustFactor';
 
 const authStore = useAuthStore();
 const loading = ref(false);
@@ -46,6 +47,24 @@ const activity = ref<Awaited<ReturnType<typeof fetchVolunteerActivity>> | null>(
 const statsLoading = ref(false);
 const activityLoading = ref(false);
 
+// TrustFactor - используем computed для реактивности
+const profile = computed(() => {
+  if (authStore.user?.trust_factor !== undefined || authStore.user?.average_rating !== undefined) {
+    return {
+      trust_factor: authStore.user.trust_factor ?? 20,
+      average_rating: authStore.user.average_rating ?? 5.0,
+    };
+  }
+  return {
+    trust_factor: 20,
+    average_rating: 5.0,
+  };
+});
+
+const trustFactorHistory = ref<TrustFactorHistoryResponse | null>(null);
+const trustFactorHistoryDialog = ref(false);
+const trustFactorHistoryLoading = ref(false);
+
 // Telegram синхронизация
 const telegramSync = ref<{
   is_linked: boolean;
@@ -59,12 +78,38 @@ const linkCode = ref<string | null>(null);
 const loadProfile = async () => {
   loading.value = true;
   try {
-    const profile = await fetchVolunteerProfile();
-    formState.name = profile.name || '';
-    formState.phone_number = profile.phone_number || '';
-    formState.email = profile.email || '';
+    const profileData = await fetchVolunteerProfile();
+    formState.name = profileData.name || '';
+    formState.phone_number = profileData.phone_number || '';
+    formState.email = profileData.email || '';
+    // Обновляем через refreshProfile, который обновит authStore
+    await authStore.refreshProfile();
   } finally {
     loading.value = false;
+  }
+};
+
+const loadTrustFactorHistory = async () => {
+  trustFactorHistoryLoading.value = true;
+  try {
+    trustFactorHistory.value = await fetchTrustFactorHistory();
+  } catch (error: any) {
+    console.error('Failed to load TrustFactor history:', error);
+    // Показываем сообщение пользователю только если это не 404 (может быть просто пустая история)
+    if (error?.response?.status !== 404) {
+      snackbar.message = 'Не удалось загрузить историю изменений Trust Factor';
+      snackbar.color = 'error';
+      snackbar.show = true;
+    }
+  } finally {
+    trustFactorHistoryLoading.value = false;
+  }
+};
+
+const openTrustFactorHistory = async () => {
+  trustFactorHistoryDialog.value = true;
+  if (!trustFactorHistory.value) {
+    await loadTrustFactorHistory();
   }
 };
 
@@ -452,7 +497,7 @@ onMounted(async () => {
               <div class="stat-icon-wrapper">
                 <v-icon size="32" color="primary">mdi-trophy</v-icon>
               </div>
-              <div class="stat-title">Рейтинг и уровень</div>
+              <div class="stat-title">Уровень</div>
               <div class="stat-main-value">
                 <span class="rating-number">{{ stats?.rating ?? '—' }}</span>
                 <v-chip 
@@ -495,6 +540,65 @@ onMounted(async () => {
                 <v-icon end>mdi-arrow-right</v-icon>
               </v-btn>
             </template>
+          </v-card>
+        </v-col>
+
+        <!-- TrustFactor и рейтинг -->
+        <v-col cols="12" sm="6" md="4">
+          <v-card class="stat-card" elevation="0" rounded="xl">
+            <div class="stat-icon-wrapper">
+              <v-icon size="32" color="info">mdi-shield-check</v-icon>
+            </div>
+            <div class="stat-title">Trust Factor</div>
+            <div class="stat-main-value">
+              <span class="rating-number" :class="{
+                'text-success': (profile?.trust_factor ?? 20) >= 20,
+                'text-warning': (profile?.trust_factor ?? 20) >= 10 && (profile?.trust_factor ?? 20) < 20,
+                'text-error': (profile?.trust_factor ?? 20) < 10
+              }">{{ profile?.trust_factor ?? 20 }}</span>
+              <span class="text-body-2 text-medium-emphasis ml-2">/ 30</span>
+            </div>
+            <v-progress-linear
+              :model-value="((profile?.trust_factor ?? 20) / 30) * 100"
+              :color="(profile?.trust_factor ?? 20) >= 20 ? 'success' : (profile?.trust_factor ?? 20) >= 10 ? 'warning' : 'error'"
+              bg-color="grey-lighten-3"
+              height="8"
+              rounded
+              class="my-3"
+            />
+            <div class="average-rating-display mb-3 pa-3" style="background: linear-gradient(135deg, rgba(255, 193, 7, 0.1), rgba(255, 235, 59, 0.1)); border-radius: 12px;">
+              <div class="d-flex align-center justify-center">
+                <v-icon size="40" color="amber" class="mr-3">mdi-star</v-icon>
+                <div class="text-center">
+                  <div class="text-caption text-medium-emphasis mb-1">Средний рейтинг</div>
+                  <div class="text-h3 font-weight-bold" style="color: #FFA000;">{{ profile?.average_rating?.toFixed(2) ?? '5.00' }}</div>
+                </div>
+              </div>
+            </div>
+            <v-divider class="my-3" />
+            <v-btn
+              variant="text"
+              color="primary"
+              class="text-none w-100"
+              rounded="lg"
+              @click="openTrustFactorHistory"
+            >
+              История изменений
+              <v-icon end>mdi-history</v-icon>
+            </v-btn>
+            <v-alert
+              v-if="profile && profile.trust_factor !== undefined && profile.trust_factor < 10"
+              type="warning"
+              variant="tonal"
+              density="compact"
+              class="mt-3"
+            >
+              <div class="text-caption">
+                <strong v-if="profile.trust_factor < 5">Критическое предупреждение!</strong>
+                <strong v-else>Предупреждение!</strong>
+                Ваш Trust Factor низкий. При TF = 0 вы не сможете присоединяться к проектам.
+              </div>
+            </v-alert>
           </v-card>
         </v-col>
 
@@ -831,6 +935,93 @@ onMounted(async () => {
             @click="changePassword"
           >
             Изменить пароль
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- Диалог истории изменений TrustFactor -->
+    <v-dialog 
+      v-model="trustFactorHistoryDialog" 
+      :max-width="$vuetify.display.mobile ? '100%' : '800'"
+      :fullscreen="$vuetify.display.mobile"
+      scrollable
+    >
+      <v-card>
+        <v-card-title class="d-flex align-center justify-space-between flex-wrap pa-4">
+          <div class="d-flex align-center flex-grow-1">
+            <v-icon icon="mdi-history" color="primary" :size="$vuetify.display.mobile ? 24 : 32" class="mr-3" />
+            <h2 class="text-h6 font-weight-bold text-wrap" :class="$vuetify.display.mobile ? 'text-subtitle-1' : 'text-h5'">
+              История изменений Trust Factor
+            </h2>
+          </div>
+          <v-btn icon="mdi-close" variant="text" size="small" @click="trustFactorHistoryDialog = false" />
+        </v-card-title>
+        <v-card-text class="pa-4">
+          <div v-if="trustFactorHistoryLoading" class="d-flex justify-center py-8">
+            <v-progress-circular indeterminate color="primary" size="40" />
+          </div>
+          <div v-else-if="trustFactorHistory">
+            <div class="mb-4">
+              <v-row class="ga-2">
+                <v-col cols="12" md="6">
+                  <v-card variant="tonal" color="info" class="pa-3">
+                    <div class="text-caption text-medium-emphasis">Текущий Trust Factor</div>
+                    <div class="text-h5 font-weight-bold">{{ trustFactorHistory.current_trust_factor }}</div>
+                  </v-card>
+                </v-col>
+                <v-col cols="12" md="6">
+                  <v-card variant="tonal" color="primary" class="pa-3">
+                    <div class="text-caption text-medium-emphasis">Средний рейтинг</div>
+                    <div class="text-h5 font-weight-bold">{{ trustFactorHistory.current_average_rating.toFixed(2) }}</div>
+                  </v-card>
+                </v-col>
+              </v-row>
+            </div>
+            <v-divider class="mb-4" />
+            <div v-if="trustFactorHistory.history.length === 0" class="text-center py-8">
+              <v-icon size="48" color="grey-lighten-1" class="mb-3">mdi-history</v-icon>
+              <div class="text-body-1 text-medium-emphasis">История изменений пуста</div>
+            </div>
+            <v-timeline v-else density="compact" align="start" :side="$vuetify.display.mobile ? 'start' : 'end'">
+              <v-timeline-item
+                v-for="(item, index) in trustFactorHistory.history"
+                :key="item.id"
+                :dot-color="item.change_amount > 0 ? 'success' : item.change_amount < 0 ? 'error' : 'grey'"
+                size="small"
+              >
+                <template v-if="!$vuetify.display.mobile" #opposite>
+                  <div class="text-caption text-medium-emphasis">
+                    {{ new Date(item.created_at).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) }}
+                  </div>
+                </template>
+                <v-card variant="outlined" class="pa-3">
+                  <div v-if="$vuetify.display.mobile" class="text-caption text-medium-emphasis mb-2">
+                    {{ new Date(item.created_at).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) }}
+                  </div>
+                  <div class="d-flex align-center justify-space-between mb-2 flex-wrap">
+                    <div class="font-weight-bold text-wrap" style="word-wrap: break-word; overflow-wrap: break-word; flex: 1; min-width: 0;">{{ item.reason_display }}</div>
+                    <v-chip
+                      :color="item.change_amount > 0 ? 'success' : item.change_amount < 0 ? 'error' : 'grey'"
+                      size="small"
+                      variant="flat"
+                      class="ml-2 flex-shrink-0"
+                    >
+                      {{ item.change_amount > 0 ? '+' : '' }}{{ item.change_amount }}
+                    </v-chip>
+                  </div>
+                  <div class="text-caption text-medium-emphasis">
+                    {{ item.old_value }} → {{ item.new_value }}
+                  </div>
+                </v-card>
+              </v-timeline-item>
+            </v-timeline>
+          </div>
+        </v-card-text>
+        <v-card-actions class="pa-4">
+          <v-spacer />
+          <v-btn variant="text" @click="trustFactorHistoryDialog = false" :block="$vuetify.display.mobile">
+            Закрыть
           </v-btn>
         </v-card-actions>
       </v-card>
@@ -1303,6 +1494,32 @@ onMounted(async () => {
   
   .rating-number {
     font-size: 2rem;
+  }
+  
+  .average-rating-display {
+    padding: 12px !important;
+  }
+  
+  .average-rating-display .v-icon {
+    font-size: 28px !important;
+    margin-right: 8px !important;
+  }
+  
+  .average-rating-display .text-h3 {
+    font-size: 1.5rem !important;
+  }
+  
+  .average-rating-display .text-caption {
+    font-size: 0.7rem !important;
+  }
+  
+  .average-rating-display .d-flex {
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  .average-rating-display .text-center {
+    width: 100%;
   }
   
   .section-title {

@@ -131,13 +131,13 @@
                             <td data-label="Задачи">{{ project.task_count }}</td>
                             <td data-label="Действия">
                                 {% if not project.deleted_at %}
-                                <a href="{% url 'project_detail' project.pk %}" class="btn btn-sm btn-info">
+                                <a href="{% url 'custom_admin:project_detail' project.pk %}" class="btn btn-sm btn-info">
                                     <i class="fas fa-eye"></i>
                                 </a>
-                                <a href="{% url 'project_edit' project.pk %}" class="btn btn-sm btn-primary">
+                                <a href="{% url 'custom_admin:project_edit' project.pk %}" class="btn btn-sm btn-primary">
                                     <i class="fas fa-edit"></i>
                                 </a>
-                                <a href="{% url 'project_delete' project.pk %}" class="btn btn-sm btn-danger">
+                                <a href="{% url 'custom_admin:project_delete' project.pk %}" class="btn btn-sm btn-danger">
                                     <i class="fas fa-trash"></i>
                                 </a>
                                 {% else %}

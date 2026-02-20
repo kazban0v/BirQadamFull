@@ -58,7 +58,7 @@
         {% empty %}
         <p>Нет сообщений.</p>
         {% endfor %}
-        <a href="{% url 'project_feedback' session.project.id %}" class="btn btn-secondary mt-3">Назад</a>
+        <a href="{% url 'custom_admin:project_feedback' session.project.id %}" class="btn btn-secondary mt-3">Назад</a>
     </div>
 </div>
 {% endblock %}

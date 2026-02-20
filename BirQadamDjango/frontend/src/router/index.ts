@@ -125,6 +125,11 @@ const routes: RouteRecordRaw[] = [
         name: 'organizer-profile',
         component: () => import('@/views/organizer/ProfileView.vue'),
       },
+      {
+        path: 'analytics',
+        name: 'organizer-analytics',
+        component: () => import('@/views/organizer/AnalyticsView.vue'),
+      },
     ],
   },
   {

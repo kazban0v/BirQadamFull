@@ -49,9 +49,10 @@ export async function joinVolunteerProject(projectId: number): Promise<Volunteer
   return data;
 }
 
-export async function leaveVolunteerProject(projectId: number): Promise<{ message: string }> {
-  const { data } = await httpClient.post<{ message: string }>(
+export async function leaveVolunteerProject(projectId: number, reason: string): Promise<{ message: string; trust_factor?: number; penalty_applied?: boolean }> {
+  const { data } = await httpClient.post<{ message: string; trust_factor?: number; penalty_applied?: boolean }>(
     `/custom-admin/api/v1/projects/${projectId}/leave/`,
+    { reason }
   );
   return data;
 }

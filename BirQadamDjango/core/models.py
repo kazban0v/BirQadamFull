@@ -94,6 +94,14 @@ class User(AbstractUser):
     work_experience_years = models.IntegerField(null=True, blank=True, validators=[MinValueValidator(0), MaxValueValidator(100)], verbose_name='Стаж работы (лет)')
     work_history = models.TextField(blank=True, null=True, verbose_name='Опыт работы')
     portfolio_photo = models.ImageField(upload_to='portfolio_photos/', null=True, blank=True, verbose_name='Фото 3х4')
+    
+    # TrustFactor система
+    trust_factor = models.IntegerField(default=20, validators=[MinValueValidator(0), MaxValueValidator(30)], verbose_name='Trust Factor', db_index=True)
+    average_rating = models.FloatField(default=5.0, validators=[MinValueValidator(0), MaxValueValidator(5)], verbose_name='Средний рейтинг')
+    initial_rating_counted = models.BooleanField(default=True, verbose_name='Начальный рейтинг учтен')
+    consecutive_completed_tasks = models.IntegerField(default=0, verbose_name='Подряд выполненных заданий')
+    consecutive_5star_photos = models.IntegerField(default=0, verbose_name='Подряд фотоотчетов на 5 звезд')
+    last_task_completion_date = models.DateTimeField(null=True, blank=True, verbose_name='Дата последнего выполненного задания')
 
     def update_rating(self, points: int) -> None:
         old_rating = self.rating
@@ -129,6 +137,142 @@ class User(AbstractUser):
             )
 
             logger.info(f"User {self.username} unlocked achievement: {achievement.name}")
+
+    def _calculate_average_rating(self) -> float:
+        """Вычислить средний рейтинг на основе всех оценок фотоотчетов"""
+        # Получаем все оценки фотоотчетов
+        ratings = list(self.photos.filter(
+            rating__isnull=False,
+            is_deleted=False
+        ).values_list('rating', flat=True))
+        
+        # Если начальный рейтинг учтен, добавляем его
+        if self.initial_rating_counted:
+            ratings = [5.0] + [float(r) for r in ratings]
+        else:
+            ratings = [float(r) for r in ratings]
+        
+        # Вычисляем среднее
+        if ratings:
+            return sum(ratings) / len(ratings)
+        return 5.0  # По умолчанию 5.0, если нет оценок
+    
+    def _change_trust_factor(self, change_amount: int, reason: str, related_object_type: str = '', related_object_id: int = 0) -> int:
+        """Изменить TrustFactor и сохранить историю изменений. Возвращает новое значение TF.
+        
+        ВАЖНО: Этот метод должен вызываться внутри транзакции с select_for_update() для безопасности.
+        Если вызывается из транзакции, где объект уже заблокирован, это безопасно.
+        """
+        old_tf = self.trust_factor
+        new_tf = max(0, min(30, self.trust_factor + change_amount))
+        
+        if old_tf != new_tf:
+            self.trust_factor = new_tf
+            self.save(update_fields=['trust_factor'])
+            
+            # Сохраняем историю изменений
+            TrustFactorHistory.objects.create(
+                user=self,
+                change_amount=change_amount,
+                reason=reason,
+                related_object_type=related_object_type,
+                related_object_id=related_object_id,
+                old_value=old_tf,
+                new_value=new_tf
+            )
+            
+            logger.info(f"User {self.username} TF changed: {old_tf} -> {new_tf} ({change_amount:+d}), reason: {reason}")
+        
+        return new_tf
+    
+    def update_trust_factor(self, change_amount: int, reason: str, related_object_type: str | None = None, related_object_id: int | None = None) -> None:
+        """Обновить TrustFactor и сохранить историю изменений (для обратной совместимости)"""
+        self._change_trust_factor(
+            change_amount,
+            reason,
+            related_object_type or '',
+            related_object_id or 0
+        )
+
+    def update_average_rating(self, new_rating: int | None = None) -> None:
+        """Обновить средний рейтинг на основе всех оценок фотоотчетов
+        
+        Args:
+            new_rating: Новая оценка, которую нужно добавить к расчету (опционально)
+        """
+        # Получаем все оценки фотоотчетов
+        ratings = list(self.photos.filter(
+            rating__isnull=False,
+            is_deleted=False
+        ).values_list('rating', flat=True))
+        
+        logger.info(f"User {self.username} update_average_rating: found {len(ratings)} ratings in DB: {ratings}")
+        
+        # Если начальный рейтинг учтен, добавляем его
+        if self.initial_rating_counted:
+            ratings = [5.0] + [float(r) for r in ratings]
+        else:
+            ratings = [float(r) for r in ratings]
+        
+        # Если передана новая оценка и её еще нет в списке, добавляем
+        if new_rating is not None:
+            new_rating_float = float(new_rating)
+            if new_rating_float not in ratings:
+                ratings.append(new_rating_float)
+                logger.info(f"User {self.username} update_average_rating: added new rating {new_rating} to list")
+        
+        # Вычисляем среднее
+        if ratings:
+            new_avg = sum(ratings) / len(ratings)
+            self.average_rating = new_avg
+            self.save(update_fields=['average_rating'])
+            logger.info(f"User {self.username} average rating updated: {self.average_rating:.2f} (based on {len(ratings)} ratings: {ratings})")
+        else:
+            # Если нет оценок, оставляем 5.0
+            self.average_rating = 5.0
+            self.save(update_fields=['average_rating'])
+            logger.warning(f"User {self.username} update_average_rating: no ratings found, keeping 5.0")
+
+    def add_zero_rating_for_missed_task(self) -> None:
+        """Добавить 0 к рейтингу за пропущенное задание"""
+        # Получаем все оценки фотоотчетов
+        ratings = list(self.photos.filter(
+            rating__isnull=False,
+            is_deleted=False
+        ).values_list('rating', flat=True))
+        
+        # Если начальный рейтинг учтен, добавляем его
+        if self.initial_rating_counted:
+            ratings = [5.0] + [float(r) for r in ratings]
+        else:
+            ratings = [float(r) for r in ratings]
+        
+        # Добавляем 0 за пропущенное задание
+        ratings.append(0.0)
+        
+        # Вычисляем среднее
+        if ratings:
+            self.average_rating = sum(ratings) / len(ratings)
+            self.save(update_fields=['average_rating'])
+            logger.info(f"User {self.username} average rating updated with 0: {self.average_rating:.2f}")
+
+    def check_and_apply_bonuses(self) -> None:
+        """Проверить и применить бонусы за серии выполненных заданий"""
+        # Бонус за 5 заданий подряд
+        if self.consecutive_completed_tasks >= 5:
+            self._change_trust_factor(1, 'bonus_consecutive_tasks', 'bonus', 0)
+            self.consecutive_completed_tasks = 0
+            self.save(update_fields=['consecutive_completed_tasks'])
+        
+        # Бонус за 3 фотоотчета подряд на 5 звезд
+        if self.consecutive_5star_photos >= 3:
+            self._change_trust_factor(1, 'bonus_consecutive_photos', 'bonus', 0)
+            self.consecutive_5star_photos = 0
+            self.save(update_fields=['consecutive_5star_photos'])
+
+    def can_join_projects(self) -> bool:
+        """Проверить, может ли волонтер присоединяться к проектам"""
+        return self.trust_factor > 0
 
     def save(self, *args: Any, **kwargs: Any) -> None:
         # ✅ ИСПРАВЛЕНИЕ СП-6: Автоматическая нормализация телефона
@@ -179,10 +323,53 @@ class User(AbstractUser):
         # ✅ ИСПРАВЛЕНИЕ: DB Constraints для критичных полей
         constraints = [
             models.CheckConstraint(
-                check=models.Q(rating__gte=0) & models.Q(rating__lte=500),
+                check=models.Q(rating__gte=0) & models.Q(rating__lte=750),
                 name='user_rating_range'
             ),
+            models.CheckConstraint(
+                check=models.Q(trust_factor__gte=0) & models.Q(trust_factor__lte=30),
+                name='user_trust_factor_range'
+            ),
+            models.CheckConstraint(
+                check=models.Q(average_rating__gte=0) & models.Q(average_rating__lte=5),
+                name='user_average_rating_range'
+            ),
         ]
+
+
+class TrustFactorHistory(models.Model):
+    """История изменений TrustFactor"""
+    REASON_CHOICES = (
+        ('project_leave', 'Выход из проекта'),
+        ('photo_rating_5', 'Оценка фотоотчета: 5 звезд'),
+        ('photo_rating_4', 'Оценка фотоотчета: 4 звезды'),
+        ('photo_rating_3', 'Оценка фотоотчета: 3 звезды'),
+        ('photo_rating_1_2', 'Оценка фотоотчета: 1-2 звезды'),
+        ('daily_penalty', 'Штраф за пропуск задания'),
+        ('bonus_consecutive_tasks', 'Бонус: 5 заданий подряд'),
+        ('bonus_consecutive_photos', 'Бонус: 3 фотоотчета на 5 звезд'),
+        ('manual', 'Ручное изменение'),
+    )
+    
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='trust_factor_history')
+    change_amount = models.IntegerField(verbose_name='Изменение TF')
+    reason = models.CharField(max_length=100, choices=REASON_CHOICES, verbose_name='Причина')
+    related_object_type = models.CharField(max_length=50, blank=True, default='', verbose_name='Тип объекта')
+    related_object_id = models.IntegerField(default=0, verbose_name='ID объекта')
+    old_value = models.IntegerField(verbose_name='Старое значение TF')
+    new_value = models.IntegerField(verbose_name='Новое значение TF')
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True, verbose_name='Дата изменения')
+    
+    class Meta:
+        verbose_name = 'История TrustFactor'
+        verbose_name_plural = 'История TrustFactor'
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['user', '-created_at'], name='tf_history_user_created_idx'),
+        ]
+    
+    def __str__(self) -> str:
+        return f"{self.user.username}: {self.old_value} -> {self.new_value} ({self.change_amount:+d}) - {self.get_reason_display()}"
 
 
 class OrganizerApplication(models.Model):

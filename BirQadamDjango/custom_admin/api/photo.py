@@ -18,11 +18,26 @@ logger = logging.getLogger(__name__)
 
 
 def build_https_absolute_uri(request: Request, path: str) -> str:
-    """Строит абсолютный URL с принудительным использованием HTTPS"""
+    """Строит абсолютный URL с принудительным использованием HTTPS (только для production)"""
+    # photo.image.url уже возвращает путь вида /media/photos/..., так что просто используем его
+    # Убеждаемся, что путь начинается с /
+    if not path.startswith('/'):
+        path = '/' + path
+    
     url = request.build_absolute_uri(path)
-    # Заменяем http на https, если есть
-    if url.startswith('http://'):
-        url = url.replace('http://', 'https://')
+    
+    # Для localhost принудительно используем http (не https)
+    if 'localhost' in url or '127.0.0.1' in url:
+        if url.startswith('https://'):
+            url = url.replace('https://', 'http://')
+    else:
+        # Для production заменяем http на https
+        if url.startswith('http://'):
+            url = url.replace('http://', 'https://')
+    
+    # Логирование для отладки
+    logger.debug(f"[build_https_absolute_uri] path={path}, url={url}")
+    
     return url
 
 
@@ -227,6 +242,27 @@ class OrganizerPhotoReportsAPIView(APIView):
                 project = photo.project
                 volunteer = photo.volunteer
 
+                # Формируем URL изображения
+                image_url = None
+                if photo.image:
+                    image_path = photo.image.url
+                    image_url = build_https_absolute_uri(request, image_path)
+                    # Логирование для отладки
+                    logger.info(f"Photo {photo.id}: image_path={image_path}, image_url={image_url}, image_name={photo.image.name}")
+                    
+                    # Проверяем существование файла (только для отладки)
+                    import os
+                    from django.conf import settings
+                    if hasattr(photo.image, 'path'):
+                        file_path = photo.image.path
+                        exists = os.path.exists(file_path)
+                        logger.info(f"Photo {photo.id}: file_path={file_path}, exists={exists}")
+                    elif photo.image.name:
+                        # Пытаемся построить путь
+                        file_path = os.path.join(settings.MEDIA_ROOT, photo.image.name)
+                        exists = os.path.exists(file_path)
+                        logger.info(f"Photo {photo.id}: constructed file_path={file_path}, exists={exists}")
+
                 photos_data.append({
                     'id': photo.id,  # type: ignore[attr-defined]
                     'volunteer': {
@@ -248,7 +284,7 @@ class OrganizerPhotoReportsAPIView(APIView):
                         'title': project.title,
                         'city': project.city,
                     },
-                    'image_url': build_https_absolute_uri(request, photo.image.url) if photo.image else None,
+                    'image_url': image_url,
                     'volunteer_comment': photo.volunteer_comment or '',
                     'organizer_comment': photo.organizer_comment or '',
                     'rejection_reason': photo.rejection_reason or '',
@@ -434,6 +470,10 @@ class RatePhotoReportAPIView(APIView):
             # Проверяем текущий статус фото
             logger.info(f"Rating photo {photo_id}: current status='{photo.status}', rating={rating_value}, skip={skip}")
             
+            # Инициализируем переменные для ответа
+            updated_trust_factor = None
+            updated_average_rating = None
+            
             # Одобряем фото с рейтингом или без
             try:
                 # Используем прямой update для избежания проблем с ограничениями БД
@@ -464,14 +504,94 @@ class RatePhotoReportAPIView(APIView):
                             status=status.HTTP_400_BAD_REQUEST
                         )
                     
-                    # Обновляем объект из БД
+                    # Обновляем объект из БД - ВАЖНО: делаем это ДО обновления рейтинга волонтера
                     photo.refresh_from_db()
                     
-                    # Обновляем рейтинг волонтера, если есть
+                    logger.info(f"[RATING] Photo {photo.id} saved with rating {rating_value}, now updating volunteer stats")
+                    
+                    # Обновляем рейтинг и TrustFactor волонтера, если есть
                     if rating_value and photo.volunteer:
                         from core.models import User
+                        
+                        # Получаем пользователя из БД с блокировкой
                         volunteer = User.objects.select_for_update().get(pk=photo.volunteer.pk)
-                        volunteer.update_rating(rating_value)
+                        
+                        logger.info(f"[RATING] Updating volunteer {volunteer.username} stats for rating {rating_value}")
+                        logger.info(f"[RATING] Before update: TF={volunteer.trust_factor}, Avg rating={volunteer.average_rating}")
+                        
+                        # ШАГ 1: Обновляем средний рейтинг (пересчитываем на основе всех оценок + новая оценка)
+                        # Передаем новую оценку явно, чтобы она точно была учтена
+                        volunteer.update_average_rating(new_rating=rating_value)
+                        
+                        # ШАГ 2: Обновляем TrustFactor и счетчики в зависимости от оценки
+                        tf_change = 0
+                        reason = ''
+                        
+                        if rating_value == 5:
+                            tf_change = 2
+                            reason = 'photo_rating_5'
+                            volunteer.consecutive_5star_photos += 1
+                            volunteer.consecutive_completed_tasks += 1
+                        elif rating_value == 4:
+                            tf_change = 1
+                            reason = 'photo_rating_4'
+                            volunteer.consecutive_5star_photos = 0
+                            volunteer.consecutive_completed_tasks += 1
+                        elif rating_value == 3:
+                            tf_change = 0
+                            reason = 'photo_rating_3'
+                            volunteer.consecutive_5star_photos = 0
+                            volunteer.consecutive_completed_tasks += 1
+                        elif rating_value in [1, 2]:
+                            tf_change = -1
+                            reason = 'photo_rating_1_2'
+                            volunteer.consecutive_5star_photos = 0
+                            volunteer.consecutive_completed_tasks = 0
+                        
+                        # Обновляем TrustFactor
+                        if tf_change != 0:
+                            volunteer._change_trust_factor(tf_change, reason, 'photo', photo.id)
+                        
+                        # ШАГ 3: Обновляем дату последнего выполненного задания
+                        volunteer.last_task_completion_date = timezone.now()
+                        
+                        # ШАГ 4: Проверяем и применяем бонусы
+                        # Бонус за 5 заданий подряд
+                        if volunteer.consecutive_completed_tasks >= 5:
+                            volunteer._change_trust_factor(1, 'bonus_consecutive_tasks', 'bonus', 0)
+                            volunteer.consecutive_completed_tasks = 0
+                            logger.info(f"[RATING] Bonus applied: 5 consecutive tasks")
+                        
+                        # Бонус за 3 фотоотчета подряд на 5 звезд
+                        if volunteer.consecutive_5star_photos >= 3:
+                            volunteer._change_trust_factor(1, 'bonus_consecutive_photos', 'bonus', 0)
+                            volunteer.consecutive_5star_photos = 0
+                            logger.info(f"[RATING] Bonus applied: 3 consecutive 5-star photos")
+                        
+                        # ШАГ 5: Сохраняем все изменения счетчиков
+                        volunteer.save(update_fields=[
+                            'consecutive_completed_tasks',
+                            'consecutive_5star_photos',
+                            'last_task_completion_date'
+                        ])
+                        
+                        # ШАГ 6: Сохраняем старый рейтинг для совместимости (используется для достижений)
+                        old_rating = volunteer.rating
+                        volunteer.rating = max(0, min(750, volunteer.rating + rating_value))
+                        if volunteer.rating > old_rating:
+                            volunteer.check_and_unlock_achievements()
+                        volunteer.save(update_fields=['rating'])
+                        
+                        # Обновляем объект для финального логирования
+                        volunteer.refresh_from_db()
+                        logger.info(f"[RATING] FINAL: Photo {photo.id} rated {rating_value} stars. Volunteer {volunteer.username} TF: {volunteer.trust_factor}, Avg rating: {volunteer.average_rating}")
+                        
+                        # ВАЖНО: Сохраняем обновленные значения для ответа
+                        updated_trust_factor = volunteer.trust_factor
+                        updated_average_rating = volunteer.average_rating
+                    else:
+                        updated_trust_factor = None
+                        updated_average_rating = None
                     
                     # Обновляем статус задачи, если есть
                     if photo.task:
@@ -492,7 +612,7 @@ class RatePhotoReportAPIView(APIView):
 
             photo.refresh_from_db()
 
-            # Отправляем уведомление волонтеру
+            # Отправляем уведомление волонтеру (Telegram + Push)
             from custom_admin.services.notification_service import NotificationService
             from asgiref.sync import async_to_sync
             async_to_sync(NotificationService.notify_photo_approved)(
@@ -500,13 +620,34 @@ class RatePhotoReportAPIView(APIView):
                 photo,
                 photo.project
             )
+            
+            # Отправляем email уведомление волонтеру
+            if photo.volunteer and photo.project:
+                from core.services.email_notifications import notify_volunteer_photo_approved
+                notify_volunteer_photo_approved(
+                    photo.volunteer,
+                    photo,
+                    photo.project,
+                    rating=rating_value,
+                    feedback=feedback if feedback else None
+                )
+                logger.info(f"Sent email notification to volunteer {photo.volunteer.username} about approved photo {photo_id}")
 
+            # Получаем обновленные значения TF и рейтинга для ответа
+            # Если они не были установлены внутри транзакции, получаем их здесь
+            if updated_trust_factor is None and photo.volunteer:
+                photo.volunteer.refresh_from_db()
+                updated_trust_factor = photo.volunteer.trust_factor  # type: ignore[attr-defined]
+                updated_average_rating = photo.volunteer.average_rating  # type: ignore[attr-defined]
+            
             return Response({
                 'message': 'Фотоотчет оценен успешно',
                 'photo': {
                     'id': photo.id,  # type: ignore[attr-defined]
                     'status': photo.status,
                     'rating': photo.rating,
+                    'trust_factor': updated_trust_factor,
+                    'average_rating': updated_average_rating,
                     'organizer_comment': photo.organizer_comment,
                     'moderated_at': photo.moderated_at.isoformat() if photo.moderated_at else None
                 }
@@ -574,7 +715,7 @@ class RejectPhotoReportAPIView(APIView):
             photo.reject(feedback=feedback)
             photo.refresh_from_db()
 
-            # Отправляем уведомление волонтеру
+            # Отправляем уведомление волонтеру (Telegram + Push)
             from custom_admin.services.notification_service import NotificationService
             from asgiref.sync import async_to_sync
             async_to_sync(NotificationService.notify_photo_rejected)(
@@ -582,6 +723,17 @@ class RejectPhotoReportAPIView(APIView):
                 photo,
                 photo.project
             )
+            
+            # Отправляем email уведомление волонтеру
+            if photo.volunteer and photo.project:
+                from core.services.email_notifications import notify_volunteer_photo_rejected
+                notify_volunteer_photo_rejected(
+                    photo.volunteer,
+                    photo,
+                    photo.project,
+                    reason=feedback
+                )
+                logger.info(f"Sent email notification to volunteer {photo.volunteer.username} about rejected photo {photo_id}")
 
             return Response({
                 'message': 'Фотоотчет отклонен',

@@ -187,6 +187,18 @@ def approve_photo_transaction(photo_id: int, rating: int, feedback: str, organiz
             volunteer_id=volunteer_id
         )
         
+        # Отправляем email уведомление волонтеру
+        if photo.volunteer and photo.project:
+            from core.services.email_notifications import notify_volunteer_photo_approved
+            notify_volunteer_photo_approved(
+                photo.volunteer,
+                photo,
+                photo.project,
+                rating=rating,
+                feedback=feedback
+            )
+            logger.info(f"Sent email notification to volunteer {photo.volunteer.username} about approved photo {photo_id}")
+        
         return True, serialize_photo(photo), None
         
     except Photo.DoesNotExist:

@@ -329,7 +329,7 @@
                             <tr class="{% if task.status == 'closed' %}table-danger{% endif %}">
                                 <td>{{ task.id }}</td>
                                 <td>
-                                    <a href="{% url 'project_detail' task.project.id %}" class="text-decoration-none">
+                                    <a href="{% url 'custom_admin:project_detail' task.project.id %}" class="text-decoration-none">
                                         {{ task.project.title|truncatechars:30 }}
                                     </a>
                                 </td>

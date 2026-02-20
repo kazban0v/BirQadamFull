@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref, watch } from 'vue';
+import { computed, onMounted, reactive, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import type { VForm } from 'vuetify/components';
 
@@ -36,12 +36,6 @@ const snackbar = reactive({
   show: false,
   color: 'success',
   message: '',
-});
-
-const mapPreviewUrl = computed(() => {
-  const parts = [createFormState.city?.trim(), createFormState.address?.trim()].filter(Boolean);
-  if (!parts.length) return null;
-  return `https://yandex.ru/map-widget/v1/?text=${encodeURIComponent(parts.join(', '))}`;
 });
 
 const editMapPreviewUrl = computed(() => {
@@ -98,44 +92,132 @@ const volunteerTypeOptions = [
   { title: 'Культурные мероприятия', value: 'cultural' },
 ];
 
+const volunteerTypeLabel = (value: string) => {
+  return volunteerTypeOptions.find(o => o.value === value)?.title || value;
+};
+
+const getFullImageUrl = (url: string | null | undefined): string | null => {
+  if (!url) return null;
+  
+  try {
+    // Если уже полный URL, проверяем протокол
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+      // Для localhost принудительно используем http (не https)
+      if (url.includes('localhost') || url.includes('127.0.0.1')) {
+        // Заменяем https на http для localhost
+        if (url.startsWith('https://')) {
+          return url.replace('https://', 'http://');
+        }
+        return url;
+      }
+      // Для production всегда используем https
+      if (url.startsWith('http://')) {
+        return url.replace('http://', 'https://');
+      }
+      return url;
+    }
+    
+    // Если относительный путь, определяем базовый URL в зависимости от окружения
+    const isDevelopment = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    // Для localhost всегда используем http (не https)
+    const baseUrl = isDevelopment 
+      ? `http://${window.location.hostname}:8000`
+      : 'https://birqadam.almau.edu.kz';
+    
+    // Убеждаемся, что путь начинается с /
+    const cleanPath = url.startsWith('/') ? url : `/${url}`;
+    return `${baseUrl}${cleanPath}`;
+  } catch (error) {
+    console.error('[ProjectsView] Error building image URL:', error, url);
+    return null;
+  }
+};
+
+const volunteerTypeIcon = (value: string) => {
+  const icons: Record<string, string> = {
+    social: 'mdi-hand-heart-outline',
+    environmental: 'mdi-leaf-circle-outline',
+    cultural: 'mdi-palette-outline',
+  };
+  return icons[value] || 'mdi-account-heart-outline';
+};
+
+const statusConfig = (status: string) => {
+  const map: Record<string, { color: string; label: string; icon: string }> = {
+    approved: { color: 'success', label: 'Одобрен', icon: 'mdi-check-circle-outline' },
+    rejected: { color: 'error', label: 'Отклонён', icon: 'mdi-close-circle-outline' },
+    pending: { color: 'warning', label: 'На модерации', icon: 'mdi-clock-outline' },
+  };
+  return map[status] || map['pending'];
+};
+
 const formatDate = (value: string | null | undefined) => {
   if (!value) return '—';
-  
-  // Парсим дату как локальную, чтобы избежать проблем с часовыми поясами
-  // Если дата в формате YYYY-MM-DD, добавляем время для локального парсинга
   let date: Date;
   if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
-    // Формат YYYY-MM-DD - парсим как локальную дату
     const [year, month, day] = value.split('-').map(Number);
     date = new Date(year, month - 1, day);
   } else {
-    // ISO формат с временем - парсим как есть
     date = new Date(value);
   }
-  
   if (Number.isNaN(date.getTime())) return '—';
-  return new Intl.DateTimeFormat('ru-RU', {
-    day: '2-digit',
-    month: 'long',
-    year: 'numeric',
-  }).format(date);
+  return new Intl.DateTimeFormat('ru-RU', { day: '2-digit', month: 'short', year: 'numeric' }).format(date);
+};
+
+const formatDateForDisplay = (dateStr: string | null): string => {
+  if (!dateStr) return '';
+  try {
+    if (dateStr.includes('-')) {
+      const [year, month, day] = dateStr.split('-');
+      return `${day}.${month}.${year}`;
+    }
+    return dateStr;
+  } catch {
+    return dateStr;
+  }
+};
+
+const parseDateForSubmit = (dateStr: string | null): string | null => {
+  if (!dateStr) return null;
+  try {
+    if (dateStr.includes('.')) {
+      const parts = dateStr.split('.');
+      if (parts.length === 3) {
+        const [day, month, year] = parts;
+        if (day && month && year) return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+      }
+    }
+    return dateStr;
+  } catch {
+    return dateStr;
+  }
+};
+
+const combineDateTime = (date: string | null, _time: string | null): string | undefined => {
+  if (!date) return undefined;
+  return parseDateForSubmit(date) || undefined;
+};
+
+const parseCoordinate = (value: string | null) => {
+  if (value === null || value === '') return undefined;
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? numeric : undefined;
 };
 
 const roadmap = [
   {
-    title: 'Шаг 1. Подготовьте информацию',
-    points: ['Название и цель проекта', 'Город и точка встречи', 'Тип волонтёрства и теги', 'Формат и дедлайны'],
+    icon: 'mdi-clipboard-list-outline',
+    title: 'Подготовьте информацию',
+    points: ['Название и цель проекта', 'Город и точка встречи', 'Тип волонтёрства и теги', 'Форматы и дедлайны'],
   },
   {
-    title: 'Шаг 2. Создайте проект',
-    points: [
-      'Заполните форму проекта — она сразу появится в приложении и ботe.',
-      'Отправьте проект на модерацию администратору.',
-      'Получите уведомление об одобрении в Telegram.',
-    ],
+    icon: 'mdi-send-circle-outline',
+    title: 'Создайте проект',
+    points: ['Заполните форму — проект сразу появится в приложении', 'Отправьте на модерацию администратору', 'Получите уведомление в Telegram'],
   },
   {
-    title: 'Шаг 3. Управляйте командой',
+    icon: 'mdi-account-group-outline',
+    title: 'Управляйте командой',
     points: ['Добавляйте волонтёров', 'Назначайте задачи и дедлайны', 'Отслеживайте отчёты и статистику'],
   },
 ];
@@ -150,207 +232,22 @@ onMounted(() => {
   }
 });
 
-// Автоматическое геокодирование отключено из-за требований API ключа Yandex
-// Пользователь может использовать кнопку "Определить по адресу" для ручного геокодирования
-
 const openCreateDialog = () => {
-  createFormState.title = '';
-  createFormState.description = '';
-  createFormState.city = '';
-  createFormState.volunteer_type = 'social';
-  createFormState.start_date = null;
-  createFormState.end_date = null;
-  createFormState.address = '';
-  createFormState.tags = [];
-  createFormState.latitude = null;
-  createFormState.longitude = null;
-  createFormState.contact_person = '';
-  createFormState.contact_phone = '';
-  createFormState.contact_email = '';
-  createFormState.contact_telegram = '';
-  createFormState.info_url = '';
-  createFormState.cover_image = null;
+  Object.assign(createFormState, {
+    title: '', description: '', city: '', volunteer_type: 'social',
+    start_date: null, start_time: null, end_date: null, end_time: null,
+    address: '', tags: [], latitude: null, longitude: null,
+    contact_person: '', contact_phone: '', contact_email: '',
+    contact_telegram: '', info_url: '', cover_image: null,
+  });
   createDialog.value = true;
 };
 
-const closeCreateDialog = () => {
-  createDialog.value = false;
-};
-
-const parseCoordinate = (value: string | null) => {
-  if (value === null || value === '') return undefined;
-  const numeric = Number(value);
-  return Number.isFinite(numeric) ? numeric : undefined;
-};
-
-const detectCoordinates = () => {
-  if (!geolocationSupported) {
-    snackbar.message = 'Ваш браузер не поддерживает автоматическое определение местоположения.';
-    snackbar.color = 'warning';
-    snackbar.show = true;
-    return;
-  }
-
-  geolocationLoading.value = true;
-  navigator.geolocation.getCurrentPosition(
-    (position) => {
-      createFormState.latitude = position.coords.latitude.toFixed(6);
-      createFormState.longitude = position.coords.longitude.toFixed(6);
-      geolocationLoading.value = false;
-      snackbar.message = 'Координаты определены автоматически.';
-      snackbar.color = 'success';
-      snackbar.show = true;
-    },
-    (error) => {
-      geolocationLoading.value = false;
-      let message = 'Не удалось получить координаты.';
-      if (error.code === error.PERMISSION_DENIED) {
-        message = 'Доступ к геолокации отклонён. Разрешите доступ в браузере.';
-      }
-      snackbar.message = message;
-      snackbar.color = 'error';
-      snackbar.show = true;
-    },
-    {
-      enableHighAccuracy: true,
-      timeout: 10000,
-      maximumAge: 0,
-    },
-  );
-};
-
-const geocodeAddress = async () => {
-  // Разрешаем геокодирование только по городу, если адрес не указан
-  const city = createFormState.city?.trim() || '';
-  const addr = createFormState.address?.trim() || '';
-  const address = [city, addr].filter(Boolean).join(', ');
-  
-  if (!city) {
-    snackbar.message = 'Укажите город для определения координат.';
-    snackbar.color = 'error';
-    snackbar.show = true;
-    return;
-  }
-
-  geolocationLoading.value = true;
-  try {
-    // Используем Yandex Geocoder API через прокси или напрямую
-    // Для работы нужен API ключ, но можно использовать публичный геокодер
-    const response = await fetch(
-      `https://geocode-maps.yandex.ru/1.x/?geocode=${encodeURIComponent(address)}&format=json`
-    );
-    const data = await response.json();
-    
-    if (data.response?.GeoObjectCollection?.featureMember?.length > 0) {
-      const coords = data.response.GeoObjectCollection.featureMember[0].GeoObject.Point.pos.split(' ');
-      createFormState.longitude = parseFloat(coords[0]).toFixed(6);
-      createFormState.latitude = parseFloat(coords[1]).toFixed(6);
-      snackbar.message = 'Координаты определены по адресу.';
-      snackbar.color = 'success';
-      snackbar.show = true;
-    } else {
-      snackbar.message = 'Адрес не найден. Попробуйте уточнить адрес или используйте геолокацию.';
-      snackbar.color = 'error';
-      snackbar.show = true;
-    }
-  } catch (error) {
-    snackbar.message = 'Не удалось определить координаты по адресу. Используйте геолокацию или введите координаты вручную.';
-    snackbar.color = 'error';
-    snackbar.show = true;
-  } finally {
-    geolocationLoading.value = false;
-  }
-};
-
-const detectCoordinatesForEdit = () => {
-  if (!geolocationSupported) {
-    snackbar.message = 'Ваш браузер не поддерживает автоматическое определение местоположения.';
-    snackbar.color = 'warning';
-    snackbar.show = true;
-    return;
-  }
-
-  geolocationLoading.value = true;
-  navigator.geolocation.getCurrentPosition(
-    (position) => {
-      editFormState.latitude = position.coords.latitude.toFixed(6);
-      editFormState.longitude = position.coords.longitude.toFixed(6);
-      geolocationLoading.value = false;
-      snackbar.message = 'Координаты определены автоматически.';
-      snackbar.color = 'success';
-      snackbar.show = true;
-    },
-    (error) => {
-      geolocationLoading.value = false;
-      let message = 'Не удалось получить координаты.';
-      if (error.code === error.PERMISSION_DENIED) {
-        message = 'Доступ к геолокации отклонён. Разрешите доступ в браузере.';
-      }
-      snackbar.message = message;
-      snackbar.color = 'error';
-      snackbar.show = true;
-    },
-    {
-      enableHighAccuracy: true,
-      timeout: 10000,
-      maximumAge: 0,
-    },
-  );
-};
-
-const geocodeAddressForEdit = async () => {
-  // Разрешаем геокодирование только по городу, если адрес не указан
-  const city = editFormState.city?.trim() || '';
-  const addr = editFormState.address?.trim() || '';
-  const address = [city, addr].filter(Boolean).join(', ');
-  
-  if (!city) {
-    snackbar.message = 'Укажите город для определения координат.';
-    snackbar.color = 'error';
-    snackbar.show = true;
-    return;
-  }
-
-  geolocationLoading.value = true;
-  try {
-    const response = await fetch(
-      `https://geocode-maps.yandex.ru/1.x/?geocode=${encodeURIComponent(address)}&format=json`
-    );
-    const data = await response.json();
-    
-    if (data.response?.GeoObjectCollection?.featureMember?.length > 0) {
-      const coords = data.response.GeoObjectCollection.featureMember[0].GeoObject.Point.pos.split(' ');
-      editFormState.longitude = parseFloat(coords[0]).toFixed(6);
-      editFormState.latitude = parseFloat(coords[1]).toFixed(6);
-      snackbar.message = 'Координаты определены по адресу.';
-      snackbar.color = 'success';
-      snackbar.show = true;
-    } else {
-      snackbar.message = 'Адрес не найден. Попробуйте уточнить адрес или используйте геолокацию.';
-      snackbar.color = 'error';
-      snackbar.show = true;
-    }
-  } catch (error) {
-    snackbar.message = 'Не удалось определить координаты по адресу. Используйте геолокацию или введите координаты вручную.';
-    snackbar.color = 'error';
-    snackbar.show = true;
-  } finally {
-    geolocationLoading.value = false;
-  }
-};
-
-const combineDateTime = (date: string | null, time: string | null): string | undefined => {
-  if (!date) return undefined;
-  // Для дат периода проекта отправляем только дату без времени,
-  // чтобы избежать проблем с часовыми поясами
-  // Время используется только для задач, не для периода проекта
-  return date;
-};
+const closeCreateDialog = () => { createDialog.value = false; };
 
 const submitCreateProject = async () => {
   const { valid } = (await createFormRef.value?.validate()) ?? { valid: false };
   if (!valid) return;
-
   createLoading.value = true;
   try {
     await organizerStore.createProject({
@@ -369,21 +266,14 @@ const submitCreateProject = async () => {
       contact_email: createFormState.contact_email || undefined,
       contact_telegram: createFormState.contact_telegram || undefined,
       info_url: createFormState.info_url || undefined,
-      cover_image: Array.isArray(createFormState.cover_image)
-        ? createFormState.cover_image[0]
-        : createFormState.cover_image || undefined,
+      cover_image: Array.isArray(createFormState.cover_image) ? createFormState.cover_image[0] : createFormState.cover_image || undefined,
     });
     snackbar.message = 'Проект отправлен на модерацию.';
     snackbar.color = 'success';
     snackbar.show = true;
     closeCreateDialog();
   } catch (error: any) {
-    const detail =
-      error?.response?.data?.error ||
-      error?.response?.data?.detail ||
-      error?.message ||
-      'Не удалось создать проект.';
-    snackbar.message = detail;
+    snackbar.message = error?.response?.data?.error || error?.response?.data?.detail || error?.message || 'Не удалось создать проект.';
     snackbar.color = 'error';
     snackbar.show = true;
   } finally {
@@ -397,57 +287,37 @@ const goToTasks = (projectId: number) => {
 
 const openEditDialog = (project: OrganizerProject) => {
   try {
-    // Проверяем наличие участников в проекте
     if (project.volunteer_count && project.volunteer_count > 0) {
-      snackbar.message = 'Редактирование проекта запрещено, так как в проекте уже есть участники. Удалите всех участников перед редактированием.';
+      snackbar.message = 'Редактирование запрещено: в проекте уже есть участники.';
       snackbar.color = 'error';
       snackbar.show = true;
       return;
     }
-    
-    console.log('Opening edit dialog for project:', project);
     projectToEdit.value = project;
     editFormState.title = project.title || '';
     editFormState.description = project.description || '';
     editFormState.city = project.city || '';
     editFormState.volunteer_type = project.volunteer_type || 'social';
-    
-    // Парсим даты
-    console.log('Parsing dates for edit:', {
-      start_date: project.start_date,
-      end_date: project.end_date,
-    });
-    
     if (project.start_date) {
-      // Если дата в формате ISO (YYYY-MM-DD или YYYY-MM-DDTHH:mm:ss), извлекаем только дату
-      const startDateStr = typeof project.start_date === 'string' ? project.start_date : project.start_date.toString();
-      const startDateParts = startDateStr.split('T');
-      editFormState.start_date = startDateParts[0] || null;
-      editFormState.start_time = startDateParts[1] ? startDateParts[1].substring(0, 5) : null;
+      const s = String(project.start_date).split('T');
+      editFormState.start_date = s[0] || null;
+      editFormState.start_time = s[1] ? s[1].substring(0, 5) : null;
     } else {
       editFormState.start_date = null;
       editFormState.start_time = null;
     }
-    
     if (project.end_date) {
-      // Если дата в формате ISO (YYYY-MM-DD или YYYY-MM-DDTHH:mm:ss), извлекаем только дату
-      const endDateStr = typeof project.end_date === 'string' ? project.end_date : project.end_date.toString();
-      const endDateParts = endDateStr.split('T');
-      editFormState.end_date = endDateParts[0] || null;
-      editFormState.end_time = endDateParts[1] ? endDateParts[1].substring(0, 5) : null;
-      console.log('Parsed end_date:', {
-        original: project.end_date,
-        parsed: editFormState.end_date,
-      });
+      const e = String(project.end_date).split('T');
+      editFormState.end_date = e[0] || null;
+      editFormState.end_time = e[1] ? e[1].substring(0, 5) : null;
     } else {
       editFormState.end_date = null;
       editFormState.end_time = null;
     }
-    
     editFormState.address = project.address || '';
     editFormState.tags = project.tags || [];
-    editFormState.latitude = project.latitude !== null && project.latitude !== undefined ? String(project.latitude) : null;
-    editFormState.longitude = project.longitude !== null && project.longitude !== undefined ? String(project.longitude) : null;
+    editFormState.latitude = project.latitude != null ? String(project.latitude) : null;
+    editFormState.longitude = project.longitude != null ? String(project.longitude) : null;
     editFormState.contact_person = project.contact_person || '';
     editFormState.contact_phone = project.contact_phone || '';
     editFormState.contact_email = project.contact_email || '';
@@ -455,35 +325,81 @@ const openEditDialog = (project: OrganizerProject) => {
     editFormState.info_url = project.info_url || '';
     editFormState.cover_image = null;
     editDialog.value = true;
-    console.log('Edit dialog opened successfully');
   } catch (error) {
-    console.error('Error opening edit dialog:', error);
     snackbar.message = 'Ошибка при открытии формы редактирования';
     snackbar.color = 'error';
     snackbar.show = true;
   }
 };
 
-const closeEditDialog = () => {
-  editDialog.value = false;
-  projectToEdit.value = null;
+const closeEditDialog = () => { editDialog.value = false; projectToEdit.value = null; };
+
+const detectCoordinatesForEdit = () => {
+  if (!geolocationSupported) {
+    snackbar.message = 'Геолокация не поддерживается браузером.';
+    snackbar.color = 'warning';
+    snackbar.show = true;
+    return;
+  }
+  geolocationLoading.value = true;
+  navigator.geolocation.getCurrentPosition(
+    (position) => {
+      editFormState.latitude = position.coords.latitude.toFixed(6);
+      editFormState.longitude = position.coords.longitude.toFixed(6);
+      geolocationLoading.value = false;
+      snackbar.message = 'Координаты определены.';
+      snackbar.color = 'success';
+      snackbar.show = true;
+    },
+    (error) => {
+      geolocationLoading.value = false;
+      snackbar.message = error.code === error.PERMISSION_DENIED ? 'Доступ к геолокации отклонён.' : 'Не удалось получить координаты.';
+      snackbar.color = 'error';
+      snackbar.show = true;
+    },
+    { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 },
+  );
 };
 
-const openDeleteDialog = (project: OrganizerProject) => {
-  projectToDelete.value = project;
-  deleteDialog.value = true;
-};
-
-const closeDeleteDialog = () => {
-  deleteDialog.value = false;
-  projectToDelete.value = null;
+const geocodeAddressForEdit = async () => {
+  const city = editFormState.city?.trim() || '';
+  const addr = editFormState.address?.trim() || '';
+  const address = [city, addr].filter(Boolean).join(', ');
+  if (!city) {
+    snackbar.message = 'Укажите город для определения координат.';
+    snackbar.color = 'error';
+    snackbar.show = true;
+    return;
+  }
+  geolocationLoading.value = true;
+  try {
+    const response = await fetch(`https://geocode-maps.yandex.ru/1.x/?geocode=${encodeURIComponent(address)}&format=json`);
+    const data = await response.json();
+    if (data.response?.GeoObjectCollection?.featureMember?.length > 0) {
+      const coords = data.response.GeoObjectCollection.featureMember[0].GeoObject.Point.pos.split(' ');
+      editFormState.longitude = parseFloat(coords[0]).toFixed(6);
+      editFormState.latitude = parseFloat(coords[1]).toFixed(6);
+      snackbar.message = 'Координаты определены по адресу.';
+      snackbar.color = 'success';
+      snackbar.show = true;
+    } else {
+      snackbar.message = 'Адрес не найден. Уточните адрес или введите координаты вручную.';
+      snackbar.color = 'error';
+      snackbar.show = true;
+    }
+  } catch {
+    snackbar.message = 'Не удалось определить координаты. Введите вручную или используйте геолокацию.';
+    snackbar.color = 'error';
+    snackbar.show = true;
+  } finally {
+    geolocationLoading.value = false;
+  }
 };
 
 const submitEditProject = async () => {
   if (!projectToEdit.value) return;
   const { valid } = (await editFormRef.value?.validate()) ?? { valid: false };
   if (!valid) return;
-
   editLoading.value = true;
   try {
     await organizerStore.updateProject(projectToEdit.value.id, {
@@ -502,24 +418,15 @@ const submitEditProject = async () => {
       contact_email: editFormState.contact_email || undefined,
       contact_telegram: editFormState.contact_telegram || undefined,
       info_url: editFormState.info_url || undefined,
-      cover_image: Array.isArray(editFormState.cover_image)
-        ? editFormState.cover_image[0]
-        : editFormState.cover_image || undefined,
+      cover_image: Array.isArray(editFormState.cover_image) ? editFormState.cover_image[0] : editFormState.cover_image || undefined,
     });
-    // Закрываем диалог перед перезагрузкой
     closeEditDialog();
-    // Перезагружаем проекты для обновления статуса и фото
     await organizerStore.loadProjects(true);
-    snackbar.message = 'Проект успешно обновлён и отправлен на модерацию.';
+    snackbar.message = 'Проект обновлён и отправлен на модерацию.';
     snackbar.color = 'success';
     snackbar.show = true;
   } catch (error: any) {
-    const detail =
-      error?.response?.data?.error ||
-      error?.response?.data?.detail ||
-      error?.message ||
-      'Не удалось обновить проект.';
-    snackbar.message = detail;
+    snackbar.message = error?.response?.data?.error || error?.response?.data?.detail || error?.message || 'Не удалось обновить проект.';
     snackbar.color = 'error';
     snackbar.show = true;
   } finally {
@@ -527,1025 +434,1147 @@ const submitEditProject = async () => {
   }
 };
 
+const openDeleteDialog = (project: OrganizerProject) => { projectToDelete.value = project; deleteDialog.value = true; };
+const closeDeleteDialog = () => { deleteDialog.value = false; projectToDelete.value = null; };
+
 const submitDeleteProject = async () => {
   if (!projectToDelete.value) return;
-
   deleteLoading.value = true;
   try {
     await organizerStore.removeProject(projectToDelete.value.id);
-    snackbar.message = 'Проект успешно отозван.';
+    snackbar.message = 'Проект успешно удалён.';
     snackbar.color = 'success';
     snackbar.show = true;
     closeDeleteDialog();
   } catch (error: any) {
-    const detail =
-      error?.response?.data?.error ||
-      error?.response?.data?.detail ||
-      error?.message ||
-      'Не удалось отозвать проект.';
-    snackbar.message = detail;
+    snackbar.message = error?.response?.data?.error || error?.response?.data?.detail || error?.message || 'Не удалось удалить проект.';
     snackbar.color = 'error';
     snackbar.show = true;
   } finally {
     deleteLoading.value = false;
   }
 };
+
+const datePickerHandler = (stateObj: any, field: string, isActive: any) => (value: any) => {
+  if (value && typeof value === 'object' && value instanceof Date) {
+    const year = value.getFullYear();
+    const month = String(value.getMonth() + 1).padStart(2, '0');
+    const day = String(value.getDate()).padStart(2, '0');
+    stateObj[field] = `${year}-${month}-${day}`;
+  } else if (typeof value === 'string') {
+    stateObj[field] = value;
+  } else {
+    stateObj[field] = null;
+  }
+  isActive.value = false;
+};
 </script>
 
 <template>
   <div class="projects-view">
-    <v-row class="ga-6">
-      <v-col cols="12" lg="7">
-        <v-card class="projects-card" rounded="xl" elevation="6">
-          <div class="d-flex align-center justify-space-between ga-4 flex-wrap">
-            <div>
-              <h1 class="text-h5 font-weight-bold mb-1">Проекты организации</h1>
-              <p class="text-body-2 text-medium-emphasis mb-0">
-                Управляйте всеми инициативами {{ organizationName }}: отслеживайте статус и подготавливайте задачи для команды.
-              </p>
-            </div>
-            <v-btn
-              color="primary"
-              class="text-none font-weight-bold"
-              variant="flat"
-              :disabled="!isOrganizer || !isApproved"
-              @click="openCreateDialog"
-            >
-              Создать проект
-            </v-btn>
-          </div>
-          <v-divider class="my-5" />
 
-          <v-alert
-            v-if="!isOrganizer"
-            type="error"
-            border="start"
-            variant="tonal"
-            class="mb-4"
-          >
-            У вас нет прав организатора. Войдите под аккаунтом организатора, чтобы управлять проектами.
-          </v-alert>
+    <!-- ───────────── HEADER ───────────── -->
+    <div class="page-header">
+      <div class="page-header__content">
+        <div class="page-header__text">
+          <h1 class="page-title">Проекты</h1>
+          <p class="page-subtitle">{{ organizationName }} · управление волонтёрскими инициативами</p>
+        </div>
+        <v-btn
+          v-if="isOrganizer && isApproved"
+          color="primary"
+          size="large"
+          rounded="pill"
+          elevation="0"
+          class="create-btn text-none font-weight-bold"
+          prepend-icon="mdi-plus"
+          @click="openCreateDialog"
+        >
+          Новый проект
+        </v-btn>
+      </div>
+    </div>
 
-          <v-alert
-            v-else-if="!isApproved"
-            type="warning"
-            variant="tonal"
-            border="start"
-            class="mb-6"
-            title="Ждём подтверждения"
-          >
-            После одобрения заявки вы сможете создавать проекты напрямую из портала. Пока подготовьте информацию по чек-листу справа.
-          </v-alert>
+    <!-- ───────────── ALERTS ───────────── -->
+    <v-alert
+      v-if="!isOrganizer"
+      type="error"
+      border="start"
+      variant="tonal"
+      rounded="xl"
+      class="mb-2"
+      icon="mdi-shield-alert-outline"
+    >
+      У вас нет прав организатора. Войдите под аккаунтом организатора.
+    </v-alert>
 
-          <v-alert
-            v-else-if="projectsError"
-            type="error"
-            variant="tonal"
-            border="start"
-            class="mb-6"
-          >
-            {{ projectsError }}
-          </v-alert>
+    <v-alert
+      v-else-if="!isApproved"
+      type="warning"
+      variant="tonal"
+      border="start"
+      rounded="xl"
+      class="mb-2"
+      icon="mdi-clock-outline"
+    >
+      <strong>Ждём подтверждения.</strong> После одобрения заявки вы сможете создавать проекты. Пока подготовьте информацию по чек-листу.
+    </v-alert>
 
-          <v-skeleton-loader
-            v-else-if="loadingProjects"
-            type="card, card"
-            class="mb-4"
-          />
+    <!-- ───────────── MAIN LAYOUT ───────────── -->
+    <div class="main-layout">
 
-          <div v-else>
-            <v-row v-if="projects.length > 0" class="ga-3">
-              <v-col
-                v-for="project in projects"
-                :key="project.id"
-                cols="12"
-                md="6"
-              >
-                <v-sheet class="project-card" rounded="lg" border>
-                  <v-img
-                    v-if="project.cover_image_url"
-                    :src="project.cover_image_url"
-                    height="160"
-                    class="mb-3 rounded-lg"
-                    cover
-                  />
-                  <div class="d-flex align-center justify-space-between mb-3">
-                    <v-chip
-                      size="small"
-                      :color="project.status === 'approved' ? 'success' : project.status === 'rejected' ? 'error' : 'warning'"
-                      variant="flat"
-                      class="text-none"
-                    >
-                      {{ project.status === 'approved' ? 'Одобрен' : project.status === 'rejected' ? 'Отклонён' : 'На модерации' }}
-                    </v-chip>
-                    <span class="text-caption text-medium-emphasis">
-                      создан {{ formatDate(project.created_at) }}
-                    </span>
-                  </div>
-                  <h3 class="text-subtitle-1 font-weight-semibold mb-2">{{ project.title }}</h3>
-                  <p class="text-body-2 text-medium-emphasis mb-4">{{ project.description }}</p>
-                  <p class="text-body-2 text-medium-emphasis mb-3" v-if="project.start_date || project.end_date">
-                    Период: {{ formatDate(project.start_date) }} — {{ formatDate(project.end_date) }}
-                  </p>
-                  <div class="d-flex flex-wrap ga-2 mb-3" v-if="project.tags?.length">
-                    <v-chip
-                      v-for="tag in project.tags"
-                      :key="tag"
-                      size="small"
-                      color="primary-lighten-4"
-                      class="text-none"
-                    >
-                      {{ tag }}
-                    </v-chip>
-                  </div>
-                  <div class="d-flex ga-3 mb-4 flex-wrap">
-                    <v-chip size="small" color="primary-lighten-3" class="text-none">
-                      <v-icon icon="mdi-map-marker" start />
-                      {{ project.address || project.city }}
-                    </v-chip>
-                    <v-chip size="small" color="primary-lighten-3" class="text-none">
-                      <v-icon icon="mdi-account-group-outline" start />
-                      {{ project.volunteer_count }} волонтёров
-                    </v-chip>
-                    <v-chip size="small" color="primary-lighten-3" class="text-none">
-                      <v-icon icon="mdi-clipboard-check-outline" start />
-                      {{ project.task_count }} задач
-                    </v-chip>
-                  </div>
-                  <div class="project-contact" v-if="project.contact_person || project.contact_phone || project.contact_telegram || project.info_url">
-                    <div class="text-caption text-medium-emphasis mb-1">Контакты</div>
-                    <ul class="text-body-2 text-medium-emphasis pa-0 ma-0 contact-list">
-                      <li v-if="project.contact_person">
-                        <v-icon icon="mdi-account-tie" size="16" class="me-1" />
-                        {{ project.contact_person }}
-                      </li>
-                      <li v-if="project.contact_phone">
-                        <v-icon icon="mdi-phone" size="16" class="me-1" />
-                        <a :href="`tel:${project.contact_phone}`" class="link">{{ project.contact_phone }}</a>
-                      </li>
-                      <li v-if="project.contact_email">
-                        <v-icon icon="mdi-email-outline" size="16" class="me-1" />
-                        <a :href="`mailto:${project.contact_email}`" class="link">{{ project.contact_email }}</a>
-                      </li>
-                      <li v-if="project.contact_telegram">
-                        <v-icon icon="mdi-send" size="16" class="me-1" />
-                        <a :href="project.contact_telegram" class="link" target="_blank">Telegram</a>
-                      </li>
-                      <li v-if="project.info_url">
-                        <v-icon icon="mdi-web" size="16" class="me-1" />
-                        <a :href="project.info_url" class="link" target="_blank">Подробнее</a>
-                      </li>
-                    </ul>
-                  </div>
-                  <div
-                    class="d-flex ga-2 flex-wrap mb-3"
-                    v-if="project.latitude !== null && project.latitude !== undefined && project.longitude !== null && project.longitude !== undefined"
-                  >
-                    <v-btn
-                      variant="outlined"
-                      size="small"
-                      class="text-none"
-                      :href="`https://maps.google.com/?q=${project.latitude},${project.longitude}`"
-                      target="_blank"
-                    >
-                      Открыть на карте
-                      <v-icon icon="mdi-map" end size="16" />
-                    </v-btn>
-                  </div>
-                  <div class="d-flex ga-2 flex-wrap align-center">
-                    <v-btn
-                      color="warning"
-                      variant="outlined"
-                      size="small"
-                      class="text-none"
-                      :disabled="(project.volunteer_count || 0) > 0"
-                      @click="openEditDialog(project)"
-                    >
-                      <v-icon icon="mdi-pencil" start size="16" />
-                      Редактировать
-                    </v-btn>
-                    <v-tooltip
-                      v-if="project.volunteer_count && project.volunteer_count > 0"
-                      text="Редактирование запрещено, так как в проекте уже есть участники"
-                      location="top"
-                    >
-                      <template #activator="{ props }">
-                        <v-icon
-                          v-bind="props"
-                          icon="mdi-information-outline"
-                          color="warning"
-                          size="20"
-                          class="ml-1"
-                        />
-                      </template>
-                    </v-tooltip>
-                    <v-btn
-                      color="error"
-                      variant="outlined"
-                      size="small"
-                      class="text-none"
-                      @click="openDeleteDialog(project)"
-                    >
-                      <v-icon icon="mdi-delete" start size="16" />
-                      {{ project.status === 'pending' ? 'Отозвать' : 'Удалить' }}
-                    </v-btn>
-                    <v-btn
-                      color="primary"
-                      variant="text"
-                      class="text-none font-weight-semibold"
-                      @click="goToTasks(project.id)"
-                    >
-                      Открыть задачи
-                      <v-icon icon="mdi-arrow-right" end size="18" />
-                    </v-btn>
-                  </div>
-                </v-sheet>
-              </v-col>
-            </v-row>
+      <!-- Projects column -->
+      <div class="projects-col">
 
-            <v-row v-else class="ga-3">
-              <v-col cols="12">
-                <v-sheet class="empty-state" rounded="lg" border>
-                  <v-icon icon="mdi-folder-outline" size="40" color="primary" class="mb-3" />
-                  <h3 class="text-subtitle-1 font-weight-semibold mb-2">Проектов пока нет</h3>
-                  <p class="text-body-2 text-medium-emphasis mb-4">
-                    Создайте первый проект — он появится здесь и в Telegram боте после модерации.
-                  </p>
-                  <v-btn
-                    color="primary"
-                    class="text-none font-weight-bold"
-                    variant="flat"
-                    :disabled="!isApproved"
-                    @click="openCreateDialog"
-                  >
-                    Создать проект
-                  </v-btn>
-                </v-sheet>
-              </v-col>
-            </v-row>
-          </div>
-        </v-card>
-      </v-col>
+        <!-- Loading -->
+        <div v-if="loadingProjects" class="projects-grid">
+          <v-skeleton-loader v-for="i in 3" :key="i" type="image, article" rounded="xl" class="skeleton-card" />
+        </div>
 
-      <v-col cols="12" lg="5">
-        <v-card rounded="xl" elevation="6" class="roadmap-card">
-          <div class="d-flex align-center ga-3 mb-4">
-            <v-avatar color="primary" size="48">
-              <v-icon icon="mdi-map-marker-path" />
-            </v-avatar>
-            <div>
-              <h2 class="text-h6 font-weight-bold mb-1">Чек-лист перед запуском</h2>
-              <p class="text-body-2 text-medium-emphasis mb-0">
-                Мы подготовили шаблон, чтобы подготовка к проекту заняла минимум времени.
-              </p>
-            </div>
-          </div>
-          <div class="roadmap-card__steps">
-            <v-sheet
-              v-for="(step, index) in roadmap"
-              :key="step.title"
-              color="grey-lighten-5"
-              class="pa-5 roadmap-card__step"
-              rounded="lg"
-            >
-              <div class="d-flex ga-3 mb-3 align-center">
-                <v-avatar color="primary" size="32">
-                  <span class="text-body-2 font-weight-bold">{{ index + 1 }}</span>
-                </v-avatar>
-                <h3 class="text-subtitle-1 font-weight-semibold mb-0">{{ step.title }}</h3>
+        <!-- Error -->
+        <v-alert v-else-if="projectsError" type="error" variant="tonal" rounded="xl" border="start">
+          {{ projectsError }}
+        </v-alert>
+
+        <!-- Projects grid -->
+        <div v-else-if="projects.length > 0" class="projects-grid">
+          <div v-for="project in projects" :key="project.id" class="project-card">
+
+            <!-- Cover image -->
+            <div class="project-card__cover" :class="{ 'project-card__cover--placeholder': !project.cover_image_url }">
+              <v-img
+                v-if="project.cover_image_url"
+                :src="getFullImageUrl(project.cover_image_url) || ''"
+                height="100%"
+                cover
+              />
+              <div v-else class="project-card__cover-icon">
+                <v-icon :icon="volunteerTypeIcon(project.volunteer_type)" size="40" color="white" />
               </div>
-              <ul class="roadmap-card__list">
-                <li v-for="point in step.points" :key="point">{{ point }}</li>
-              </ul>
-            </v-sheet>
-          </div>
-        </v-card>
-      </v-col>
-    </v-row>
+              <!-- Status badge -->
+              <div class="project-card__status-badge">
+                <v-chip
+                  :color="statusConfig(project.status).color"
+                  variant="flat"
+                  size="small"
+                  class="text-none font-weight-semibold"
+                >
+                  <v-icon :icon="statusConfig(project.status).icon" start size="14" />
+                  {{ statusConfig(project.status).label }}
+                </v-chip>
+              </div>
+            </div>
 
-    <v-dialog v-model="createDialog" max-width="720">
-      <v-card class="create-dialog pa-6 pa-md-8">
-        <div class="d-flex align-center ga-3 mb-4">
-          <v-avatar color="primary" size="48">
-            <v-icon icon="mdi-rocket-launch-outline" />
-          </v-avatar>
-          <div>
-            <h2 class="text-h6 font-weight-bold mb-1">Создать новый проект</h2>
-            <p class="text-body-2 text-medium-emphasis mb-0">
-              Укажите ключевую информацию — после модерации волонтёры увидят проект и смогут присоединиться.
-            </p>
-          </div>
-        </div>
-        <v-form ref="createFormRef" @submit.prevent="submitCreateProject">
-          <v-row>
-            <v-col cols="12" md="6">
-              <v-text-field
-                v-model="createFormState.title"
-                label="Название проекта"
-                variant="outlined"
-                prepend-inner-icon="mdi-format-title"
-                :rules="[rules.required]"
-              />
-            </v-col>
-            <v-col cols="12" md="6">
-              <v-text-field
-                v-model="createFormState.city"
-                label="Город"
-                variant="outlined"
-                prepend-inner-icon="mdi-map-marker"
-                :rules="[rules.required]"
-              />
-            </v-col>
-            <v-col cols="12">
-              <YandexMapPicker
-                v-model:latitude="createFormState.latitude"
-                v-model:longitude="createFormState.longitude"
-                :city="createFormState.city"
-                height="300px"
-                @update:address="(address) => { createFormState.address = address; }"
-              />
-            </v-col>
-            <v-col cols="12">
-              <v-textarea
-                v-model="createFormState.description"
-                label="Описание проекта"
-                variant="outlined"
-                rows="4"
-                prepend-inner-icon="mdi-text-box-outline"
-                :rules="[rules.required]"
-                auto-grow
-              />
-            </v-col>
-            <v-col cols="12" md="6">
-              <v-select
-                v-model="createFormState.volunteer_type"
-                :items="volunteerTypeOptions"
-                item-title="title"
-                item-value="value"
-                label="Тип волонтёрства"
-                variant="outlined"
-                prepend-inner-icon="mdi-account-heart-outline"
-              />
-            </v-col>
-            <v-col cols="12" md="6">
-              <v-combobox
-                v-model="createFormState.tags"
-                label="Теги"
-                variant="outlined"
-                multiple
-                chips
-                small-chips
-                prepend-inner-icon="mdi-tag"
-                hint="Например: #экология, #уборка"
-              />
-            </v-col>
-            <v-col cols="12" md="6">
-              <v-dialog max-width="320">
-                <template #activator="{ props }">
-                  <v-text-field
-                    v-model="createFormState.start_date"
-                    label="Дата начала (опционально)"
-                    variant="outlined"
-                    prepend-inner-icon="mdi-calendar-start"
-                    readonly
-                    v-bind="props"
-                  />
-                </template>
-                <template #default="{ isActive }">
-                  <v-date-picker
-                    v-model="createFormState.start_date"
-                    @update:modelValue="(value) => { 
-                      // Преобразуем объект Date в строку YYYY-MM-DD
-                      if (value instanceof Date) {
-                        const year = value.getFullYear();
-                        const month = String(value.getMonth() + 1).padStart(2, '0');
-                        const day = String(value.getDate()).padStart(2, '0');
-                        createFormState.start_date = `${year}-${month}-${day}`;
-                      } else if (typeof value === 'string') {
-                        createFormState.start_date = value;
-                      } else {
-                        createFormState.start_date = null;
-                      }
-                      isActive.value = false;
-                    }"
-                  />
-                </template>
-              </v-dialog>
-            </v-col>
-            <v-col cols="12" md="6">
-              <v-dialog max-width="320">
-                <template #activator="{ props }">
-                  <v-text-field
-                    v-model="createFormState.start_time"
-                    label="Время начала (опционально)"
-                    variant="outlined"
-                    prepend-inner-icon="mdi-clock-outline"
-                    readonly
-                    v-bind="props"
-                    :disabled="!createFormState.start_date"
-                  />
-                </template>
-                <template #default="{ isActive }">
-                  <v-time-picker
-                    v-model="createFormState.start_time"
-                    format="24hr"
-                    @update:modelValue="isActive.value = false"
-                  />
-                </template>
-              </v-dialog>
-            </v-col>
-            <v-col cols="12" md="6">
-              <v-dialog max-width="320">
-                <template #activator="{ props }">
-                  <v-text-field
-                    v-model="createFormState.end_date"
-                    label="Дата завершения (опционально)"
-                    variant="outlined"
-                    prepend-inner-icon="mdi-calendar-end"
-                    readonly
-                    v-bind="props"
-                  />
-                </template>
-                <template #default="{ isActive }">
-                  <v-date-picker
-                    v-model="createFormState.end_date"
-                    @update:modelValue="(value) => { 
-                      // Преобразуем объект Date в строку YYYY-MM-DD
-                      if (value instanceof Date) {
-                        const year = value.getFullYear();
-                        const month = String(value.getMonth() + 1).padStart(2, '0');
-                        const day = String(value.getDate()).padStart(2, '0');
-                        createFormState.end_date = `${year}-${month}-${day}`;
-                      } else if (typeof value === 'string') {
-                        createFormState.end_date = value;
-                      } else {
-                        createFormState.end_date = null;
-                      }
-                      isActive.value = false;
-                      console.log('End date selected (create):', createFormState.end_date);
-                    }"
-                  />
-                </template>
-              </v-dialog>
-            </v-col>
-            <v-col cols="12" md="6">
-              <v-dialog max-width="320">
-                <template #activator="{ props }">
-                  <v-text-field
-                    v-model="createFormState.end_time"
-                    label="Время завершения (опционально)"
-                    variant="outlined"
-                    prepend-inner-icon="mdi-clock-outline"
-                    readonly
-                    v-bind="props"
-                    :disabled="!createFormState.end_date"
-                  />
-                </template>
-                <template #default="{ isActive }">
-                  <v-time-picker
-                    v-model="createFormState.end_time"
-                    format="24hr"
-                    @update:modelValue="isActive.value = false"
-                  />
-                </template>
-              </v-dialog>
-            </v-col>
-            <v-col cols="12" md="6" class="d-none">
-              <v-text-field
-                v-model="createFormState.latitude"
-                type="number"
-                label="Широта"
-                variant="outlined"
-                prepend-inner-icon="mdi-crosshairs-gps"
-              />
-            </v-col>
-            <v-col cols="12" md="6" class="d-none">
-              <v-text-field
-                v-model="createFormState.longitude"
-                type="number"
-                label="Долгота"
-                variant="outlined"
-                prepend-inner-icon="mdi-crosshairs"
-              />
-            </v-col>
-            <v-col cols="12" md="6">
-              <v-text-field
-                v-model="createFormState.contact_person"
-                label="Контактное лицо"
-                variant="outlined"
-                prepend-inner-icon="mdi-account-tie"
-              />
-            </v-col>
-            <v-col cols="12" md="6">
-              <v-text-field
-                v-model="createFormState.contact_phone"
-                label="Телефон"
-                variant="outlined"
-                prepend-inner-icon="mdi-phone"
-              />
-            </v-col>
-            <v-col cols="12" md="6">
-              <v-text-field
-                v-model="createFormState.contact_email"
-                label="Email"
-                variant="outlined"
-                prepend-inner-icon="mdi-email-outline"
-              />
-            </v-col>
-            <v-col cols="12" md="6">
-              <v-text-field
-                v-model="createFormState.contact_telegram"
-                label="Telegram"
-                variant="outlined"
-                prepend-inner-icon="mdi-send"
-                hint="Например: https://t.me/birqadam"
-              />
-            </v-col>
-            <v-col cols="12" md="6">
-              <v-text-field
-                v-model="createFormState.info_url"
-                label="Сайт / дополнительная информация"
-                variant="outlined"
-                prepend-inner-icon="mdi-web"
-              />
-            </v-col>
-            <v-col cols="12">
-              <v-file-input
-                v-model="createFormState.cover_image"
-                label="Обложка проекта"
-                variant="outlined"
-                prepend-icon="mdi-image"
-                accept="image/*"
-                show-size
-              />
-            </v-col>
-          </v-row>
-          <div class="d-flex flex-column flex-sm-row ga-3 mt-6">
-            <v-btn
-              color="primary"
-              class="text-none font-weight-bold"
-              size="large"
-              type="submit"
-              :loading="createLoading"
-            >
-              Отправить на модерацию
-            </v-btn>
-            <v-btn
-              variant="text"
-              color="primary"
-              class="text-none font-weight-semibold"
-              size="large"
-              @click="closeCreateDialog"
-            >
-              Отменить
-            </v-btn>
-          </div>
-        </v-form>
-      </v-card>
-    </v-dialog>
+            <!-- Card body -->
+            <div class="project-card__body">
+              <h3 class="project-card__title">{{ project.title }}</h3>
+              <p class="project-card__desc">{{ project.description }}</p>
 
-    <v-snackbar v-model="snackbar.show" :color="snackbar.color" timeout="4000">
-      {{ snackbar.message }}
-    </v-snackbar>
+              <!-- Meta chips -->
+              <div class="project-card__meta">
+                <div class="meta-chip">
+                  <v-icon icon="mdi-map-marker-outline" size="15" />
+                  <span>{{ project.city }}</span>
+                </div>
+                <div v-if="project.start_date || project.end_date" class="meta-chip">
+                  <v-icon icon="mdi-calendar-range" size="15" />
+                  <span>{{ formatDate(project.start_date) }} — {{ formatDate(project.end_date) }}</span>
+                </div>
+                <div class="meta-chip">
+                  <v-icon :icon="volunteerTypeIcon(project.volunteer_type)" size="15" />
+                  <span>{{ volunteerTypeLabel(project.volunteer_type) }}</span>
+                </div>
+              </div>
 
-    <!-- Диалог редактирования проекта -->
-    <v-dialog v-model="editDialog" max-width="720">
-      <v-card class="create-dialog pa-6 pa-md-8">
-        <div class="d-flex align-center ga-3 mb-4">
-          <v-avatar color="primary" size="48">
-            <v-icon icon="mdi-pencil" />
-          </v-avatar>
-          <div>
-            <h2 class="text-h6 font-weight-bold mb-1">Редактировать проект</h2>
-            <p class="text-body-2 text-medium-emphasis mb-0">
-              Измените информацию о проекте. Изменения будут сохранены сразу.
-            </p>
+              <!-- Stats row -->
+              <div class="project-card__stats">
+                <div class="stat-item">
+                  <v-icon icon="mdi-account-group-outline" size="18" />
+                  <span class="stat-value">{{ project.volunteer_count }}</span>
+                  <span class="stat-label">волонтёров</span>
+                </div>
+                <div class="stat-divider" />
+                <div class="stat-item">
+                  <v-icon icon="mdi-clipboard-check-outline" size="18" />
+                  <span class="stat-value">{{ project.task_count }}</span>
+                  <span class="stat-label">задач</span>
+                </div>
+                <div v-if="project.tags?.length" class="stat-divider" />
+                <div v-if="project.tags?.length" class="tags-inline">
+                  <v-chip
+                    v-for="tag in project.tags.slice(0, 2)"
+                    :key="tag"
+                    size="x-small"
+                    variant="tonal"
+                    color="primary"
+                    class="text-none"
+                  >{{ tag }}</v-chip>
+                  <span v-if="project.tags.length > 2" class="tags-more">+{{ project.tags.length - 2 }}</span>
+                </div>
+              </div>
+
+              <!-- Contacts (compact) -->
+              <div v-if="project.contact_person || project.contact_phone || project.contact_telegram || project.info_url" class="project-card__contacts">
+                <a v-if="project.contact_phone" :href="`tel:${project.contact_phone}`" class="contact-link">
+                  <v-icon icon="mdi-phone-outline" size="14" />
+                  {{ project.contact_phone }}
+                </a>
+                <a v-if="project.contact_telegram" :href="project.contact_telegram" class="contact-link" target="_blank">
+                  <v-icon icon="mdi-send-outline" size="14" />
+                  Telegram
+                </a>
+                <a v-if="project.info_url" :href="project.info_url" class="contact-link" target="_blank">
+                  <v-icon icon="mdi-web" size="14" />
+                  Сайт
+                </a>
+              </div>
+
+              <!-- Actions -->
+              <div class="project-card__actions">
+                <v-btn
+                  color="primary"
+                  variant="flat"
+                  size="small"
+                  rounded="pill"
+                  class="text-none font-weight-semibold"
+                  @click="goToTasks(project.id)"
+                >
+                  Задачи
+                  <v-icon icon="mdi-arrow-right" end size="16" />
+                </v-btn>
+                <v-btn
+                  v-if="project.latitude != null && project.longitude != null"
+                  variant="tonal"
+                  size="small"
+                  rounded="pill"
+                  class="text-none"
+                  color="secondary"
+                  :href="`https://maps.google.com/?q=${project.latitude},${project.longitude}`"
+                  target="_blank"
+                >
+                  <v-icon icon="mdi-map-outline" size="16" />
+                </v-btn>
+                <v-spacer />
+                <v-btn
+                  variant="text"
+                  size="small"
+                  icon
+                  :disabled="(project.volunteer_count || 0) > 0"
+                  @click="openEditDialog(project)"
+                >
+                  <v-tooltip v-if="(project.volunteer_count || 0) > 0" activator="parent" location="top">
+                    Нельзя редактировать: есть участники
+                  </v-tooltip>
+                  <v-icon icon="mdi-pencil-outline" size="18" />
+                </v-btn>
+                <v-btn
+                  variant="text"
+                  size="small"
+                  icon
+                  color="error"
+                  @click="openDeleteDialog(project)"
+                >
+                  <v-icon icon="mdi-trash-can-outline" size="18" />
+                </v-btn>
+              </div>
+            </div>
           </div>
         </div>
-        <v-form ref="editFormRef" @submit.prevent="submitEditProject">
-          <v-row>
-            <v-col cols="12" md="6">
-              <v-text-field
-                v-model="editFormState.title"
-                label="Название проекта"
-                variant="outlined"
-                prepend-inner-icon="mdi-format-title"
-                :rules="[rules.required]"
-              />
-            </v-col>
-            <v-col cols="12" md="6">
-              <v-text-field
-                v-model="editFormState.city"
-                label="Город"
-                variant="outlined"
-                prepend-inner-icon="mdi-map-marker"
-                :rules="[rules.required]"
-              />
-            </v-col>
-            <v-col cols="12">
-              <v-text-field
-                v-model="editFormState.address"
-                label="Адрес / место проведения"
-                variant="outlined"
-                prepend-inner-icon="mdi-map-marker-outline"
-              />
-            </v-col>
-            <v-col cols="12">
-              <v-textarea
-                v-model="editFormState.description"
-                label="Описание проекта"
-                variant="outlined"
-                rows="4"
-                prepend-inner-icon="mdi-text-box-outline"
-                :rules="[rules.required]"
-                auto-grow
-              />
-            </v-col>
-            <v-col cols="12" md="6">
-              <v-select
-                v-model="editFormState.volunteer_type"
-                :items="volunteerTypeOptions"
-                item-title="title"
-                item-value="value"
-                label="Тип волонтёрства"
-                variant="outlined"
-                prepend-inner-icon="mdi-account-heart-outline"
-              />
-            </v-col>
-            <v-col cols="12" md="6">
-              <v-combobox
-                v-model="editFormState.tags"
-                label="Теги"
-                variant="outlined"
-                multiple
-                chips
-                small-chips
-                prepend-inner-icon="mdi-tag"
-                hint="Например: #экология, #уборка"
-              />
-            </v-col>
-            <v-col cols="12" md="6">
-              <v-dialog max-width="320">
-                <template #activator="{ props }">
-                  <v-text-field
-                    v-model="editFormState.start_date"
-                    label="Дата начала (опционально)"
-                    variant="outlined"
-                    prepend-inner-icon="mdi-calendar-start"
-                    readonly
-                    v-bind="props"
-                  />
-                </template>
-                <template #default="{ isActive }">
-                  <v-date-picker
-                    v-model="editFormState.start_date"
-                    @update:modelValue="(value) => { 
-                      // Преобразуем объект Date в строку YYYY-MM-DD
-                      if (value instanceof Date) {
-                        const year = value.getFullYear();
-                        const month = String(value.getMonth() + 1).padStart(2, '0');
-                        const day = String(value.getDate()).padStart(2, '0');
-                        editFormState.start_date = `${year}-${month}-${day}`;
-                      } else if (typeof value === 'string') {
-                        editFormState.start_date = value;
-                      } else {
-                        editFormState.start_date = null;
-                      }
-                      isActive.value = false;
-                    }"
-                  />
-                </template>
-              </v-dialog>
-            </v-col>
-            <v-col cols="12" md="6">
-              <v-dialog max-width="320">
-                <template #activator="{ props }">
-                  <v-text-field
-                    v-model="editFormState.start_time"
-                    label="Время начала (опционально)"
-                    variant="outlined"
-                    prepend-inner-icon="mdi-clock-outline"
-                    readonly
-                    v-bind="props"
-                    :disabled="!editFormState.start_date"
-                  />
-                </template>
-                <template #default="{ isActive }">
-                  <v-time-picker
-                    v-model="editFormState.start_time"
-                    format="24hr"
-                    @update:modelValue="isActive.value = false"
-                  />
-                </template>
-              </v-dialog>
-            </v-col>
-            <v-col cols="12" md="6">
-              <v-dialog max-width="320">
-                <template #activator="{ props }">
-                  <v-text-field
-                    v-model="editFormState.end_date"
-                    label="Дата завершения (опционально)"
-                    variant="outlined"
-                    prepend-inner-icon="mdi-calendar-end"
-                    readonly
-                    v-bind="props"
-                  />
-                </template>
-                <template #default="{ isActive }">
-                  <v-date-picker
-                    v-model="editFormState.end_date"
-                    @update:modelValue="(value) => { 
-                      // Преобразуем объект Date в строку YYYY-MM-DD
-                      if (value instanceof Date) {
-                        const year = value.getFullYear();
-                        const month = String(value.getMonth() + 1).padStart(2, '0');
-                        const day = String(value.getDate()).padStart(2, '0');
-                        editFormState.end_date = `${year}-${month}-${day}`;
-                      } else if (typeof value === 'string') {
-                        editFormState.end_date = value;
-                      } else {
-                        editFormState.end_date = null;
-                      }
-                      isActive.value = false;
-                      console.log('End date selected:', editFormState.end_date);
-                    }"
-                  />
-                </template>
-              </v-dialog>
-            </v-col>
-            <v-col cols="12" md="6">
-              <v-dialog max-width="320">
-                <template #activator="{ props }">
-                  <v-text-field
-                    v-model="editFormState.end_time"
-                    label="Время завершения (опционально)"
-                    variant="outlined"
-                    prepend-inner-icon="mdi-clock-outline"
-                    readonly
-                    v-bind="props"
-                    :disabled="!editFormState.end_date"
-                  />
-                </template>
-                <template #default="{ isActive }">
-                  <v-time-picker
-                    v-model="editFormState.end_time"
-                    format="24hr"
-                    @update:modelValue="isActive.value = false"
-                  />
-                </template>
-              </v-dialog>
-            </v-col>
-            <v-col cols="12" md="6">
-              <v-text-field
-                v-model="editFormState.latitude"
-                type="number"
-                label="Широта"
-                variant="outlined"
-                prepend-inner-icon="mdi-crosshairs-gps"
-              />
-            </v-col>
-            <v-col cols="12" md="6">
-              <v-text-field
-                v-model="editFormState.longitude"
-                type="number"
-                label="Долгота"
-                variant="outlined"
-                prepend-inner-icon="mdi-crosshairs"
-              />
-            </v-col>
-            <v-col cols="12" class="d-flex flex-wrap ga-3">
-              <v-btn
-                variant="tonal"
-                color="primary"
-                class="text-none font-weight-semibold"
-                @click="detectCoordinatesForEdit"
-                :loading="geolocationLoading"
-                :disabled="!geolocationSupported || geolocationLoading"
-              >
-                Определить по текущему местоположению
-              </v-btn>
-              <v-btn
-                variant="tonal"
-                color="primary"
-                class="text-none font-weight-semibold"
-                @click="geocodeAddressForEdit"
-                :loading="geolocationLoading"
-                :disabled="geolocationLoading || !editFormState.city"
-              >
-                Определить по адресу
-              </v-btn>
-            </v-col>
-            <v-col cols="12" v-if="editMapPreviewUrl">
-              <v-responsive aspect-ratio="16/9" class="map-preview rounded-lg">
-                <iframe
-                  :src="editMapPreviewUrl"
-                  frameborder="0"
-                  allowfullscreen
-                  loading="lazy"
-                  referrerpolicy="no-referrer-when-downgrade"
-                />
-              </v-responsive>
-              <p class="text-caption text-medium-emphasis mt-2 mb-0">
-                Проверьте, что карта показывает нужное место. При необходимости уточните адрес или координаты.
-              </p>
-            </v-col>
-            <v-col cols="12" md="6">
-              <v-text-field
-                v-model="editFormState.contact_person"
-                label="Контактное лицо"
-                variant="outlined"
-                prepend-inner-icon="mdi-account-tie"
-              />
-            </v-col>
-            <v-col cols="12" md="6">
-              <v-text-field
-                v-model="editFormState.contact_phone"
-                label="Телефон"
-                variant="outlined"
-                prepend-inner-icon="mdi-phone"
-              />
-            </v-col>
-            <v-col cols="12" md="6">
-              <v-text-field
-                v-model="editFormState.contact_email"
-                label="Email"
-                variant="outlined"
-                prepend-inner-icon="mdi-email-outline"
-              />
-            </v-col>
-            <v-col cols="12" md="6">
-              <v-text-field
-                v-model="editFormState.contact_telegram"
-                label="Telegram"
-                variant="outlined"
-                prepend-inner-icon="mdi-send"
-                hint="Например: https://t.me/birqadam"
-              />
-            </v-col>
-            <v-col cols="12" md="6">
-              <v-text-field
-                v-model="editFormState.info_url"
-                label="Сайт / дополнительная информация"
-                variant="outlined"
-                prepend-inner-icon="mdi-web"
-              />
-            </v-col>
-            <v-col cols="12">
-              <v-file-input
-                v-model="editFormState.cover_image"
-                label="Обложка проекта"
-                variant="outlined"
-                prepend-inner-icon="mdi-image-outline"
-                accept="image/*"
-                hint="Загрузите изображение для обложки проекта"
-                persistent-hint
-              />
-            </v-col>
-          </v-row>
-          <v-card-actions class="pa-0 mt-4">
-            <v-spacer />
-            <v-btn variant="text" class="text-none" @click="closeEditDialog">Отмена</v-btn>
-            <v-btn
-              color="primary"
-              variant="flat"
-              class="text-none font-weight-semibold"
-              type="submit"
-              :loading="editLoading"
-            >
-              Сохранить изменения
-            </v-btn>
-          </v-card-actions>
-        </v-form>
-      </v-card>
-    </v-dialog>
 
-    <!-- Диалог удаления проекта -->
-    <v-dialog v-model="deleteDialog" max-width="500">
-      <v-card>
-        <v-card-title class="text-h6 font-weight-bold">
-          {{ projectToDelete?.status === 'pending' ? 'Отозвать проект?' : 'Удалить проект?' }}
-        </v-card-title>
-        <v-card-text>
-          <p class="text-body-1 mb-2">
-            Вы уверены, что хотите {{ projectToDelete?.status === 'pending' ? 'отозвать' : 'удалить' }} проект <strong>{{ projectToDelete?.title }}</strong>?
-          </p>
-          <p class="text-body-2 text-medium-emphasis" v-if="projectToDelete?.status === 'pending'">
-            Проект будет удалён и больше не будет виден волонтёрам. Это действие нельзя отменить.
-          </p>
-          <p class="text-body-2 text-medium-emphasis" v-else>
-            Проект будет удалён. Если в проекте есть активные волонтёры или задачи, они также будут затронуты. Это действие нельзя отменить.
-          </p>
-        </v-card-text>
-        <v-card-actions>
+        <!-- Empty state -->
+        <div v-else class="empty-state">
+          <div class="empty-state__illustration">
+            <v-icon icon="mdi-folder-open-outline" size="56" />
+          </div>
+          <h3 class="empty-state__title">Нет проектов</h3>
+          <p class="empty-state__text">Создайте первый проект — он появится здесь и в Telegram-боте после модерации.</p>
+          <v-btn
+            v-if="isApproved"
+            color="primary"
+            rounded="pill"
+            elevation="0"
+            class="text-none font-weight-bold mt-2"
+            prepend-icon="mdi-plus"
+            @click="openCreateDialog"
+          >
+            Создать проект
+          </v-btn>
+        </div>
+      </div>
+
+      <!-- Sidebar -->
+      <div class="sidebar-col">
+        <div class="checklist-card">
+          <div class="checklist-card__header">
+            <v-icon icon="mdi-format-list-checks" size="22" class="checklist-card__icon" />
+            <span>Чек-лист запуска</span>
+          </div>
+          <div class="checklist-steps">
+            <div v-for="(step, i) in roadmap" :key="step.title" class="checklist-step">
+              <div class="checklist-step__number">{{ i + 1 }}</div>
+              <div class="checklist-step__content">
+                <div class="checklist-step__title">
+                  <v-icon :icon="step.icon" size="16" class="me-1" />
+                  {{ step.title }}
+                </div>
+                <ul class="checklist-step__points">
+                  <li v-for="point in step.points" :key="point">{{ point }}</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ───────────── CREATE DIALOG ───────────── -->
+    <v-dialog v-model="createDialog" max-width="680" scrollable>
+      <v-card class="form-dialog" rounded="2xl">
+        <div class="form-dialog__header">
+          <div class="form-dialog__header-icon">
+            <v-icon icon="mdi-rocket-launch-outline" size="22" />
+          </div>
+          <div>
+            <h2 class="form-dialog__title">Новый проект</h2>
+            <p class="form-dialog__subtitle">После модерации проект увидят волонтёры</p>
+          </div>
           <v-spacer />
-          <v-btn variant="text" class="text-none" @click="closeDeleteDialog" :disabled="deleteLoading">
+          <v-btn icon="mdi-close" variant="text" size="small" @click="closeCreateDialog" />
+        </div>
+        <v-divider />
+        <v-card-text class="form-dialog__body">
+          <v-form ref="createFormRef" @submit.prevent="submitCreateProject">
+            <div class="form-section">
+              <div class="form-section__label">Основная информация</div>
+              <v-row dense>
+                <v-col cols="12" md="7">
+                  <v-text-field v-model="createFormState.title" label="Название проекта" variant="outlined" density="comfortable" :rules="[rules.required]" />
+                </v-col>
+                <v-col cols="12" md="5">
+                  <v-text-field v-model="createFormState.city" label="Город" variant="outlined" density="comfortable" prepend-inner-icon="mdi-map-marker-outline" :rules="[rules.required]" />
+                </v-col>
+                <v-col cols="12">
+                  <YandexMapPicker
+                    v-model:latitude="createFormState.latitude"
+                    v-model:longitude="createFormState.longitude"
+                    :city="createFormState.city"
+                    height="260px"
+                    @update:address="(address) => { createFormState.address = address; }"
+                  />
+                </v-col>
+                <v-col cols="12">
+                  <v-textarea v-model="createFormState.description" label="Описание" variant="outlined" density="comfortable" rows="3" :rules="[rules.required]" auto-grow />
+                </v-col>
+                <v-col cols="12" md="6">
+                  <v-select v-model="createFormState.volunteer_type" :items="volunteerTypeOptions" item-title="title" item-value="value" label="Тип волонтёрства" variant="outlined" density="comfortable" prepend-inner-icon="mdi-heart-outline" />
+                </v-col>
+                <v-col cols="12" md="6">
+                  <v-combobox v-model="createFormState.tags" label="Теги" variant="outlined" density="comfortable" multiple chips small-chips prepend-inner-icon="mdi-tag-outline" hint="#экология, #уборка" />
+                </v-col>
+              </v-row>
+            </div>
+
+            <div class="form-section">
+              <div class="form-section__label">Период проекта</div>
+              <v-row dense>
+                <v-col cols="12" md="6">
+                  <v-dialog max-width="360">
+                    <template #activator="{ props }">
+                      <v-text-field :model-value="formatDateForDisplay(createFormState.start_date)" label="Дата начала" variant="outlined" density="comfortable" prepend-inner-icon="mdi-calendar-start" readonly v-bind="props" placeholder="дд.мм.гггг" />
+                    </template>
+                    <template #default="{ isActive }">
+                      <v-card rounded="xl"><v-date-picker v-model="createFormState.start_date" locale="ru" :first-day-of-week="1" color="primary" @update:model-value="datePickerHandler(createFormState, 'start_date', isActive)" /></v-card>
+                    </template>
+                  </v-dialog>
+                </v-col>
+                <v-col cols="12" md="6">
+                  <v-dialog max-width="360">
+                    <template #activator="{ props }">
+                      <v-text-field :model-value="formatDateForDisplay(createFormState.end_date)" label="Дата завершения" variant="outlined" density="comfortable" prepend-inner-icon="mdi-calendar-end" readonly v-bind="props" placeholder="дд.мм.гггг" />
+                    </template>
+                    <template #default="{ isActive }">
+                      <v-card rounded="xl"><v-date-picker v-model="createFormState.end_date" locale="ru" :first-day-of-week="1" color="primary" @update:model-value="datePickerHandler(createFormState, 'end_date', isActive)" /></v-card>
+                    </template>
+                  </v-dialog>
+                </v-col>
+              </v-row>
+            </div>
+
+            <div class="form-section">
+              <div class="form-section__label">Контакты</div>
+              <v-row dense>
+                <v-col cols="12" md="6">
+                  <v-text-field v-model="createFormState.contact_person" label="Контактное лицо" variant="outlined" density="comfortable" prepend-inner-icon="mdi-account-tie-outline" />
+                </v-col>
+                <v-col cols="12" md="6">
+                  <v-text-field v-model="createFormState.contact_phone" label="Телефон" variant="outlined" density="comfortable" prepend-inner-icon="mdi-phone-outline" />
+                </v-col>
+                <v-col cols="12" md="6">
+                  <v-text-field v-model="createFormState.contact_email" label="Email" variant="outlined" density="comfortable" prepend-inner-icon="mdi-email-outline" />
+                </v-col>
+                <v-col cols="12" md="6">
+                  <v-text-field v-model="createFormState.contact_telegram" label="Telegram" variant="outlined" density="comfortable" prepend-inner-icon="mdi-send-outline" hint="https://t.me/..." />
+                </v-col>
+                <v-col cols="12">
+                  <v-text-field v-model="createFormState.info_url" label="Сайт / доп. ссылка" variant="outlined" density="comfortable" prepend-inner-icon="mdi-web" />
+                </v-col>
+              </v-row>
+            </div>
+
+            <div class="form-section">
+              <div class="form-section__label">Обложка</div>
+              <v-file-input v-model="createFormState.cover_image" label="Загрузить изображение" variant="outlined" density="comfortable" prepend-inner-icon="mdi-image-outline" prepend-icon="" accept="image/*" show-size />
+            </div>
+          </v-form>
+        </v-card-text>
+        <v-divider />
+        <v-card-actions class="form-dialog__footer">
+          <v-btn 
+            variant="text" 
+            class="text-none form-dialog__cancel-btn" 
+            @click="closeCreateDialog"
+          >
             Отмена
           </v-btn>
-          <v-btn
-            color="error"
-            variant="flat"
-            class="text-none font-weight-semibold"
-            @click="submitDeleteProject"
-            :loading="deleteLoading"
+          <v-btn 
+            color="primary" 
+            variant="flat" 
+            rounded="pill" 
+            class="text-none font-weight-bold px-6 form-dialog__submit-btn" 
+            :loading="createLoading" 
+            @click="submitCreateProject"
           >
-            {{ projectToDelete?.status === 'pending' ? 'Отозвать проект' : 'Удалить проект' }}
+            Отправить на модерацию
           </v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
+
+    <!-- ───────────── EDIT DIALOG ───────────── -->
+    <v-dialog v-model="editDialog" max-width="680" scrollable>
+      <v-card class="form-dialog" rounded="2xl">
+        <div class="form-dialog__header">
+          <div class="form-dialog__header-icon form-dialog__header-icon--edit">
+            <v-icon icon="mdi-pencil-outline" size="22" />
+          </div>
+          <div>
+            <h2 class="form-dialog__title">Редактировать проект</h2>
+            <p class="form-dialog__subtitle">Изменения отправятся на повторную модерацию</p>
+          </div>
+          <v-spacer />
+          <v-btn icon="mdi-close" variant="text" size="small" @click="closeEditDialog" />
+        </div>
+        <v-divider />
+        <v-card-text class="form-dialog__body">
+          <v-form ref="editFormRef" @submit.prevent="submitEditProject">
+            <div class="form-section">
+              <div class="form-section__label">Основная информация</div>
+              <v-row dense>
+                <v-col cols="12" md="7">
+                  <v-text-field v-model="editFormState.title" label="Название проекта" variant="outlined" density="comfortable" :rules="[rules.required]" />
+                </v-col>
+                <v-col cols="12" md="5">
+                  <v-text-field v-model="editFormState.city" label="Город" variant="outlined" density="comfortable" prepend-inner-icon="mdi-map-marker-outline" :rules="[rules.required]" />
+                </v-col>
+                <v-col cols="12">
+                  <v-text-field v-model="editFormState.address" label="Адрес / место проведения" variant="outlined" density="comfortable" prepend-inner-icon="mdi-home-map-marker" />
+                </v-col>
+                <v-col cols="12">
+                  <v-textarea v-model="editFormState.description" label="Описание" variant="outlined" density="comfortable" rows="3" :rules="[rules.required]" auto-grow />
+                </v-col>
+                <v-col cols="12" md="6">
+                  <v-select v-model="editFormState.volunteer_type" :items="volunteerTypeOptions" item-title="title" item-value="value" label="Тип волонтёрства" variant="outlined" density="comfortable" />
+                </v-col>
+                <v-col cols="12" md="6">
+                  <v-combobox v-model="editFormState.tags" label="Теги" variant="outlined" density="comfortable" multiple chips small-chips prepend-inner-icon="mdi-tag-outline" />
+                </v-col>
+              </v-row>
+            </div>
+
+            <div class="form-section">
+              <div class="form-section__label">Период проекта</div>
+              <v-row dense>
+                <v-col cols="12" md="6">
+                  <v-dialog max-width="360">
+                    <template #activator="{ props }">
+                      <v-text-field :model-value="editFormState.start_date" label="Дата начала" variant="outlined" density="comfortable" prepend-inner-icon="mdi-calendar-start" readonly v-bind="props" />
+                    </template>
+                    <template #default="{ isActive }">
+                      <v-card rounded="xl"><v-date-picker v-model="editFormState.start_date" locale="ru" :first-day-of-week="1" color="primary" @update:model-value="datePickerHandler(editFormState, 'start_date', isActive)" /></v-card>
+                    </template>
+                  </v-dialog>
+                </v-col>
+                <v-col cols="12" md="6">
+                  <v-dialog max-width="360">
+                    <template #activator="{ props }">
+                      <v-text-field :model-value="editFormState.end_date" label="Дата завершения" variant="outlined" density="comfortable" prepend-inner-icon="mdi-calendar-end" readonly v-bind="props" />
+                    </template>
+                    <template #default="{ isActive }">
+                      <v-card rounded="xl"><v-date-picker v-model="editFormState.end_date" locale="ru" :first-day-of-week="1" color="primary" @update:model-value="datePickerHandler(editFormState, 'end_date', isActive)" /></v-card>
+                    </template>
+                  </v-dialog>
+                </v-col>
+              </v-row>
+            </div>
+
+            <div class="form-section">
+              <div class="form-section__label">Координаты</div>
+              <v-row dense>
+                <v-col cols="12" md="6">
+                  <v-text-field v-model="editFormState.latitude" type="number" label="Широта" variant="outlined" density="comfortable" prepend-inner-icon="mdi-crosshairs-gps" />
+                </v-col>
+                <v-col cols="12" md="6">
+                  <v-text-field v-model="editFormState.longitude" type="number" label="Долгота" variant="outlined" density="comfortable" prepend-inner-icon="mdi-crosshairs" />
+                </v-col>
+                <v-col cols="12" class="d-flex flex-wrap ga-2">
+                  <v-btn variant="tonal" size="small" rounded="pill" color="primary" class="text-none" :loading="geolocationLoading" :disabled="!geolocationSupported || geolocationLoading" prepend-icon="mdi-crosshairs-gps" @click="detectCoordinatesForEdit">
+                    По геолокации
+                  </v-btn>
+                  <v-btn variant="tonal" size="small" rounded="pill" color="primary" class="text-none" :loading="geolocationLoading" :disabled="geolocationLoading || !editFormState.city" prepend-icon="mdi-map-search-outline" @click="geocodeAddressForEdit">
+                    По адресу
+                  </v-btn>
+                </v-col>
+                <v-col cols="12" v-if="editMapPreviewUrl">
+                  <v-responsive aspect-ratio="16/7" class="map-preview">
+                    <iframe :src="editMapPreviewUrl" frameborder="0" allowfullscreen loading="lazy" referrerpolicy="no-referrer-when-downgrade" />
+                  </v-responsive>
+                </v-col>
+              </v-row>
+            </div>
+
+            <div class="form-section">
+              <div class="form-section__label">Контакты</div>
+              <v-row dense>
+                <v-col cols="12" md="6">
+                  <v-text-field v-model="editFormState.contact_person" label="Контактное лицо" variant="outlined" density="comfortable" prepend-inner-icon="mdi-account-tie-outline" />
+                </v-col>
+                <v-col cols="12" md="6">
+                  <v-text-field v-model="editFormState.contact_phone" label="Телефон" variant="outlined" density="comfortable" prepend-inner-icon="mdi-phone-outline" />
+                </v-col>
+                <v-col cols="12" md="6">
+                  <v-text-field v-model="editFormState.contact_email" label="Email" variant="outlined" density="comfortable" prepend-inner-icon="mdi-email-outline" />
+                </v-col>
+                <v-col cols="12" md="6">
+                  <v-text-field v-model="editFormState.contact_telegram" label="Telegram" variant="outlined" density="comfortable" prepend-inner-icon="mdi-send-outline" hint="https://t.me/..." />
+                </v-col>
+                <v-col cols="12">
+                  <v-text-field v-model="editFormState.info_url" label="Сайт / доп. ссылка" variant="outlined" density="comfortable" prepend-inner-icon="mdi-web" />
+                </v-col>
+              </v-row>
+            </div>
+
+            <div class="form-section">
+              <div class="form-section__label">Обложка</div>
+              <v-file-input v-model="editFormState.cover_image" label="Загрузить изображение" variant="outlined" density="comfortable" prepend-inner-icon="mdi-image-edit-outline" prepend-icon="" accept="image/*" show-size hint="Загрузите новое изображение, если хотите заменить текущее" persistent-hint />
+            </div>
+          </v-form>
+        </v-card-text>
+        <v-divider />
+        <v-card-actions class="form-dialog__footer">
+          <v-btn variant="text" class="text-none" @click="closeEditDialog">Отмена</v-btn>
+          <v-btn color="primary" variant="flat" rounded="pill" class="text-none font-weight-bold px-6" :loading="editLoading" @click="submitEditProject">
+            Сохранить изменения
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- ───────────── DELETE DIALOG ───────────── -->
+    <v-dialog v-model="deleteDialog" max-width="440">
+      <v-card class="delete-dialog" rounded="2xl">
+        <div class="delete-dialog__icon">
+          <v-icon icon="mdi-trash-can-outline" size="32" color="error" />
+        </div>
+        <h2 class="delete-dialog__title">
+          {{ projectToDelete?.status === 'pending' ? 'Отозвать проект?' : 'Удалить проект?' }}
+        </h2>
+        <p class="delete-dialog__text">
+          Вы уверены, что хотите {{ projectToDelete?.status === 'pending' ? 'отозвать' : 'удалить' }} проект
+          <strong>«{{ projectToDelete?.title }}»</strong>? Это действие нельзя отменить.
+        </p>
+        <div class="delete-dialog__actions">
+          <v-btn variant="tonal" rounded="pill" class="text-none flex-grow-1" @click="closeDeleteDialog" :disabled="deleteLoading">
+            Отмена
+          </v-btn>
+          <v-btn color="error" variant="flat" rounded="pill" class="text-none font-weight-semibold flex-grow-1" :loading="deleteLoading" @click="submitDeleteProject">
+            {{ projectToDelete?.status === 'pending' ? 'Отозвать' : 'Удалить' }}
+          </v-btn>
+        </div>
+      </v-card>
+    </v-dialog>
+
+    <!-- ───────────── SNACKBAR ───────────── -->
+    <v-snackbar v-model="snackbar.show" :color="snackbar.color" timeout="4000" rounded="pill" location="bottom center">
+      {{ snackbar.message }}
+    </v-snackbar>
   </div>
 </template>
 
 <style scoped>
+/* ─── Base ─── */
 .projects-view {
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 20px;
+  padding: 4px 0 32px;
 }
 
-.projects-card {
-  padding: clamp(24px, 4vw, 40px);
-  background: linear-gradient(160deg, rgba(255, 255, 255, 0.96), rgba(244, 247, 253, 0.98));
+/* ─── Page Header ─── */
+.page-header {
+  background: linear-gradient(135deg, #f0faf0 0%, #fafff5 100%);
+  border: 1px solid rgba(139, 195, 74, 0.18);
+  border-radius: 20px;
+  padding: 24px 28px;
 }
 
-.project-card {
-  padding: 20px;
-  background: #ffffff;
-  border: 1px solid rgba(33, 33, 33, 0.05);
-  transition: box-shadow 0.2s ease, transform 0.2s ease;
-}
-
-.project-card:hover {
-  box-shadow: 0 16px 32px rgba(139, 195, 74, 0.15); /* BirQadam primary */
-  transform: translateY(-4px);
-}
-
-.empty-state {
-  padding: 32px;
-  text-align: center;
-  background: linear-gradient(150deg, rgba(139, 195, 74, 0.08), rgba(227, 121, 77, 0.08)); /* BirQadam colors */
-}
-
-.roadmap-card {
-  padding: clamp(24px, 4vw, 36px);
-  background: linear-gradient(160deg, rgba(139, 195, 74, 0.08), rgba(227, 121, 77, 0.08)); /* BirQadam colors */
-}
-
-.roadmap-card__steps {
+.page-header__content {
   display: flex;
-  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.page-title {
+  font-size: 1.75rem;
+  font-weight: 800;
+  line-height: 1.2;
+  letter-spacing: -0.5px;
+  color: #1a1a1a;
+  margin-bottom: 4px;
+}
+
+.page-subtitle {
+  font-size: 0.875rem;
+  color: rgba(0, 0, 0, 0.5);
+  margin: 0;
+}
+
+.create-btn {
+  border-radius: 50px !important;
+  font-size: 0.9rem;
+  padding: 0 24px;
+  height: 44px;
+  box-shadow: 0 4px 16px rgba(139, 195, 74, 0.35) !important;
+  transition: box-shadow 0.2s, transform 0.2s;
+}
+
+.create-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(139, 195, 74, 0.45) !important;
+}
+
+/* ─── Main Layout ─── */
+.main-layout {
+  display: grid;
+  grid-template-columns: 1fr 280px;
+  gap: 20px;
+  align-items: start;
+}
+
+@media (max-width: 960px) {
+  .main-layout {
+    grid-template-columns: 1fr;
+  }
+  .sidebar-col {
+    order: -1;
+  }
+}
+
+/* ─── Projects Grid ─── */
+.projects-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   gap: 16px;
 }
 
-.roadmap-card__step {
-  border: 1px dashed rgba(139, 195, 74, 0.25); /* BirQadam primary */
+.skeleton-card {
+  min-height: 320px;
 }
 
-.roadmap-card__list {
+/* ─── Project Card ─── */
+.project-card {
+  background: #ffffff;
+  border-radius: 18px;
+  border: 1px solid rgba(0, 0, 0, 0.07);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  transition: box-shadow 0.22s ease, transform 0.22s ease;
+}
+
+.project-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.1);
+}
+
+.project-card__cover {
+  position: relative;
+  height: 150px;
+  background: linear-gradient(135deg, #8bc34a 0%, #558b2f 100%);
+  flex-shrink: 0;
+}
+
+.project-card__cover--placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.project-card__cover-icon {
+  opacity: 0.7;
+}
+
+.project-card__status-badge {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+}
+
+.project-card__body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px;
+  flex: 1;
+}
+
+.project-card__title {
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.3;
+  color: #1a1a1a;
   margin: 0;
-  padding-left: 20px;
-  color: rgba(33, 33, 33, 0.72);
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
 }
 
-.roadmap-card__list li {
-  font-size: 0.95rem;
+.project-card__desc {
+  font-size: 0.825rem;
+  color: rgba(0, 0, 0, 0.55);
   line-height: 1.5;
+  margin: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
-.create-dialog {
-  border-radius: 28px;
-  background: linear-gradient(150deg, rgba(255, 255, 255, 0.98), rgba(236, 245, 255, 0.96));
+/* Meta chips */
+.project-card__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
 }
 
-:deep(.v-picker-title) {
-  display: none;
+.meta-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.75rem;
+  color: rgba(0, 0, 0, 0.55);
+  background: rgba(139, 195, 74, 0.08);
+  border: 1px solid rgba(139, 195, 74, 0.2);
+  border-radius: 100px;
+  padding: 3px 10px;
+  white-space: nowrap;
 }
 
-.project-card .link {
-  color: inherit;
+/* Stats */
+.project-card__stats {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  background: rgba(0, 0, 0, 0.025);
+  border-radius: 10px;
+}
+
+.stat-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: rgba(0, 0, 0, 0.6);
+}
+
+.stat-value {
+  font-size: 0.925rem;
+  font-weight: 700;
+  color: #1a1a1a;
+}
+
+.stat-label {
+  font-size: 0.75rem;
+  color: rgba(0, 0, 0, 0.45);
+}
+
+.stat-divider {
+  width: 1px;
+  height: 20px;
+  background: rgba(0, 0, 0, 0.1);
+}
+
+.tags-inline {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.tags-more {
+  font-size: 0.7rem;
+  color: rgba(0, 0, 0, 0.4);
+}
+
+/* Contacts */
+.project-card__contacts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.contact-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.775rem;
+  color: rgba(139, 195, 74, 0.9);
   text-decoration: none;
+  transition: color 0.15s;
 }
 
-.project-card .link:hover {
-  text-decoration: underline;
+.contact-link:hover {
+  color: #558b2f;
 }
 
-.contact-list {
-  list-style: none;
+/* Actions */
+.project-card__actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: auto;
+  padding-top: 4px;
+}
+
+/* ─── Empty State ─── */
+.empty-state {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 60px 24px;
+  border-radius: 18px;
+  border: 2px dashed rgba(139, 195, 74, 0.3);
+  background: rgba(139, 195, 74, 0.03);
+}
+
+.empty-state__illustration {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: rgba(139, 195, 74, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 16px;
+  color: rgba(139, 195, 74, 0.8);
+}
+
+.empty-state__title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+.empty-state__text {
+  font-size: 0.875rem;
+  color: rgba(0, 0, 0, 0.5);
+  max-width: 300px;
+  line-height: 1.5;
+  margin-bottom: 0;
+}
+
+/* ─── Sidebar / Checklist ─── */
+.sidebar-col {
+  position: sticky;
+  top: 80px;
+  max-height: calc(100vh - 100px);
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* Убираем sticky на мобильных и планшетах */
+@media (max-width: 960px) {
+  .sidebar-col {
+    position: static;
+    max-height: none;
+    overflow: visible;
+  }
+}
+
+.checklist-card {
+  background: #fff;
+  border-radius: 18px;
+  border: 1px solid rgba(0, 0, 0, 0.07);
+  padding: 20px;
+  max-height: 100%;
+}
+
+.checklist-card__header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: rgba(0, 0, 0, 0.45);
+  margin-bottom: 20px;
+}
+
+.checklist-card__icon {
+  color: #8bc34a;
+}
+
+.checklist-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  max-height: calc(100vh - 200px);
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 4px;
+}
+
+/* Убираем скролл на мобильных */
+@media (max-width: 960px) {
+  .checklist-steps {
+    max-height: none;
+    overflow: visible;
+    padding-right: 0;
+  }
+}
+
+/* Кастомный скроллбар для чек-листа */
+.checklist-steps::-webkit-scrollbar {
+  width: 6px;
+}
+
+.checklist-steps::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.05);
+  border-radius: 3px;
+}
+
+.checklist-steps::-webkit-scrollbar-thumb {
+  background: rgba(139, 195, 74, 0.3);
+  border-radius: 3px;
+}
+
+.checklist-steps::-webkit-scrollbar-thumb:hover {
+  background: rgba(139, 195, 74, 0.5);
+}
+
+.checklist-step {
+  display: flex;
+  gap: 14px;
+  padding-bottom: 20px;
+  position: relative;
+}
+
+.checklist-step:not(:last-child)::before {
+  content: '';
+  position: absolute;
+  left: 11px;
+  top: 26px;
+  bottom: 0;
+  width: 2px;
+  background: linear-gradient(to bottom, rgba(139, 195, 74, 0.3), transparent);
+}
+
+.checklist-step:last-child {
+  padding-bottom: 0;
+}
+
+.checklist-step__number {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #8bc34a, #558b2f);
+  color: white;
+  font-size: 0.75rem;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 1px;
+}
+
+.checklist-step__title {
+  display: flex;
+  align-items: center;
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: #1a1a1a;
+  margin-bottom: 6px;
+}
+
+.checklist-step__points {
+  padding-left: 14px;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.checklist-step__points li {
+  font-size: 0.8rem;
+  color: rgba(0, 0, 0, 0.55);
+  line-height: 1.45;
+}
+
+/* ─── Dialogs ─── */
+.form-dialog {
+  border-radius: 24px !important;
+  overflow: hidden;
+}
+
+.form-dialog__header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 20px 24px;
+}
+
+.form-dialog__header-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(139, 195, 74, 0.15), rgba(139, 195, 74, 0.08));
+  border: 1px solid rgba(139, 195, 74, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #558b2f;
+  flex-shrink: 0;
+}
+
+.form-dialog__header-icon--edit {
+  background: linear-gradient(135deg, rgba(255, 167, 38, 0.15), rgba(255, 167, 38, 0.08));
+  border-color: rgba(255, 167, 38, 0.2);
+  color: #e65100;
+}
+
+.form-dialog__title {
+  font-size: 1.1rem;
+  font-weight: 800;
+  line-height: 1.2;
+  margin: 0 0 2px;
+}
+
+.form-dialog__subtitle {
+  font-size: 0.8rem;
+  color: rgba(0, 0, 0, 0.45);
+  margin: 0;
+}
+
+.form-dialog__body {
+  padding: 20px 24px !important;
+  overflow-y: auto;
+}
+
+.form-dialog__footer {
+  padding: 16px 24px !important;
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* Адаптация для мобильных устройств */
+@media (max-width: 600px) {
+  .form-dialog__footer {
+    padding: 12px 16px !important;
+    flex-direction: column-reverse;
+    gap: 10px;
+  }
+  
+  .form-dialog__cancel-btn,
+  .form-dialog__submit-btn {
+    width: 100% !important;
+    margin: 0 !important;
+  }
+  
+  .form-dialog__submit-btn {
+    order: -1;
+  }
+  
+  .form-dialog__body {
+    padding: 16px !important;
+  }
+  
+  .form-dialog__header {
+    padding: 16px !important;
+  }
+}
+
+.form-section {
+  margin-bottom: 20px;
+}
+
+.form-section__label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.7px;
+  color: rgba(0, 0, 0, 0.4);
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+/* ─── Delete Dialog ─── */
+.delete-dialog {
+  padding: 32px 28px 28px !important;
+  text-align: center;
+}
+
+.delete-dialog__icon {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: rgba(244, 67, 54, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 16px;
+}
+
+.delete-dialog__title {
+  font-size: 1.15rem;
+  font-weight: 800;
+  margin-bottom: 10px;
+}
+
+.delete-dialog__text {
+  font-size: 0.875rem;
+  color: rgba(0, 0, 0, 0.55);
+  line-height: 1.55;
+  margin-bottom: 24px;
+}
+
+.delete-dialog__actions {
+  display: flex;
+  gap: 10px;
+}
+
+/* ─── Map preview ─── */
+.map-preview {
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid rgba(0, 0, 0, 0.08);
 }
 
 .map-preview iframe {
   width: 100%;
   height: 100%;
   border: 0;
-  border-radius: inherit;
 }
 </style>
-
-

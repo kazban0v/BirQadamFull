@@ -5,7 +5,7 @@ from django.conf import settings
 from django.contrib.auth import views as auth_views
 from .views.views import ProfileView, ProfileUpdateView, RapidPasswordResetView
 from .views.views import project_detail, ProjectUpdateView, ProjectDeleteView
-from .views.views import RegisterAPIView, LoginAPIView, ProfileAPIView, ProjectsAPIView, JoinProjectAPIView, UserTasksAPIView, OrganizerProjectsAPIView, ProjectParticipantsAPIView, ProjectManagementAPIView, ProjectTasksAPIView, LeaveProjectAPIView, DeviceTokenAPIView, ActivitiesAPIView, AchievementsAPIView, UserProgressAPIView, LeaderboardAPIView
+from .views.views import RegisterAPIView, LoginAPIView, ProfileAPIView, ProjectsAPIView, JoinProjectAPIView, UserTasksAPIView, OrganizerProjectsAPIView, ProjectParticipantsAPIView, ProjectManagementAPIView, ProjectTasksAPIView, LeaveProjectAPIView, DeviceTokenAPIView, ActivitiesAPIView, AchievementsAPIView, UserProgressAPIView, LeaderboardAPIView, TrustFactorHistoryAPIView
 from .api.photo import SubmitPhotoReportAPIView, OrganizerPhotoReportsAPIView, PhotoReportDetailAPIView, RatePhotoReportAPIView, RejectPhotoReportAPIView, VolunteerPhotoReportsAPIView, TaskPhotosAPIView
 from .api.task import AcceptTaskAPIView, DeclineTaskAPIView, CompleteTaskAPIView
 from .api.bulk_notifications import create_bulk_notification, send_bulk_notification, list_bulk_notifications, get_bulk_notification, list_notification_templates, preview_recipients
@@ -100,6 +100,7 @@ urlpatterns = [
     path('api/v1/achievements/', AchievementsAPIView.as_view(), name='api_v1_achievements'),
     path('api/v1/achievements/progress/', UserProgressAPIView.as_view(), name='api_v1_user_progress'),
     path('api/v1/leaderboard/', LeaderboardAPIView.as_view(), name='api_v1_leaderboard'),
+    path('api/v1/trust-factor/history/', TrustFactorHistoryAPIView.as_view(), name='api_v1_trust_factor_history'),
     
     # Photo reports API v1
     path('api/v1/tasks/<int:task_id>/photo-reports/', SubmitPhotoReportAPIView.as_view(), name='api_v1_submit_photo_report'),

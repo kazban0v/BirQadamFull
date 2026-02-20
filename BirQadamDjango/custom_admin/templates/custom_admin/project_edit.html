@@ -293,7 +293,7 @@
                 <h1><i class="fas fa-{% if is_edit %}edit{% else %}plus-circle{% endif %} me-2"></i>{% if is_edit %}Редактирование проекта{% else %}Создание нового проекта{% endif %}</h1>
                 <p class="mb-0 opacity-75">{% if is_edit %}Обновите информацию о проекте{% else %}Заполните форму для создания проекта{% endif %}</p>
             </div>
-            <a href="{% url 'project_list' %}" class="back-button mt-2 mt-md-0">
+            <a href="{% url 'custom_admin:project_list' %}" class="back-button mt-2 mt-md-0">
                 <i class="fas fa-arrow-left"></i>
                 К списку проектов
             </a>
@@ -404,7 +404,7 @@
                         <button type="submit" class="btn btn-custom btn-custom-success">
                             <i class="fas fa-save me-2"></i>{% if is_edit %}Сохранить изменения{% else %}Создать проект{% endif %}
                         </button>
-                        <a href="{% url 'project_list' %}" class="btn btn-custom btn-custom-secondary">
+                        <a href="{% url 'custom_admin:project_list' %}" class="btn btn-custom btn-custom-secondary">
                             <i class="fas fa-times me-2"></i>Отмена
                         </a>
                     </div>
@@ -443,7 +443,7 @@
                     <button type="button" class="btn btn-custom btn-custom-secondary" data-bs-dismiss="modal">
                         <i class="fas fa-times me-2"></i>Отмена
                     </button>
-                    <form method="POST" action="{% url 'project_delete' pk=form.instance.pk %}" style="display: inline;">
+                    <form method="POST" action="{% url 'custom_admin:project_delete' pk=form.instance.pk %}" style="display: inline;">
                         {% csrf_token %}
                         <button type="submit" class="btn btn-custom btn-custom-danger">
                             <i class="fas fa-trash-alt me-2"></i>Да, удалить

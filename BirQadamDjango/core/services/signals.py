@@ -1,26 +1,55 @@
 # core/signals.py
 from typing import Any
-from django.db.models.signals import post_save, m2m_changed
+from django.db.models.signals import post_save, m2m_changed, pre_save
 from django.dispatch import receiver
-from core.models import User, VolunteerProject, Event, GeofenceReminder, Project, Chat, SupportTicket
+from core.models import User, VolunteerProject, Event, GeofenceReminder, Project, Chat, SupportTicket, Task, Photo
 from bot.organization_handlers import notify_organizer_status
 from asgiref.sync import async_to_sync
+from core.services.email_notifications import (
+    notify_organizer_new_volunteer_application,
+    notify_volunteer_new_task,
+    notify_organizer_new_photo_report,
+    notify_volunteers_project_updated,
+    notify_organizer_application_status
+)
 import logging
 # from core.services.ticket_notification_service import notify_user_about_ticket_update  # Временно отключено
 
 logger = logging.getLogger(__name__)
+
+# Хранилище для отслеживания изменений
+_user_status_cache = {}
+_project_changes_cache = {}
+
+@receiver(pre_save, sender=User)
+def user_pre_save(sender: Any, instance: User, **kwargs: Any) -> None:
+    """Сохраняем старое значение organizer_status перед сохранением"""
+    if instance.pk:
+        try:
+            old_instance = User.objects.get(pk=instance.pk)
+            _user_status_cache[instance.pk] = old_instance.organizer_status
+        except User.DoesNotExist:
+            pass
+
 
 @receiver(post_save, sender=User)
 def user_saved(sender: Any, instance: User, **kwargs: Any) -> None:  # type: ignore[no-any-unimported]
     if kwargs.get('created', False):
         logger.info(f"New user created: {instance.username}, skipping notification")
         return  # Не отправляем уведомления при создании пользователя
+    
     # Проверяем, изменилось ли поле is_organizer
     if hasattr(instance, 'tracker') and hasattr(instance.tracker, 'has_changed') and instance.tracker.has_changed('is_organizer'):  # type: ignore[attr-defined]
         logger.info(f"is_organizer changed for user {instance.username} to {instance.is_organizer}")
         async_to_sync(notify_organizer_status)(instance)
-    else:
-        logger.info(f"No change in is_organizer for user {instance.username}, skipping notification")
+    
+    # Проверяем, изменился ли статус организатора (для email уведомлений)
+    old_status = _user_status_cache.get(instance.pk)
+    if old_status and old_status != instance.organizer_status:
+        logger.info(f"Organizer status changed for {instance.username}: {old_status} -> {instance.organizer_status}")
+        if instance.organizer_status in ['approved', 'rejected']:
+            notify_organizer_application_status(instance, instance.organizer_status)
+        _user_status_cache.pop(instance.pk, None)
 
 
 @receiver(post_save, sender=Project)
@@ -49,6 +78,49 @@ def create_chat_for_project(sender: Any, instance: Project, created: bool, **kwa
         logger.error(f"Error creating chat for project {project.id if hasattr(project, 'id') else 'unknown'}: {e}")  # type: ignore[attr-defined]
 
 
+@receiver(pre_save, sender=Project)
+def project_pre_save(sender: Any, instance: Project, **kwargs: Any) -> None:
+    """Сохраняем изменения проекта перед сохранением"""
+    if instance.pk:
+        try:
+            old_instance = Project.objects.get(pk=instance.pk)
+            changes = []
+            if old_instance.title != instance.title:
+                changes.append(f"Название: {old_instance.title} → {instance.title}")
+            if old_instance.description != instance.description:
+                changes.append("Описание обновлено")
+            if old_instance.status != instance.status:
+                changes.append(f"Статус: {old_instance.get_status_display()} → {instance.get_status_display()}")
+            if old_instance.start_date != instance.start_date:
+                changes.append("Дата начала изменена")
+            if old_instance.end_date != instance.end_date:
+                changes.append("Дата окончания изменена")
+            _project_changes_cache[instance.pk] = "\n".join(changes) if changes else None
+        except Project.DoesNotExist:
+            pass
+
+
+@receiver(post_save, sender=Project)
+def project_saved(sender: Any, instance: Project, created: bool, **kwargs: Any) -> None:
+    """Отправляет email уведомления волонтерам при обновлении проекта"""
+    if created:
+        return  # Не отправляем при создании
+    
+    changes = _project_changes_cache.pop(instance.pk, None)
+    if changes:
+        # Получаем всех активных волонтеров проекта
+        from core.models import VolunteerProject
+        volunteer_projects = VolunteerProject.objects.filter(
+            project=instance,
+            is_active=True
+        ).select_related('volunteer')
+        
+        volunteers = [vp.volunteer for vp in volunteer_projects if vp.volunteer.email]
+        if volunteers:
+            notify_volunteers_project_updated(volunteers, instance, changes)
+            logger.info(f"Sent project update emails to {len(volunteers)} volunteers for project {instance.title}")
+
+
 @receiver(post_save, sender=VolunteerProject)
 def create_geofence_for_project(sender: Any, instance: VolunteerProject, created: bool, **kwargs: Any) -> None:  # type: ignore[no-any-unimported]
     """Автоматически создает геонапоминание и добавляет в чат когда волонтер присоединяется к проекту"""
@@ -57,6 +129,11 @@ def create_geofence_for_project(sender: Any, instance: VolunteerProject, created
     
     project = instance.project
     volunteer = instance.volunteer
+    
+    # Отправляем email уведомление организатору о новой заявке
+    if project.creator and project.creator.email:
+        notify_organizer_new_volunteer_application(project.creator, volunteer, project)
+        logger.info(f"Sent email notification to organizer {project.creator.username} about new volunteer {volunteer.username}")
     
     # Добавляем волонтера в чат проекта
     try:
@@ -200,3 +277,42 @@ def create_geofence_for_event(sender, instance, action, pk_set, **kwargs):
         #             notify_user_about_ticket_update(instance, 'status_updated')
         # except Exception as e:
         #     logger.error(f"Error in support_ticket_saved signal: {e}")
+
+
+@receiver(post_save, sender=Task)
+def task_created(sender: Any, instance: Task, created: bool, **kwargs: Any) -> None:
+    """Отправляет email уведомления волонтерам при создании новой задачи"""
+    if not created:
+        return
+    
+    project = instance.project
+    
+    # Получаем всех активных волонтеров проекта
+    from core.models import VolunteerProject
+    volunteer_projects = VolunteerProject.objects.filter(
+        project=project,
+        is_active=True
+    ).select_related('volunteer')
+    
+    volunteers = [vp.volunteer for vp in volunteer_projects if vp.volunteer.email]
+    sent_count = 0
+    for volunteer in volunteers:
+        if notify_volunteer_new_task(volunteer, instance, project):
+            sent_count += 1
+    
+    if sent_count > 0:
+        logger.info(f"Sent email notifications to {sent_count} volunteers about new task {instance.id} in project {project.title}")
+
+
+@receiver(post_save, sender=Photo)
+def photo_created(sender: Any, instance: Photo, created: bool, **kwargs: Any) -> None:
+    """Отправляет email уведомление организатору при загрузке нового фотоотчета"""
+    if not created or instance.status != 'pending':
+        return
+    
+    project = instance.project
+    volunteer = instance.volunteer
+    
+    if project.creator and project.creator.email and volunteer:
+        notify_organizer_new_photo_report(project.creator, volunteer, instance, project)
+        logger.info(f"Sent email notification to organizer {project.creator.username} about new photo from {volunteer.username}")

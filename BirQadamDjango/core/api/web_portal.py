@@ -630,7 +630,9 @@ class VolunteerProfileAPIView(APIView):
 
     def get(self, request, *args, **kwargs):
         serializer = VolunteerProfileSerializer(request.user)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        data = serializer.data
+        logger.info(f"VolunteerProfileAPIView: Returning profile data for user {request.user.username}, trust_factor={data.get('trust_factor')}, average_rating={data.get('average_rating')}")
+        return Response(data, status=status.HTTP_200_OK)
 
     def patch(self, request, *args, **kwargs):
         serializer = VolunteerProfileSerializer(request.user, data=request.data, partial=True)

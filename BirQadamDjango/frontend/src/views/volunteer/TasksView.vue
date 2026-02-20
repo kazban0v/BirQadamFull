@@ -8,276 +8,227 @@ const router = useRouter();
 
 const loading = ref(false);
 const tasks = ref<VolunteerTask[]>([]);
-const filter = ref<'all' | 'open' | 'assigned' | 'completed'>('all');
-const snackbar = reactive({
-  show: false,
-  message: '',
-  color: 'success',
-});
+const filter = ref<'all' | 'open' | 'in_progress' | 'completed'>('all');
+const snackbar = reactive({ show: false, message: '', color: 'success' });
 
-const taskStatusMap: Record<string, { text: string; color: string }> = {
-  open: { text: 'Открыто', color: 'primary' },
-  in_progress: { text: 'В работе', color: 'warning' },
-  completed: { text: 'Выполнено', color: 'success' },
-  failed: { text: 'Отклонено', color: 'error' },
-  closed: { text: 'Закрыто', color: 'grey-darken-1' },
+// ─── Status config ────────────────────────────────────────────────
+const STATUS_MAP: Record<string, { text: string; color: string; bg: string }> = {
+  open:        { text: 'Открыто',   color: '#1565c0', bg: 'rgba(21,101,192,0.1)'  },
+  in_progress: { text: 'В работе',  color: '#e65100', bg: 'rgba(230,81,0,0.1)'    },
+  completed:   { text: 'Выполнено', color: '#2e7d32', bg: 'rgba(46,125,50,0.1)'   },
+  failed:      { text: 'Отклонено', color: '#c62828', bg: 'rgba(198,40,40,0.1)'   },
+  closed:      { text: 'Закрыто',   color: '#546e7a', bg: 'rgba(84,110,122,0.1)'  },
 };
 
-const filteredTasks = computed(() => {
-  let list = tasks.value;
+function statusCfg(status: string) {
+  return STATUS_MAP[status] ?? { text: status, color: '#546e7a', bg: 'rgba(84,110,122,0.1)' };
+}
 
-  if (filter.value === 'open') {
-    list = list.filter((task) => task.status === 'open' && !task.is_assigned);
-  } else if (filter.value === 'assigned') {
-    list = list.filter((task) => task.is_assigned && task.status !== 'completed');
-  } else if (filter.value === 'completed') {
-    list = list.filter((task) => task.status === 'completed');
-  }
+// ─── Filter tabs ──────────────────────────────────────────────────
+const FILTER_TABS = [
+  { key: 'all',         label: 'Все' },
+  { key: 'open',        label: 'Открытые' },
+  { key: 'in_progress', label: 'В работе' },
+  { key: 'completed',   label: 'Завершённые' },
+] as const;
 
-  return list;
-});
-
+// ─── Summary ──────────────────────────────────────────────────────
 const summary = computed(() => {
+  const list = tasks.value;
   return {
-    total: tasks.value.length,
-    open: tasks.value.filter((t) => t.status === 'open' && !t.is_assigned).length,
-    assigned: tasks.value.filter((t) => t.is_assigned && t.status !== 'completed').length,
-    completed: tasks.value.filter((t) => t.status === 'completed').length,
+    total:       list.length,
+    open:        list.filter(t => t.status === 'open' && !t.is_assigned).length,
+    in_progress: list.filter(t =>
+      t.status === 'in_progress' ||
+      (t.is_assigned && !['completed', 'failed', 'closed'].includes(t.status)),
+    ).length,
+    completed:   list.filter(t => t.status === 'completed').length,
   };
 });
 
-function formatDate(value: string | null) {
-  if (!value) return '—';
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return '—';
-  return new Intl.DateTimeFormat('ru-RU', {
-    day: '2-digit',
-    month: 'long',
-    year: 'numeric',
-  }).format(date);
-}
+// ─── Filtered list ────────────────────────────────────────────────
+const filteredTasks = computed(() => {
+  const list = tasks.value;
+  switch (filter.value) {
+    case 'open':
+      return list.filter(t => t.status === 'open' && !t.is_assigned);
+    case 'in_progress':
+      return list.filter(t =>
+        t.status === 'in_progress' ||
+        (t.is_assigned && !['completed', 'failed', 'closed'].includes(t.status)),
+      );
+    case 'completed':
+      return list.filter(t => t.status === 'completed');
+    default:
+      return list;
+  }
+});
 
-function formatDateTime(value: string) {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  return new Intl.DateTimeFormat('ru-RU', {
-    day: '2-digit',
-    month: 'long',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  }).format(date);
-}
+// ─── Formatters ───────────────────────────────────────────────────
+const dateFmt     = new Intl.DateTimeFormat('ru-RU', { day: '2-digit', month: 'long', year: 'numeric' });
+const dateTimeFmt = new Intl.DateTimeFormat('ru-RU', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 
+function formatDate(v: string | null)  { if (!v) return '—'; const d = new Date(v); return isNaN(d.getTime()) ? '—' : dateFmt.format(d); }
+function formatDateTime(v: string)     { const d = new Date(v); return isNaN(d.getTime()) ? v : dateTimeFmt.format(d); }
+
+// ─── Data loading ─────────────────────────────────────────────────
 async function loadTasks() {
   loading.value = true;
   try {
     tasks.value = await fetchVolunteerTasks();
   } catch (error: any) {
-    // Обрабатываем ошибку 429
     if (error?.response?.status === 429) {
-      showSnackbar('Слишком много запросов. Пожалуйста, подождите немного.', 'warning');
-      // Пытаемся использовать кеш если есть
+      showSnackbar('Слишком много запросов. Повторная попытка...', 'warning');
       setTimeout(() => loadTasks(), 2000);
     } else {
-      const errorMessage = error?.response?.data?.error || error?.response?.data?.detail || 'Не удалось загрузить задачи.';
-      showSnackbar(errorMessage, 'error');
+      const msg = error?.response?.data?.error || error?.response?.data?.detail || 'Не удалось загрузить задачи.';
+      showSnackbar(msg, 'error');
     }
   } finally {
     loading.value = false;
   }
 }
 
-function showSnackbar(message: string, color: string = 'success') {
-  snackbar.message = message;
-  snackbar.color = color;
-  snackbar.show = true;
+function showSnackbar(message: string, color = 'success') {
+  Object.assign(snackbar, { message, color, show: true });
 }
 
 function goToTask(taskId: number) {
   router.push({ name: 'volunteer-task-detail', params: { id: taskId } });
 }
 
-onMounted(async () => {
-  await loadTasks();
-});
+onMounted(loadTasks);
 </script>
 
 <template>
-  <div class="tasks-page">
-    <!-- Статистика - 2x2 -->
-    <v-row class="stats-row mb-4" dense>
-      <v-col cols="6" class="stats-col">
-        <v-card elevation="2" class="stats-card stats-card-total" rounded="lg">
-          <div class="stats-card-content">
-            <div class="stats-icon-wrapper">
-              <v-icon icon="mdi-clipboard-list" size="24" color="primary" />
-            </div>
-            <div class="stats-text">
-              <div class="stats-label">Всего задач</div>
-              <div class="stats-value">{{ summary.total }}</div>
-            </div>
-          </div>
-        </v-card>
-      </v-col>
-      <v-col cols="6" class="stats-col">
-        <v-card elevation="2" class="stats-card stats-card-open" rounded="lg">
-          <div class="stats-card-content">
-            <div class="stats-icon-wrapper">
-              <v-icon icon="mdi-folder-open-outline" size="24" color="info" />
-            </div>
-            <div class="stats-text">
-              <div class="stats-label">Открыто</div>
-              <div class="stats-value">{{ summary.open }}</div>
-            </div>
-          </div>
-        </v-card>
-      </v-col>
-      <v-col cols="6" class="stats-col">
-        <v-card elevation="2" class="stats-card stats-card-progress" rounded="lg">
-          <div class="stats-card-content">
-            <div class="stats-icon-wrapper">
-              <v-icon icon="mdi-progress-clock" size="24" color="warning" />
-            </div>
-            <div class="stats-text">
-              <div class="stats-label">В работе</div>
-              <div class="stats-value">{{ summary.assigned }}</div>
-            </div>
-          </div>
-        </v-card>
-      </v-col>
-      <v-col cols="6" class="stats-col">
-        <v-card elevation="2" class="stats-card stats-card-completed" rounded="lg">
-          <div class="stats-card-content">
-            <div class="stats-icon-wrapper">
-              <v-icon icon="mdi-check-circle-outline" size="24" color="success" />
-            </div>
-            <div class="stats-text">
-              <div class="stats-label">Завершено</div>
-              <div class="stats-value">{{ summary.completed }}</div>
-            </div>
-          </div>
-        </v-card>
-      </v-col>
-    </v-row>
+  <div class="tasks-view">
 
-    <!-- Фильтр -->
-    <v-row class="mb-4 mb-md-6">
-      <v-col cols="12">
-        <v-card elevation="3" class="filter-card" rounded="lg">
-          <div class="filter-header">
-            <v-icon icon="mdi-filter-variant" size="22" class="me-2" color="primary" />
-            <span class="filter-title">Фильтр</span>
-          </div>
-          <div class="filter-buttons">
-            <v-btn
-              :variant="filter === 'all' ? 'flat' : 'outlined'"
-              :color="filter === 'all' ? 'primary' : 'default'"
-              class="filter-btn text-none"
-              @click="filter = 'all'"
-            >
-              Все
-            </v-btn>
-            <v-btn
-              :variant="filter === 'open' ? 'flat' : 'outlined'"
-              :color="filter === 'open' ? 'primary' : 'default'"
-              class="filter-btn text-none"
-              @click="filter = 'open'"
-            >
-              Открытые
-            </v-btn>
-            <v-btn
-              :variant="filter === 'assigned' ? 'flat' : 'outlined'"
-              :color="filter === 'assigned' ? 'primary' : 'default'"
-              class="filter-btn text-none"
-              @click="filter = 'assigned'"
-            >
-              В работе
-            </v-btn>
-            <v-btn
-              :variant="filter === 'completed' ? 'flat' : 'outlined'"
-              :color="filter === 'completed' ? 'primary' : 'default'"
-              class="filter-btn text-none"
-              @click="filter = 'completed'"
-            >
-              Завершенные
-            </v-btn>
-          </div>
-        </v-card>
-      </v-col>
-    </v-row>
+    <!-- ─── Header ─── -->
+    <div class="page-header">
+      <div>
+        <h1 class="page-title">Мои задачи</h1>
+        <p class="page-subtitle">Задачи по проектам, в которых вы участвуете</p>
+      </div>
+    </div>
 
-    <v-alert
-      v-if="!loading && !filteredTasks.length"
-      type="info"
-      variant="tonal"
-      class="mb-6"
-    >
-      Задачи не найдены. Новые задачи появляются в проектах, к которым вы присоединились.
-    </v-alert>
+    <!-- ─── Summary ─── -->
+    <div class="summary-grid">
+      <div class="stat-card stat-card--green">
+        <div class="stat-card__ico"><v-icon icon="mdi-clipboard-list" size="22" /></div>
+        <div class="stat-card__val">{{ summary.total }}</div>
+        <div class="stat-card__lbl">Всего задач</div>
+      </div>
+      <div class="stat-card stat-card--blue">
+        <div class="stat-card__ico"><v-icon icon="mdi-folder-open-outline" size="22" /></div>
+        <div class="stat-card__val">{{ summary.open }}</div>
+        <div class="stat-card__lbl">Открытые</div>
+      </div>
+      <div class="stat-card stat-card--orange">
+        <div class="stat-card__ico"><v-icon icon="mdi-progress-clock" size="22" /></div>
+        <div class="stat-card__val">{{ summary.in_progress }}</div>
+        <div class="stat-card__lbl">В работе</div>
+      </div>
+      <div class="stat-card stat-card--teal">
+        <div class="stat-card__ico"><v-icon icon="mdi-check-circle-outline" size="22" /></div>
+        <div class="stat-card__val">{{ summary.completed }}</div>
+        <div class="stat-card__lbl">Завершено</div>
+      </div>
+    </div>
 
-    <v-row class="ga-4 ga-md-6" v-if="filteredTasks.length">
-      <v-col
+    <!-- ─── Filter bar ─── -->
+    <div class="filter-bar">
+      <button
+        v-for="tab in FILTER_TABS"
+        :key="tab.key"
+        class="filter-tab"
+        :class="{ 'filter-tab--active': filter === tab.key }"
+        @click="filter = tab.key"
+      >
+        {{ tab.label }}
+        <span
+          v-if="tab.key !== 'all'"
+          class="filter-tab__count"
+        >
+          {{
+            tab.key === 'open'        ? summary.open :
+            tab.key === 'in_progress' ? summary.in_progress :
+            summary.completed
+          }}
+        </span>
+      </button>
+    </div>
+
+    <!-- ─── Loading skeletons ─── -->
+    <div v-if="loading" class="cards-grid">
+      <div v-for="i in 4" :key="i" class="task-skeleton">
+        <v-skeleton-loader type="list-item-three-line" />
+      </div>
+    </div>
+
+    <!-- ─── Empty state ─── -->
+    <div v-else-if="!filteredTasks.length" class="empty-state">
+      <div class="empty-state__ico">
+        <v-icon icon="mdi-clipboard-text-off-outline" size="36" />
+      </div>
+      <p class="empty-state__title">Задачи не найдены</p>
+      <p class="empty-state__text">
+        {{ filter === 'all'
+          ? 'Новые задачи появляются в проектах, к которым вы присоединились.'
+          : 'Нет задач с выбранным статусом.' }}
+      </p>
+    </div>
+
+    <!-- ─── Task cards ─── -->
+    <div v-else class="cards-grid">
+      <div
         v-for="task in filteredTasks"
         :key="task.id"
-        cols="12"
-        md="6"
+        class="task-card"
+        @click="goToTask(task.id)"
       >
-        <v-card elevation="3" class="pa-4 pa-md-6 h-100 d-flex flex-column task-card">
-          <div class="d-flex justify-space-between align-start mb-3 mb-md-4 flex-wrap ga-2">
-            <div class="flex-grow-1 min-width-0">
-              <h3 class="text-subtitle-1 text-md-h6 font-weight-bold mb-2 task-title">{{ task.text }}</h3>
-              <div class="text-caption text-md-body-2 text-medium-emphasis mb-1 mb-md-2 task-info-item">
-                <v-icon icon="mdi-folder-outline" size="14" class="me-1 flex-shrink-0" />
-                <span>Проект: {{ task.project_title }}</span>
-              </div>
-              <div class="text-caption text-md-body-2 text-medium-emphasis mb-1 mb-md-2 task-info-item">
-                <v-icon icon="mdi-account-outline" size="14" class="me-1 flex-shrink-0" />
-                <span>Создатель: {{ task.creator_name }}</span>
-              </div>
-              <div class="text-caption text-md-body-2 text-medium-emphasis mb-1 mb-md-2 task-info-item">
-                <v-icon icon="mdi-clock-outline" size="14" class="me-1 flex-shrink-0" />
-                <span>Создано: {{ formatDateTime(task.created_at) }}</span>
-              </div>
-              <div v-if="task.deadline_date" class="text-caption text-md-body-2 text-medium-emphasis task-info-item">
-                <v-icon icon="mdi-calendar-clock" size="14" class="me-1 flex-shrink-0" />
-                <span>Срок: {{ formatDate(task.deadline_date) }}</span>
-                <span v-if="task.start_time && task.end_time" class="ms-1">
-                  ({{ task.start_time }} - {{ task.end_time }})
-                </span>
-              </div>
-            </div>
-            <v-chip
-              :color="taskStatusMap[task.status]?.color || 'primary'"
-              variant="tonal"
-              size="small"
-              class="ml-2 ml-md-3 flex-shrink-0 task-status-chip"
-            >
-              {{ taskStatusMap[task.status]?.text || task.status }}
-            </v-chip>
+        <!-- Top row: project chip + status badge -->
+        <div class="task-card__top">
+          <div class="task-card__project">
+            <v-icon icon="mdi-briefcase-outline" size="13" />
+            {{ task.project_title }}
           </div>
-
-          <v-spacer />
-
-          <div class="d-flex justify-end mt-3 mt-md-4">
-            <v-btn
-              color="primary"
-              variant="flat"
-              class="text-none font-weight-bold task-action-btn w-100 w-md-auto"
-              @click="goToTask(task.id)"
-            >
-              Перейти к задаче
-              <v-icon icon="mdi-arrow-right" end size="16" class="flex-shrink-0" />
-            </v-btn>
+          <div
+            class="task-card__status"
+            :style="{ color: statusCfg(task.status).color, background: statusCfg(task.status).bg }"
+          >
+            {{ statusCfg(task.status).text }}
           </div>
-        </v-card>
-      </v-col>
-    </v-row>
+        </div>
 
-    <v-skeleton-loader
-      v-if="loading"
-      type="card@4"
-    />
+        <!-- Title -->
+        <h3 class="task-card__title">{{ task.text }}</h3>
+
+        <!-- Meta -->
+        <div class="task-card__meta">
+          <div class="meta-item">
+            <v-icon icon="mdi-account-outline" size="13" />
+            {{ task.creator_name }}
+          </div>
+          <div class="meta-item">
+            <v-icon icon="mdi-clock-outline" size="13" />
+            {{ formatDateTime(task.created_at) }}
+          </div>
+          <div v-if="task.deadline_date" class="meta-item meta-item--deadline">
+            <v-icon icon="mdi-calendar-clock" size="13" />
+            Срок: {{ formatDate(task.deadline_date) }}
+            <span v-if="task.start_time && task.end_time">&nbsp;{{ task.start_time }}–{{ task.end_time }}</span>
+          </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="task-card__footer">
+          <span class="task-card__go">
+            Перейти к задаче
+            <v-icon icon="mdi-arrow-right" size="14" />
+          </span>
+        </div>
+      </div>
+    </div>
 
     <v-snackbar v-model="snackbar.show" :color="snackbar.color" timeout="4000">
       {{ snackbar.message }}
@@ -286,332 +237,281 @@ onMounted(async () => {
 </template>
 
 <style scoped>
-.tasks-page {
+/* ─── Base ─── */
+.tasks-view {
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 16px;
 }
 
-/* Строка статистики */
-.stats-row {
-  margin: -8px !important;
-  display: flex;
-  flex-wrap: wrap;
+/* ─── Page header ─── */
+.page-header {
+  background: linear-gradient(135deg, #f0faf0, #fafff5);
+  border: 1px solid rgba(139, 195, 74, 0.18);
+  border-radius: 20px;
+  padding: 20px 28px;
 }
 
-.stats-col {
-  padding: 8px !important;
-  flex: 0 0 50%;
-  max-width: 50%;
-}
-
-/* Карточки статистики */
-.stats-card {
-  background: white;
-  border: 1px solid rgba(76, 175, 80, 0.12);
-  transition: all 0.3s ease;
-  overflow: hidden;
-  position: relative;
-  height: 100%;
-}
-
-.stats-card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 3px;
-  background: linear-gradient(90deg, rgba(76, 175, 80, 0.4), rgba(76, 175, 80, 0.2));
-  opacity: 0;
-  transition: opacity 0.3s ease;
-}
-
-.stats-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(76, 175, 80, 0.15) !important;
-  border-color: rgba(76, 175, 80, 0.25);
-}
-
-.stats-card:hover::before {
-  opacity: 1;
-}
-
-.stats-card-total::before {
-  background: linear-gradient(90deg, rgba(76, 175, 80, 0.5), rgba(76, 175, 80, 0.3));
-}
-
-.stats-card-open::before {
-  background: linear-gradient(90deg, rgba(33, 150, 243, 0.5), rgba(33, 150, 243, 0.3));
-}
-
-.stats-card-progress::before {
-  background: linear-gradient(90deg, rgba(255, 152, 0, 0.5), rgba(255, 152, 0, 0.3));
-}
-
-.stats-card-completed::before {
-  background: linear-gradient(90deg, rgba(76, 175, 80, 0.5), rgba(76, 175, 80, 0.3));
-}
-
-.stats-card-content {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  padding: 16px 12px;
-  min-height: 100px;
-}
-
-.stats-icon-wrapper {
-  width: 48px;
-  height: 48px;
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: linear-gradient(135deg, rgba(76, 175, 80, 0.12), rgba(76, 175, 80, 0.06));
-  flex-shrink: 0;
-  margin-bottom: 10px;
-}
-
-.stats-card-open .stats-icon-wrapper {
-  background: linear-gradient(135deg, rgba(33, 150, 243, 0.12), rgba(33, 150, 243, 0.06));
-}
-
-.stats-card-progress .stats-icon-wrapper {
-  background: linear-gradient(135deg, rgba(255, 152, 0, 0.12), rgba(255, 152, 0, 0.06));
-}
-
-.stats-card-completed .stats-icon-wrapper {
-  background: linear-gradient(135deg, rgba(76, 175, 80, 0.15), rgba(76, 175, 80, 0.08));
-}
-
-.stats-text {
-  width: 100%;
-}
-
-.stats-label {
-  font-size: 0.7rem;
-  color: #6c757d;
-  font-weight: 600;
-  margin-bottom: 6px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.stats-value {
-  font-size: 1.9rem;
+.page-title {
+  font-size: 1.75rem;
   font-weight: 800;
+  letter-spacing: -0.5px;
   color: #1a1a1a;
-  line-height: 1.1;
+  margin: 0 0 4px;
 }
 
-/* Карточка фильтра */
-.filter-card {
-  background: white;
-  border: 1px solid rgba(76, 175, 80, 0.2);
-  padding: 18px;
-  box-shadow: 0 2px 10px rgba(76, 175, 80, 0.1);
+.page-subtitle {
+  font-size: 0.875rem;
+  color: rgba(0, 0, 0, 0.45);
+  margin: 0;
 }
 
-.filter-header {
-  display: flex;
-  align-items: center;
-  margin-bottom: 14px;
-  font-weight: 700;
-  color: #1a1a1a;
-  font-size: 0.9375rem;
-  text-transform: uppercase;
-  letter-spacing: 0.8px;
-}
-
-.filter-title {
-  color: #1a1a1a;
-}
-
-.filter-buttons {
+/* ─── Summary grid ─── */
+.summary-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 8px;
-  width: 100%;
+  gap: 12px;
 }
 
-.filter-btn {
+.stat-card {
+  background: #fff;
+  border-radius: 16px;
+  border: 1px solid rgba(0, 0, 0, 0.07);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 5px;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.stat-card:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(0,0,0,0.08); }
+
+.stat-card__ico {
+  width: 44px; height: 44px;
+  border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  margin-bottom: 4px;
+}
+
+.stat-card--green  .stat-card__ico { background: rgba(139,195,74,0.12); color: #558b2f; }
+.stat-card--blue   .stat-card__ico { background: rgba(21,101,192,0.12); color: #1565c0; }
+.stat-card--orange .stat-card__ico { background: rgba(230,81,0,0.12);   color: #e65100; }
+.stat-card--teal   .stat-card__ico { background: rgba(0,105,92,0.12);   color: #00695c; }
+
+.stat-card__val {
+  font-size: 1.75rem;
+  font-weight: 800;
+  color: #1a1a1a;
+  line-height: 1;
+}
+
+.stat-card__lbl {
+  font-size: 0.73rem;
   font-weight: 600;
-  letter-spacing: 0.3px;
-  padding: 14px 12px !important;
-  font-size: 0.9rem !important;
-  min-height: 48px !important;
-  border-radius: 8px !important;
-  border: 1.5px solid rgba(76, 175, 80, 0.25) !important;
-  transition: all 0.2s ease;
+  color: rgba(0, 0, 0, 0.45);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
 }
 
-.filter-btn.v-btn--variant-flat {
-  background: linear-gradient(135deg, rgba(76, 175, 80, 0.25), rgba(76, 175, 80, 0.18)) !important;
-  color: rgb(var(--v-theme-primary)) !important;
-  font-weight: 700 !important;
-  box-shadow: inset 0 2px 4px rgba(76, 175, 80, 0.1) !important;
-  border-color: rgba(76, 175, 80, 0.4) !important;
+/* ─── Filter bar ─── */
+.filter-bar {
+  display: flex;
+  gap: 5px;
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.07);
+  border-radius: 14px;
+  padding: 5px;
 }
 
-.filter-btn.v-btn--variant-outlined:hover {
-  background: rgba(76, 175, 80, 0.08) !important;
+.filter-tab {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 9px 10px;
+  border-radius: 9px;
+  border: none;
+  background: transparent;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: rgba(0, 0, 0, 0.45);
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s;
+  white-space: nowrap;
+}
+.filter-tab:hover { background: rgba(139,195,74,0.06); color: #558b2f; }
+.filter-tab--active { background: rgba(139,195,74,0.14); color: #3a7422; font-weight: 700; }
+
+.filter-tab__count {
+  padding: 1px 7px;
+  border-radius: 100px;
+  background: rgba(0, 0, 0, 0.07);
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: rgba(0, 0, 0, 0.4);
+}
+.filter-tab--active .filter-tab__count { background: rgba(139,195,74,0.2); color: #558b2f; }
+
+/* ─── Cards grid ─── */
+.cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 14px;
 }
 
+/* ─── Task card ─── */
 .task-card {
-  transition: box-shadow 0.2s ease, transform 0.2s ease;
+  background: #fff;
+  border-radius: 16px;
+  border: 1px solid rgba(0, 0, 0, 0.07);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
 }
-
 .task-card:hover {
-  box-shadow: 0 8px 24px rgba(139, 195, 74, 0.15);
   transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(139, 195, 74, 0.12);
+  border-color: rgba(139, 195, 74, 0.25);
 }
 
-/* Мобильная адаптация */
-@media (max-width: 960px) {
-  .stats-card-content {
-    padding: 14px 10px;
-    min-height: 90px;
-  }
-  
-  .stats-icon-wrapper {
-    width: 40px;
-    height: 40px;
-    margin-bottom: 8px;
-  }
-  
-  .stats-icon-wrapper :deep(.v-icon) {
-    font-size: 20px !important;
-  }
-  
-  .stats-value {
-    font-size: 1.6rem;
-  }
-  
-  .stats-label {
-    font-size: 0.65rem;
-    margin-bottom: 4px;
-  }
-  
-  .filter-card {
-    padding: 16px;
-  }
-  
-  .filter-header {
-    margin-bottom: 12px;
-    font-size: 0.875rem;
-  }
-  
-  .filter-buttons {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 8px;
-  }
-  
-  .filter-btn {
-    font-size: 0.875rem !important;
-    padding: 12px 10px !important;
-    min-height: 44px !important;
-  }
-  
-  .task-info-item {
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-  }
-  
-  .task-title {
-    word-break: break-word;
-    line-height: 1.3;
-  }
+.task-card__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.task-card__project {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: rgba(0, 0, 0, 0.42);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.task-card__status {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 9px;
+  border-radius: 100px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.task-card__title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #1a1a1a;
+  line-height: 1.4;
+  margin: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.task-card__meta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.meta-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.8rem;
+  color: rgba(0, 0, 0, 0.48);
+}
+
+.meta-item--deadline { color: #e65100; font-weight: 600; }
+
+.task-card__footer {
+  margin-top: auto;
+  padding-top: 10px;
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.task-card__go {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #558b2f;
+  transition: gap 0.15s;
+}
+.task-card:hover .task-card__go { gap: 9px; }
+
+/* ─── Skeleton ─── */
+.task-skeleton {
+  background: #fff;
+  border-radius: 16px;
+  border: 1px solid rgba(0,0,0,0.07);
+  overflow: hidden;
+}
+
+/* ─── Empty state ─── */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 64px 24px;
+  text-align: center;
+  background: #fff;
+  border-radius: 20px;
+  border: 1px solid rgba(0, 0, 0, 0.07);
+}
+
+.empty-state__ico {
+  width: 72px; height: 72px;
+  border-radius: 50%;
+  background: rgba(139, 195, 74, 0.08);
+  display: flex; align-items: center; justify-content: center;
+  color: rgba(139, 195, 74, 0.55);
+  margin-bottom: 14px;
+}
+
+.empty-state__title { font-size: 1rem; font-weight: 800; color: #1a1a1a; margin: 0 0 6px; }
+.empty-state__text  { font-size: 0.875rem; color: rgba(0,0,0,0.45); margin: 0; max-width: 320px; }
+
+/* ─── Responsive ─── */
+@media (max-width: 860px) {
+  .summary-grid { grid-template-columns: repeat(2, 1fr); }
 }
 
 @media (max-width: 600px) {
-  .stats-row {
-    margin: -4px !important;
-  }
-  
-  .stats-col {
-    padding: 4px !important;
-  }
-  
-  .stats-card-content {
-    padding: 12px 8px;
-    min-height: 85px;
-  }
-  
-  .stats-icon-wrapper {
-    width: 36px;
-    height: 36px;
-    margin-bottom: 6px;
-  }
-  
-  .stats-icon-wrapper :deep(.v-icon) {
-    font-size: 18px !important;
-  }
-  
-  .stats-value {
-    font-size: 1.5rem;
-  }
-  
-  .stats-label {
-    font-size: 0.6rem;
-    margin-bottom: 4px;
-    line-height: 1.2;
-  }
-  
-  .filter-card {
-    padding: 14px;
-  }
-  
-  .filter-header {
-    font-size: 0.8rem;
-    margin-bottom: 10px;
-  }
-  
-  .filter-header :deep(.v-icon) {
-    font-size: 18px !important;
-  }
-  
-  .filter-buttons {
-    grid-template-columns: 1fr;
-    gap: 8px;
-  }
-  
-  .filter-btn {
-    font-size: 0.85rem !important;
-    padding: 12px 16px !important;
-    min-height: 44px !important;
-    width: 100% !important;
-  }
-  
-  .task-action-btn {
-    font-size: 0.875rem !important;
-    padding: 10px 16px !important;
-  }
-  
-  .task-action-btn :deep(.v-btn__content) {
-    font-size: 0.875rem;
-    gap: 4px;
-  }
-  
-  .task-status-chip {
-    margin-left: 0 !important;
-    margin-top: 8px;
-    align-self: flex-start;
-  }
-  
-  .task-card {
-    padding: 16px !important;
-  }
+  .page-header { padding: 16px 18px; border-radius: 16px; }
+  .page-title  { font-size: 1.4rem; }
+
+  /* Stats: 2×2 */
+  .summary-grid { gap: 8px; }
+  .stat-card { padding: 14px 10px; }
+  .stat-card__val { font-size: 1.5rem; }
+
+  /* Filter: wrap 2×2 */
+  .filter-bar { flex-wrap: wrap; border-radius: 12px; }
+  .filter-tab { flex: 1 0 calc(50% - 6px); font-size: 0.82rem; padding: 8px 6px; }
+
+  /* Cards: single column */
+  .cards-grid { grid-template-columns: 1fr; }
 }
 
-@media (max-width: 400px) {
-  .filter-btn {
-    font-size: 0.8rem !important;
-    padding: 10px 12px !important;
-    min-height: 40px !important;
-  }
+@media (max-width: 360px) {
+  .stat-card__val { font-size: 1.3rem; }
+  .stat-card__lbl { font-size: 0.65rem; }
+  .filter-tab     { font-size: 0.78rem; }
 }
 </style>

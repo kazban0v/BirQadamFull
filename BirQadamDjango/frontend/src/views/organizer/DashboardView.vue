@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 
 import { useAuthStore } from '@/stores/auth';
@@ -13,52 +13,100 @@ const organizerStore = useOrganizerStore();
 const status = computed(() => authStore.user?.organizer_status ?? 'pending');
 const isApproved = computed(() => status.value === 'approved');
 const isRejected = computed(() => status.value === 'rejected');
-const isPending = computed(() => status.value === 'pending');
 
 if (organizerStore.isOrganizer) {
   organizerStore.loadProjects();
 }
 
+// Автоматическое обновление статуса онбординга
+const refreshInterval = ref<ReturnType<typeof setInterval> | null>(null);
+const isRefreshing = ref(false);
+
+const refreshOrganizerStatus = async () => {
+  if (isRefreshing.value) return;
+  try {
+    isRefreshing.value = true;
+    await authStore.loadUser();
+    if (organizerStore.isOrganizer) {
+      await organizerStore.loadProjects(true);
+    }
+  } catch (error) {
+    console.error('Failed to refresh organizer status:', error);
+  } finally {
+    isRefreshing.value = false;
+  }
+};
+
+// Автоматическое обновление каждые 30 секунд, если статус pending
+watch(() => status.value, (newStatus) => {
+  if (newStatus === 'pending' && !refreshInterval.value) {
+    refreshInterval.value = setInterval(refreshOrganizerStatus, 30000); // 30 секунд
+  } else if (newStatus !== 'pending' && refreshInterval.value) {
+    clearInterval(refreshInterval.value);
+    refreshInterval.value = null;
+  }
+}, { immediate: true });
+
+onMounted(() => {
+  // Первоначальная загрузка
+  refreshOrganizerStatus();
+  // Если статус pending, запускаем автообновление
+  if (status.value === 'pending') {
+    refreshInterval.value = setInterval(refreshOrganizerStatus, 30000);
+  }
+});
+
+onUnmounted(() => {
+  if (refreshInterval.value) {
+    clearInterval(refreshInterval.value);
+  }
+});
+
 const quickActions = [
   {
     title: 'Создать проект',
-    description: 'Опишите идею, укажите город и тип волонтёров. Проект автоматически появится в приложении.',
+    description: 'Опишите идею, укажите город и тип волонтёров.',
     icon: 'mdi-rocket-launch-outline',
-    color: 'primary',
+    accent: '#558b2f',
+    bg: 'rgba(139, 195, 74, 0.1)',
     to: '/organizer/projects',
-    chip: 'Проекты',
+    tag: 'Проекты',
   },
   {
     title: 'Команда волонтёров',
-    description: 'Просматривайте участников, назначайте роли и отслеживайте активность по проектам.',
+    description: 'Просматривайте участников и отслеживайте активность.',
     icon: 'mdi-account-multiple-check-outline',
-    color: 'teal-darken-1',
+    accent: '#00695c',
+    bg: 'rgba(0, 137, 123, 0.1)',
     to: '/organizer/volunteers',
-    chip: 'Команда',
+    tag: 'Команда',
   },
   {
     title: 'Назначить задачу',
-    description: 'Создавайте задания, прикрепляйте инструкции и уведомляйте волонтёров в одно касание.',
+    description: 'Создавайте задания и уведомляйте волонтёров.',
     icon: 'mdi-clipboard-plus-outline',
-    color: 'indigo-darken-1',
+    accent: '#283593',
+    bg: 'rgba(57, 73, 171, 0.1)',
     to: '/organizer/tasks',
-    chip: 'Задачи',
+    tag: 'Задачи',
   },
   {
     title: 'Проверить фото',
-    description: 'Утверждайте фотоотчёты, оставляйте комментарии и возвращайте на доработку.',
+    description: 'Утверждайте фотоотчёты и оставляйте комментарии.',
     icon: 'mdi-image-filter-center-focus-strong-outline',
-    color: 'deep-orange-darken-1',
+    accent: '#bf360c',
+    bg: 'rgba(230, 74, 25, 0.1)',
     to: '/organizer/photo-moderation',
-    chip: 'Модерация',
+    tag: 'Модерация',
   },
   {
     title: 'Мои проекты',
-    description: 'Отслеживайте статус заявок, количество волонтёров и прогресс по задачам.',
+    description: 'Отслеживайте статус заявок и прогресс по задачам.',
     icon: 'mdi-view-list-outline',
-    color: 'purple-darken-1',
+    accent: '#4527a0',
+    bg: 'rgba(94, 53, 177, 0.1)',
     to: '/organizer/projects',
-    chip: 'Статистика',
+    tag: 'Статистика',
   },
 ];
 
@@ -67,7 +115,7 @@ const onboardingSteps = computed(() => {
     {
       key: 'submitted',
       title: 'Заявка отправлена',
-      description: 'Вы заполнили профиль организатора и указали контактные данные.',
+      description: 'Профиль заполнен, контактные данные указаны.',
       status: 'done' as const,
     },
     {
@@ -75,697 +123,990 @@ const onboardingSteps = computed(() => {
       title: 'Проверка модератором',
       description: isApproved.value
         ? 'Команда BirQadam завершила проверку и подтвердила заявку.'
-        : 'Команда BirQadam оценивает ваш проект и проверяет документы.',
+        : 'Команда BirQadam оценивает документы — обычно до 24 часов.',
       status: isApproved.value ? 'done' : isRejected.value ? 'error' : 'active',
     },
   ];
-
   if (isApproved.value) {
     steps.push({
       key: 'approval',
-      title: 'Доступ к созданию проектов',
-      description: 'Теперь вы можете создавать проекты, приглашать команду и управлять задачами.',
+      title: 'Доступ открыт',
+      description: 'Можно создавать проекты, приглашать команду и управлять задачами.',
       status: 'done' as const,
     });
   }
-
   const currentKey = isApproved.value ? 'approval' : 'review';
-  const total = steps.length;
-
-  return steps.map((step) => ({
-    ...step,
-    isCurrent: step.key === currentKey,
-    total,
-  }));
+  return steps.map((s, i) => ({ ...s, index: i, isCurrent: s.key === currentKey, total: steps.length }));
 });
 
-const reviewStepState = computed<'success' | 'error' | 'pending'>(() => {
-  if (isApproved.value) return 'success';
-  if (isRejected.value) return 'error';
-  return 'pending';
-});
-
-const reviewAlertConfig = computed(() => {
-  if (isApproved.value) {
-    return {
-      color: 'success',
-      icon: 'mdi-check-decagram',
-      title: 'Заявка одобрена',
-      text: 'Мы уже отправили уведомление в Telegram и email. Можете переходить к созданию проектов.',
-      details: [
-        { icon: 'mdi-rocket-launch-outline', text: 'Создайте первый проект и добавьте команду волонтёров.' },
-        { icon: 'mdi-bell-ring-outline', text: 'Все уведомления будут приходить в Telegram и приложение.' },
-      ],
-      action: {
-        label: 'Перейти к созданию проекта',
-        to: '/organizer/projects',
-      },
-    };
-  }
-
-  if (isRejected.value) {
-    return {
-      color: 'error',
-      icon: 'mdi-alert-circle',
-      title: 'Нужны доработки',
-      text: 'Проверьте комментарии модератора, обновите данные и отправьте заявку повторно.',
-      details: [
-        { icon: 'mdi-pencil-outline', text: 'Обновите профиль организатора.' },
-        { icon: 'mdi-headset', text: 'Если остались вопросы — напишите в поддержку BirQadam.' },
-      ],
-    };
-  }
-
-  return {
-    color: 'warning',
-    icon: 'mdi-progress-clock',
-    title: 'Заявка на рассмотрении',
-    text: 'Обычно проверка занимает до 24 часов. Мы уведомим вас сразу после решения.',
+const statusConfig = computed(() => {
+  if (isApproved.value) return {
+    color: '#2e7d32', bg: 'rgba(46,125,50,0.07)', border: 'rgba(46,125,50,0.18)',
+    icon: 'mdi-check-decagram', chip: 'Одобрено',
+    title: 'Заявка одобрена',
+    text: 'Уведомление отправлено в Telegram и email. Можно создавать проекты.',
     details: [
-      { icon: 'mdi-telegram', text: 'Уведомим в Telegram и email, как только появится решение.' },
-      { icon: 'mdi-clipboard-text-outline', text: 'Соберите описание проекта, список задач и требования к команде.' },
+      { icon: 'mdi-rocket-launch-outline', text: 'Создайте первый проект и добавьте команду.' },
+      { icon: 'mdi-bell-ring-outline', text: 'Уведомления — в Telegram и приложении.' },
     ],
+    action: { label: 'Создать проект', to: '/organizer/projects' },
+  };
+  if (isRejected.value) return {
+    color: '#c62828', bg: 'rgba(198,40,40,0.06)', border: 'rgba(198,40,40,0.16)',
+    icon: 'mdi-alert-circle', chip: 'Нужны правки',
+    title: 'Нужны доработки',
+    text: 'Проверьте комментарии модератора, обновите данные и отправьте заявку повторно.',
+    details: [
+      { icon: 'mdi-pencil-outline', text: 'Обновите профиль организатора.' },
+      { icon: 'mdi-headset', text: 'Вопросы — напишите в поддержку BirQadam.' },
+    ],
+    action: null,
+  };
+  return {
+    color: '#e65100', bg: 'rgba(230,81,0,0.06)', border: 'rgba(230,81,0,0.16)',
+    icon: 'mdi-progress-clock', chip: 'На модерации',
+    title: 'Заявка на рассмотрении',
+    text: 'Обычно проверка занимает до 24 часов. Уведомим сразу после решения.',
+    details: [
+      { icon: 'mdi-telegram', text: 'Уведомим в Telegram и email после решения.' },
+      { icon: 'mdi-clipboard-text-outline', text: 'Подготовьте описание проекта и список задач.' },
+    ],
+    action: null,
   };
 });
 
 const onboardingProgress = computed(() => {
   if (isApproved.value) return 100;
   if (isRejected.value) return 33;
-  if (isPending.value) return 66;
-  return 0;
+  return 66;
 });
 
-const onboardingChip = computed(() => {
-  if (isApproved.value) {
-    return {
-      color: 'success',
-      text: 'Одобрено',
-    };
-  }
-
-  if (isRejected.value) {
-    return {
-      color: 'error',
-      text: 'Требуются правки',
-    };
-  }
-
-  return {
-    color: 'warning',
-    text: 'На модерации',
+const stepIconConfig = (st: string) => {
+  const map: Record<string, { icon: string; bg: string }> = {
+    done:    { icon: 'mdi-check',            bg: 'linear-gradient(135deg,#4caf50,#2e7d32)' },
+    active:  { icon: 'mdi-progress-clock',   bg: 'linear-gradient(135deg,#8bc34a,#558b2f)' },
+    error:   { icon: 'mdi-alert',            bg: 'linear-gradient(135deg,#e53935,#c62828)' },
+    waiting: { icon: 'mdi-dots-horizontal',  bg: 'linear-gradient(135deg,#90a4ae,#607d8b)' },
   };
-});
-
-const onboardingStatusMessage = computed(() => {
-  if (isApproved.value) {
-    return 'Доступ открыт';
-  }
-  if (isRejected.value) {
-    return 'Нужно обновить данные';
-  }
-  if (onboardingProgress.value === 66) {
-    return 'Ожидаем подтверждения';
-  }
-  return 'На рассмотрении';
-});
+  return map[st] || map.waiting;
+};
 
 const infoCards = [
   {
     title: 'Синхронизация с Telegram',
-    text: 'Все действия из веб-портала автоматически появляются в Telegram-боте.',
+    text: 'Все действия из веб-портала сразу появляются в Telegram-боте.',
     iconSrc: telegramIcon,
-    avatarColor: '#E0F2FF',
+    accent: '#0088cc',
+    bg: 'rgba(0,136,204,0.08)',
   },
   {
-    title: 'Уведомления',
-    text: 'Команда моментально получает пуш-уведомления о задачах и комментариях.',
+    title: 'Мгновенные уведомления',
+    text: 'Команда получает пуш-уведомления о задачах и комментариях.',
     icon: 'mdi-bell-badge-outline',
-    iconColor: '#FF6F00',
-    avatarColor: '#FFF3E0',
+    accent: '#e65100',
+    bg: 'rgba(230,81,0,0.08)',
   },
   {
     title: 'Аналитика',
-    text: 'В разработке — подробная статистика по проектам, фото и активности волонтёров.',
+    text: 'Подробная статистика по проектам, фото и активности волонтёров.',
     icon: 'mdi-chart-areaspline',
-    iconColor: '#6A1B9A',
-    avatarColor: '#F3E5F5',
+    accent: '#4527a0',
+    bg: 'rgba(94,53,177,0.08)',
   },
 ];
 
-const navigate = (to: string) => {
-  router.push(to);
-};
+const navigate = (to: string) => router.push(to);
 </script>
 
 <template>
   <div class="dashboard">
-    <v-row class="ga-6">
-      <v-col cols="12">
-        <v-card class="hero-card" elevation="8">
-          <div class="hero-card__content">
-            <div class="hero-card__badge">
-              <v-icon icon="mdi-account-tie-outline" size="20" />
-              Кабинет организатора
-            </div>
-            <h1>
-              Управляйте проектами,<br />
-              задачами и командой BirQadam
-            </h1>
-            <p>
-              Быстрый доступ ко всем функциям из Telegram: проекты, волонтёры, задачи и модерация фото. Весь прогресс
-              сохраняется в одной системе.
-            </p>
-            <div class="hero-card__actions">
-              <v-btn
-                color="white"
-                variant="flat"
-                class="text-none font-weight-bold hero-card__btn"
-                @click="navigate('/organizer/projects')"
-              >
-                Начать с проекта
-              </v-btn>
-              <v-btn
-                color="white"
-                variant="outlined"
-                class="text-none font-weight-bold hero-card__btn"
-                @click="navigate('/organizer/tasks')"
-              >
-                Назначить задачу
-              </v-btn>
-            </div>
+
+    <!-- ─── Hero ─── -->
+    <div class="hero">
+      <div class="hero__content">
+        <div class="hero__badge">
+          <v-icon icon="mdi-account-tie-outline" size="15" />
+          Кабинет организатора
+        </div>
+        <h1 class="hero__title">
+          Управляйте проектами,<br />командой и задачами
+        </h1>
+        <p class="hero__sub">
+          Весь инструментарий в одном месте — синхронизировано с Telegram-ботом.
+        </p>
+        <div class="hero__btns">
+          <button class="hero__btn hero__btn--solid" @click="navigate('/organizer/projects')">
+            <v-icon icon="mdi-rocket-launch-outline" size="17" />
+            Начать с проекта
+          </button>
+          <button class="hero__btn hero__btn--outline" @click="navigate('/organizer/tasks')">
+            <v-icon icon="mdi-clipboard-plus-outline" size="17" />
+            Назначить задачу
+          </button>
+        </div>
+      </div>
+      <div class="hero__art" aria-hidden="true">
+        <div class="hero__orb hero__orb--1" />
+        <div class="hero__orb hero__orb--2" />
+        <v-icon icon="mdi-account-group-outline" class="hero__art-icon" />
+      </div>
+    </div>
+
+    <!-- ─── Onboarding ─── -->
+    <div class="section-card">
+      <div class="onboarding-top">
+        <div>
+          <div class="status-pill" :style="{ color: statusConfig.color, background: statusConfig.bg, borderColor: statusConfig.border }">
+            <v-icon :icon="statusConfig.icon" size="13" />
+            {{ statusConfig.chip }}
           </div>
-          <div class="hero-card__visual">
-            <div class="hero-card__orb hero-card__orb--primary" />
-            <div class="hero-card__orb hero-card__orb--secondary" />
-            <v-icon icon="mdi-account-group-outline" size="120" class="hero-card__icon" />
-          </div>
-        </v-card>
-      </v-col>
-
-      <v-col cols="12">
-        <v-card class="onboarding-card" rounded="xl" elevation="8">
-          <div class="onboarding-card__header">
-            <div>
-              <v-chip
-                :color="onboardingChip.color"
-                variant="tonal"
-                class="text-none font-weight-bold mb-2"
-                size="small"
-              >
-                {{ onboardingChip.text }}
-              </v-chip>
-              <h2 class="text-h6 font-weight-bold mb-1">Онбординг организатора</h2>
-              <p class="text-body-2 text-medium-emphasis mb-0">
-                Мы собрали основные этапы и подсказки, пока заявка готовится к одобрению.
-              </p>
-            </div>
-            <div class="onboarding-card__progress">
-              <span class="text-caption text-medium-emphasis">Готовность</span>
-              <div class="d-flex align-center ga-2">
-                <v-progress-circular
-                  :model-value="onboardingProgress"
-                  :color="isRejected ? 'error' : 'primary'"
-                  size="46"
-                  width="5"
-                >
-                  {{ onboardingProgress }}%
-                </v-progress-circular>
-                <div class="text-body-2 text-medium-emphasis">{{ onboardingStatusMessage }}</div>
-              </div>
-            </div>
-          </div>
-
-          <v-divider class="my-4" />
-
-          <v-row class="ga-4 ga-md-0">
-          <v-col
-            v-for="(step, index) in onboardingSteps"
-            :key="step.key"
-              cols="12"
-              md="4"
-            >
-              <v-sheet
-              class="onboarding-step pa-5"
-              :class="[
-                `onboarding-step--${step.status}`,
-                step.key === 'review' ? `onboarding-step--review-${reviewStepState}` : null,
-                step.isCurrent ? 'onboarding-step--current' : null,
-              ]"
-                rounded="lg"
-                :border="step.status !== 'active'"
-                :color="step.status === 'active' ? 'primary-lighten-5' : (step.status === 'error' ? 'error-lighten-5' : 'grey-lighten-5')"
-              >
-              <div class="onboarding-step__stage" :class="{ 'onboarding-step__stage--current': step.isCurrent }">
-                Шаг {{ index + 1 }} из {{ onboardingSteps.length }}
-                <span v-if="step.isCurrent" class="onboarding-step__stage-badge">Сейчас</span>
-              </div>
-                <div class="onboarding-step__icon" :class="`onboarding-step__icon--${step.status}`">
-                  <v-icon
-                    :icon="step.status === 'done' ? 'mdi-check' : step.status === 'active' ? 'mdi-progress-clock' : step.status === 'error' ? 'mdi-alert' : 'mdi-dots-horizontal'"
-                    size="22"
-                  />
-                </div>
-                <h3 class="text-subtitle-1 font-weight-semibold mb-2">{{ step.title }}</h3>
-                <p class="text-body-2 text-medium-emphasis mb-0">
-                  {{ step.description }}
-                </p>
-              </v-sheet>
-            </v-col>
-          </v-row>
-
-          <v-alert
-            class="mt-6 onboarding-review-alert"
-            variant="flat"
-            rounded="xl"
-            :color="reviewAlertConfig.color"
+          <h2 class="card-title mt-2">Онбординг организатора</h2>
+          <p class="card-sub">Этапы подготовки к запуску проектов.</p>
+        </div>
+        <div class="progress-widget">
+          <v-progress-circular
+            :model-value="onboardingProgress"
+            :color="isRejected ? '#c62828' : '#8bc34a'"
+            size="54"
+            width="5"
+            bg-color="rgba(0,0,0,0.07)"
           >
-            <div class="onboarding-review-alert__content">
-              <div class="onboarding-review-alert__text">
-                <div class="d-flex align-center mb-2">
-                  <v-avatar size="42" color="white" class="mr-3">
-                    <v-icon :icon="reviewAlertConfig.icon" :color="reviewAlertConfig.color" size="24" />
-                  </v-avatar>
-                  <div>
-                    <div class="text-subtitle-1 font-weight-semibold">
-                      {{ reviewAlertConfig.title }}
-                    </div>
-                    <div class="text-body-2 text-medium-emphasis">
-                      {{ reviewAlertConfig.text }}
-                    </div>
-                  </div>
-                </div>
-                <ul class="onboarding-review-alert__list">
-                  <li v-for="item in reviewAlertConfig.details" :key="item.text">
-                    <v-icon :icon="item.icon" size="18" class="mr-2" />
-                    <span>{{ item.text }}</span>
-                  </li>
-                </ul>
-              </div>
-              <v-btn
-                v-if="reviewAlertConfig.action"
-                :color="reviewAlertConfig.color"
-                variant="flat"
-                class="text-none font-weight-semibold"
-                rounded="lg"
-                @click="navigate(reviewAlertConfig.action.to)"
-              >
-                {{ reviewAlertConfig.action.label }}
-                <v-icon end>mdi-arrow-top-right</v-icon>
-              </v-btn>
-            </div>
-          </v-alert>
-        </v-card>
-      </v-col>
+            <span class="progress-pct">{{ onboardingProgress }}%</span>
+          </v-progress-circular>
+          <span class="progress-lbl">
+            {{ isApproved ? 'Готово' : isRejected ? 'Правки' : 'В процессе' }}
+          </span>
+        </div>
+      </div>
 
-      <v-col cols="12">
-        <v-card class="info-card" rounded="xl" elevation="8">
-          <div class="info-card__header">
-            <div>
-              <h2 class="text-h6 font-weight-bold mb-1">Как работает кабинет</h2>
-              <p class="text-body-2 text-medium-emphasis mb-0">
-                Все функции полностью синхронизированы с Telegram-ботом.
-              </p>
-            </div>
-            <v-chip color="primary" variant="flat" class="text-none font-weight-bold">
-              Интегрировано с ботом
-            </v-chip>
+      <!-- Steps -->
+      <div class="steps-grid">
+        <div
+          v-for="(step, index) in onboardingSteps"
+          :key="step.key"
+          class="step-card"
+          :class="[`step-card--${step.status}`, { 'step-card--current': step.isCurrent }]"
+          :style="{ animationDelay: `${index * 0.15}s` }"
+        >
+          <!-- Анимированная линия соединения -->
+          <div 
+            v-if="index < onboardingSteps.length - 1" 
+            class="step-connector"
+            :class="{ 'step-connector--active': step.status === 'done' }"
+          >
+            <div class="step-connector__line"></div>
+            <div 
+              class="step-connector__progress" 
+              :style="{ width: step.status === 'done' ? '100%' : '0%' }"
+            ></div>
           </div>
-          <v-divider class="my-4" />
-          <v-row>
-            <v-col v-for="card in infoCards" :key="card.title" cols="12" md="4" class="d-flex">
-              <v-sheet class="info-card__item pa-4" rounded="lg" border color="grey-lighten-5">
-                <v-avatar size="40" :color="card.avatarColor ?? 'primary-lighten-4'" class="mb-3">
-                  <template v-if="card.iconSrc">
-                    <v-img :src="card.iconSrc" width="28" height="28" cover />
-                  </template>
-                  <v-icon v-else :icon="card.icon" :color="card.iconColor ?? 'primary'" />
-                </v-avatar>
-                <h3 class="text-subtitle-1 font-weight-semibold mb-2">{{ card.title }}</h3>
-                <p class="text-body-2 text-medium-emphasis mb-0">{{ card.text }}</p>
-              </v-sheet>
-            </v-col>
-          </v-row>
-        </v-card>
-      </v-col>
+          
+          <div class="step-card__num">{{ step.index + 1 }} / {{ step.total }}</div>
+          <div 
+            class="step-card__icon" 
+            :style="{ background: stepIconConfig(step.status)?.bg || 'rgba(0,0,0,0.1)' }"
+            :class="{ 
+              'step-card__icon--pulse': step.isCurrent && step.status === 'active',
+              'step-card__icon--success': step.status === 'done'
+            }"
+          >
+            <v-icon :icon="stepIconConfig(step.status)?.icon || 'mdi-circle'" size="20" color="white" />
+            <!-- Анимация для активного шага -->
+            <div v-if="step.isCurrent && step.status === 'active'" class="step-card__icon-ring"></div>
+          </div>
+          <div class="step-card__title">{{ step.title }}</div>
+          <p class="step-card__desc">{{ step.description }}</p>
+          <div v-if="step.isCurrent" class="step-card__now">
+            <span class="step-card__now-dot"></span>
+            Сейчас
+          </div>
+        </div>
+      </div>
 
-      <v-col cols="12">
-        <h2 class="section-title">Быстрые действия</h2>
-        <v-row class="ga-5">
-          <v-col v-for="action in quickActions" :key="action.title" cols="12" md="6" lg="4">
-            <v-card class="action-card" rounded="xl" elevation="4">
-              <div class="action-card__header">
-                <v-avatar :color="action.color" size="48">
-                  <v-icon :icon="action.icon" color="white" />
-                </v-avatar>
-                <div class="d-flex flex-column ga-1">
-                  <v-chip class="action-card__chip text-none text-caption font-weight-bold" size="small">
-                    {{ action.chip }}
-                  </v-chip>
-                  <h3 class="text-subtitle-1 font-weight-semibold mb-0">{{ action.title }}</h3>
-                </div>
-              </div>
-              <p class="text-body-2 text-medium-emphasis mb-6">
-                {{ action.description }}
-              </p>
-              <v-btn :color="action.color" variant="flat" class="text-none font-weight-semibold" @click="navigate(action.to)">
-                Открыть
-              </v-btn>
-            </v-card>
-          </v-col>
-        </v-row>
-      </v-col>
-    </v-row>
+      <!-- Status banner -->
+      <div class="status-banner" :style="{ background: statusConfig.bg, borderColor: statusConfig.border }">
+        <div class="status-banner__icon-box" :style="{ background: statusConfig.color + '18' }">
+          <v-icon :icon="statusConfig.icon" size="24" :style="{ color: statusConfig.color }" />
+        </div>
+        <div class="status-banner__body">
+          <div class="status-banner__title" :style="{ color: statusConfig.color }">{{ statusConfig.title }}</div>
+          <p class="status-banner__text">{{ statusConfig.text }}</p>
+          <div class="status-banner__details">
+            <div v-for="d in statusConfig.details" :key="d.text" class="status-banner__detail">
+              <v-icon :icon="d.icon" size="14" :style="{ color: statusConfig.color }" />
+              {{ d.text }}
+            </div>
+          </div>
+        </div>
+        <button
+          v-if="statusConfig.action"
+          class="status-banner__btn"
+          :style="{ background: statusConfig.color }"
+          @click="navigate(statusConfig.action.to)"
+        >
+          {{ statusConfig.action.label }}
+          <v-icon icon="mdi-arrow-right" size="16" />
+        </button>
+      </div>
+    </div>
+
+    <!-- ─── How it works ─── -->
+    <div class="section-card">
+      <div class="section-card__row">
+        <div>
+          <h2 class="card-title">Как работает кабинет</h2>
+          <p class="card-sub">Синхронизировано с Telegram-ботом</p>
+        </div>
+        <div class="bot-badge">
+          <v-icon icon="mdi-robot-outline" size="15" />
+          Telegram бот
+        </div>
+      </div>
+
+      <div class="info-row">
+        <div
+          v-for="card in infoCards"
+          :key="card.title"
+          class="info-tile"
+          :style="{ background: card.bg }"
+        >
+          <div class="info-tile__icon">
+            <v-img v-if="card.iconSrc" :src="card.iconSrc" width="22" height="22" />
+            <v-icon v-else :icon="card.icon" size="22" :style="{ color: card.accent }" />
+          </div>
+          <div class="info-tile__title">{{ card.title }}</div>
+          <p class="info-tile__text">{{ card.text }}</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─── Quick actions ─── -->
+    <div>
+      <div class="actions-head">Быстрые действия</div>
+      <div class="actions-grid">
+        <div
+          v-for="action in quickActions"
+          :key="action.title"
+          class="action-tile"
+          @click="navigate(action.to)"
+        >
+          <div class="action-tile__tag" :style="{ color: action.accent, background: action.bg }">
+            {{ action.tag }}
+          </div>
+          <div class="action-tile__icon" :style="{ background: action.bg }">
+            <v-icon :icon="action.icon" size="26" :style="{ color: action.accent }" />
+          </div>
+          <div class="action-tile__title">{{ action.title }}</div>
+          <p class="action-tile__desc">{{ action.description }}</p>
+          <div class="action-tile__arrow" :style="{ color: action.accent }">
+            <v-icon icon="mdi-arrow-right" size="18" />
+          </div>
+        </div>
+      </div>
+    </div>
+
   </div>
 </template>
 
 <style scoped>
+/* ─── Base ─── */
 .dashboard {
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 20px;
 }
 
-.hero-card {
+/* ─── Hero ─── */
+.hero {
   display: flex;
-  flex-direction: row;
   align-items: stretch;
+  background: linear-gradient(118deg, #2d5a1b 0%, #4a8f2a 48%, #d4631a 100%);
+  border-radius: 24px;
   overflow: hidden;
-  background: linear-gradient(115deg, rgba(139, 195, 74, 0.95), rgba(139, 195, 74, 0.85) 45%, rgba(227, 121, 77, 0.9) 90%); /* BirQadam colors */
-  border-radius: 28px;
-  color: #fff;
+  min-height: 230px;
   position: relative;
-  min-height: 260px;
 }
 
-.hero-card__content {
-  padding: clamp(24px, 4vw, 48px);
-  width: 100%;
-  max-width: 620px;
+.hero__content {
+  padding: clamp(24px, 4vw, 44px);
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 14px;
   z-index: 2;
+  max-width: 560px;
 }
 
-.hero-card__badge {
+.hero__badge {
   display: inline-flex;
   align-items: center;
-  gap: 10px;
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 999px;
-  padding: 8px 16px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  font-size: 0.75rem;
-}
-
-.hero-card__content h1 {
-  font-size: clamp(1.8rem, 3.2vw, 2.6rem);
-  line-height: 1.25;
-  margin: 0;
+  gap: 7px;
+  background: rgba(255,255,255,0.18);
+  border: 1px solid rgba(255,255,255,0.22);
+  border-radius: 100px;
+  padding: 5px 14px;
+  font-size: 0.72rem;
   font-weight: 700;
-}
-
-.hero-card__content p {
-  margin: 0;
-  color: rgba(255, 255, 255, 0.82);
-  font-size: clamp(0.95rem, 1.8vw, 1.05rem);
-  line-height: 1.6;
-}
-
-.hero-card__actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-}
-
-.hero-card__btn {
-  min-width: 180px;
-}
-
-.hero-card__visual {
-  position: relative;
-  flex: 1;
-  min-height: 220px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-}
-
-.hero-card__orb {
-  position: absolute;
-  border-radius: 50%;
-  filter: blur(0);
-  opacity: 0.65;
-}
-
-.hero-card__orb--primary {
-  width: 220px;
-  height: 220px;
-  background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.4), transparent 65%);
-  top: 18%;
-  right: 20%;
-}
-
-.hero-card__orb--secondary {
-  width: 300px;
-  height: 300px;
-  background: radial-gradient(circle, rgba(227, 121, 77, 0.25), transparent 70%); /* BirQadam accent */
-  bottom: -40px;
-  right: -10%;
-}
-
-.hero-card__icon {
-  position: relative;
-  color: rgba(255, 255, 255, 0.25);
-}
-
-.info-card {
-  padding: 24px;
-}
-
-.info-card__header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 16px;
-}
-
-.info-card__item {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  height: 100%;
-  background: linear-gradient(145deg, #ffffff, #f8ecc4); /* BirQadam background */
-}
-
-.onboarding-review-alert {
-  border: none;
-  color: #fff;
-}
-
-.onboarding-review-alert__content {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-@media (min-width: 960px) {
-  .onboarding-review-alert__content {
-    flex-direction: row;
-    align-items: center;
-    justify-content: space-between;
-  }
-}
-
-.onboarding-review-alert__text ul {
-  margin: 12px 0 0;
-  padding: 0;
-  list-style: none;
-}
-
-.onboarding-review-alert__text li {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 6px;
-  font-weight: 500;
-}
-
-.onboarding-card {
-  padding: clamp(24px, 4vw, 32px);
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(255, 250, 246, 0.92)); /* BirQadam background */
-  border: 1px solid rgba(139, 195, 74, 0.08); /* BirQadam primary */
-}
-
-.onboarding-card__header {
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
-}
-
-@media (min-width: 960px) {
-  .onboarding-card__header {
-    flex-direction: row;
-    justify-content: space-between;
-    align-items: center;
-    gap: 32px;
-  }
-}
-
-.onboarding-card__progress {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  min-width: 160px;
-}
-
-.onboarding-step {
-  position: relative;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.onboarding-step__stage {
-  font-size: 0.8rem;
-  font-weight: 600;
+  color: rgba(255,255,255,0.9);
   text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: rgba(33, 33, 33, 0.5);
-  display: flex;
-  align-items: center;
-  gap: 8px;
+  letter-spacing: 0.5px;
+  width: fit-content;
 }
 
-.onboarding-step__stage--current {
-  color: rgba(33, 33, 33, 0.85);
-}
-
-.onboarding-step__stage-badge {
-  padding: 2px 8px;
-  border-radius: 999px;
-  background: rgba(33, 33, 33, 0.08);
-  font-size: 0.7rem;
-  font-weight: 700;
-  letter-spacing: 0.05em;
-}
-
-.onboarding-step__icon {
-  width: 44px;
-  height: 44px;
-  border-radius: 14px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  margin-bottom: 6px;
+.hero__title {
+  font-size: clamp(1.45rem, 3vw, 2.15rem);
+  font-weight: 800;
+  line-height: 1.2;
+  letter-spacing: -0.4px;
   color: #fff;
+  margin: 0;
 }
 
-.onboarding-step__icon--done {
-  background: linear-gradient(135deg, #4caf50, #2e7d32);
-}
-
-.onboarding-step__icon--active {
-  background: linear-gradient(135deg, #8BC34A, #689F38); /* BirQadam primary */
-}
-
-.onboarding-step__icon--waiting {
-  background: linear-gradient(135deg, #90a4ae, #607d8b);
-}
-
-.onboarding-step__icon--error {
-  background: linear-gradient(135deg, #e53935, #b71c1c);
-}
-
-.onboarding-step--review-success {
-  background: linear-gradient(135deg, rgba(200, 230, 201, 0.4), rgba(165, 214, 167, 0.3));
-  border-color: rgba(76, 175, 80, 0.35);
-}
-
-.onboarding-step--review-pending {
-  background: linear-gradient(135deg, rgba(255, 224, 130, 0.4), rgba(255, 213, 79, 0.3));
-  border-color: rgba(251, 192, 45, 0.35);
-}
-
-.onboarding-step--review-error {
-  background: linear-gradient(135deg, rgba(255, 205, 210, 0.5), rgba(239, 154, 154, 0.35));
-  border-color: rgba(229, 57, 53, 0.35);
-}
-
-.onboarding-step--current {
-  box-shadow: 0 16px 32px rgba(0, 0, 0, 0.08);
-  transform: translateY(-4px);
-  transition: box-shadow 0.25s ease, transform 0.25s ease;
-}
-
-.onboarding-step p {
-  color: rgba(33, 33, 33, 0.7);
+.hero__sub {
+  font-size: 0.925rem;
+  color: rgba(255,255,255,0.7);
+  margin: 0;
   line-height: 1.5;
 }
 
-.section-title {
-  font-size: 1.35rem;
-  font-weight: 700;
-  margin-bottom: 16px;
+.hero__btns {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 
-.action-card {
-  padding: 24px;
-  height: 100%;
+.hero__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 20px;
+  border-radius: 100px;
+  font-size: 0.875rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity 0.15s, transform 0.15s;
+}
+.hero__btn:hover { opacity: 0.88; transform: translateY(-1px); }
+.hero__btn--solid  { background: #fff; color: #2d5a1b; border: none; }
+.hero__btn--outline { background: transparent; color: #fff; border: 1.5px solid rgba(255,255,255,0.45); }
+
+.hero__art {
+  flex: 1;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 150px;
+}
+
+.hero__orb {
+  position: absolute;
+  border-radius: 50%;
+}
+.hero__orb--1 {
+  width: 200px; height: 200px;
+  background: radial-gradient(circle, rgba(255,255,255,0.12), transparent 70%);
+  top: 10%; right: 15%;
+}
+.hero__orb--2 {
+  width: 280px; height: 280px;
+  background: radial-gradient(circle, rgba(212,99,26,0.2), transparent 70%);
+  bottom: -30px; right: -5%;
+}
+.hero__art-icon {
+  font-size: 110px !important;
+  color: rgba(255,255,255,0.15) !important;
+  position: relative;
+}
+
+@media (max-width: 768px) {
+  .hero { flex-direction: column; }
+  .hero__art { min-height: 110px; }
+}
+
+/* ─── Section card ─── */
+.section-card {
+  background: #fff;
+  border-radius: 20px;
+  border: 1px solid rgba(0,0,0,0.07);
+  padding: clamp(18px, 3vw, 26px);
   display: flex;
   flex-direction: column;
   gap: 18px;
-  border: 1px solid rgba(33, 33, 33, 0.06);
-  transition: transform 0.25s ease, box-shadow 0.25s ease;
 }
 
-.action-card:hover {
-  transform: translateY(-6px);
-  box-shadow: 0 18px 36px rgba(139, 195, 74, 0.18); /* BirQadam primary */
-}
-
-.action-card__header {
+.section-card__row {
   display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.card-title {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: #1a1a1a;
+  margin: 0;
+}
+
+.card-sub {
+  font-size: 0.825rem;
+  color: rgba(0,0,0,0.44);
+  margin: 3px 0 0;
+}
+
+/* ─── Onboarding top row ─── */
+.onboarding-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
   gap: 16px;
+  flex-wrap: wrap;
+}
+
+.status-pill {
+  display: inline-flex;
   align-items: center;
+  gap: 6px;
+  padding: 4px 11px;
+  border-radius: 100px;
+  border: 1px solid;
+  font-size: 0.78rem;
+  font-weight: 700;
+  width: fit-content;
 }
 
-.action-card__chip {
-  background-color: rgba(33, 33, 33, 0.08) !important;
-  color: rgba(33, 33, 33, 0.8) !important;
-  letter-spacing: 0.08em;
+.progress-widget {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
 }
 
-@media (max-width: 960px) {
-  .hero-card {
-    flex-direction: column;
-  }
+.progress-pct {
+  font-size: 0.7rem;
+  font-weight: 800;
+  color: #1a1a1a;
+}
 
-  .hero-card__visual {
-    min-height: 180px;
-  }
+.progress-lbl {
+  font-size: 0.72rem;
+  color: rgba(0,0,0,0.42);
+  font-weight: 600;
+}
 
-  .hero-card__icon {
-    font-size: 96px;
+/* ─── Steps ─── */
+.steps-grid {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 10px;
+}
+
+.step-card {
+  position: relative;
+  background: #fafafa;
+  border-radius: 14px;
+  border: 1px solid rgba(0,0,0,0.07);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  animation: stepSlideIn 0.6s ease-out forwards;
+}
+
+@keyframes stepSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 
+.step-card--current {
+  border-color: rgba(139,195,74,0.32);
+  background: rgba(139,195,74,0.04);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 22px rgba(139,195,74,0.12);
+  animation: stepCurrentPulse 2s ease-in-out infinite;
+}
+
+@keyframes stepCurrentPulse {
+  0%, 100% {
+    box-shadow: 0 8px 22px rgba(139,195,74,0.12);
+  }
+  50% {
+    box-shadow: 0 12px 28px rgba(139,195,74,0.18);
+  }
+}
+
+.step-card--error {
+  border-color: rgba(198,40,40,0.18);
+  background: rgba(198,40,40,0.03);
+}
+
+.step-card--done {
+  animation: stepDoneSuccess 0.6s ease-out;
+}
+
+@keyframes stepDoneSuccess {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.step-card__num {
+  font-size: 0.67rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: rgba(0,0,0,0.32);
+}
+
+.step-card__icon {
+  position: relative;
+  width: 38px; 
+  height: 38px;
+  border-radius: 10px;
+  display: flex; 
+  align-items: center; 
+  justify-content: center;
+  transition: all 0.3s ease;
+  z-index: 1;
+}
+
+.step-card__icon--pulse {
+  animation: iconPulse 2s ease-in-out infinite;
+}
+
+@keyframes iconPulse {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(139, 195, 74, 0.4);
+  }
+  50% {
+    transform: scale(1.05);
+    box-shadow: 0 0 0 8px rgba(139, 195, 74, 0);
+  }
+}
+
+.step-card__icon--success {
+  animation: iconSuccess 0.6s ease-out;
+}
+
+@keyframes iconSuccess {
+  0% {
+    transform: scale(1) rotate(0deg);
+  }
+  50% {
+    transform: scale(1.2) rotate(180deg);
+  }
+  100% {
+    transform: scale(1) rotate(360deg);
+  }
+}
+
+.step-card__icon-ring {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 100%;
+  height: 100%;
+  border-radius: 10px;
+  border: 2px solid rgba(139, 195, 74, 0.5);
+  transform: translate(-50%, -50%);
+  animation: ringPulse 2s ease-out infinite;
+}
+
+@keyframes ringPulse {
+  0% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(1.5);
+    opacity: 0;
+  }
+}
+
+.step-card__title {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #1a1a1a;
+  transition: color 0.3s;
+}
+
+.step-card--current .step-card__title {
+  color: #558b2f;
+}
+
+.step-card__desc {
+  font-size: 0.8rem;
+  color: rgba(0,0,0,0.5);
+  line-height: 1.45;
+  margin: 0;
+  flex: 1;
+}
+
+.step-card__now {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 100px;
+  background: linear-gradient(135deg, #8bc34a, #558b2f);
+  color: #fff;
+  font-size: 0.67rem;
+  font-weight: 800;
+  width: fit-content;
+  animation: nowBadgePulse 2s ease-in-out infinite;
+}
+
+@keyframes nowBadgePulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(139, 195, 74, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(139, 195, 74, 0);
+  }
+}
+
+.step-card__now-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: white;
+  animation: dotBlink 1.5s ease-in-out infinite;
+}
+
+@keyframes dotBlink {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.3;
+  }
+}
+
+/* Соединительная линия между шагами */
+.step-connector {
+  position: absolute;
+  top: 50%;
+  right: -10px;
+  width: 20px;
+  height: 2px;
+  transform: translateY(-50%);
+  z-index: 0;
+  display: none; /* Скрываем на мобильных */
+}
+
+@media (min-width: 600px) {
+  .step-connector {
+    display: block;
+  }
+}
+
+.step-connector__line {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 2px;
+}
+
+.step-connector__progress {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  background: linear-gradient(90deg, #8bc34a, #558b2f);
+  border-radius: 2px;
+  transition: width 0.6s ease-out;
+}
+
+.step-connector--active .step-connector__progress {
+  animation: connectorProgress 1s ease-out;
+}
+
+@keyframes connectorProgress {
+  from {
+    width: 0%;
+  }
+  to {
+    width: 100%;
+  }
+}
+
+/* Анимации появления шагов */
+.step-fade-enter-active {
+  transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.step-fade-enter-from {
+  opacity: 0;
+  transform: translateY(30px) scale(0.9);
+}
+
+.step-fade-move {
+  transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ─── Status banner ─── */
+.status-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  border: 1px solid;
+  flex-wrap: wrap;
+}
+
+.status-banner__icon-box {
+  width: 40px; height: 40px;
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+
+.status-banner__body { flex: 1; min-width: 0; }
+
+.status-banner__title {
+  font-size: 0.925rem;
+  font-weight: 800;
+  margin-bottom: 4px;
+}
+
+.status-banner__text {
+  font-size: 0.815rem;
+  color: rgba(0,0,0,0.58);
+  margin: 0 0 9px;
+  line-height: 1.45;
+}
+
+.status-banner__details {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.status-banner__detail {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  font-size: 0.8rem;
+  color: rgba(0,0,0,0.58);
+  line-height: 1.4;
+}
+
+.status-banner__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 18px;
+  border-radius: 100px;
+  border: none;
+  color: #fff;
+  font-size: 0.825rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity 0.15s;
+  white-space: nowrap;
+  align-self: center;
+}
+.status-banner__btn:hover { opacity: 0.88; }
+
+/* ─── Mobile adaptation ─── */
 @media (max-width: 600px) {
-  .hero-card__actions {
+  .status-banner {
     flex-direction: column;
-    align-items: stretch;
+    gap: 12px;
+    padding: 16px;
   }
 
-  .status-card,
-  .info-card,
-  .action-card {
-    padding: 20px;
+  .status-banner__icon-box {
+    width: 36px;
+    height: 36px;
   }
+
+  .status-banner__icon-box .v-icon {
+    font-size: 20px !important;
+  }
+
+  .status-banner__body {
+    width: 100%;
+  }
+
+  .status-banner__title {
+    font-size: 0.9rem;
+    margin-bottom: 6px;
+  }
+
+  .status-banner__text {
+    font-size: 0.8rem;
+    margin-bottom: 10px;
+  }
+
+  .status-banner__details {
+    gap: 6px;
+    margin-bottom: 8px;
+  }
+
+  .status-banner__detail {
+    font-size: 0.78rem;
+    gap: 6px;
+  }
+
+  .status-banner__detail .v-icon {
+    font-size: 13px !important;
+    margin-top: 2px;
+  }
+
+  .status-banner__btn {
+    width: 100%;
+    justify-content: center;
+    padding: 11px 20px;
+    font-size: 0.85rem;
+    align-self: stretch;
+  }
+}
+
+/* ─── Bot badge ─── */
+.bot-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: 100px;
+  background: rgba(139,195,74,0.1);
+  border: 1px solid rgba(139,195,74,0.2);
+  color: #558b2f;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+/* ─── Info tiles ─── */
+.info-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 12px;
+}
+
+.info-tile {
+  border-radius: 14px;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.info-tile__icon {
+  width: 40px; height: 40px;
+  border-radius: 10px;
+  background: rgba(255,255,255,0.7);
+  display: flex; align-items: center; justify-content: center;
+}
+
+.info-tile__title {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #1a1a1a;
+}
+
+.info-tile__text {
+  font-size: 0.8rem;
+  color: rgba(0,0,0,0.5);
+  line-height: 1.45;
+  margin: 0;
+}
+
+/* ─── Quick actions ─── */
+.actions-head {
+  font-size: 0.75rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.7px;
+  color: rgba(0,0,0,0.4);
+  margin-bottom: 12px;
+}
+
+.actions-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 12px;
+}
+
+.action-tile {
+  background: #fff;
+  border-radius: 16px;
+  border: 1px solid rgba(0,0,0,0.07);
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  cursor: pointer;
+  transition: box-shadow 0.2s, transform 0.2s;
+}
+
+.action-tile:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 28px rgba(0,0,0,0.09);
+}
+
+.action-tile__tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 100px;
+  font-size: 0.67rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  width: fit-content;
+}
+
+.action-tile__icon {
+  width: 46px; height: 46px;
+  border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  margin: 4px 0;
+}
+
+.action-tile__title {
+  font-size: 0.925rem;
+  font-weight: 800;
+  color: #1a1a1a;
+}
+
+.action-tile__desc {
+  font-size: 0.8rem;
+  color: rgba(0,0,0,0.5);
+  line-height: 1.45;
+  margin: 0;
+  flex: 1;
+}
+
+.action-tile__arrow {
+  margin-top: 4px;
+  opacity: 0;
+  transform: translateX(-4px);
+  transition: opacity 0.18s, transform 0.18s;
+}
+
+.action-tile:hover .action-tile__arrow {
+  opacity: 1;
+  transform: translateX(0);
 }
 </style>
-
-

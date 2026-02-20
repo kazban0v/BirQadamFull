@@ -82,7 +82,8 @@ export const useOrganizerStore = defineStore('organizer', () => {
       const data = await fetchOrganizerProjects();
       // Убеждаемся, что data - это массив
       projects.value = Array.isArray(data) ? data : [];
-      console.log('Projects loaded:', projects.value.length, 'projects');
+      // Убираем частый лог, оставляем только при необходимости
+      // console.log('Projects loaded:', projects.value.length, 'projects');
     } catch (error: any) {
       const detail = error?.response?.data?.error || error?.message || 'Не удалось загрузить проекты.';
       projectError.value = detail;
@@ -142,9 +143,20 @@ export const useOrganizerStore = defineStore('organizer', () => {
     offset?: number;
     force?: boolean;
   }) {
-    if (!isOrganizer.value) return;
-    if (!isApproved.value) return;
-    if (photoLoading.value) return;
+    console.log('[ORGANIZER STORE] loadPhotoReports called:', { options, isOrganizer: isOrganizer.value, isApproved: isApproved.value });
+    
+    if (!isOrganizer.value) {
+      console.log('[ORGANIZER STORE] User is not an organizer, skipping');
+      return;
+    }
+    if (!isApproved.value) {
+      console.log('[ORGANIZER STORE] Organizer is not approved, skipping');
+      return;
+    }
+    if (photoLoading.value) {
+      console.log('[ORGANIZER STORE] Already loading, skipping');
+      return;
+    }
 
     const nextStatus = options?.status ?? photoStatus.value;
     const nextProject = options?.projectId ?? photoProjectFilter.value;
@@ -160,9 +172,11 @@ export const useOrganizerStore = defineStore('organizer', () => {
       nextOffset !== photoOffset.value;
 
     if (!shouldReload && photoReports.value.length > 0) {
+      console.log('[ORGANIZER STORE] No reload needed, using cached data');
       return;
     }
 
+    console.log('[ORGANIZER STORE] Loading photo reports...', { nextStatus, nextProject, nextLimit, nextOffset });
     photoLoading.value = true;
     photoError.value = null;
 
@@ -174,18 +188,32 @@ export const useOrganizerStore = defineStore('organizer', () => {
         offset: nextOffset,
       });
 
-      photoReports.value = response.photos;
-      photoCounters.value = response.counters;
+      console.log('[ORGANIZER STORE] Photo reports loaded:', {
+        photosCount: response.photos?.length ?? 0,
+        counters: response.counters,
+        status: response.status,
+        projectId: response.project_id,
+        firstPhoto: response.photos?.[0] ? {
+          id: response.photos[0].id,
+          image_url: response.photos[0].image_url,
+        } : null,
+      });
+
+      photoReports.value = Array.isArray(response.photos) ? response.photos : [];
+      photoCounters.value = response.counters || { pending: 0, approved: 0, rejected: 0, total: 0 };
       photoStatus.value = response.status;
       photoProjectFilter.value = response.project_id;
       photoLimit.value = response.limit;
       photoOffset.value = response.offset;
       photoFilteredCount.value = response.filtered_count;
     } catch (error: any) {
-      const detail = error?.response?.data?.error || error?.message || 'Не удалось загрузить фотоотчёты.';
+      console.error('[ORGANIZER STORE] Error loading photo reports:', error);
+      const detail = error?.response?.data?.error || error?.response?.data?.detail || error?.message || 'Не удалось загрузить фотоотчёты.';
       photoError.value = detail;
+      photoReports.value = [];
     } finally {
       photoLoading.value = false;
+      console.log('[ORGANIZER STORE] loadPhotoReports completed');
     }
   }
 
@@ -221,11 +249,23 @@ export const useOrganizerStore = defineStore('organizer', () => {
     photoActionLoading[photoId] = true;
     photoActionError[photoId] = null;
     try {
-      await approveOrganizerPhotoReport(photoId, payload);
+      const response = await approveOrganizerPhotoReport(photoId, payload);
       await refreshPhotoReports();
       if (photoDetails[photoId]) {
         await ensurePhotoDetail(photoId, true);
       }
+      // Если в ответе есть обновленные TF и рейтинг, обновляем профиль волонтера
+      // (это нужно для обновления интерфейса, если волонтер смотрит свой профиль)
+      if (response?.photo?.trust_factor !== undefined || response?.photo?.average_rating !== undefined) {
+        console.log('Photo rated, TF and rating updated:', {
+          trust_factor: response.photo?.trust_factor,
+          average_rating: response.photo?.average_rating,
+        });
+        // Если текущий пользователь - это волонтер, чье фото было оценено, обновляем его профиль
+        // Но мы не знаем, кто волонтер, поэтому просто логируем
+        // Обновление произойдет автоматически при следующем обновлении профиля волонтером
+      }
+      return response;
     } catch (error: any) {
       const detail =
         error?.response?.data?.error || error?.message || 'Не удалось одобрить фотоотчёт. Попробуйте еще раз.';

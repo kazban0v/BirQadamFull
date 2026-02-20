@@ -1,7 +1,7 @@
 
-
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue';
+import { computed, onMounted, reactive, ref, watch, watchEffect, nextTick } from 'vue';
+import { useRouter } from 'vue-router';
 
 import { useAuthStore } from '@/stores/auth';
 import { useDashboardStore } from '@/stores/dashboard';
@@ -9,6 +9,9 @@ import type { VolunteerTaskSummary, VolunteerPhotoSummary } from '@/services/das
 import { uploadPhotoReport, fetchTaskPhotos } from '@/services/photoReports';
 import { acceptTask, declineTask, completeTask } from '@/services/tasks';
 import { fetchVolunteerStats } from '@/services/stats';
+import telegramIcon from '@/assets/icons/telegram.png';
+
+const router = useRouter();
 
 const authStore = useAuthStore();
 const dashboardStore = useDashboardStore();
@@ -71,49 +74,193 @@ const photoStatusMap: Record<string, { text: string; color: string }> = {
 
 const volunteerName = computed(() => {
   const user = authStore.user;
-  return user?.name || user?.full_name || user?.username || 'Волонтёр BirQadam';
+  return user?.full_name || user?.username || 'Волонтёр BirQadam';
 });
 
-const hasProfile = computed(() => Boolean(authStore.user?.name || authStore.user?.full_name));
-const hasActiveProject = computed(() => summary.value.active_projects > 0);
-const hasActiveTask = computed(() => summary.value.active_tasks > 0 || tasks.value.length > 0);
-const hasPhotoReport = computed(() => summary.value.total_photos > 0 || photos.value.length > 0);
+const hasProfile = computed(() => {
+  // API возвращает full_name (которое содержит значение user.name из базы)
+  // Также проверяем phone_number, так как это тоже часть профиля
+  const fullName = authStore.user?.full_name || '';
+  const phoneNumber = authStore.user?.phone_number || '';
+  const hasFullName = Boolean(fullName && fullName.trim());
+  const hasPhone = Boolean(phoneNumber && phoneNumber.trim());
+  // Профиль считается заполненным, если есть имя ИЛИ телефон
+  const result = hasFullName || hasPhone;
+  console.log('[ONBOARDING DEBUG] hasProfile:', { 
+    fullName, 
+    phoneNumber, 
+    hasFullName, 
+    hasPhone, 
+    result 
+  });
+  return result;
+});
+
+// Проверяем, присоединился ли волонтёр к проекту
+// Шаг считается выполненным, если есть активные проекты (is_active=True) в summary
+// ИЛИ есть проекты в загруженных данных (в dashboard возвращаются только присоединённые проекты)
+const hasActiveProject = computed(() => {
+  const activeProjectsCount = summary.value?.active_projects ?? 0;
+  const projectsCount = projects.value?.length ?? 0;
+  
+  console.log('[ONBOARDING DEBUG] hasActiveProject:', {
+    activeProjectsCount,
+    projectsCount,
+    summary: summary.value,
+    projects: projects.value,
+  });
+  
+  // Проверяем summary (более надёжный источник)
+  if (activeProjectsCount > 0) {
+    console.log('[ONBOARDING DEBUG] hasActiveProject: TRUE (from summary)');
+    return true;
+  }
+  // Проверяем загруженные проекты как резервный вариант
+  // В dashboard возвращаются только проекты, к которым пользователь присоединился (is_active=True)
+  // Поэтому если есть проекты в списке, значит пользователь присоединился
+  if (projectsCount > 0) {
+    console.log('[ONBOARDING DEBUG] hasActiveProject: TRUE (from projects list)');
+    return true;
+  }
+  console.log('[ONBOARDING DEBUG] hasActiveProject: FALSE');
+  return false;
+});
+
+// Проверяем, есть ли у волонтёра задачи
+// Шаг "Присоединитесь к проекту" считается выполненным, если есть проекты ИЛИ задачи
+const hasActiveTask = computed(() => {
+  const activeTasksCount = summary.value?.active_tasks ?? 0;
+  const tasksCount = tasks.value?.length ?? 0;
+  
+  console.log('[ONBOARDING DEBUG] hasActiveTask:', {
+    activeTasksCount,
+    tasksCount,
+    summary: summary.value,
+    tasks: tasks.value,
+  });
+  
+  // Проверяем summary
+  if (activeTasksCount > 0) {
+    console.log('[ONBOARDING DEBUG] hasActiveTask: TRUE (from summary)');
+    return true;
+  }
+  // Проверяем загруженные задачи
+  if (tasksCount > 0) {
+    console.log('[ONBOARDING DEBUG] hasActiveTask: TRUE (from tasks list)');
+    return true;
+  }
+  console.log('[ONBOARDING DEBUG] hasActiveTask: FALSE');
+  return false;
+});
+
+// Проверяем, отправил ли волонтёр фотоотчёт
+// Шаг считается выполненным, если есть хотя бы одно фото с любым статусом
+const hasPhotoReport = computed(() => {
+  const totalPhotosCount = summary.value?.total_photos ?? 0;
+  const photosCount = photos.value?.length ?? 0;
+  
+  // Проверяем summary (более надёжный источник)
+  if (totalPhotosCount > 0) {
+    return true;
+  }
+  // Проверяем загруженные фото
+  if (photosCount > 0) {
+    return true;
+  }
+  // Дополнительная проверка: есть ли фото с любым статусом в списке задач
+  const hasPhotoInTasks = tasks.value.some(task => 
+    task.has_photo_report === true || 
+    (task.photo_status && task.photo_status !== null && task.photo_status !== undefined)
+  );
+  if (hasPhotoInTasks) {
+    return true;
+  }
+  return false;
+});
+
+// Реактивный счетчик для принудительного обновления UI
+const onboardingUpdateKey = ref(0);
 
 const onboardingSteps = computed(() => {
+  // Используем onboardingUpdateKey для принудительного пересчета
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  void onboardingUpdateKey.value;
+  
+  // Вычисляем статусы выполнения шагов
+  const profileDone = hasProfile.value;
+  const projectDone = hasActiveProject.value || hasActiveTask.value;
+  const reportDone = hasPhotoReport.value;
+
+  console.log('[ONBOARDING DEBUG] onboardingSteps computed:', {
+    profileDone,
+    projectDone,
+    reportDone,
+    hasActiveProject: hasActiveProject.value,
+    hasActiveTask: hasActiveTask.value,
+    hasPhotoReport: hasPhotoReport.value,
+    updateKey: onboardingUpdateKey.value,
+  });
+
   const rawSteps = [
     {
       key: 'profile',
       title: 'Заполните профиль',
       description: 'Добавьте имя и контакты, чтобы организаторы могли быстро связаться с вами.',
-      done: hasProfile.value,
+      done: profileDone,
     },
     {
       key: 'project',
       title: 'Присоединитесь к проекту',
       description: 'Выберите интересное направление и возьмите первую задачу.',
-      done: hasActiveProject.value || hasActiveTask.value,
+      done: projectDone,
     },
     {
       key: 'report',
       title: 'Отправьте фотоотчёт',
       description: 'Подтвердите участие фотографиями и получайте благодарности и рейтинг.',
-      done: hasPhotoReport.value,
+      done: reportDone,
     },
   ];
 
-  let firstPendingMarked = false;
-  return rawSteps.map((step) => {
+  // Находим первый невыполненный шаг - это будет активный шаг
+  const currentStep = rawSteps.find(s => !s.done);
+  const currentKey = currentStep?.key || null;
+  
+  // Если все шаги выполнены, currentKey будет null, но это нормально - показываем завершенное состояние
+  console.log('[ONBOARDING DEBUG] currentStep:', currentStep, 'currentKey:', currentKey, 'allDone:', rawSteps.every(s => s.done));
+
+  const steps = rawSteps.map((step, index) => {
     let status: 'done' | 'active' | 'waiting';
     if (step.done) {
       status = 'done';
-    } else if (!firstPendingMarked) {
+    } else if (step.key === currentKey) {
       status = 'active';
-      firstPendingMarked = true;
     } else {
       status = 'waiting';
     }
-    return { ...step, status };
+    
+    // isCurrent должен быть true только для одного шага - активного и невыполненного
+    // Если все шаги выполнены (currentKey === null), ни один шаг не будет активным
+    const isCurrent = currentKey !== null && step.key === currentKey && !step.done;
+    
+    const stepResult = { ...step, status, index, isCurrent, total: rawSteps.length };
+    
+    // Логируем каждый шаг для отладки
+    if (index === 0 || step.done || isCurrent) {
+      console.log(`[ONBOARDING DEBUG] Step "${step.key}":`, {
+        done: step.done,
+        status,
+        isCurrent,
+        updateKey: onboardingUpdateKey.value,
+      });
+    }
+    
+    return stepResult;
   });
+  
+  console.log('[ONBOARDING DEBUG] Final steps array:', steps.map(s => ({ key: s.key, done: s.done, status: s.status, isCurrent: s.isCurrent })));
+  
+  return steps;
 });
 
 const onboardingProgress = computed(() => {
@@ -122,7 +269,13 @@ const onboardingProgress = computed(() => {
   return Math.round((completed / total) * 100);
 });
 
-const showOnboarding = computed(() => onboardingProgress.value < 100);
+// Показываем онбординг всегда, чтобы пользователь видел свой прогресс
+// Даже когда все шаги выполнены, показываем завершенное состояние с прогрессом 100%
+const showOnboarding = computed(() => {
+  // Всегда показываем онбординг - это помогает пользователю видеть свой прогресс
+  // В будущем можно добавить опцию для скрытия после завершения
+  return true;
+});
 
 const showGlobalLoading = computed(
   () =>
@@ -131,6 +284,81 @@ const showGlobalLoading = computed(
     !projects.value.length &&
     !photos.value.length,
 );
+
+const stepIconConfig = (st: string) => {
+  const map: Record<string, { icon: string; bg: string }> = {
+    done:    { icon: 'mdi-check',            bg: 'linear-gradient(135deg,#4caf50,#2e7d32)' },
+    active:  { icon: 'mdi-progress-clock',   bg: 'linear-gradient(135deg,#8bc34a,#558b2f)' },
+    error:   { icon: 'mdi-alert',            bg: 'linear-gradient(135deg,#e53935,#c62828)' },
+    waiting: { icon: 'mdi-dots-horizontal',  bg: 'linear-gradient(135deg,#90a4ae,#607d8b)' },
+  };
+  return map[st] || map.waiting;
+};
+
+const quickActions = [
+  {
+    title: 'Найти проект',
+    description: 'Просматривайте доступные проекты и присоединяйтесь к интересным.',
+    icon: 'mdi-magnify',
+    accent: '#558b2f',
+    bg: 'rgba(139, 195, 74, 0.1)',
+    to: '/volunteer/projects',
+    tag: 'Проекты',
+  },
+  {
+    title: 'Мои задачи',
+    description: 'Просматривайте назначенные задачи и отслеживайте прогресс.',
+    icon: 'mdi-clipboard-text-outline',
+    accent: '#00695c',
+    bg: 'rgba(0, 137, 123, 0.1)',
+    to: '/volunteer/tasks',
+    tag: 'Задачи',
+  },
+  {
+    title: 'Фотоотчёты',
+    description: 'Загружайте фотографии выполненных заданий.',
+    icon: 'mdi-camera-plus-outline',
+    accent: '#283593',
+    bg: 'rgba(57, 73, 171, 0.1)',
+    to: '/volunteer/photo-reports',
+    tag: 'Отчёты',
+  },
+  {
+    title: 'Профиль',
+    description: 'Обновите личную информацию и настройки.',
+    icon: 'mdi-account-outline',
+    accent: '#bf360c',
+    bg: 'rgba(230, 74, 25, 0.1)',
+    to: '/volunteer/profile',
+    tag: 'Профиль',
+  },
+];
+
+const infoCards = [
+  {
+    title: 'Синхронизация с Telegram',
+    text: 'Все действия из веб-портала сразу появляются в Telegram-боте.',
+    iconSrc: telegramIcon,
+    accent: '#0088cc',
+    bg: 'rgba(0,136,204,0.08)',
+  },
+  {
+    title: 'Мгновенные уведомления',
+    text: 'Получайте пуш-уведомления о новых задачах и комментариях.',
+    icon: 'mdi-bell-badge-outline',
+    accent: '#e65100',
+    bg: 'rgba(230,81,0,0.08)',
+  },
+  {
+    title: 'Рейтинг и достижения',
+    text: 'Зарабатывайте рейтинг за выполнение задач и получайте достижения.',
+    icon: 'mdi-star-circle-outline',
+    accent: '#4527a0',
+    bg: 'rgba(94,53,177,0.08)',
+  },
+];
+
+const navigate = (to: string) => router.push(to);
 
 const snackbarIcon = computed(() => {
   if (snackbar.color === 'error') return 'mdi-alert-circle';
@@ -192,10 +420,118 @@ async function loadStats() {
   }
 }
 
+// Отслеживаем изменения данных в store напрямую для автоматического обновления онбординга
+// Используем watch на каждый отдельный ref для более точного отслеживания
+watch(
+  () => dashboardStore.summary,
+  (newSummary, oldSummary) => {
+    console.log('[ONBOARDING DEBUG] Watch summary triggered:', {
+      oldSummary: oldSummary ? {
+        active_projects: oldSummary.active_projects,
+        active_tasks: oldSummary.active_tasks,
+        total_photos: oldSummary.total_photos,
+      } : null,
+      newSummary: newSummary ? {
+        active_projects: newSummary.active_projects,
+        active_tasks: newSummary.active_tasks,
+        total_photos: newSummary.total_photos,
+      } : null,
+    });
+    // Принудительно обновляем UI через увеличение счетчика
+    onboardingUpdateKey.value++;
+    console.log('[ONBOARDING DEBUG] Summary updated, forcing UI update, key:', onboardingUpdateKey.value);
+  },
+  { deep: true, immediate: false }
+);
+
+watch(
+  () => dashboardStore.projects?.length,
+  (newLength, oldLength) => {
+    console.log('[ONBOARDING DEBUG] Watch projects length triggered:', { oldLength, newLength });
+    if (newLength !== oldLength) {
+      onboardingUpdateKey.value++;
+      console.log('[ONBOARDING DEBUG] Projects count changed, forcing UI update, key:', onboardingUpdateKey.value);
+    }
+  },
+  { immediate: false }
+);
+
+watch(
+  () => dashboardStore.tasks?.length,
+  (newLength, oldLength) => {
+    console.log('[ONBOARDING DEBUG] Watch tasks length triggered:', { oldLength, newLength });
+    if (newLength !== oldLength) {
+      onboardingUpdateKey.value++;
+      console.log('[ONBOARDING DEBUG] Tasks count changed, forcing UI update, key:', onboardingUpdateKey.value);
+    }
+  },
+  { immediate: false }
+);
+
+watch(
+  () => dashboardStore.photos?.length,
+  (newLength, oldLength) => {
+    console.log('[ONBOARDING DEBUG] Watch photos length triggered:', { oldLength, newLength });
+    if (newLength !== oldLength) {
+      onboardingUpdateKey.value++;
+      console.log('[ONBOARDING DEBUG] Photos count changed, forcing UI update, key:', onboardingUpdateKey.value);
+    }
+  },
+  { immediate: false }
+);
+
+// Отслеживаем завершение загрузки dashboard для принудительного обновления UI
+watch(
+  () => dashboardStore.loading,
+  (isLoading, wasLoading) => {
+    // Когда загрузка завершается (было true, стало false), обновляем UI
+    if (wasLoading && !isLoading) {
+      console.log('[ONBOARDING DEBUG] Dashboard loading completed, forcing UI update');
+      nextTick(() => {
+        onboardingUpdateKey.value++;
+        console.log('[ONBOARDING DEBUG] UI update after loading, key:', onboardingUpdateKey.value);
+      });
+    }
+  },
+  { immediate: false }
+);
+
+// Также отслеживаем через watchEffect для дополнительной гарантии
+watchEffect(() => {
+  const activeProjects = summary.value?.active_projects ?? 0;
+  const activeTasks = summary.value?.active_tasks ?? 0;
+  const totalPhotos = summary.value?.total_photos ?? 0;
+  const projectsCount = projects.value?.length ?? 0;
+  const tasksCount = tasks.value?.length ?? 0;
+  const photosCount = photos.value?.length ?? 0;
+  
+  // Логируем только при реальных изменениях (не при каждом рендере)
+  // Используем nextTick чтобы избежать лишних логов
+  nextTick(() => {
+    console.log('[ONBOARDING DEBUG] WatchEffect computed values:', {
+      activeProjects,
+      activeTasks,
+      totalPhotos,
+      projectsCount,
+      tasksCount,
+      photosCount,
+    });
+  });
+});
+
 onMounted(async () => {
+  console.log('[ONBOARDING DEBUG] Component mounted, loading data...');
   await authStore.initialize();
+  console.log('[ONBOARDING DEBUG] Auth initialized, user:', authStore.user);
   await dashboardStore.loadDashboard();
+  console.log('[ONBOARDING DEBUG] Dashboard loaded:', {
+    summary: dashboardStore.summary,
+    projects: dashboardStore.projects,
+    tasks: dashboardStore.tasks,
+    photos: dashboardStore.photos,
+  });
   await loadStats();
+  console.log('[ONBOARDING DEBUG] Stats loaded');
 });
 
 const canAcceptTask = (task: VolunteerTaskSummary) => task.status === 'open' && !task.accepted;
@@ -339,12 +675,12 @@ async function handleTaskAction(action: 'accept' | 'decline' | 'complete', task:
 </script>
 
 <template>
-  <div class="volunteer-dashboard">
+  <div class="dashboard">
     <v-overlay
       v-model="showGlobalLoading"
       class="loading-overlay"
       persistent
-      scrim="rgba(21, 101, 192, 0.08)"
+      scrim="rgba(139, 195, 74, 0.08)"
     >
       <div class="loading-overlay__content">
         <v-progress-circular indeterminate color="primary" size="54" width="6" />
@@ -352,151 +688,139 @@ async function handleTaskAction(action: 'accept' | 'decline' | 'complete', task:
       </div>
     </v-overlay>
 
-    <v-row class="ga-6">
-      <v-col cols="12">
-        <v-card class="hero-card" elevation="8" rounded="xl">
-          <div class="hero-card__content">
-            <div class="hero-card__badge">
-              <v-icon icon="mdi-human-handsup" size="20" />
-              Добро пожаловать, {{ volunteerName }}
+    <!-- ─── Hero ─── -->
+    <div class="hero">
+      <div class="hero__content">
+        <div class="hero__badge">
+          <v-icon icon="mdi-human-handsup" size="15" />
+          Кабинет волонтёра
             </div>
-            <h1>
-              Присоединяйтесь к проектам<br />
-              и развивайтесь в команде с BirQadam
+        <h1 class="hero__title">
+          Присоединяйтесь к проектам,<br />выполняйте задачи и развивайтесь
             </h1>
-            <p>
-              Все задачи и фотоотчёты синхронизированы между веб-порталом и Telegram-ботом —
-              выбирайте удобный канал и продолжайте помогать.
+        <p class="hero__sub">
+          Весь инструментарий в одном месте — синхронизировано с Telegram-ботом.
             </p>
-            <div class="hero-card__actions">
-              <v-btn
-                color="warning"
-                variant="flat"
-                class="text-none font-weight-bold hero-card__btn"
-                :to="{ name: 'volunteer-projects' }"
-              >
+        <div class="hero__btns">
+          <button class="hero__btn hero__btn--solid" @click="navigate('/volunteer/projects')">
+            <v-icon icon="mdi-magnify" size="17" />
                 Найти проект
-              </v-btn>
-              <v-btn
-                variant="outlined"
-                color="white"
-                class="text-none font-weight-bold hero-card__btn"
-                :to="{ name: 'volunteer-photo-reports' }"
-              >
-                Фотоотчёты
-              </v-btn>
+          </button>
+          <button class="hero__btn hero__btn--outline" @click="navigate('/volunteer/tasks')">
+            <v-icon icon="mdi-clipboard-text-outline" size="17" />
+            Мои задачи
+          </button>
             </div>
           </div>
-          <div class="hero-card__visual">
-            <div class="hero-card__orb hero-card__orb--primary" />
-            <div class="hero-card__orb hero-card__orb--secondary" />
-            <v-icon icon="mdi-hand-heart" size="120" class="hero-card__icon" />
+      <div class="hero__art" aria-hidden="true">
+        <div class="hero__orb hero__orb--1" />
+        <div class="hero__orb hero__orb--2" />
+        <v-icon icon="mdi-hand-heart" class="hero__art-icon" />
           </div>
-        </v-card>
-      </v-col>
+    </div>
 
-      <v-col cols="12" v-if="showOnboarding">
-        <v-card class="onboarding-card" elevation="8" rounded="xl">
-          <div class="onboarding-card__header">
+    <!-- ─── Onboarding ─── -->
+    <div v-if="showOnboarding" class="section-card">
+      <div class="onboarding-top">
             <div>
-              <v-chip color="primary" variant="tonal" size="small" class="text-none font-weight-bold mb-2">
+          <div class="status-pill" style="color: #8bc34a; background: rgba(139,195,74,0.1); border-color: rgba(139,195,74,0.2);">
+            <v-icon icon="mdi-progress-clock" size="13" />
                 Путь волонтёра
-              </v-chip>
-              <h2 class="text-h6 font-weight-bold mb-1">Три шага, чтобы включиться в работу</h2>
-              <p class="text-body-2 text-medium-emphasis mb-0">
-                Мы отмечаем выполненные этапы автоматически. Пройдите их, чтобы получать задачи и повышать рейтинг.
-              </p>
             </div>
-            <div class="onboarding-card__progress">
-              <span class="text-caption text-medium-emphasis">Готовность</span>
-              <div class="d-flex align-center ga-2">
-                <v-progress-circular :model-value="onboardingProgress" color="primary" size="48" width="5">
-                  {{ onboardingProgress }}%
+          <h2 class="card-title mt-2">Онбординг волонтёра</h2>
+          <p class="card-sub">Этапы подготовки к активной работе.</p>
+        </div>
+        <div class="progress-widget">
+          <v-progress-circular
+            :model-value="onboardingProgress"
+            color="#8bc34a"
+            size="54"
+            width="5"
+            bg-color="rgba(0,0,0,0.07)"
+          >
+            <span class="progress-pct">{{ onboardingProgress }}%</span>
                 </v-progress-circular>
-                <div class="text-body-2 text-medium-emphasis">
-                  {{
-                    onboardingProgress === 0
-                      ? 'Начните прямо сейчас'
-                      : onboardingProgress < 100
-                        ? 'Ещё немного — и вы полностью готовы'
-                        : 'Все шаги выполнены'
-                  }}
-                </div>
-              </div>
+          <span class="progress-lbl">
+            {{ onboardingProgress === 0 ? 'Начните' : onboardingProgress < 100 ? 'В процессе' : 'Готово' }}
+          </span>
             </div>
           </div>
 
-          <v-divider class="my-4" />
-
-          <v-row class="ga-4 ga-md-0">
-            <v-col
-              v-for="step in onboardingSteps"
-              :key="step.key"
-              cols="12"
-              md="4"
-            >
-              <v-sheet
-                class="onboarding-step pa-5"
-                rounded="lg"
-                :border="step.status !== 'active'"
-                :color="step.status === 'active' ? 'primary-lighten-5' : step.status === 'waiting' ? 'grey-lighten-5' : 'success-lighten-5'"
+      <!-- Steps -->
+      <div class="steps-grid" :key="`onboarding-${onboardingUpdateKey}`">
+        <div
+          v-for="(step, index) in onboardingSteps"
+          :key="`${step.key}-${onboardingUpdateKey}`"
+          class="step-card"
+          :class="[`step-card--${step.status}`, { 'step-card--current': step.isCurrent }]"
+          :style="{ animationDelay: `${index * 0.15}s` }"
               >
-                <div class="onboarding-step__icon" :class="`onboarding-step__icon--${step.status}`">
-                  <v-icon
-                    :icon="step.status === 'done' ? 'mdi-check' : step.status === 'active' ? 'mdi-progress-clock' : 'mdi-dots-horizontal'"
-                    size="22"
-                  />
+          <!-- Анимированная линия соединения -->
+          <div 
+            v-if="index < onboardingSteps.length - 1" 
+            class="step-connector"
+            :class="{ 'step-connector--active': step.status === 'done' }"
+          >
+            <div class="step-connector__line"></div>
+            <div 
+              class="step-connector__progress" 
+              :style="{ width: step.status === 'done' ? '100%' : '0%' }"
+            ></div>
                 </div>
-                <h3 class="text-subtitle-1 font-weight-semibold mb-2">{{ step.title }}</h3>
-                <p class="text-body-2 text-medium-emphasis mb-0">
-                  {{ step.description }}
-                </p>
-              </v-sheet>
-            </v-col>
-          </v-row>
-        </v-card>
-      </v-col>
-    </v-row>
+          
+          <div class="step-card__num">{{ step.index + 1 }} / {{ step.total }}</div>
+          <div 
+            class="step-card__icon" 
+            :style="{ background: stepIconConfig(step.status)?.bg || 'rgba(0,0,0,0.1)' }"
+            :class="{ 
+              'step-card__icon--pulse': step.isCurrent && step.status === 'active',
+              'step-card__icon--success': step.status === 'done'
+            }"
+          >
+            <v-icon :icon="stepIconConfig(step.status)?.icon || 'mdi-circle'" size="20" color="white" />
+            <!-- Анимация для активного шага -->
+            <div v-if="step.isCurrent && step.status === 'active'" class="step-card__icon-ring"></div>
+          </div>
+          <div class="step-card__title">{{ step.title }}</div>
+          <p class="step-card__desc">{{ step.description }}</p>
+          <div v-if="step.isCurrent && step.status === 'active'" class="step-card__now">
+            <span class="step-card__now-dot"></span>
+            Сейчас
+          </div>
+        </div>
+      </div>
+    </div>
 
-    <v-row class="ga-4 stats-row">
-      <v-col cols="12" sm="6" md="3">
+    <!-- ─── Stats ─── -->
+    <div class="stats-grid">
         <div class="stat-card stat-card--primary">
           <div class="stat-card__icon">
-            <v-icon icon="mdi-star-circle" size="32" />
+          <v-icon icon="mdi-star-circle" size="28" />
           </div>
           <div class="stat-card__body">
             <div class="stat-card__label">Рейтинг</div>
             <div v-if="statsLoading" class="stat-card__loader">
-              <v-progress-circular indeterminate color="white" size="28" width="3" />
+            <v-progress-circular indeterminate color="white" size="24" width="3" />
             </div>
             <template v-else>
               <div class="stat-card__value">{{ stats?.rating ?? 0 }}</div>
-              <v-chip color="white" variant="text" size="small" class="stat-card__chip">
-                Уровень {{ stats?.level ?? 1 }}
-              </v-chip>
-              <div class="stat-card__hint">
-                До следующего уровня: {{ stats?.next_level_rating ?? '—' }} XP
-              </div>
+            <div class="stat-card__hint">Уровень {{ stats?.level ?? 1 }}</div>
             </template>
           </div>
         </div>
-      </v-col>
-      <v-col cols="12" sm="6" md="3">
         <div class="stat-card stat-card--success">
           <div class="stat-card__icon">
-            <v-icon icon="mdi-checkbox-marked-circle-outline" size="32" />
+          <v-icon icon="mdi-checkbox-marked-circle-outline" size="28" />
           </div>
           <div class="stat-card__body">
             <div class="stat-card__label">Завершено задач</div>
             <div class="stat-card__value">{{ summary.completed_tasks }}</div>
-            <div class="stat-card__hint">Спасибо за вашу помощь!</div>
+          <div class="stat-card__hint">Спасибо за помощь!</div>
           </div>
         </div>
-      </v-col>
-      <v-col cols="12" sm="6" md="3">
         <div class="stat-card stat-card--warning">
           <div class="stat-card__icon">
-            <v-icon icon="mdi-folder-account-outline" size="32" />
+          <v-icon icon="mdi-folder-account-outline" size="28" />
           </div>
           <div class="stat-card__body">
             <div class="stat-card__label">Активные проекты</div>
@@ -504,11 +828,9 @@ async function handleTaskAction(action: 'accept' | 'decline' | 'complete', task:
             <div class="stat-card__hint">Участия в сообществах</div>
           </div>
         </div>
-      </v-col>
-      <v-col cols="12" sm="6" md="3">
         <div class="stat-card stat-card--info">
           <div class="stat-card__icon">
-            <v-icon icon="mdi-bell-badge-outline" size="32" />
+          <v-icon icon="mdi-bell-badge-outline" size="28" />
           </div>
           <div class="stat-card__body">
             <div class="stat-card__label">Уведомления</div>
@@ -516,21 +838,69 @@ async function handleTaskAction(action: 'accept' | 'decline' | 'complete', task:
             <div class="stat-card__hint">Новых сообщений</div>
           </div>
         </div>
-      </v-col>
-    </v-row>
+    </div>
 
-    <v-row class="ga-4 main-section">
-      <v-col cols="12">
-        <v-card class="content-card" elevation="0" rounded="xl">
-          <v-card-title class="content-card__title">
+    <!-- ─── How it works ─── -->
+    <div class="section-card">
+      <div class="section-card__row">
             <div>
-              <div class="d-flex align-center ga-2 mb-1">
-                <v-icon icon="mdi-clipboard-text-clock" color="primary" />
-                <span class="text-h6 font-weight-bold">Мои задания</span>
+          <h2 class="card-title">Как работает кабинет</h2>
+          <p class="card-sub">Синхронизировано с Telegram-ботом</p>
               </div>
-              <div class="text-body-2 text-medium-emphasis">
-                Следите за дедлайнами и отправляйте результаты вовремя
+        <div class="bot-badge">
+          <v-icon icon="mdi-robot-outline" size="15" />
+          Telegram бот
               </div>
+      </div>
+
+      <div class="info-row">
+        <div
+          v-for="card in infoCards"
+          :key="card.title"
+          class="info-tile"
+          :style="{ background: card.bg }"
+        >
+          <div class="info-tile__icon">
+            <v-img v-if="card.iconSrc" :src="card.iconSrc" width="22" height="22" />
+            <v-icon v-else :icon="card.icon" size="22" :style="{ color: card.accent }" />
+          </div>
+          <div class="info-tile__title">{{ card.title }}</div>
+          <p class="info-tile__text">{{ card.text }}</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─── Quick actions ─── -->
+    <div>
+      <div class="actions-head">Быстрые действия</div>
+      <div class="actions-grid">
+        <div
+          v-for="action in quickActions"
+          :key="action.title"
+          class="action-tile"
+          @click="navigate(action.to)"
+        >
+          <div class="action-tile__tag" :style="{ color: action.accent, background: action.bg }">
+            {{ action.tag }}
+          </div>
+          <div class="action-tile__icon" :style="{ background: action.bg }">
+            <v-icon :icon="action.icon" size="26" :style="{ color: action.accent }" />
+          </div>
+          <div class="action-tile__title">{{ action.title }}</div>
+          <p class="action-tile__desc">{{ action.description }}</p>
+          <div class="action-tile__arrow" :style="{ color: action.accent }">
+            <v-icon icon="mdi-arrow-right" size="18" />
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─── Tasks ─── -->
+    <div class="section-card">
+      <div class="section-card__row">
+        <div>
+          <h2 class="card-title">Мои задания</h2>
+          <p class="card-sub">Следите за дедлайнами и отправляйте результаты вовремя</p>
             </div>
             <v-btn
               color="primary"
@@ -542,9 +912,8 @@ async function handleTaskAction(action: 'accept' | 'decline' | 'complete', task:
             >
               Обновить
             </v-btn>
-          </v-card-title>
-          <v-divider />
-          <v-card-text class="pa-6">
+      </div>
+      <div class="section-card__content">
             <v-skeleton-loader v-if="loading" type="list-item-three-line@3" />
             <template v-else>
               <div v-if="tasks.length" class="task-grid">
@@ -698,27 +1067,18 @@ async function handleTaskAction(action: 'accept' | 'decline' | 'complete', task:
                 </v-btn>
               </div>
             </template>
-          </v-card-text>
-        </v-card>
-      </v-col>
+      </div>
+    </div>
 
-      
-    </v-row>
-
-    <v-row class="ga-4">
-      <v-col cols="12">
-        <v-card class="content-card" elevation="0" rounded="xl">
-          <v-card-title class="content-card__title">
-            <div class="d-flex align-center ga-2">
-              <v-icon icon="mdi-account-group" color="teal-darken-1" />
-              <span class="text-h6 font-weight-bold">Мои проекты</span>
+    <!-- ─── Projects ─── -->
+    <div class="section-card">
+      <div class="section-card__row">
+        <div>
+          <h2 class="card-title">Мои проекты</h2>
+          <p class="card-sub">Команды и организаторы, вместе с которыми вы работаете</p>
             </div>
-            <div class="text-body-2 text-medium-emphasis">
-              Команды и организаторы, вместе с которыми вы работаете
             </div>
-          </v-card-title>
-          <v-divider />
-          <v-card-text class="pa-6">
+      <div class="section-card__content">
             <v-skeleton-loader v-if="loading" type="list-item-three-line@3" />
             <template v-else>
               <v-list v-if="projects.length" class="projects-list" lines="two">
@@ -778,10 +1138,8 @@ async function handleTaskAction(action: 'accept' | 'decline' | 'complete', task:
                 </v-btn>
               </div>
             </template>
-          </v-card-text>
-        </v-card>
-      </v-col>
-    </v-row>
+      </div>
+    </div>
   </div>
 
   <v-dialog v-model="uploadDialog" max-width="640">
@@ -927,12 +1285,14 @@ async function handleTaskAction(action: 'accept' | 'decline' | 'complete', task:
 </template>
 
 <style scoped>
-.volunteer-dashboard {
+/* ─── Base ─── */
+.dashboard {
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 20px;
 }
 
+/* ─── Loading overlay ─── */
 .loading-overlay :deep(.v-overlay__scrim) {
   backdrop-filter: blur(6px);
 }
@@ -945,198 +1305,462 @@ async function handleTaskAction(action: 'accept' | 'decline' | 'complete', task:
   padding: 32px 36px;
   border-radius: 20px;
   background: rgba(255, 255, 255, 0.92);
-  box-shadow: 0 24px 48px rgba(139, 195, 74, 0.18); /* BirQadam primary */
+  box-shadow: 0 24px 48px rgba(139, 195, 74, 0.18);
 }
 
-.hero-card {
+/* ─── Hero ─── */
+.hero {
   display: flex;
-  flex-direction: row;
   align-items: stretch;
+  background: linear-gradient(118deg, #2d5a1b 0%, #4a8f2a 48%, #d4631a 100%);
+  border-radius: 24px;
   overflow: hidden;
-  background: linear-gradient(115deg, rgba(139, 195, 74, 0.95), rgba(139, 195, 74, 0.85) 45%, rgba(227, 121, 77, 0.9) 90%); /* BirQadam colors */
-  border-radius: 28px;
-  color: #fff;
+  min-height: 230px;
   position: relative;
-  min-height: 260px;
 }
 
-.hero-card__content {
-  padding: clamp(24px, 4vw, 48px);
-  width: 100%;
-  max-width: 620px;
+.hero__content {
+  padding: clamp(24px, 4vw, 44px);
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 14px;
   z-index: 2;
+  max-width: 560px;
 }
 
-.hero-card__badge {
+.hero__badge {
   display: inline-flex;
   align-items: center;
-  gap: 10px;
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 999px;
-  padding: 8px 16px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  font-size: 0.75rem;
-}
-
-.hero-card__content h1 {
-  font-size: clamp(1.8rem, 3.2vw, 2.6rem);
-  line-height: 1.25;
-  margin: 0;
+  gap: 7px;
+  background: rgba(255,255,255,0.18);
+  border: 1px solid rgba(255,255,255,0.22);
+  border-radius: 100px;
+  padding: 5px 14px;
+  font-size: 0.72rem;
   font-weight: 700;
+  color: rgba(255,255,255,0.9);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  width: fit-content;
 }
 
-.hero-card__content p {
-  margin: 0;
-  color: rgba(255, 255, 255, 0.82);
-  font-size: clamp(0.95rem, 1.8vw, 1.05rem);
-  line-height: 1.6;
-}
-
-.hero-card__actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-}
-
-.hero-card__btn {
-  min-width: 180px;
-}
-
-.hero-card__visual {
-  position: relative;
-  flex: 1;
-  min-height: 220px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-}
-
-.hero-card__orb {
-  position: absolute;
-  border-radius: 50%;
-  filter: blur(0);
-  opacity: 0.65;
-}
-
-.hero-card__orb--primary {
-  width: 220px;
-  height: 220px;
-  background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.4), transparent 65%);
-  top: 18%;
-  right: 20%;
-}
-
-.hero-card__orb--secondary {
-  width: 300px;
-  height: 300px;
-  background: radial-gradient(circle, rgba(227, 121, 77, 0.25), transparent 70%); /* BirQadam accent */
-  bottom: -40px;
-  right: -10%;
-}
-
-.hero-card__icon {
-  position: relative;
-  color: rgba(255, 255, 255, 0.28);
-}
-
-.onboarding-card {
-  padding: clamp(24px, 4vw, 32px);
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(255, 250, 246, 0.92)); /* BirQadam background */
-  border: 1px solid rgba(139, 195, 74, 0.12); /* BirQadam primary */
-}
-
-.onboarding-card__header {
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
-}
-
-@media (min-width: 960px) {
-  .onboarding-card__header {
-    flex-direction: row;
-    justify-content: space-between;
-    align-items: center;
-    gap: 32px;
-  }
-}
-
-.onboarding-card__progress {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  min-width: 160px;
-}
-
-.onboarding-step {
-  position: relative;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.onboarding-step__icon {
-  width: 44px;
-  height: 44px;
-  border-radius: 14px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  margin-bottom: 6px;
+.hero__title {
+  font-size: clamp(1.45rem, 3vw, 2.15rem);
+  font-weight: 800;
+  line-height: 1.2;
+  letter-spacing: -0.4px;
   color: #fff;
+  margin: 0;
 }
 
-.onboarding-step__icon--done {
-  background: linear-gradient(135deg, #4caf50, #2e7d32);
-}
-
-.onboarding-step__icon--active {
-  background: linear-gradient(135deg, #8BC34A, #689F38); /* BirQadam primary */
-}
-
-.onboarding-step__icon--waiting {
-  background: linear-gradient(135deg, #90a4ae, #607d8b); /* Waiting state - оставляем серый */
-}
-
-.onboarding-step p {
-  color: rgba(33, 33, 33, 0.7);
+.hero__sub {
+  font-size: 0.925rem;
+  color: rgba(255,255,255,0.7);
+  margin: 0;
   line-height: 1.5;
 }
 
-.feedback-snackbar {
-  border-radius: 16px;
-  box-shadow: 0 18px 32px rgba(139, 195, 74, 0.2); /* BirQadam primary */
+.hero__btns {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 
-.feedback-snackbar__content {
+.hero__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 20px;
+  border-radius: 100px;
+  font-size: 0.875rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity 0.15s, transform 0.15s;
+}
+.hero__btn:hover { opacity: 0.88; transform: translateY(-1px); }
+.hero__btn--solid  { background: #fff; color: #2d5a1b; border: none; }
+.hero__btn--outline { background: transparent; color: #fff; border: 1.5px solid rgba(255,255,255,0.45); }
+
+.hero__art {
+  flex: 1;
+  position: relative;
   display: flex;
   align-items: center;
+  justify-content: center;
+  min-height: 150px;
+}
+
+.hero__orb {
+  position: absolute;
+  border-radius: 50%;
+}
+.hero__orb--1 {
+  width: 200px; height: 200px;
+  background: radial-gradient(circle, rgba(255,255,255,0.12), transparent 70%);
+  top: 10%; right: 15%;
+}
+.hero__orb--2 {
+  width: 280px; height: 280px;
+  background: radial-gradient(circle, rgba(212,99,26,0.2), transparent 70%);
+  bottom: -30px; right: -5%;
+}
+.hero__art-icon {
+  font-size: 110px !important;
+  color: rgba(255,255,255,0.15) !important;
+  position: relative;
+}
+
+@media (max-width: 768px) {
+  .hero { flex-direction: column; }
+  .hero__art { min-height: 110px; }
+}
+
+/* ─── Section card ─── */
+.section-card {
+  background: #fff;
+  border-radius: 20px;
+  border: 1px solid rgba(0,0,0,0.07);
+  padding: clamp(18px, 3vw, 26px);
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.section-card__row {
+  display: flex;
+  align-items: flex-start;
+    justify-content: space-between;
   gap: 12px;
+  flex-wrap: wrap;
+}
+
+.section-card__content {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.card-title {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: #1a1a1a;
+  margin: 0;
+}
+
+.card-sub {
+  font-size: 0.825rem;
+  color: rgba(0,0,0,0.44);
+  margin: 3px 0 0;
+}
+
+/* ─── Onboarding top row ─── */
+.onboarding-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.status-pill {
+  display: inline-flex;
+    align-items: center;
+  gap: 6px;
+  padding: 4px 11px;
+  border-radius: 100px;
+  border: 1px solid;
+  font-size: 0.78rem;
+  font-weight: 700;
+  width: fit-content;
+}
+
+.progress-widget {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+}
+
+.progress-pct {
+  font-size: 0.7rem;
+  font-weight: 800;
+  color: #1a1a1a;
+}
+
+.progress-lbl {
+  font-size: 0.72rem;
+  color: rgba(0,0,0,0.42);
   font-weight: 600;
 }
 
-.stats-row {
-  margin-top: 6px;
+/* ─── Steps ─── */
+.steps-grid {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 10px;
+}
+
+.step-card {
+  position: relative;
+  background: #fafafa;
+  border-radius: 14px;
+  border: 1px solid rgba(0,0,0,0.07);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  animation: stepSlideIn 0.6s ease-out forwards;
+}
+
+@keyframes stepSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.step-card--current {
+  border-color: rgba(139,195,74,0.32);
+  background: rgba(139,195,74,0.04);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 22px rgba(139,195,74,0.12);
+  animation: stepCurrentPulse 2s ease-in-out infinite;
+}
+
+@keyframes stepCurrentPulse {
+  0%, 100% {
+    box-shadow: 0 8px 22px rgba(139,195,74,0.12);
+}
+  50% {
+    box-shadow: 0 12px 28px rgba(139,195,74,0.18);
+  }
+}
+
+.step-card--done {
+  animation: stepDoneSuccess 0.6s ease-out;
+}
+
+@keyframes stepDoneSuccess {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.step-card__num {
+  font-size: 0.67rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: rgba(0,0,0,0.32);
+}
+
+.step-card__icon {
+  position: relative;
+  width: 38px; 
+  height: 38px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center; 
+  justify-content: center;
+  transition: all 0.3s ease;
+  z-index: 1;
+}
+
+.step-card__icon--pulse {
+  animation: iconPulse 2s ease-in-out infinite;
+}
+
+@keyframes iconPulse {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(139, 195, 74, 0.4);
+  }
+  50% {
+    transform: scale(1.05);
+    box-shadow: 0 0 0 8px rgba(139, 195, 74, 0);
+  }
+}
+
+.step-card__icon--success {
+  animation: iconSuccess 0.6s ease-out;
+}
+
+@keyframes iconSuccess {
+  0% {
+    transform: scale(1) rotate(0deg);
+  }
+  50% {
+    transform: scale(1.2) rotate(180deg);
+  }
+  100% {
+    transform: scale(1) rotate(360deg);
+  }
+}
+
+.step-card__icon-ring {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 100%;
+  height: 100%;
+  border-radius: 10px;
+  border: 2px solid rgba(139, 195, 74, 0.5);
+  transform: translate(-50%, -50%);
+  animation: ringPulse 2s ease-out infinite;
+}
+
+@keyframes ringPulse {
+  0% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(1.5);
+    opacity: 0;
+  }
+}
+
+.step-card__title {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #1a1a1a;
+  transition: color 0.3s;
+}
+
+.step-card--current .step-card__title {
+  color: #558b2f;
+}
+
+.step-card__desc {
+  font-size: 0.8rem;
+  color: rgba(0,0,0,0.5);
+  line-height: 1.45;
+  margin: 0;
+  flex: 1;
+}
+
+.step-card__now {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 100px;
+  background: linear-gradient(135deg, #8bc34a, #558b2f);
+  color: #fff;
+  font-size: 0.67rem;
+  font-weight: 800;
+  width: fit-content;
+  animation: nowBadgePulse 2s ease-in-out infinite;
+}
+
+@keyframes nowBadgePulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(139, 195, 74, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(139, 195, 74, 0);
+  }
+}
+
+.step-card__now-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: white;
+  animation: dotBlink 1.5s ease-in-out infinite;
+}
+
+@keyframes dotBlink {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.3;
+  }
+}
+
+/* Соединительная линия между шагами */
+.step-connector {
+  position: absolute;
+  top: 50%;
+  right: -10px;
+  width: 20px;
+  height: 2px;
+  transform: translateY(-50%);
+  z-index: 0;
+  display: none;
+}
+
+@media (min-width: 600px) {
+  .step-connector {
+    display: block;
+  }
+}
+
+.step-connector__line {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 2px;
+}
+
+.step-connector__progress {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  background: linear-gradient(90deg, #8bc34a, #558b2f);
+  border-radius: 2px;
+  transition: width 0.6s ease-out;
+}
+
+.step-connector--active .step-connector__progress {
+  animation: connectorProgress 1s ease-out;
+}
+
+@keyframes connectorProgress {
+  from {
+    width: 0%;
+  }
+  to {
+    width: 100%;
+}
+}
+
+/* ─── Stats ─── */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
 }
 
 .stat-card {
   display: flex;
   align-items: center;
-  gap: 18px;
-  padding: 22px;
-  border-radius: 22px;
+  gap: 14px;
+  padding: 18px;
+  border-radius: 16px;
   color: #fff;
-  box-shadow: 0 24px 48px rgba(139, 195, 74, 0.18); /* BirQadam primary */
+  box-shadow: 0 8px 20px rgba(0,0,0,0.08);
 }
 
 .stat-card--primary {
-  background: linear-gradient(135deg, #8BC34A, #689F38); /* BirQadam primary */
+  background: linear-gradient(135deg, #8bc34a, #689f38);
 }
 
 .stat-card--success {
@@ -1148,71 +1772,182 @@ async function handleTaskAction(action: 'accept' | 'decline' | 'complete', task:
 }
 
 .stat-card--info {
-  background: linear-gradient(135deg, #8BC34A, #689F38); /* BirQadam primary */
+  background: linear-gradient(135deg, #42a5f5, #1976d2);
 }
 
 .stat-card__icon {
-  width: 48px;
-  height: 48px;
-  border-radius: 16px;
-  background: rgba(255, 255, 255, 0.22);
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  background: rgba(255,255,255,0.22);
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
 }
 
 .stat-card__body {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
+  flex: 1;
 }
 
 .stat-card__label {
-  font-size: 0.8rem;
-  letter-spacing: 0.08em;
+  font-size: 0.75rem;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
-  opacity: 0.8;
-  font-weight: 600;
+  opacity: 0.85;
+  font-weight: 700;
 }
 
 .stat-card__value {
-  font-size: clamp(1.9rem, 3vw, 2.4rem);
-  font-weight: 700;
+  font-size: 1.8rem;
+  font-weight: 800;
   line-height: 1;
 }
 
-.stat-card__chip {
-  align-self: flex-start;
-  font-weight: 700;
-  letter-spacing: 0.05em;
-}
-
 .stat-card__hint {
-  font-size: 0.82rem;
+  font-size: 0.78rem;
   opacity: 0.85;
 }
 
 .stat-card__loader {
-  padding: 6px 0;
+  padding: 4px 0;
 }
 
-.content-card {
-  border: 1px solid rgba(33, 33, 33, 0.06);
-  background: #ffffff;
-  box-shadow: 0 20px 40px rgba(139, 195, 74, 0.1); /* BirQadam primary */
-}
-
-.content-card__title {
-  display: flex;
-  justify-content: space-between;
+/* ─── Bot badge ─── */
+.bot-badge {
+  display: inline-flex;
   align-items: center;
-  gap: 16px;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: 100px;
+  background: rgba(139,195,74,0.1);
+  border: 1px solid rgba(139,195,74,0.2);
+  color: #558b2f;
+  font-size: 0.75rem;
+  font-weight: 700;
 }
 
+/* ─── Info tiles ─── */
+.info-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 12px;
+}
+
+.info-tile {
+  border-radius: 14px;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.info-tile__icon {
+  width: 40px; height: 40px;
+  border-radius: 10px;
+  background: rgba(255,255,255,0.7);
+  display: flex; align-items: center; justify-content: center;
+}
+
+.info-tile__title {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #1a1a1a;
+}
+
+.info-tile__text {
+  font-size: 0.8rem;
+  color: rgba(0,0,0,0.5);
+  line-height: 1.45;
+  margin: 0;
+}
+
+/* ─── Quick actions ─── */
+.actions-head {
+  font-size: 0.75rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.7px;
+  color: rgba(0,0,0,0.4);
+  margin-bottom: 12px;
+}
+
+.actions-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 12px;
+}
+
+.action-tile {
+  background: #fff;
+  border-radius: 16px;
+  border: 1px solid rgba(0,0,0,0.07);
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  cursor: pointer;
+  transition: box-shadow 0.2s, transform 0.2s;
+}
+
+.action-tile:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 28px rgba(0,0,0,0.09);
+}
+
+.action-tile__tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 100px;
+  font-size: 0.67rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  width: fit-content;
+}
+
+.action-tile__icon {
+  width: 46px; height: 46px;
+  border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  margin: 4px 0;
+}
+
+.action-tile__title {
+  font-size: 0.925rem;
+  font-weight: 800;
+  color: #1a1a1a;
+}
+
+.action-tile__desc {
+  font-size: 0.8rem;
+  color: rgba(0,0,0,0.5);
+  line-height: 1.45;
+  margin: 0;
+  flex: 1;
+}
+
+.action-tile__arrow {
+  margin-top: 4px;
+  opacity: 0;
+  transform: translateX(-4px);
+  transition: opacity 0.18s, transform 0.18s;
+}
+
+.action-tile:hover .action-tile__arrow {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+/* ─── Tasks ─── */
 .task-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  gap: 18px;
+  gap: 16px;
 }
 
 .task-card {
@@ -1263,6 +1998,12 @@ async function handleTaskAction(action: 'accept' | 'decline' | 'complete', task:
   display: inline-flex;
   align-items: center;
   gap: 6px;
+}
+
+.task-card__photos {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .task-card__actions {
@@ -1317,49 +2058,138 @@ async function handleTaskAction(action: 'accept' | 'decline' | 'complete', task:
   gap: 10px;
 }
 
-@media (max-width: 1280px) {
-  .content-card__title {
-    flex-direction: column;
-    align-items: flex-start;
-  }
+/* ─── Feedback snackbar ─── */
+.feedback-snackbar {
+  border-radius: 16px;
+  box-shadow: 0 18px 32px rgba(139, 195, 74, 0.2);
 }
 
-@media (max-width: 1100px) {
-  .hero-card {
-    flex-direction: column;
+.feedback-snackbar__content {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-weight: 600;
   }
 
-  .hero-card__visual {
-    min-height: 200px;
-  }
-}
-
+/* ─── Responsive ─── */
 @media (max-width: 960px) {
-  .volunteer-dashboard {
-    gap: 20px;
+  .dashboard {
+    gap: 18px;
   }
 
   .task-grid {
     grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
   }
 
-  .hero-card__visual {
-    min-height: 180px;
+  .stats-grid {
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  }
+
+  .section-card__row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .section-card__row .v-btn {
+    width: 100%;
+    justify-content: center;
   }
 }
 
 @media (max-width: 600px) {
-  .hero-card__actions {
+  .hero__btns {
     flex-direction: column;
     align-items: stretch;
   }
 
   .task-grid {
     grid-template-columns: 1fr;
+    gap: 12px;
   }
 
-  .content-card__title {
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .section-card {
+    padding: 16px;
+  }
+
+  .section-card__row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .card-title {
+    font-size: 0.95rem;
+  }
+
+  .card-sub {
+    font-size: 0.8rem;
+  }
+
+  /* Адаптация карточек задач для мобильных */
+  .task-card {
+    padding: 16px;
+    gap: 14px;
+    border-radius: 16px;
+  }
+
+  .task-card__header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .task-card__title {
+    font-size: 0.95rem;
+    line-height: 1.4;
+    margin-bottom: 8px;
+  }
+
+  .task-card__status {
+    width: 100%;
+    justify-content: flex-start;
+    gap: 6px;
+  }
+
+  .task-card__meta {
+    flex-direction: column;
     gap: 8px;
+    font-size: 0.85rem;
+  }
+
+  .task-meta {
+    width: 100%;
+    gap: 8px;
+  }
+
+  .task-card__photos {
+    width: 100%;
+  }
+
+  .task-card__actions {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .task-card__actions > .d-flex {
+    width: 100%;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .task-card__actions .v-btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .task-card__actions > .v-btn {
+    width: 100%;
+    justify-content: center;
   }
 }
 </style>

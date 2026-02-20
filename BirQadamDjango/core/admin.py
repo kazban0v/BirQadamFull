@@ -1,7 +1,23 @@
 from django.contrib import admin
+from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
+from django.contrib.auth.models import User as DjangoUser
 from django.utils.html import format_html
 from django.urls import reverse
-from core.models import SupportTicket
+from core.models import (
+    User, Project, Task, Photo, Activity, VolunteerProject,
+    TaskAssignment, FeedbackSession, FeedbackMessage, Achievement,
+    UserAchievement, OrganizerApplication, TrustFactorHistory,
+    DeviceToken, NotificationTemplate, BulkNotification, NotificationRecipient,
+    UserSearchFilter, Event, GeofenceReminder, Chat, Message, ChatMember,
+    PinnedMessage, TypingStatus, TelegramLinkCode, EmailVerificationCode,
+    SupportTicket
+)
+
+# Отменяем регистрацию стандартной модели User Django, если она была зарегистрирована
+try:
+    admin.site.unregister(DjangoUser)
+except admin.sites.NotRegistered:
+    pass
 
 
 @admin.register(SupportTicket)
@@ -58,7 +74,7 @@ class SupportTicketAdmin(admin.ModelAdmin):
     
     def user_info(self, obj):
         if obj.user:
-            user_url = reverse('admin:auth_user_change', args=[obj.user.id])
+            user_url = reverse('admin:core_user_change', args=[obj.user.id])
             return format_html('<a href="{}">{}</a> ({})', 
                              user_url, obj.user.username, obj.user.email)
         return "Анонимный пользователь"
@@ -106,3 +122,267 @@ class SupportTicketAdmin(admin.ModelAdmin):
         if obj:  # Редактирование существующего объекта
             return self.readonly_fields
         return ()  # При создании нового объекта не делаем поля только для чтения
+
+
+# Регистрация кастомной модели User
+@admin.register(User)
+class UserAdmin(BaseUserAdmin):
+    list_display = ['id', 'username', 'email', 'name', 'phone_number', 'role', 'is_organizer', 'organizer_status', 'rating', 'trust_factor', 'is_active', 'date_joined']
+    list_filter = ['role', 'is_organizer', 'organizer_status', 'is_active', 'is_staff', 'is_superuser', 'date_joined']
+    search_fields = ['username', 'email', 'name', 'phone_number', 'telegram_id']
+    
+    fieldsets = BaseUserAdmin.fieldsets + (
+        ('Дополнительная информация', {
+            'fields': ('name', 'phone_number', 'telegram_id', 'avatar', 'role', 'organization_name', 'rating', 'trust_factor', 'average_rating', 'registration_source')
+        }),
+        ('Организатор', {
+            'fields': ('is_organizer', 'organizer_status', 'is_approved', 'age', 'gender', 'bio', 'work_experience_years', 'work_history', 'portfolio_photo')
+        }),
+    )
+    
+    add_fieldsets = BaseUserAdmin.add_fieldsets + (
+        ('Дополнительная информация', {
+            'fields': ('name', 'phone_number', 'telegram_id', 'role', 'organization_name')
+        }),
+    )
+
+
+# Регистрация моделей проектов
+@admin.register(Project)
+class ProjectAdmin(admin.ModelAdmin):
+    list_display = ['id', 'title', 'creator', 'city', 'status', 'created_at', 'start_date', 'end_date']
+    list_filter = ['status', 'city', 'created_at', 'start_date']
+    search_fields = ['title', 'description', 'creator__username', 'creator__email', 'city']
+    readonly_fields = ['id', 'created_at']
+    date_hierarchy = 'created_at'
+
+
+@admin.register(VolunteerProject)
+class VolunteerProjectAdmin(admin.ModelAdmin):
+    list_display = ['id', 'volunteer', 'project', 'joined_at']
+    list_filter = ['joined_at']
+    search_fields = ['volunteer__username', 'project__title']
+    readonly_fields = ['id', 'joined_at']
+
+
+# Регистрация моделей задач
+@admin.register(Task)
+class TaskAdmin(admin.ModelAdmin):
+    list_display = ['id', 'text_short', 'project', 'status', 'deadline_date', 'created_at']
+    list_filter = ['status', 'created_at', 'deadline_date']
+    search_fields = ['text', 'project__title']
+    readonly_fields = ['id', 'created_at']
+    date_hierarchy = 'created_at'
+    
+    def text_short(self, obj):
+        return obj.text[:50] + "..." if len(obj.text) > 50 else obj.text
+    text_short.short_description = 'Текст задачи'
+
+
+@admin.register(TaskAssignment)
+class TaskAssignmentAdmin(admin.ModelAdmin):
+    list_display = ['id', 'task', 'volunteer', 'accepted', 'completed', 'completed_at']
+    list_filter = ['accepted', 'completed', 'completed_at']
+    search_fields = ['task__text', 'volunteer__username']
+    readonly_fields = ['id']
+
+
+# Регистрация моделей фото
+@admin.register(Photo)
+class PhotoAdmin(admin.ModelAdmin):
+    list_display = ['id', 'volunteer', 'project', 'task', 'status', 'uploaded_at', 'moderated_at']
+    list_filter = ['status', 'uploaded_at', 'moderated_at']
+    search_fields = ['volunteer__username', 'project__title', 'task__text', 'volunteer_comment']
+    readonly_fields = ['id', 'uploaded_at', 'moderated_at']
+    date_hierarchy = 'uploaded_at'
+
+
+# Регистрация моделей активности
+@admin.register(Activity)
+class ActivityAdmin(admin.ModelAdmin):
+    list_display = ['id', 'user', 'type', 'project', 'created_at']
+    list_filter = ['type', 'created_at']
+    search_fields = ['user__username', 'project__title', 'title', 'description']
+    readonly_fields = ['id', 'created_at']
+    date_hierarchy = 'created_at'
+
+
+# Регистрация моделей обратной связи
+@admin.register(FeedbackSession)
+class FeedbackSessionAdmin(admin.ModelAdmin):
+    list_display = ['id', 'project', 'organizer', 'volunteer', 'is_active', 'is_completed', 'created_at']
+    list_filter = ['is_active', 'is_completed', 'created_at']
+    search_fields = ['project__title', 'organizer__username', 'volunteer__username']
+    readonly_fields = ['id', 'created_at']
+
+
+@admin.register(FeedbackMessage)
+class FeedbackMessageAdmin(admin.ModelAdmin):
+    list_display = ['id', 'session', 'sender', 'message_type', 'timestamp']
+    list_filter = ['message_type', 'timestamp']
+    search_fields = ['session__project__title', 'sender__username', 'content']
+    readonly_fields = ['id', 'timestamp']
+
+
+# Регистрация моделей достижений
+@admin.register(Achievement)
+class AchievementAdmin(admin.ModelAdmin):
+    list_display = ['id', 'name', 'description_short', 'required_rating', 'xp', 'icon', 'created_at']
+    list_filter = ['required_rating', 'created_at']
+    search_fields = ['name', 'description']
+    readonly_fields = ['id', 'created_at']
+    
+    def description_short(self, obj):
+        return obj.description[:50] + "..." if len(obj.description) > 50 else obj.description
+    description_short.short_description = 'Описание'
+
+
+@admin.register(UserAchievement)
+class UserAchievementAdmin(admin.ModelAdmin):
+    list_display = ['id', 'user', 'achievement', 'unlocked_at']
+    list_filter = ['unlocked_at']
+    search_fields = ['user__username', 'achievement__name']
+    readonly_fields = ['id', 'unlocked_at']
+
+
+# Регистрация моделей заявок организаторов
+@admin.register(OrganizerApplication)
+class OrganizerApplicationAdmin(admin.ModelAdmin):
+    list_display = ['id', 'user', 'status', 'created_at', 'updated_at']
+    list_filter = ['status', 'created_at', 'updated_at']
+    search_fields = ['user__username', 'user__email', 'organization_name']
+    readonly_fields = ['id', 'created_at', 'updated_at']
+    date_hierarchy = 'created_at'
+
+
+@admin.register(TrustFactorHistory)
+class TrustFactorHistoryAdmin(admin.ModelAdmin):
+    list_display = ['id', 'user', 'old_value', 'new_value', 'reason', 'created_at']
+    list_filter = ['reason', 'created_at']
+    search_fields = ['user__username', 'reason']
+    readonly_fields = ['id', 'created_at']
+    date_hierarchy = 'created_at'
+
+
+# Регистрация моделей устройств
+@admin.register(DeviceToken)
+class DeviceTokenAdmin(admin.ModelAdmin):
+    list_display = ['id', 'user', 'platform', 'token_short', 'is_active', 'created_at', 'last_used_at']
+    list_filter = ['platform', 'is_active', 'created_at']
+    search_fields = ['user__username', 'token', 'device_name']
+    readonly_fields = ['id', 'created_at', 'last_used_at']
+    
+    def token_short(self, obj):
+        return obj.token[:20] + "..." if len(obj.token) > 20 else obj.token
+    token_short.short_description = 'Токен'
+
+
+# Регистрация моделей уведомлений
+@admin.register(NotificationTemplate)
+class NotificationTemplateAdmin(admin.ModelAdmin):
+    list_display = ['id', 'name', 'template_type', 'subject', 'created_at']
+    list_filter = ['template_type', 'created_at']
+    search_fields = ['name', 'subject', 'message']
+    readonly_fields = ['id', 'created_at', 'updated_at']
+
+
+@admin.register(BulkNotification)
+class BulkNotificationAdmin(admin.ModelAdmin):
+    list_display = ['id', 'template', 'status', 'scheduled_at', 'sent_at', 'created_at']
+    list_filter = ['status', 'created_at', 'scheduled_at']
+    search_fields = ['template__name', 'subject']
+    readonly_fields = ['id', 'created_at', 'sent_at']
+
+
+@admin.register(NotificationRecipient)
+class NotificationRecipientAdmin(admin.ModelAdmin):
+    list_display = ['id', 'notification', 'user', 'status', 'sent_at']
+    list_filter = ['status', 'sent_at']
+    search_fields = ['notification__template__name', 'user__username']
+    readonly_fields = ['id', 'sent_at']
+
+
+# Регистрация моделей поиска
+@admin.register(UserSearchFilter)
+class UserSearchFilterAdmin(admin.ModelAdmin):
+    list_display = ['id', 'user', 'created_at']
+    list_filter = ['created_at']
+    search_fields = ['user__username']
+    readonly_fields = ['id', 'created_at']
+
+
+# Регистрация моделей событий
+@admin.register(Event)
+class EventAdmin(admin.ModelAdmin):
+    list_display = ['id', 'title', 'project', 'start_date', 'start_time', 'created_at']
+    list_filter = ['event_type', 'start_date', 'created_at']
+    search_fields = ['title', 'project__title', 'description']
+    readonly_fields = ['id', 'created_at', 'updated_at']
+    date_hierarchy = 'start_date'
+
+
+@admin.register(GeofenceReminder)
+class GeofenceReminderAdmin(admin.ModelAdmin):
+    list_display = ['id', 'event', 'user', 'created_at']
+    list_filter = ['created_at']
+    search_fields = ['event__title', 'user__username']
+    readonly_fields = ['id', 'created_at']
+
+
+# Регистрация моделей чата
+@admin.register(Chat)
+class ChatAdmin(admin.ModelAdmin):
+    list_display = ['id', 'name', 'chat_type', 'created_at', 'updated_at']
+    list_filter = ['chat_type', 'created_at']
+    search_fields = ['name']
+    readonly_fields = ['id', 'created_at', 'updated_at']
+
+
+@admin.register(Message)
+class MessageAdmin(admin.ModelAdmin):
+    list_display = ['id', 'chat', 'sender', 'message_type', 'created_at']
+    list_filter = ['message_type', 'created_at']
+    search_fields = ['chat__name', 'sender__username', 'text']
+    readonly_fields = ['id', 'created_at', 'updated_at']
+    date_hierarchy = 'created_at'
+
+
+@admin.register(ChatMember)
+class ChatMemberAdmin(admin.ModelAdmin):
+    list_display = ['id', 'chat', 'user', 'joined_at']
+    list_filter = ['joined_at']
+    search_fields = ['chat__name', 'user__username']
+    readonly_fields = ['id', 'joined_at']
+
+
+@admin.register(PinnedMessage)
+class PinnedMessageAdmin(admin.ModelAdmin):
+    list_display = ['id', 'chat', 'message', 'pinned_at']
+    list_filter = ['pinned_at']
+    search_fields = ['chat__name', 'message__text']
+    readonly_fields = ['id', 'pinned_at']
+
+
+@admin.register(TypingStatus)
+class TypingStatusAdmin(admin.ModelAdmin):
+    list_display = ['id', 'chat', 'user', 'typing_type', 'started_at']
+    list_filter = ['typing_type', 'started_at']
+    search_fields = ['chat__name', 'user__username']
+    readonly_fields = ['id', 'started_at']
+
+
+# Регистрация моделей кодов
+@admin.register(TelegramLinkCode)
+class TelegramLinkCodeAdmin(admin.ModelAdmin):
+    list_display = ['id', 'user', 'code', 'is_used', 'created_at', 'expires_at']
+    list_filter = ['is_used', 'created_at', 'expires_at']
+    search_fields = ['user__username', 'code']
+    readonly_fields = ['id', 'created_at']
+
+
+@admin.register(EmailVerificationCode)
+class EmailVerificationCodeAdmin(admin.ModelAdmin):
+    list_display = ['id', 'user', 'email', 'code', 'is_used', 'created_at', 'expires_at']
+    list_filter = ['is_used', 'created_at', 'expires_at']
+    search_fields = ['user__username', 'code', 'email']
+    readonly_fields = ['id', 'created_at']

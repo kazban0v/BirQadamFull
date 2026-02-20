@@ -39,12 +39,16 @@ export interface VolunteerPhotoSummary {
   project_id: number;
   project_title: string;
   task_id: number | null;
+  task_text?: string | null;
   status: string;
   image: string;
   image_url: string | null;
   uploaded_at: string;
   moderated_at: string | null;
   rating: number | null;
+  volunteer_comment?: string | null;
+  organizer_comment?: string | null;
+  rejection_reason?: string | null;
 }
 
 export interface VolunteerNotificationSummary {

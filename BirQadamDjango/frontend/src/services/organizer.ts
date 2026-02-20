@@ -152,6 +152,8 @@ type PhotoMutationResponse = {
     organizer_comment?: string | null;
     rejection_reason?: string | null;
     moderated_at: string | null;
+    trust_factor?: number;
+    average_rating?: number;
   };
 };
 

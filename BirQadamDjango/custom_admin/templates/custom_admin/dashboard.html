@@ -760,7 +760,7 @@
     <div class="filter-toolbar">
         <div class="row g-3">
             <div class="col-md-8">
-                <form method="GET" action="{% url 'dashboard' %}" class="row g-2">
+                <form method="GET" action="{% url 'custom_admin:dashboard' %}" class="row g-2">
                     <div class="col-md-5">
                         <input type="date" name="date_from" class="form-control" value="{{ date_from|date:'Y-m-d' }}" placeholder="От">
                     </div>
@@ -775,7 +775,7 @@
                 </form>
             </div>
             <div class="col-md-4">
-                <form method="GET" action="{% url 'dashboard' %}">
+                <form method="GET" action="{% url 'custom_admin:dashboard' %}">
                     <select name="period" class="form-select" onchange="this.form.submit()">
                         <option value="week" {% if period == 'week' %}selected{% endif %}>
                             <i class="fas fa-calendar-week me-1"></i>Последние 7 дней
@@ -806,7 +806,7 @@
                             <div class="stat-value">{{ stats.total_volunteers }}</div>
                         </div>
                     </div>
-                    <a href="{% url 'volunteers' %}" class="d-flex align-items-center">
+                    <a href="{% url 'custom_admin:volunteers' %}" class="d-flex align-items-center">
                         Подробнее <i class="fas fa-arrow-right ms-2"></i>
                     </a>
                 </div>
@@ -825,7 +825,7 @@
                             <div class="stat-value">{{ stats.active_projects }}</div>
                         </div>
                     </div>
-                    <a href="{% url 'project_list' %}" class="d-flex align-items-center">
+                    <a href="{% url 'custom_admin:project_list' %}" class="d-flex align-items-center">
                         Подробнее <i class="fas fa-arrow-right ms-2"></i>
                     </a>
                 </div>
@@ -844,7 +844,7 @@
                             <div class="stat-value">{{ stats.pending_tasks }}</div>
                         </div>
                     </div>
-                    <a href="{% url 'task_list' %}" class="d-flex align-items-center">
+                    <a href="{% url 'custom_admin:task_list' %}" class="d-flex align-items-center">
                         Подробнее <i class="fas fa-arrow-right ms-2"></i>
                     </a>
                 </div>
@@ -863,7 +863,7 @@
                             <div class="stat-value">{{ stats.pending_projects|default:"0" }}</div>
                         </div>
                     </div>
-                    <a href="{% url 'project_list' %}" class="d-flex align-items-center">
+                    <a href="{% url 'custom_admin:project_list' %}" class="d-flex align-items-center">
                         Подробнее <i class="fas fa-arrow-right ms-2"></i>
                     </a>
                 </div>
@@ -882,8 +882,8 @@
                             <i class="fas fa-ellipsis-v"></i>
                         </button>
                         <ul class="dropdown-menu dropdown-menu-end">
-                            <li><a class="dropdown-item" href="{% url 'project_list' %}"><i class="fas fa-list me-2"></i>Все проекты</a></li>
-                            <li><a class="dropdown-item" href="{% url 'analytics' %}"><i class="fas fa-chart-line me-2"></i>Аналитика</a></li>
+                            <li><a class="dropdown-item" href="{% url 'custom_admin:project_list' %}"><i class="fas fa-list me-2"></i>Все проекты</a></li>
+                            <li><a class="dropdown-item" href="{% url 'custom_admin:analytics' %}"><i class="fas fa-chart-line me-2"></i>Аналитика</a></li>
                         </ul>
                     </div>
                 </div>
@@ -904,8 +904,8 @@
                             <i class="fas fa-ellipsis-v"></i>
                         </button>
                         <ul class="dropdown-menu dropdown-menu-end">
-                            <li><a class="dropdown-item" href="{% url 'task_list' %}"><i class="fas fa-list me-2"></i>Все задачи</a></li>
-                            <li><a class="dropdown-item" href="{% url 'analytics' %}"><i class="fas fa-chart-line me-2"></i>Аналитика</a></li>
+                            <li><a class="dropdown-item" href="{% url 'custom_admin:task_list' %}"><i class="fas fa-list me-2"></i>Все задачи</a></li>
+                            <li><a class="dropdown-item" href="{% url 'custom_admin:analytics' %}"><i class="fas fa-chart-line me-2"></i>Аналитика</a></li>
                         </ul>
                     </div>
                 </div>
@@ -948,7 +948,7 @@
                                     <div class="me-2" style="width: 30px; height: 30px; border-radius: 50%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; color: white; font-weight: 700;">
                                         {{ forloop.counter }}
                                     </div>
-                                    <a href="{% url 'volunteer_analytics' volunteer.id %}">{{ volunteer.username }}</a>
+                                    <a href="{% url 'custom_admin:volunteer_analytics' volunteer.id %}">{{ volunteer.username }}</a>
                                 </div>
                                 <span class="badge">{{ volunteer.task_count }}</span>
                             </div>
@@ -1026,7 +1026,7 @@
             <div class="card chart-card mb-4">
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <h6><i class="fas fa-camera me-2"></i>Последние фотоотчеты</h6>
-                    <a href="{% url 'task_list' %}" class="btn btn-sm btn-light">
+                    <a href="{% url 'custom_admin:task_list' %}" class="btn btn-sm btn-light">
                         <i class="fas fa-arrow-right me-1"></i>Все отчеты
                     </a>
                 </div>

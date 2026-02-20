@@ -49,6 +49,9 @@ class LoginSerializer(serializers.Serializer):
 
 
 class VolunteerProfileSerializer(serializers.ModelSerializer):
+    trust_factor = serializers.IntegerField(read_only=True)
+    average_rating = serializers.FloatField(read_only=True)
+    
     class Meta:
         model = User
         fields = (
@@ -57,8 +60,10 @@ class VolunteerProfileSerializer(serializers.ModelSerializer):
             'name',
             'phone_number',
             'email',
+            'trust_factor',
+            'average_rating',
         )
-        read_only_fields = ('id', 'username')
+        read_only_fields = ('id', 'username', 'trust_factor', 'average_rating')
 
     def update(self, instance: User, validated_data: dict) -> User:
         instance.name = validated_data.get('name', instance.name)
@@ -158,9 +163,10 @@ class VolunteerPhotoSerializer(serializers.ModelSerializer):
         request = self.context.get('request') if hasattr(self, 'context') else None
         if obj.image:
             if request:
+                # photo.image.url уже возвращает путь вида /media/photos/..., так что просто используем его
                 url = request.build_absolute_uri(obj.image.url)
-                # Заменяем http на https, если есть
-                if url.startswith('http://'):
+                # Заменяем http на https только для production (не для localhost)
+                if url.startswith('http://') and 'localhost' not in url and '127.0.0.1' not in url:
                     url = url.replace('http://', 'https://')
                 return url
             return obj.image.url

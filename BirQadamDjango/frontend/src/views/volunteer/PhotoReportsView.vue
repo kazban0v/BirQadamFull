@@ -7,15 +7,27 @@ import type { VolunteerPhotoSummary } from '@/services/dashboard';
 // Функция для преобразования относительного URL в полный
 const getFullImageUrl = (url: string | null | undefined): string | null => {
   if (!url) return null;
-  // Если уже полный URL, исправляем http на https
+  
+  // Если уже полный URL, проверяем протокол
+  if (url.startsWith('http://') || url.startsWith('https://')) {
+    // Для localhost оставляем как есть (http), для production используем https
+    if (url.includes('localhost') || url.includes('127.0.0.1')) {
+      // Для localhost оставляем исходный протокол
+      return url;
+    }
+    // Для production всегда используем https
   if (url.startsWith('http://')) {
     return url.replace('http://', 'https://');
   }
-  if (url.startsWith('https://')) {
     return url;
   }
-  // Если относительный путь, добавляем базовый URL
-  const baseUrl = 'https://cleanup.almau.edu.kz';
+  
+  // Если относительный путь, определяем базовый URL в зависимости от окружения
+  const isDevelopment = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+  const baseUrl = isDevelopment 
+    ? `${window.location.protocol}//${window.location.hostname}:8000`
+    : 'https://birqadam.almau.edu.kz';
+  
   const cleanUrl = url.startsWith('/') ? url : `/${url}`;
   return `${baseUrl}${cleanUrl}`;
 };
@@ -88,14 +100,37 @@ function getStatusText(status: string): string {
 async function loadReports() {
   loading.value = true;
   try {
+    console.log('[PhotoReports] Loading reports with filter:', filter.value);
     const data = await fetchVolunteerPhotoReports({ status: filter.value === 'all' ? undefined : filter.value });
-    reports.value = data.photos;
-    summary.total = data.summary.total;
-    summary.pending = data.summary.pending;
-    summary.approved = data.summary.approved;
-    summary.rejected = data.summary.rejected;
+    console.log('[PhotoReports] Data received:', { 
+      photosCount: data.photos?.length ?? 0, 
+      summary: data.summary,
+      firstPhoto: data.photos?.[0],
+      firstPhotoImageUrl: data.photos?.[0]?.image_url,
+      firstPhotoImage: data.photos?.[0]?.image,
+    });
+    
+    // Убеждаемся, что photos - это массив
+    reports.value = Array.isArray(data.photos) ? data.photos : [];
+    summary.total = data.summary?.total ?? 0;
+    summary.pending = data.summary?.pending ?? 0;
+    summary.approved = data.summary?.approved ?? 0;
+    summary.rejected = data.summary?.rejected ?? 0;
+    
+    console.log('[PhotoReports] Reports loaded:', reports.value.length);
+    if (reports.value.length > 0) {
+      console.log('[PhotoReports] First report:', {
+        id: reports.value[0].id,
+        image_url: reports.value[0].image_url,
+        image: reports.value[0].image,
+        fullUrl: getFullImageUrl(reports.value[0].image_url),
+      });
+    }
   } catch (error: any) {
-    showSnackbar(error?.response?.data?.detail || 'Не удалось загрузить фотоотчёты.', 'error');
+    console.error('[PhotoReports] Error loading reports:', error);
+    const errorMessage = error?.response?.data?.detail || error?.response?.data?.error || error?.message || 'Не удалось загрузить фотоотчёты.';
+    showSnackbar(errorMessage, 'error');
+    reports.value = [];
   } finally {
     loading.value = false;
   }
@@ -201,13 +236,19 @@ watch(filter, async () => {
             Модерация: {{ formatDateTime(report.moderated_at) }}
           </div>
           <v-img
-            v-if="report.image_url"
-            :src="getFullImageUrl(report.image_url) || ''"
+            v-if="report.image_url || report.image"
+            :src="getFullImageUrl(report.image_url || report.image) || ''"
             height="180"
             cover
             class="rounded-lg mb-3"
             @click="openPreview(report)"
-            @error="(e) => console.error('Error loading photo:', e, report.image_url, getFullImageUrl(report.image_url))"
+            @error="(e) => {
+              console.error('Error loading photo:', e, {
+                image_url: report.image_url,
+                image: report.image,
+                fullUrl: getFullImageUrl(report.image_url || report.image),
+              });
+            }"
           />
           <div class="text-body-2 text-medium-emphasis mb-2" v-if="report.volunteer_comment">
             Комментарий: {{ report.volunteer_comment }}
@@ -254,7 +295,7 @@ watch(filter, async () => {
         <v-divider class="opacity-10" />
         <v-card-text>
           <v-img
-            :src="getFullImageUrl(previewPhoto.image_url) || ''"
+            :src="getFullImageUrl(previewPhoto.image_url || previewPhoto.image) || ''"
             height="360"
             cover
             class="rounded-lg mb-4"
@@ -293,13 +334,38 @@ watch(filter, async () => {
   display: flex;
   flex-direction: column;
   gap: 24px;
+  padding: 0;
 }
 
 .v-img {
   cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.v-img:hover {
+  transform: scale(1.02);
+}
+
+/* Адаптация для ноутбуков (1024px - 1440px) */
+@media (max-width: 1440px) {
+  .photo-reports-page {
+    gap: 20px;
+  }
+  
+  .photo-reports-page :deep(.v-card) {
+    padding: 20px !important;
+  }
 }
 
 @media (max-width: 960px) {
+  .photo-reports-page {
+    gap: 16px;
+  }
+  
+  .photo-reports-page :deep(.v-card) {
+    padding: 16px !important;
+  }
+  
   .photo-reports-page :deep(.v-card-title) {
     flex-wrap: wrap;
     gap: 12px;
@@ -308,10 +374,41 @@ watch(filter, async () => {
   .photo-reports-page :deep(.v-btn-toggle) {
     flex-wrap: wrap;
     gap: 8px;
+    width: 100%;
+  }
+  
+  .photo-reports-page :deep(.v-btn-toggle .v-btn) {
+    flex: 1;
+    min-width: 0;
+  }
+  
+  .photo-reports-page :deep(.v-row) {
+    margin: 0 !important;
+  }
+  
+  .photo-reports-page :deep(.v-col) {
+    padding: 8px !important;
   }
 }
 
 @media (max-width: 600px) {
+  .photo-reports-page {
+    gap: 12px;
+  }
+  
+  .photo-reports-page :deep(.v-card) {
+    padding: 12px !important;
+    border-radius: 12px !important;
+  }
+  
+  .photo-reports-page :deep(.text-h5) {
+    font-size: 1.25rem !important;
+  }
+  
+  .photo-reports-page :deep(.text-h4) {
+    font-size: 1.5rem !important;
+  }
+  
   .photo-reports-page :deep(.v-chip) {
     margin-bottom: 4px;
   }
@@ -332,6 +429,19 @@ watch(filter, async () => {
     font-size: 0.75rem;
     white-space: nowrap;
   }
+  
+  .photo-reports-page :deep(.v-btn-toggle .v-btn) {
+    font-size: 0.75rem !important;
+    padding: 6px 10px !important;
+  }
+  
+  .photo-reports-page :deep(.v-img) {
+    height: 160px !important;
+  }
+  
+  .photo-reports-page :deep(.v-dialog) {
+    margin: 8px !important;
+  }
 }
 
 @media (max-width: 400px) {
@@ -343,6 +453,14 @@ watch(filter, async () => {
   .stat-chip {
     width: 100%;
     justify-content: center;
+  }
+  
+  .photo-reports-page :deep(.v-btn-toggle) {
+    flex-direction: column;
+  }
+  
+  .photo-reports-page :deep(.v-btn-toggle .v-btn) {
+    width: 100%;
   }
 }
 </style>

@@ -543,10 +543,11 @@ def volunteers(request: HttpRequest, user_id: int | None = None) -> HttpResponse
     
     return render(request, 'custom_admin/volunteers.html', context)
 
+@method_decorator(login_required, name='dispatch')
 class ProjectDeleteView(DeleteView):
     model = Project
     template_name = 'custom_admin/project_confirm_delete.html'
-    success_url = reverse_lazy('project_list')
+    success_url = reverse_lazy('custom_admin:project_list')
 
     def delete(self, request: HttpRequest, *args: Any, **kwargs: Any) -> HttpResponseRedirect:
         self.object = self.get_object()
@@ -611,16 +612,28 @@ def project_detail(request: HttpRequest, pk: int | str) -> HttpResponse:
     
     return render(request, 'custom_admin/project_detail.html', context)
 
+@method_decorator(login_required, name='dispatch')
 class ProjectUpdateView(UpdateView):
     model = Project
     form_class = ProjectForm
     template_name = 'custom_admin/project_edit.html'
-    success_url = reverse_lazy('project_list')
+    success_url = reverse_lazy('custom_admin:project_list')
     
     def get_context_data(self, **kwargs: Any) -> dict[str, Any]:
         context = super().get_context_data(**kwargs)
         context['is_edit'] = True
         return context
+    
+    def form_valid(self, form: Any) -> HttpResponseRedirect:
+        """Обработка успешной валидации формы"""
+        try:
+            return super().form_valid(form)
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Error saving project: {e}", exc_info=True)
+            # Возвращаем форму с ошибкой
+            return self.form_invalid(form)
 
 @login_required
 def project_list(request: HttpRequest) -> HttpResponse:
@@ -701,7 +714,7 @@ class VolunteerListView(FilterView):
 
 class CustomLoginView(auth_views.LoginView):
     template_name = 'custom_admin/login.html'
-    success_url = reverse_lazy('dashboard')
+    success_url = reverse_lazy('custom_admin:dashboard')
     extra_context = {'hide_sidebar': True}
 
     def form_valid(self, form: Any) -> HttpResponseRedirect:
@@ -1185,24 +1198,63 @@ class JoinProjectAPIView(APIView):
     def post(self, request: HttpRequest, project_id: int) -> Response:
         from core.models import VolunteerProject, Activity
         try:
+            # Проверка TrustFactor - если TF = 0, блокируем присоединение
+            if not request.user.can_join_projects():  # type: ignore[attr-defined]
+                return Response({
+                    'error': 'Вы не можете присоединяться к проектам. Ваш Trust Factor равен 0.',
+                    'trust_factor': request.user.trust_factor  # type: ignore[attr-defined]
+                }, status=status.HTTP_403_FORBIDDEN)
+            
+            # Проверка лимита активных проектов (максимум 2)
+            active_projects_count = VolunteerProject.objects.filter(  # type: ignore[attr-defined]
+                volunteer=request.user,
+                is_active=True
+            ).count()
+            
+            if active_projects_count >= 2:
+                return Response({
+                    'error': 'Вы уже участвуете в максимальном количестве проектов (2). Покиньте один из проектов, чтобы присоединиться к новому.',
+                    'active_projects_count': active_projects_count
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
             # ✅ ИСПРАВЛЕНИЕ НП-1: Добавлен select_related для оптимизации
             project = Project.objects.select_related('creator').get(id=project_id, deleted_at__isnull=True)  # type: ignore[attr-defined]
-            volunteer_project, created = VolunteerProject.objects.get_or_create(  # type: ignore[attr-defined]
+            
+            # Проверяем, не присоединялся ли уже к этому проекту
+            volunteer_project = VolunteerProject.objects.filter(  # type: ignore[attr-defined]
                 volunteer=request.user,
                 project=project
-            )
-            if created:
-                # Создаём активность
-                Activity.objects.create(  # type: ignore[attr-defined]
-                    user=request.user,
-                    type='project_joined',
-                    title='Присоединились к проекту',
-                    description=f'Вы присоединились к проекту "{project.title}"',
+            ).first()
+            
+            if volunteer_project:
+                if volunteer_project.is_active:
+                    return Response({'message': 'Already joined'}, status=status.HTTP_200_OK)
+                else:
+                    # Реактивируем участие
+                    volunteer_project.is_active = True
+                    volunteer_project.joined_at = timezone.now()
+                    volunteer_project.save()
+            else:
+                # Создаем новое участие
+                volunteer_project = VolunteerProject.objects.create(  # type: ignore[attr-defined]
+                    volunteer=request.user,
                     project=project
                 )
-                return Response({'message': 'Successfully joined project'}, status=status.HTTP_201_CREATED)
-            else:
-                return Response({'message': 'Already joined'}, status=status.HTTP_200_OK)
+            
+            # Создаём активность
+            Activity.objects.create(  # type: ignore[attr-defined]
+                user=request.user,
+                type='project_joined',
+                title='Присоединились к проекту',
+                description=f'Вы присоединились к проекту "{project.title}"',
+                project=project
+            )
+            
+            return Response({
+                'message': 'Successfully joined project',
+                'trust_factor': request.user.trust_factor,  # type: ignore[attr-defined]
+                'active_projects_count': active_projects_count + 1
+            }, status=status.HTTP_201_CREATED)
         except Project.DoesNotExist:  # type: ignore[attr-defined]
             return Response({'error': 'Project not found'}, status=status.HTTP_404_NOT_FOUND)
 
@@ -1224,10 +1276,18 @@ class UserTasksAPIView(APIView):
         from core.models import VolunteerProject
 
         # ✅ ИСПРАВЛЕНИЕ НП-1: Добавлен select_related для оптимизации
-        # Получаем проекты, к которым присоединился волонтер
-        joined_projects = VolunteerProject.objects.select_related('project', 'project__creator').filter(  # type: ignore[attr-defined]
-            volunteer=request.user
-        ).values_list('project_id', flat=True)
+        # Получаем проекты с датами присоединения
+        joined_projects_data = VolunteerProject.objects.select_related('project', 'project__creator').filter(  # type: ignore[attr-defined]
+            volunteer=request.user,
+            is_active=True
+        ).values('project_id', 'joined_at')
+        
+        # Создаем словарь: project_id -> joined_at
+        project_join_dates = {vp['project_id']: vp['joined_at'] for vp in joined_projects_data}
+        joined_projects = list(project_join_dates.keys())
+
+        if not joined_projects:
+            return Response([], status=status.HTTP_200_OK)
 
         # Получаем ID заданий, которые назначены текущему пользователю (accepted=True)
         assigned_task_ids = TaskAssignment.objects.filter(  # type: ignore[attr-defined]
@@ -1254,6 +1314,13 @@ class UserTasksAPIView(APIView):
         for task in tasks_qs:
             is_assigned = task.id in assigned_task_ids  # type: ignore[attr-defined]
             
+            # Определяем, обязательна ли задача (создана после присоединения)
+            joined_at = project_join_dates.get(task.project_id)  # type: ignore[attr-defined]
+            is_required = False
+            if joined_at:
+                # Задача обязательна, если она создана после присоединения
+                is_required = task.created_at >= joined_at  # type: ignore[attr-defined]
+            
             tasks.append({
                 'id': task.id,  # type: ignore[attr-defined]
                 'text': task.text,
@@ -1263,6 +1330,7 @@ class UserTasksAPIView(APIView):
                 'status': task.status,
                 'is_assigned': is_assigned,  # Добавлено
                 'assignment_status': is_assigned,  # Для совместимости
+                'is_required': is_required,  # Обязательна ли задача
                 'deadline_date': task.deadline_date.isoformat() if task.deadline_date else None,
                 'start_time': task.start_time.strftime('%H:%M') if task.start_time else None,
                 'end_time': task.end_time.strftime('%H:%M') if task.end_time else None,
@@ -1927,6 +1995,16 @@ class ProjectTasksAPIView(APIView):
             except Exception as e:
                 logger.error(f"⚠️ Failed to create Activity records for task {task.id}: {e}", exc_info=True)  # type: ignore[attr-defined]
             
+            # 📧 ОТПРАВЛЯЕМ EMAIL УВЕДОМЛЕНИЯ ВСЕМ ВОЛОНТЕРАМ
+            from core.services.email_notifications import notify_volunteer_new_task
+            email_sent_count = 0
+            for vp in volunteer_projects:
+                if vp.volunteer and vp.volunteer.email:
+                    if notify_volunteer_new_task(vp.volunteer, task, project):
+                        email_sent_count += 1
+            if email_sent_count > 0:
+                logger.info(f"Sent email notifications to {email_sent_count} volunteers about new task {task.id}")
+            
             # 🔔 ОТПРАВЛЯЕМ УВЕДОМЛЕНИЯ ВСЕМ ВОЛОНТЕРАМ (Telegram + FCM)
             import asyncio
             from core.services.notification_utils import notify_all_project_volunteers
@@ -1966,26 +2044,123 @@ class LeaveProjectAPIView(APIView):
 
     def post(self, request: HttpRequest, project_id: int) -> Response:
         from core.models import VolunteerProject, Activity
+        from django.utils import timezone
+        
+        # Получаем причину выхода из запроса
+        leave_reason = request.data.get('reason', '') if hasattr(request, 'data') else request.POST.get('reason', '')
+        
+        if not leave_reason or not leave_reason.strip():
+            return Response({
+                'error': 'Необходимо указать причину выхода из проекта'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
         try:
-            volunteer_project = VolunteerProject.objects.get(  # type: ignore[attr-defined]
+            volunteer_project = VolunteerProject.objects.select_related('project').get(  # type: ignore[attr-defined]
                 volunteer=request.user,
                 project_id=project_id
             )
             project = volunteer_project.project
-            volunteer_project.delete()
-
+            
+            # Проверяем, не отменен ли проект организатором
+            # Если проект отменен, штраф не начисляется
+            should_penalize = project.status != 'cancelled'
+            
+            # Деактивируем участие вместо удаления (для истории)
+            volunteer_project.is_active = False
+            volunteer_project.save(update_fields=['is_active'])
+            
+            # Начисляем штраф -5 TF, если проект не отменен
+            if should_penalize:
+                from django.db import transaction
+                
+                with transaction.atomic():
+                    # Получаем пользователя с блокировкой
+                    user = User.objects.select_for_update().get(pk=request.user.pk)
+                    # Изменяем TF (метод сам сохранит историю)
+                    user._change_trust_factor(-5, 'project_leave', 'project', project_id)
+                
+                # Обновляем request.user для ответа
+                request.user.refresh_from_db()
+                updated_trust_factor = request.user.trust_factor  # type: ignore[attr-defined]
+            else:
+                updated_trust_factor = request.user.trust_factor  # type: ignore[attr-defined]
+            
             # Создаём активность
             Activity.objects.create(  # type: ignore[attr-defined]
                 user=request.user,
                 type='project_left',
                 title='Покинули проект',
-                description=f'Вы покинули проект "{project.title}"',
+                description=f'Вы покинули проект "{project.title}". Причина: {leave_reason}',
                 project=project
             )
 
-            return Response({'message': 'Successfully left project'}, status=status.HTTP_200_OK)
+            return Response({
+                'message': 'Successfully left project',
+                'trust_factor': updated_trust_factor,
+                'penalty_applied': should_penalize
+            }, status=status.HTTP_200_OK)
         except VolunteerProject.DoesNotExist:  # type: ignore[attr-defined]
             return Response({'error': 'Not a member of this project'}, status=status.HTTP_404_NOT_FOUND)
+
+
+class TrustFactorHistoryAPIView(APIView):
+    """API для получения истории изменений TrustFactor"""
+    permission_classes = [IsAuthenticated]
+    authentication_classes = [CsrfExemptSessionAuthentication]
+
+    def get(self, request: HttpRequest) -> Response:
+        from core.models import TrustFactorHistory
+        import logging
+        import traceback
+        
+        logger = logging.getLogger(__name__)
+        
+        try:
+            logger.info(f"TrustFactorHistoryAPIView: Request from user {request.user.username}")
+            
+            # Обновляем пользователя из БД для получения актуальных значений
+            request.user.refresh_from_db()
+            
+            # Получаем историю изменений для текущего пользователя
+            history = TrustFactorHistory.objects.filter(  # type: ignore[attr-defined]
+                user=request.user
+            ).order_by('-created_at')[:50]  # Последние 50 записей
+            
+            history_list = list(history)
+            logger.info(f"TrustFactorHistoryAPIView: Found {len(history_list)} history records for user {request.user.username}")
+            
+            history_data = []
+            for record in history_list:
+                try:
+                    reason_display = record.get_reason_display()
+                except Exception as e:
+                    logger.warning(f"Error getting reason_display for record {record.id}: {e}")
+                    reason_display = record.reason  # Fallback to raw reason
+                
+                history_data.append({
+                    'id': record.id,  # type: ignore[attr-defined]
+                    'change_amount': record.change_amount,
+                    'reason': record.reason,
+                    'reason_display': reason_display,
+                    'old_value': record.old_value,
+                    'new_value': record.new_value,
+                    'created_at': record.created_at.isoformat(),
+                    'related_object_type': record.related_object_type,
+                    'related_object_id': record.related_object_id,
+                })
+            
+            return Response({
+                'history': history_data,
+                'current_trust_factor': request.user.trust_factor,  # type: ignore[attr-defined]
+                'current_average_rating': request.user.average_rating,  # type: ignore[attr-defined]
+            }, status=status.HTTP_200_OK)
+        except Exception as e:
+            error_details = traceback.format_exc()
+            logger.error(f"Error in TrustFactorHistoryAPIView: {e}\n{error_details}")
+            return Response(
+                {'error': f'Ошибка при получении истории TrustFactor: {str(e)}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
 
 from core.models import DeviceToken
@@ -2117,18 +2292,18 @@ def approve_organizer(request: HttpRequest, user_id: int) -> HttpResponse:
         from bot.organization_handlers import notify_organizer_status
         from asgiref.sync import async_to_sync
         async_to_sync(notify_organizer_status)(organizer)
-        logger.info(f"✅ Telegram уведомление об одобрении организатора {organizer.username} отправлено")
+        logger.info(f"Telegram уведомление об одобрении организатора {organizer.username} отправлено")
     except Exception as e:
-        logger.error(f"❌ Ошибка при отправке Telegram уведомления организатору {organizer.username}: {e}")
+        logger.error(f"Ошибка при отправке Telegram уведомления организатору {organizer.username}: {e}")
     
     try:
         # 2. FCM уведомление в приложение
         from custom_admin.services.notification_service import NotificationService
         from asgiref.sync import async_to_sync
         async_to_sync(NotificationService.notify_organizer_status_changed)(organizer, is_approved=True)
-        logger.info(f"✅ FCM уведомление об одобрении организатора {organizer.username} отправлено")
+        logger.info(f"FCM уведомление об одобрении организатора {organizer.username} отправлено")
     except Exception as e:
-        logger.error(f"❌ Ошибка при отправке FCM уведомления организатору {organizer.username}: {e}")
+        logger.error(f"Ошибка при отправке FCM уведомления организатору {organizer.username}: {e}")
     
     # 3. Email уведомление
     try:
@@ -2137,41 +2312,41 @@ def approve_organizer(request: HttpRequest, user_id: int) -> HttpResponse:
             from django.conf import settings
             from datetime import datetime
             
-            subject = "Статус организатора одобрен! 🎉"
+            subject = "Статус организатора одобрен!"
             message = f"""
 Здравствуйте, {organizer.name or organizer.username}!
 
 Поздравляем! Ваш запрос на статус организатора был одобрен администратором.
 
 Теперь вы можете:
-✓ Создавать и управлять проектами
-✓ Принимать и модератировать фотоотчёты от волонтёров
-✓ Управлять командой волонтёров в ваших проектах
+- Создавать и управлять проектами
+- Принимать и модератировать фотоотчёты от волонтёров
+- Управлять командой волонтёров в ваших проектах
 
 Войдите в свой личный кабинет организатора для начала работы.
 
 ─────────────────────────────────────────────────────────
 
-📅 Дата одобрения: {datetime.now().strftime('%d.%m.%Y в %H:%M')}
+Дата одобрения: {datetime.now().strftime('%d.%m.%Y в %H:%M')}
 
 ─────────────────────────────────────────────────────────
 С уважением,
 Команда BirQadam
-🌱 Вместе делаем город чище!
+Вместе делаем город чище!
 """
             
             send_mail(
-                subject=f"📧 BirQadam - {subject}",
+                subject=f"BirQadam - {subject}",
                 message=message,
                 from_email=settings.DEFAULT_FROM_EMAIL,
                 recipient_list=[organizer.email],
                 fail_silently=False,
             )
-            logger.info(f"✅ Email уведомление об одобрении организатора {organizer.username} отправлено на {organizer.email}")
+            logger.info(f"Email уведомление об одобрении организатора {organizer.username} отправлено на {organizer.email}")
         else:
-            logger.warning(f"⚠️ У организатора {organizer.username} нет email адреса, email уведомление не отправлено")
+            logger.warning(f"У организатора {organizer.username} нет email адреса, email уведомление не отправлено")
     except Exception as e:
-        logger.error(f"❌ Ошибка при отправке email уведомления организатору {organizer.username}: {e}")
+        logger.error(f"Ошибка при отправке email уведомления организатору {organizer.username}: {e}")
     
     messages.success(request, f'Организатор {organizer.username} одобрен')
     return redirect('organizers')
@@ -2200,18 +2375,18 @@ def reject_organizer(request: HttpRequest, user_id: int) -> HttpResponse:
         from bot.organization_handlers import notify_organizer_status
         from asgiref.sync import async_to_sync
         async_to_sync(notify_organizer_status)(organizer)
-        logger.info(f"✅ Telegram уведомление об отклонении организатора {organizer.username} отправлено")
+        logger.info(f"Telegram уведомление об отклонении организатора {organizer.username} отправлено")
     except Exception as e:
-        logger.error(f"❌ Ошибка при отправке Telegram уведомления организатору {organizer.username}: {e}")
+        logger.error(f"Ошибка при отправке Telegram уведомления организатору {organizer.username}: {e}")
     
     try:
         # 2. FCM уведомление в приложение
         from custom_admin.services.notification_service import NotificationService
         from asgiref.sync import async_to_sync
         async_to_sync(NotificationService.notify_organizer_status_changed)(organizer, is_approved=False)
-        logger.info(f"✅ FCM уведомление об отклонении организатора {organizer.username} отправлено")
+        logger.info(f"FCM уведомление об отклонении организатора {organizer.username} отправлено")
     except Exception as e:
-        logger.error(f"❌ Ошибка при отправке FCM уведомления организатору {organizer.username}: {e}")
+        logger.error(f"Ошибка при отправке FCM уведомления организатору {organizer.username}: {e}")
     
     messages.warning(request, f'Организатор {organizer.username} отклонён')
     return redirect('organizers')

@@ -55,6 +55,50 @@ const sendingMessage = ref(false);
 const newMessageText = ref('');
 const chatUnreadCounts = ref<Record<number, number>>({});
 const messagesPollInterval = ref<ReturnType<typeof setInterval> | null>(null);
+const chatScrollRef = ref<HTMLElement | null>(null);
+const modalTab = ref<'chat'>('chat'); // Для волонтера только чат, без участников
+
+// Баннер уведомления о новом сообщении
+const messageNotification = reactive<{
+  show: boolean;
+  projectId: number | null;
+  projectTitle: string;
+  unreadCount: number;
+}>({
+  show: false,
+  projectId: null,
+  projectTitle: '',
+  unreadCount: 0,
+});
+
+// Получаем текущий проект для чата
+const currentProject = computed(() => {
+  if (!chatProjectId.value) return null;
+  return projects.value.find(p => p.id === chatProjectId.value) || null;
+});
+
+// Функция для получения инициалов пользователя
+function getUserInitials(name: string): string {
+  if (!name) return '?';
+  const parts = name.trim().split(/\s+/);
+  if (parts.length >= 2) {
+    return (parts[0][0] + parts[1][0]).toUpperCase();
+  }
+  return name.substring(0, 2).toUpperCase();
+}
+
+function scrollToBottom() {
+  setTimeout(() => {
+    if (chatScrollRef.value) chatScrollRef.value.scrollTop = chatScrollRef.value.scrollHeight;
+  }, 50);
+}
+
+// Диалоги для TrustFactor
+const joinConfirmDialog = ref(false);
+const pendingJoinProjectId = ref<number | null>(null);
+const leaveReasonDialog = ref(false);
+const pendingLeaveProjectId = ref<number | null>(null);
+const leaveReason = ref('');
 const taskStatusMap: Record<string, { text: string; color: string }> = {
   open: { text: 'Открыто', color: 'primary' },
   in_progress: { text: 'В работе', color: 'warning' },
@@ -142,17 +186,39 @@ const getFullImageUrl = (url: string | null | undefined): string | null => {
   if (!url) {
     return null;
   }
-  // Если уже полный URL, исправляем http на https
+  
+  try {
+    // Если уже полный URL, проверяем протокол
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+      // Для localhost принудительно используем http (не https)
+      if (url.includes('localhost') || url.includes('127.0.0.1')) {
+        // Заменяем https на http для localhost
+        if (url.startsWith('https://')) {
+          return url.replace('https://', 'http://');
+        }
+        return url;
+      }
+      // Для production всегда используем https
   if (url.startsWith('http://')) {
     return url.replace('http://', 'https://');
   }
-  if (url.startsWith('https://')) {
     return url;
   }
-  // Если относительный путь, добавляем базовый URL
-  const baseUrl = 'https://cleanup.almau.edu.kz';
-  const cleanUrl = url.startsWith('/') ? url : `/${url}`;
-  return `${baseUrl}${cleanUrl}`;
+    
+    // Если относительный путь, определяем базовый URL в зависимости от окружения
+    const isDevelopment = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    // Для localhost всегда используем http (не https)
+    const baseUrl = isDevelopment 
+      ? `http://${window.location.hostname}:8000`
+      : 'https://birqadam.almau.edu.kz';
+    
+    // Убеждаемся, что путь начинается с /
+    const cleanPath = url.startsWith('/') ? url : `/${url}`;
+    return `${baseUrl}${cleanPath}`;
+  } catch (error) {
+    console.error('[ProjectsView] Error building image URL:', error, url);
+    return null;
+  }
 };
 
 function formatDateTime(value: string | null) {
@@ -302,7 +368,18 @@ function clearFilters() {
   selectedTags.value = [];
 }
 
-async function handleJoin(projectId: number) {
+function requestJoin(projectId: number) {
+  pendingJoinProjectId.value = projectId;
+  joinConfirmDialog.value = true;
+}
+
+async function confirmJoin() {
+  if (!pendingJoinProjectId.value) return;
+  
+  const projectId = pendingJoinProjectId.value;
+  joinConfirmDialog.value = false;
+  pendingJoinProjectId.value = null;
+  
   try {
     loading.value = true;
     const data = await joinVolunteerProject(projectId);
@@ -321,29 +398,83 @@ async function handleJoin(projectId: number) {
       projectDetail.value = await fetchProjectDetail(projectId);
     }
   } catch (error: any) {
-    const detail = error?.response?.data?.detail || 'Не удалось присоединиться к проекту.';
-    showMessage(detail, 'error');
+    const errorMessage = error?.response?.data?.error || error?.response?.data?.detail || 'Не удалось присоединиться к проекту.';
+    showMessage(errorMessage, 'error');
+    
+    // Если ошибка связана с TrustFactor или лимитом проектов, показываем более подробное сообщение
+    if (error?.response?.status === 403 || error?.response?.status === 400) {
+      if (error?.response?.data?.trust_factor !== undefined) {
+        showMessage(`Ваш Trust Factor: ${error.response.data.trust_factor}. ${errorMessage}`, 'error');
+      }
+    }
   } finally {
     loading.value = false;
   }
+}
+
+async function handleJoin(projectId: number) {
+  requestJoin(projectId);
 }
 
 async function handleJoinFromDialog() {
   if (!projectDetail.value) return;
   // Используем project_id если есть, иначе id
   const projectId = projectDetail.value.project_id || projectDetail.value.id;
-  await handleJoin(projectId);
-  // Диалог остается открытым, чтобы пользователь увидел обновленную информацию
+  requestJoin(projectId);
+  // Закрываем диалог деталей проекта, откроется диалог подтверждения
+  projectDialog.value = false;
 }
 
-async function handleLeave(projectId: number) {
+function requestLeave(projectId: number) {
+  pendingLeaveProjectId.value = projectId;
+  leaveReason.value = '';
+  leaveReasonDialog.value = true;
+}
+
+async function confirmLeave() {
+  if (!pendingLeaveProjectId.value || !leaveReason.value.trim()) {
+    showMessage('Необходимо указать причину выхода из проекта', 'error');
+    return;
+  }
+  
+  const projectId = pendingLeaveProjectId.value;
+  const reason = leaveReason.value.trim();
+  leaveReasonDialog.value = false;
+  pendingLeaveProjectId.value = null;
+  leaveReason.value = '';
+  
   try {
     loading.value = true;
-    await leaveVolunteerProject(projectId);
+    const result = await leaveVolunteerProject(projectId, reason);
+    
     // Перезагружаем список проектов
     await loadProjects();
-    showMessage('Вы покинули проект.', 'success');
+    
+    let message = result.message || 'Вы покинули проект.';
+    if (result.penalty_applied && result.trust_factor !== undefined) {
+      message += ` Ваш Trust Factor: ${result.trust_factor} (штраф -5 TF за выход из проекта)`;
+    }
+    showMessage(message, result.penalty_applied ? 'warning' : 'success');
+    
     await dashboardStore.loadDashboard(true);
+    
+    // Обновляем профиль пользователя, чтобы обновить TF в интерфейсе
+    try {
+      // Принудительно обновляем trust_factor из ответа API сразу
+      if (result.trust_factor !== undefined && authStore.user) {
+        authStore.user.trust_factor = result.trust_factor;
+        console.log('TF updated from API response:', result.trust_factor);
+      }
+      // Затем обновляем весь профиль для синхронизации
+      const updatedProfile = await authStore.refreshProfile();
+      console.log('Profile refreshed, TF:', updatedProfile.trust_factor);
+    } catch (error) {
+      console.error('Failed to refresh profile after leaving project:', error);
+      // Даже если refreshProfile не сработал, используем значение из ответа
+      if (result.trust_factor !== undefined && authStore.user) {
+        authStore.user.trust_factor = result.trust_factor;
+      }
+    }
     
     // Обновляем детали проекта в диалоге, если он открыт
     if (projectDialog.value && projectDetail.value && (projectDetail.value.project_id === projectId || projectDetail.value.id === projectId)) {
@@ -357,12 +488,17 @@ async function handleLeave(projectId: number) {
   }
 }
 
+async function handleLeave(projectId: number) {
+  requestLeave(projectId);
+}
+
 async function handleLeaveFromDialog() {
   if (!projectDetail.value) return;
   // Используем project_id если есть, иначе id
   const projectId = projectDetail.value.project_id || projectDetail.value.id;
-  await handleLeave(projectId);
-  // Диалог остается открытым, чтобы пользователь увидел обновленную информацию
+  requestLeave(projectId);
+  // Закрываем диалог деталей проекта, откроется диалог с причиной
+  projectDialog.value = false;
 }
 
 // Функции чата
@@ -373,6 +509,12 @@ async function openProjectChat(projectId: number) {
   chat.value = null;
   chatMessages.value = [];
   newMessageText.value = '';
+  modalTab.value = 'chat';
+  
+  // Скрываем баннер уведомления при открытии чата
+  if (messageNotification.projectId === projectId) {
+    messageNotification.show = false;
+  }
   
   try {
     chat.value = await getProjectChat(projectId);
@@ -385,6 +527,7 @@ async function openProjectChat(projectId: number) {
     }
     
     startMessagesPolling();
+    scrollToBottom();
   } catch (error: any) {
     console.error('Failed to load chat:', error);
   } finally {
@@ -422,12 +565,15 @@ async function handleSendMessage() {
     if (chat.value) {
       chat.value.unread_count = 0;
     }
+    scrollToBottom();
   } catch (error: any) {
     console.error('Failed to send message:', error);
   } finally {
     sendingMessage.value = false;
   }
 }
+
+const isCheckingUnread = ref(false);
 
 function startMessagesPolling() {
   stopMessagesPolling();
@@ -444,12 +590,96 @@ function startMessagesPolling() {
             await markMessagesRead(chat.value.id);
             chat.value.unread_count = 0;
           }
+          scrollToBottom();
         }
       } catch (error) {
         // Игнорируем ошибки polling
       }
+    } else {
+      // Проверяем непрочитанные сообщения только если не идет другая проверка
+      if (!isCheckingUnread.value) {
+        await checkUnreadMessages();
+      }
     }
-  }, 3000);
+  }, 10000); // Увеличиваем интервал до 10 секунд
+}
+
+// Проверка непрочитанных сообщений для показа баннера
+async function checkUnreadMessages() {
+  // Предотвращаем параллельные проверки
+  if (isCheckingUnread.value) return;
+  isCheckingUnread.value = true;
+  
+  try {
+    // Если чат открыт для проекта, не показываем баннер
+    if (chatDialog.value && chatProjectId.value) {
+      // Обновляем счетчик для открытого чата, но не показываем баннер
+      try {
+        const projectChat = await getProjectChat(chatProjectId.value);
+        chatUnreadCounts.value[chatProjectId.value] = projectChat.unread_count;
+      } catch (error) {
+        // Игнорируем ошибки
+      }
+      return;
+    }
+    
+    // Если баннер уже показан, проверяем только этот проект
+    if (messageNotification.show && messageNotification.projectId) {
+      try {
+        const projectChat = await getProjectChat(messageNotification.projectId);
+        chatUnreadCounts.value[messageNotification.projectId] = projectChat.unread_count;
+        if (projectChat.unread_count === 0) {
+          messageNotification.show = false;
+        } else {
+          messageNotification.unreadCount = projectChat.unread_count;
+        }
+      } catch (error) {
+        // Игнорируем ошибки
+      }
+    } else {
+      // Ищем первый проект с непрочитанными сообщениями (только первые 5 присоединенных проектов для оптимизации)
+      const joinedProjects = projects.value.filter((p) => p.joined).slice(0, 5);
+      for (const project of joinedProjects) {
+        try {
+          const projectChat = await getProjectChat(project.id);
+          if (projectChat.unread_count > 0) {
+            chatUnreadCounts.value[project.id] = projectChat.unread_count;
+            
+            // Показываем баннер, если его еще нет или если это другой проект
+            if (!messageNotification.show || messageNotification.projectId !== project.id) {
+          messageNotification.show = true;
+          messageNotification.projectId = project.id;
+          messageNotification.projectTitle = project.title;
+          messageNotification.unreadCount = projectChat.unread_count;
+          break; // Показываем только одно уведомление
+            } else {
+              // Обновляем счетчик для уже показанного проекта
+              messageNotification.unreadCount = projectChat.unread_count;
+            }
+          } else {
+            // Если непрочитанных сообщений нет, убираем счетчик
+            chatUnreadCounts.value[project.id] = 0;
+            // Если это был проект с баннером, скрываем баннер
+            if (messageNotification.projectId === project.id) {
+              messageNotification.show = false;
+            }
+          }
+        } catch (error) {
+          // Прерываем проверку при 429 ошибке
+          if (error && typeof error === 'object' && 'response' in error) {
+            const axiosError = error as any;
+            if (axiosError.response?.status === 429) {
+              console.warn('[BANNER] Rate limit reached, skipping check');
+              break;
+            }
+          }
+          // Игнорируем другие ошибки
+        }
+      }
+    }
+  } finally {
+    isCheckingUnread.value = false;
+  }
 }
 
 function stopMessagesPolling() {
@@ -460,14 +690,37 @@ function stopMessagesPolling() {
 }
 
 async function loadUnreadCounts() {
-  for (const project of projects.value.filter((p) => p.joined)) {
+  const joinedProjects = projects.value.filter((p) => p.joined);
+  
+  for (const project of joinedProjects) {
     try {
       const projectChat = await getProjectChat(project.id);
+      
       if (projectChat.unread_count > 0) {
         chatUnreadCounts.value[project.id] = projectChat.unread_count;
+        
+        // Показываем баннер уведомления только для первого проекта с непрочитанными сообщениями
+        // Баннер показываем, если чат не открыт или открыт для другого проекта
+        if (!messageNotification.show && (!chatDialog.value || chatProjectId.value !== project.id)) {
+          messageNotification.show = true;
+          messageNotification.projectId = project.id;
+          messageNotification.projectTitle = project.title;
+          messageNotification.unreadCount = projectChat.unread_count;
+          break; // Показываем только одно уведомление
+        }
+      } else {
+        // Если непрочитанных сообщений нет, убираем счетчик
+        chatUnreadCounts.value[project.id] = 0;
       }
     } catch (error) {
-      // Игнорируем ошибки
+      // Игнорируем ошибки (включая 429)
+      if (error && typeof error === 'object' && 'response' in error) {
+        const axiosError = error as any;
+        if (axiosError.response?.status === 429) {
+          console.warn('[BANNER] Rate limit reached, skipping loadUnreadCounts');
+          break; // Прерываем проверку при 429
+        }
+      }
     }
   }
 }
@@ -477,6 +730,9 @@ onMounted(async () => {
   
   // Загружаем счетчики непрочитанных сообщений
   await loadUnreadCounts();
+  
+  // Запускаем polling для проверки непрочитанных сообщений
+  startMessagesPolling();
   
   // Проверяем, нужно ли открыть чат из query параметра
   const openChatParam = route.query.openChat;
@@ -522,6 +778,41 @@ onUnmounted(() => {
 
 <template>
   <div class="projects-page">
+    <!-- Баннер уведомления о новом сообщении -->
+    <v-card
+      v-if="messageNotification.show"
+      class="message-notification-banner mb-4"
+      elevation="4"
+      rounded="xl"
+    >
+      <div class="d-flex align-center justify-space-between pa-4 flex-wrap ga-2">
+        <div class="d-flex align-center ga-3 flex-grow-1 min-width-0">
+          <v-icon icon="mdi-message-text" size="24" color="primary" />
+          <div class="flex-grow-1 min-width-0">
+            <div class="text-body-1 font-weight-bold mb-1">Новое сообщение.</div>
+            <div class="text-body-2 text-medium-emphasis text-truncate">{{ messageNotification.projectTitle }}</div>
+            <v-chip
+              v-if="messageNotification.unreadCount > 0"
+              size="small"
+              color="primary"
+              variant="flat"
+              class="mt-1"
+            >
+              {{ messageNotification.unreadCount }} {{ messageNotification.unreadCount === 1 ? 'сообщение' : 'сообщений' }}
+            </v-chip>
+          </div>
+        </div>
+        <v-btn
+          color="primary"
+          variant="flat"
+          class="text-none font-weight-bold"
+          @click="messageNotification.projectId && openProjectChat(messageNotification.projectId)"
+        >
+          Открыть
+        </v-btn>
+      </div>
+    </v-card>
+
     <!-- Статистика -->
     <v-row class="ga-4 mb-6">
       <v-col cols="12" sm="6" md="4" lg="3">
@@ -976,19 +1267,119 @@ onUnmounted(() => {
       type="list-item-three-line@4"
     />
 
+    <!-- Диалог подтверждения входа в проект -->
+    <v-dialog 
+      v-model="joinConfirmDialog" 
+      :max-width="$vuetify.display.mobile ? '100%' : '500'"
+      :fullscreen="$vuetify.display.mobile"
+      persistent
+    >
+      <v-card>
+        <v-card-title class="d-flex align-center">
+          <v-icon icon="mdi-information" color="primary" class="mr-3" />
+          <span class="text-wrap">Подтверждение входа в проект</span>
+        </v-card-title>
+        <v-card-text class="pa-4">
+          <p class="text-body-1 mb-4 text-wrap">
+            Вы действительно хотите вступить в этот проект?
+          </p>
+          <v-alert type="info" variant="tonal" density="compact" class="mb-0 text-wrap">
+            <div class="text-caption" style="word-wrap: break-word; overflow-wrap: break-word;">
+              После присоединения к проекту все задачи, созданные после вашего присоединения, будут обязательными для выполнения.
+            </div>
+          </v-alert>
+        </v-card-text>
+        <v-card-actions class="pa-4 flex-wrap">
+          <v-btn 
+            variant="text" 
+            @click="joinConfirmDialog = false; pendingJoinProjectId = null"
+            class="flex-grow-1 flex-md-grow-0"
+          >
+            Отмена
+          </v-btn>
+          <v-btn 
+            color="primary" 
+            variant="flat" 
+            @click="confirmJoin" 
+            :loading="loading"
+            class="flex-grow-1 flex-md-grow-0"
+          >
+            Да, присоединиться
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- Диалог выхода из проекта с причиной -->
+    <v-dialog 
+      v-model="leaveReasonDialog" 
+      :max-width="$vuetify.display.mobile ? '100%' : '500'" 
+      :fullscreen="$vuetify.display.mobile"
+      persistent
+    >
+      <v-card>
+        <v-card-title class="d-flex align-center">
+          <v-icon icon="mdi-alert" color="warning" class="mr-3" />
+          <span class="text-wrap">Выход из проекта</span>
+        </v-card-title>
+        <v-card-text class="pa-4">
+          <p class="text-body-1 mb-4 text-wrap">
+            Пожалуйста, укажите причину выхода из проекта:
+          </p>
+          <v-textarea
+            v-model="leaveReason"
+            label="Причина выхода"
+            placeholder="Например: изменились планы, нет времени, другие обстоятельства..."
+            variant="outlined"
+            rows="4"
+            :rules="[(v) => !!v || 'Необходимо указать причину выхода']"
+            auto-grow
+            class="mb-4"
+            :maxlength="500"
+            counter
+          />
+          <v-alert type="warning" variant="tonal" density="compact" class="text-wrap">
+            <div class="text-caption" style="word-wrap: break-word; overflow-wrap: break-word;">
+              <strong>Внимание:</strong> За выход из проекта будет начислен штраф -5 Trust Factor.
+              Если проект был отменен организатором, штраф не начисляется.
+            </div>
+          </v-alert>
+        </v-card-text>
+        <v-card-actions class="pa-4 flex-wrap">
+          <v-btn 
+            variant="text" 
+            @click="leaveReasonDialog = false; pendingLeaveProjectId = null; leaveReason = ''"
+            class="flex-grow-1 flex-md-grow-0"
+          >
+            Отмена
+          </v-btn>
+          <v-btn 
+            color="error" 
+            variant="flat" 
+            @click="confirmLeave" 
+            :loading="loading" 
+            :disabled="!leaveReason.trim()"
+            class="flex-grow-1 flex-md-grow-0"
+          >
+            Покинуть проект
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
     <v-snackbar v-model="snackbar.show" :color="snackbar.color" timeout="3500">
       {{ snackbar.message }}
     </v-snackbar>
 
     <!-- Диалог с деталями проекта -->
     <v-dialog v-model="projectDialog" max-width="800" scrollable :fullscreen="$vuetify.display.mobile">
-      <v-card v-if="projectDetail" class="pa-6">
-        <v-card-title class="d-flex justify-space-between align-center mb-4 flex-wrap">
-          <h2 class="text-h5 text-md-h4 font-weight-bold">{{ projectDetail.title }}</h2>
-          <v-btn icon="mdi-close" variant="text" @click="projectDialog = false" />
+      <v-card v-if="projectDetail" class="project-detail-card">
+        <v-card-title class="project-detail-title d-flex justify-space-between align-center flex-wrap">
+          <h2 class="project-detail-title-text">{{ projectDetail.title }}</h2>
+          <v-btn icon="mdi-close" variant="text" @click="projectDialog = false" class="project-detail-close-btn" />
         </v-card-title>
 
-        <v-card-text>
+        <v-card-text class="project-detail-content">
           <v-skeleton-loader v-if="loadingProject" type="article@3" />
 
           <div v-else>
@@ -996,29 +1387,29 @@ onUnmounted(() => {
               <v-img
                 v-if="projectDetail.cover_image_url"
                 :src="getFullImageUrl(projectDetail.cover_image_url) || ''"
-              height="200"
-              class="mb-6 rounded-lg"
+              :height="$vuetify.display.mobile ? '160' : '200'"
+              class="project-detail-cover mb-6 rounded-lg"
               cover
               @error="(e) => console.error('Error loading project cover:', e, projectDetail.cover_image_url)"
               @load="() => console.log('Project cover loaded successfully')"
             />
 
             <!-- Описание -->
-            <div class="mb-6">
-              <h3 class="text-h6 font-weight-bold mb-2">Описание</h3>
-              <p class="text-body-1">{{ projectDetail.description }}</p>
+            <div class="project-detail-section mb-6">
+              <h3 class="project-detail-section-title">Описание</h3>
+              <p class="project-detail-description">{{ projectDetail.description }}</p>
             </div>
 
-            <v-divider class="my-6" />
+            <v-divider class="project-detail-divider my-6" />
 
             <!-- Основная информация -->
-            <v-row class="mb-6 ga-4">
+            <v-row class="project-detail-info mb-6 ga-4">
               <v-col cols="12" md="6">
-                <div class="mb-3">
+                <div class="project-detail-info-item mb-3">
                   <v-icon icon="mdi-map-marker" size="20" class="me-2" />
                   <strong>Город:</strong> {{ projectDetail.city || '—' }}
                 </div>
-                <div class="mb-3">
+                <div class="project-detail-info-item mb-3">
                   <v-icon icon="mdi-calendar" size="20" class="me-2" />
                   <strong>Период:</strong>
                   <template v-if="projectDetail.start_date && projectDetail.end_date">
@@ -1029,28 +1420,28 @@ onUnmounted(() => {
                   </template>
                   <span v-else>—</span>
                 </div>
-                <div v-if="projectDetail.address" class="mb-3">
+                <div v-if="projectDetail.address" class="project-detail-info-item mb-3">
                   <v-icon icon="mdi-map-marker-outline" size="20" class="me-2" />
                   <strong>Адрес:</strong> {{ projectDetail.address }}
                 </div>
               </v-col>
               <v-col cols="12" md="6">
-                <div class="mb-3">
+                <div class="project-detail-info-item mb-3">
                   <v-icon icon="mdi-account-group" size="20" class="me-2" />
                   <strong>Участников:</strong> {{ projectDetail.active_members }}
                 </div>
-                <div class="mb-3">
+                <div class="project-detail-info-item mb-3">
                   <v-icon icon="mdi-clipboard-check" size="20" class="me-2" />
                   <strong>Заданий:</strong> {{ projectDetail.tasks_count }}
                 </div>
-                <div class="mb-3 d-flex align-center flex-wrap ga-2">
+                <div class="project-detail-info-item mb-3 d-flex align-center flex-wrap ga-2">
                   <v-icon icon="mdi-account-tie" size="20" class="me-2" />
                   <strong>Организатор:</strong>
                   <v-btn
                     variant="text"
                     size="small"
                     color="primary"
-                    class="text-none pa-0"
+                    class="text-none pa-0 project-detail-organizer-btn"
                     style="min-width: auto; text-transform: none;"
                     @click="openOrganizerPortfolio(projectDetail.organizer_id || projectDetail.organizer?.id || projectDetail.organizer_id)"
                   >
@@ -1062,8 +1453,8 @@ onUnmounted(() => {
             </v-row>
 
             <!-- Теги -->
-            <div v-if="projectDetail.tags && projectDetail.tags.length" class="mb-6">
-              <h3 class="text-h6 font-weight-bold mb-2">Теги</h3>
+            <div v-if="projectDetail.tags && projectDetail.tags.length" class="project-detail-section mb-6">
+              <h3 class="project-detail-section-title">Теги</h3>
               <div class="d-flex flex-wrap ga-2">
                 <v-chip
                   v-for="tag in projectDetail.tags"
@@ -1080,14 +1471,14 @@ onUnmounted(() => {
             <!-- Карта -->
             <div
               v-if="projectDetail.latitude && projectDetail.longitude"
-              class="mb-6"
+              class="project-detail-section mb-6"
             >
-              <h3 class="text-h6 font-weight-bold mb-3">Местоположение</h3>
+              <h3 class="project-detail-section-title mb-3">Местоположение</h3>
               <div class="project-map-container">
                 <iframe
                   :src="`https://yandex.ru/map-widget/v1/?ll=${projectDetail.longitude},${projectDetail.latitude}&z=15&pt=${projectDetail.longitude},${projectDetail.latitude}`"
                   width="100%"
-                  height="300"
+                  :height="$vuetify.display.mobile ? '200' : '300'"
                   style="border:0; border-radius: 8px;"
                   allowfullscreen
                   loading="lazy"
@@ -1098,10 +1489,10 @@ onUnmounted(() => {
             <!-- Контакты -->
             <div
               v-if="projectDetail.contact_person || projectDetail.contact_phone || projectDetail.contact_email || projectDetail.contact_telegram || projectDetail.info_url"
-              class="mb-6"
+              class="project-detail-section mb-6"
             >
-              <h3 class="text-h6 font-weight-bold mb-3">Контакты</h3>
-              <v-list density="compact" class="pa-0">
+              <h3 class="project-detail-section-title mb-3">Контакты</h3>
+              <v-list density="compact" class="project-detail-contacts pa-0">
                 <v-list-item v-if="projectDetail.contact_person" class="px-0">
                   <template #prepend>
                     <v-icon icon="mdi-account-tie" size="20" class="me-2" />
@@ -1153,13 +1544,13 @@ onUnmounted(() => {
           </div>
         </v-card-text>
 
-        <v-card-actions class="pa-6 pt-0 flex-wrap ga-2">
-          <v-spacer />
+        <v-card-actions class="project-detail-actions flex-wrap ga-2">
+          <v-spacer class="d-none d-md-flex" />
           <v-btn
             v-if="!projectDetail.joined"
             color="primary"
             variant="flat"
-            class="text-none font-weight-bold"
+            class="text-none font-weight-bold project-detail-action-btn"
             :disabled="loading"
             @click="handleJoinFromDialog"
             block
@@ -1171,7 +1562,7 @@ onUnmounted(() => {
             v-if="projectDetail.joined"
             color="error"
             variant="outlined"
-            class="text-none font-weight-bold"
+            class="text-none font-weight-bold project-detail-action-btn"
             :disabled="loading"
             @click="handleLeaveFromDialog"
             block
@@ -1182,7 +1573,7 @@ onUnmounted(() => {
           <v-btn
             color="grey"
             variant="text"
-            class="text-none"
+            class="text-none project-detail-action-btn"
             @click="projectDialog = false"
             block
           >
@@ -1261,13 +1652,6 @@ onUnmounted(() => {
                   <span class="ml-2">{{ organizerPortfolio.portfolio.gender_display }}</span>
                 </div>
               </v-col>
-              <v-col cols="12" md="6" v-if="organizerPortfolio.portfolio?.work_experience_years">
-                <div class="d-flex align-center mb-3">
-                  <v-icon icon="mdi-briefcase-clock" size="20" class="me-2" />
-                  <strong>Стаж работы:</strong>
-                  <span class="ml-2">{{ organizerPortfolio.portfolio.work_experience_years }} лет</span>
-                </div>
-              </v-col>
             </v-row>
 
             <!-- О себе -->
@@ -1279,17 +1663,9 @@ onUnmounted(() => {
               <p class="text-body-1" style="word-wrap: break-word; word-break: break-word; overflow-wrap: break-word; white-space: pre-wrap;">{{ organizerPortfolio.portfolio.bio }}</p>
             </div>
 
-            <!-- Опыт работы -->
-            <div v-if="organizerPortfolio.portfolio?.work_history" class="mb-6">
-              <h3 class="text-h6 font-weight-bold mb-2">
-                <v-icon icon="mdi-briefcase-edit" size="20" class="me-2" />
-                Опыт работы
-              </h3>
-              <p class="text-body-1" style="word-wrap: break-word; word-break: break-word; overflow-wrap: break-word; white-space: pre-line;">{{ organizerPortfolio.portfolio.work_history }}</p>
-            </div>
 
             <v-alert
-              v-if="!organizerPortfolio.portfolio?.bio && !organizerPortfolio.portfolio?.work_history && !organizerPortfolio.portfolio?.age && !organizerPortfolio.portfolio?.portfolio_photo_url"
+              v-if="!organizerPortfolio.portfolio?.bio && !organizerPortfolio.portfolio?.age && !organizerPortfolio.portfolio?.portfolio_photo_url"
               type="info"
               variant="tonal"
               class="mb-0"
@@ -1314,110 +1690,105 @@ onUnmounted(() => {
     </v-dialog>
 
     <!-- Диалог чата -->
-    <v-dialog v-model="chatDialog" max-width="900" :fullscreen="$vuetify.display.mobile" hide-overlay transition="dialog-bottom-transition" content-class="chat-dialog-wrapper">
-      <v-card v-if="chat" class="chat-dialog d-flex flex-column">
-        <v-card-title class="d-flex justify-space-between align-center pa-3 pa-md-4 chat-header flex-shrink-0">
-          <div class="d-flex align-center ga-2 ga-md-3 flex-grow-1 min-width-0">
-            <v-avatar color="primary" size="32" class="d-md-none">
-              <v-icon icon="mdi-chat" color="white" size="18" />
-            </v-avatar>
-            <v-avatar color="primary" size="40" class="d-none d-md-flex">
-              <v-icon icon="mdi-chat" color="white" />
-            </v-avatar>
-            <div class="flex-grow-1 min-width-0">
-              <h2 class="text-subtitle-1 text-md-h6 font-weight-bold mb-0 text-truncate">{{ chat.project_title }}</h2>
-              <p class="text-caption text-medium-emphasis mb-0 d-none d-md-block">Чат с организатором</p>
+    <v-dialog
+      v-model="chatDialog"
+      :max-width="960"
+      :fullscreen="false"
+    >
+      <div v-if="chatProjectId && currentProject" class="chat-modal">
+        <!-- Header -->
+        <div class="chat-modal__hd">
+          <div class="chat-modal__project">
+            <div class="chat-modal__project-ico">
+              <v-icon icon="mdi-briefcase-outline" size="20" color="white" />
             </div>
+            <div class="chat-modal__project-text">
+              <div class="chat-modal__project-name">{{ currentProject.title }}</div>
+              <div class="chat-modal__project-sub">{{ currentProject.city || 'Проект' }} · Чат с организатором</div>
           </div>
-          <v-btn icon="mdi-close" variant="text" size="small" class="ml-2 flex-shrink-0" @click="closeChatDialog" />
-        </v-card-title>
+          </div>
+          <button class="chat-modal__close" @click="closeChatDialog">
+            <v-icon icon="mdi-close" size="20" />
+          </button>
+        </div>
 
-        <v-divider class="flex-shrink-0" />
+        <!-- Body -->
+        <div class="chat-modal__body">
+          <!-- Chat panel -->
+          <div class="chat-panel">
+            <!-- Loading state -->
+            <div v-if="chatLoading" class="chat-panel__empty">
+              <div class="chat-panel__empty-ico">
+                <v-icon icon="mdi-chat-processing-outline" size="34" color="white" />
+              </div>
+              <p class="chat-panel__empty-title">Загрузка чата...</p>
+            </div>
 
-        <div class="chat-messages-container d-flex flex-column flex-grow-1 overflow-hidden">
-          <div class="chat-messages pa-3 pa-md-4 flex-grow-1 overflow-y-auto">
-            <v-skeleton-loader v-if="chatLoading" type="list-item-three-line@5" />
+            <!-- Chat not started -->
+            <div v-else-if="!chat" class="chat-panel__empty">
+              <div class="chat-panel__empty-ico">
+                <v-icon icon="mdi-chat-processing-outline" size="34" color="white" />
+              </div>
+              <p class="chat-panel__empty-title">Чат не открыт</p>
+              <p class="chat-panel__empty-sub">Загрузка чата...</p>
+            </div>
             
             <template v-else>
-              <div v-if="!chatMessages.length" class="text-center text-medium-emphasis py-12">
-                <v-icon icon="mdi-chat-outline" size="48" class="mb-4" />
-                <p class="text-body-1">Начните общение с организатором!</p>
-                <p class="text-caption">Напишите сообщение ниже</p>
+              <!-- Messages -->
+              <div ref="chatScrollRef" class="messages">
+                <div v-if="!chatMessages.length" class="messages__empty">
+                  <v-icon icon="mdi-chat-outline" size="40" color="grey-lighten-2" class="mb-3" />
+                  <p>Начните общение с организатором</p>
               </div>
-              
-              <div v-else class="messages-list d-flex flex-column ga-3">
+                <div v-else class="messages__list">
                 <div
-                  v-for="message in chatMessages"
-                  :key="message.id"
-                  class="message-item"
-                  :class="{ 'message-item--own': message.sender_id === currentUser.value?.id }"
-                >
-                  <div class="d-flex ga-2" :class="{ 'flex-row-reverse': message.sender_id === currentUser.value?.id, 'justify-end': message.sender_id === currentUser.value?.id }">
-                    <v-avatar size="28" class="d-md-none flex-shrink-0" color="primary-lighten-4">
-                      <v-icon icon="mdi-account" color="primary" size="16" />
-                    </v-avatar>
-                    <v-avatar size="32" class="d-none d-md-flex flex-shrink-0" color="primary-lighten-4">
-                      <v-icon icon="mdi-account" color="primary" />
-                    </v-avatar>
-                    <div class="message-content flex-grow-1 min-width-0" :class="{ 'text-right': message.sender_id === currentUser.value?.id }">
-                      <div class="d-flex align-center flex-wrap ga-1 ga-md-2 mb-1" :class="{ 'flex-row-reverse': message.sender_id === currentUser.value?.id, 'justify-end': message.sender_id === currentUser.value?.id }">
-                        <span class="text-caption font-weight-medium">{{ message.sender_name }}</span>
-                        <v-chip v-if="message.sender_is_organizer" size="x-small" color="primary" variant="tonal" class="text-none">
-                          Организатор
-                        </v-chip>
-                        <span class="text-caption text-medium-emphasis">{{ new Date(message.created_at).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }) }}</span>
+                    v-for="msg in chatMessages"
+                    :key="msg.id"
+                    class="msg"
+                    :class="msg.sender_id === currentUser?.id ? 'msg--own' : 'msg--other'"
+                  >
+                    <div v-if="msg.sender_id !== currentUser?.id" class="msg__av">
+                      {{ getUserInitials(msg.sender_name || '?') }}
                       </div>
-                      <v-card
-                        class="message-bubble pa-2 pa-md-3"
-                        :color="message.sender_id === currentUser.value?.id ? 'blue' : 'grey-lighten-4'"
-                        variant="flat"
-                      >
-                        <p 
-                          class="text-body-2 text-caption text-md-body-2 mb-0" 
-                          :class="message.sender_id === currentUser.value?.id ? 'text-white' : 'text-grey-darken-1'"
-                          style="word-wrap: break-word; overflow-wrap: break-word;"
-                        >
-                          {{ message.text }}
-                        </p>
-                      </v-card>
+                    <div class="msg__body">
+                      <div class="msg__meta">
+                        <span v-if="msg.sender_id !== currentUser?.id" class="msg__sender">{{ msg.sender_name }}</span>
+                        <span v-if="msg.sender_is_organizer" class="msg__org">Орг.</span>
+                        <span class="msg__time">
+                          {{ new Date(msg.created_at).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }) }}
+                        </span>
                     </div>
+                      <div class="msg__bubble">{{ msg.text }}</div>
                   </div>
                 </div>
-              </div>
-            </template>
           </div>
         </div>
 
-        <v-divider class="flex-shrink-0" />
-
-        <div class="chat-input-wrapper flex-shrink-0">
-          <div class="chat-input pa-3 pa-md-4">
-            <div class="d-flex ga-2 align-end">
+              <!-- Input -->
+              <div class="chat-input">
               <v-textarea
                 v-model="newMessageText"
-                placeholder="Напишите сообщение..."
+                  placeholder="Написать команде..."
                 variant="outlined"
                 rows="1"
                 auto-grow
                 hide-details
-                density="compact"
-                class="flex-grow-1 chat-textarea"
+                  density="comfortable"
+                  class="chat-input__field"
                 @keydown.enter.exact.prevent="handleSendMessage"
               />
-              <v-btn
-                color="primary"
-                variant="flat"
-                icon="mdi-send"
-                size="large"
+                <button
+                  class="send-btn"
                 :disabled="!newMessageText.trim() || sendingMessage"
-                :loading="sendingMessage"
-                class="flex-shrink-0 chat-send-btn"
                 @click="handleSendMessage"
-              />
+                >
+                  <v-icon icon="mdi-send" size="20" />
+                </button>
             </div>
+            </template>
           </div>
         </div>
-      </v-card>
+      </div>
     </v-dialog>
   </div>
 </template>
@@ -1487,163 +1858,235 @@ onUnmounted(() => {
   text-decoration: none;
 }
 
-.chat-dialog-wrapper {
-  height: 100vh;
-  max-height: 100vh;
+/* ════════════════════════════════════
+   MESSAGE NOTIFICATION BANNER
+════════════════════════════════════ */
+.message-notification-banner {
+  background: linear-gradient(135deg, rgba(139, 195, 74, 0.1), rgba(139, 195, 74, 0.05));
+  border: 1px solid rgba(139, 195, 74, 0.2);
+  animation: slideInDown 0.3s ease-out;
 }
 
-.chat-dialog {
-  background: #f8ecc4; /* BirQadam background */
-  height: 100%;
-  max-height: 100vh;
-  display: flex;
-  flex-direction: column;
+@keyframes slideInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+}
+}
+
+/* ════════════════════════════════════
+   CHAT MODAL
+════════════════════════════════════ */
+.chat-modal {
+  background: #fff;
+  border-radius: 20px;
   overflow: hidden;
-}
-
-.chat-header {
-  background: #f8ecc4;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
-  z-index: 10;
-}
-
-.chat-messages-container {
-  background: rgba(255, 255, 255, 0.98);
-  overflow: hidden;
-  flex: 1 1 auto;
-  min-height: 0;
   display: flex;
   flex-direction: column;
+  height: 80vh;
+  max-height: 720px;
 }
 
-.chat-messages {
-  flex: 1 1 auto;
-  overflow-y: auto;
-  overflow-x: hidden;
-  -webkit-overflow-scrolling: touch;
-  scroll-behavior: smooth;
-}
-
-.message-item {
-  width: 100%;
+/* ── Header ── */
+.chat-modal__hd {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  background: linear-gradient(135deg, #2d5a1b, #4a8f2a);
+  flex-shrink: 0;
 }
 
-.message-item--own {
-  justify-content: flex-end;
+.chat-modal__project { display: flex; align-items: center; gap: 12px; min-width: 0; }
+
+.chat-modal__project-ico {
+  width: 38px; height: 38px;
+  border-radius: 10px;
+  background: rgba(255,255,255,0.2);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
 }
 
-.message-item--own > div {
-  flex-direction: row-reverse;
-}
+.chat-modal__project-text { min-width: 0; }
+.chat-modal__project-name { font-size: 0.975rem; font-weight: 800; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.chat-modal__project-sub  { font-size: 0.74rem; color: rgba(255,255,255,0.62); margin-top: 1px; }
 
-.message-content {
-  max-width: 75%;
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-}
-
-.message-item:not(.message-item--own) .message-content {
-  align-items: flex-start;
-}
-
-.message-item--own .message-content {
-  align-items: flex-end;
-}
-
-.message-bubble {
-  border-radius: 12px;
-  word-wrap: break-word;
-  overflow-wrap: break-word;
-  display: inline-block;
-  max-width: 100%;
-  word-break: break-word;
-}
-
-.chat-input-wrapper {
-  background: rgba(255, 255, 255, 0.95);
-  border-top: 1px solid rgba(0, 0, 0, 0.1);
-  position: sticky;
-  bottom: 0;
-  z-index: 10;
-  width: 100%;
-}
-
-.chat-input {
+.chat-modal__close {
+  width: 32px; height: 32px;
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.2);
   background: transparent;
+  color: rgba(255,255,255,0.85);
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  transition: background 0.15s;
+  margin-left: 8px;
+}
+.chat-modal__close:hover { background: rgba(255,255,255,0.15); }
+
+/* ── Body ── */
+.chat-modal__body {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
 }
 
-/* Мобильная адаптация чата */
-@media (max-width: 960px) {
-  .chat-dialog-wrapper {
-    height: 100vh;
-    max-height: 100vh;
-  }
-  
-  .chat-dialog {
-    height: 100vh;
-    max-height: 100vh;
-  }
-  
-  .chat-messages {
-    padding: 12px !important;
-  }
-  
-  .message-content {
-    max-width: 85%;
-  }
-  
-  .message-bubble {
-    border-radius: 10px;
-    padding: 10px 12px !important;
-  }
-  
-  .chat-textarea :deep(.v-field) {
-    font-size: 14px;
-  }
-  
-  .chat-send-btn {
-    min-width: 48px !important;
-    width: 48px !important;
-    height: 48px !important;
-  }
-  
-  .chat-input-wrapper {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    max-width: 100%;
-  }
+/* ── Chat panel ── */
+.chat-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: #f8f9fa;
 }
 
-@media (max-width: 600px) {
-  .chat-messages {
-    padding: 8px !important;
+.chat-panel__empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  text-align: center;
+  padding: 32px 24px;
+}
+
+.chat-panel__empty-ico {
+  width: 64px; height: 64px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #8bc34a, #3a7422);
+  display: flex; align-items: center; justify-content: center;
+  margin-bottom: 6px;
+}
+
+.chat-panel__empty-title { font-size: 1rem; font-weight: 700; color: #1a1a1a; margin: 0; }
+.chat-panel__empty-sub   { font-size: 0.825rem; color: rgba(0,0,0,0.45); margin: 0 0 12px; max-width: 240px; }
+
+/* Messages */
+.messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+}
+
+.messages__empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: rgba(0,0,0,0.3);
+  font-size: 0.875rem;
+}
+
+.messages__list { display: flex; flex-direction: column; gap: 12px; }
+
+/* Bubbles */
+.msg { display: flex; align-items: flex-end; gap: 8px; }
+.msg--own { flex-direction: row-reverse; }
+
+.msg__av {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #8bc34a, #558b2f);
+  color: white;
+  font-size: 0.65rem;
+  font-weight: 800;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+
+.msg__body { max-width: 65%; display: flex; flex-direction: column; gap: 3px; }
+.msg--own   .msg__body { align-items: flex-end; }
+.msg--other .msg__body { align-items: flex-start; }
+
+.msg__meta { display: flex; align-items: center; gap: 5px; font-size: 0.72rem; color: rgba(0,0,0,0.38); }
+.msg__sender { font-weight: 600; color: rgba(0,0,0,0.55); }
+.msg__org    { background: rgba(139,195,74,0.15); color: #558b2f; padding: 1px 5px; border-radius: 4px; font-size: 0.67rem; font-weight: 700; }
+  
+.msg__bubble {
+  padding: 9px 13px;
+  border-radius: 16px;
+  font-size: 0.875rem;
+  line-height: 1.45;
+  word-break: break-word;
   }
   
-  .message-content {
-    max-width: 90%;
+.msg--other .msg__bubble {
+  background: #fff;
+  color: #1a1a1a;
+  border-bottom-left-radius: 4px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
   }
   
-  .message-bubble {
-    border-radius: 8px;
-    padding: 8px 10px !important;
+.msg--own .msg__bubble {
+  background: linear-gradient(135deg, #8bc34a, #558b2f);
+  color: #fff;
+  border-bottom-right-radius: 4px;
+}
+
+/* Chat input */
+.chat-input {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  padding: 10px 14px;
+  background: #fff;
+  border-top: 1px solid rgba(0,0,0,0.07);
+  flex-shrink: 0;
   }
   
-  .chat-input {
-    padding: 12px !important;
+.chat-input__field { flex: 1; }
+  
+.send-btn {
+  width: 42px; height: 42px;
+  border-radius: 12px;
+  border: none;
+  background: linear-gradient(135deg, #8bc34a, #558b2f);
+  color: white;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  transition: opacity 0.15s, transform 0.15s;
+}
+.send-btn:hover:not(:disabled) { opacity: 0.9; transform: scale(1.05); }
+.send-btn:disabled             { opacity: 0.45; cursor: not-allowed; }
+
+/* ════════════════════════════════════
+   MOBILE & TABLET  (≤ 720px)
+════════════════════════════════════ */
+@media (max-width: 720px) {
+  .chat-modal {
+    border-radius: 0;
+    height: 100dvh;
+    max-height: 100dvh;
   }
   
-  .chat-textarea :deep(.v-field__input) {
-    min-height: 40px;
-    padding: 8px 12px;
+  .msg__body { max-width: 82%; }
+  
+  .send-btn              { width: 40px; height: 40px; border-radius: 10px; }
+  .chat-input            { padding: 8px 12px; }
+  
+  .message-notification-banner {
+    margin-bottom: 16px;
+    border-radius: 16px;
   }
   
-  .chat-input-wrapper {
-    padding-bottom: env(safe-area-inset-bottom);
+  .message-notification-banner .d-flex {
+    flex-direction: column;
+    align-items: flex-start !important;
+  }
+  
+  .message-notification-banner .v-btn {
+    width: 100%;
+    margin-top: 8px;
   }
 }
 
@@ -1746,6 +2189,109 @@ onUnmounted(() => {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
+/* Стили для диалога деталей проекта */
+.project-detail-card {
+  padding: 24px;
+}
+
+.project-detail-title {
+  padding: 0 0 16px 0 !important;
+  margin-bottom: 16px;
+}
+
+.project-detail-title-text {
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: 1.3;
+  flex: 1;
+  min-width: 0;
+  word-break: break-word;
+}
+
+.project-detail-close-btn {
+  flex-shrink: 0;
+  margin-left: 12px;
+}
+
+.project-detail-content {
+  padding: 0 !important;
+}
+
+.project-detail-cover {
+  width: 100%;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.project-detail-section {
+  margin-bottom: 24px;
+}
+
+.project-detail-section-title {
+  font-size: 1.125rem;
+  font-weight: 700;
+  margin-bottom: 8px;
+  color: #1a1a1a;
+}
+
+.project-detail-description {
+  font-size: 0.9375rem;
+  line-height: 1.6;
+  color: rgba(0, 0, 0, 0.7);
+  margin: 0;
+}
+
+.project-detail-divider {
+  margin: 24px 0;
+  opacity: 0.12;
+}
+
+.project-detail-info {
+  margin-bottom: 24px;
+}
+
+.project-detail-info-item {
+  display: flex;
+  align-items: flex-start;
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  color: rgba(0, 0, 0, 0.7);
+}
+
+.project-detail-info-item strong {
+  color: #1a1a1a;
+  font-weight: 600;
+  margin-right: 4px;
+}
+
+.project-detail-organizer-btn {
+  margin-left: 4px;
+}
+
+.project-detail-contacts {
+  background: transparent;
+}
+
+.project-detail-contacts :deep(.v-list-item) {
+  padding: 8px 0;
+  min-height: 40px;
+}
+
+.project-detail-contacts :deep(.v-list-item-title) {
+  font-size: 0.9375rem;
+  line-height: 1.5;
+}
+
+.project-detail-actions {
+  padding: 16px 0 0 0 !important;
+  margin-top: 24px;
+  border-top: 1px solid rgba(0, 0, 0, 0.12);
+}
+
+.project-detail-action-btn {
+  margin: 0;
+}
+
 /* Мобильная адаптация диалога */
 @media (max-width: 960px) {
   .projects-page :deep(.v-dialog > .v-card) {
@@ -1753,22 +2299,120 @@ onUnmounted(() => {
     border-radius: 0;
   }
   
-  .projects-page :deep(.v-card-title) {
+  .project-detail-card {
     padding: 16px;
   }
   
-  .projects-page :deep(.v-card-text) {
-    padding: 16px;
+  .project-detail-title {
+    padding: 0 0 12px 0 !important;
+    margin-bottom: 12px;
   }
   
-  .projects-page :deep(.v-card-actions) {
-    padding: 16px;
+  .project-detail-title-text {
+    font-size: 1.25rem;
+  }
+  
+  .project-detail-content {
+    padding: 0 !important;
+  }
+  
+  .project-detail-section {
+    margin-bottom: 20px;
+  }
+  
+  .project-detail-section-title {
+    font-size: 1rem;
+    margin-bottom: 6px;
+  }
+  
+  .project-detail-description {
+    font-size: 0.875rem;
+    line-height: 1.5;
+  }
+  
+  .project-detail-divider {
+    margin: 20px 0;
+  }
+  
+  .project-detail-info {
+    margin-bottom: 20px;
+  }
+  
+  .project-detail-info-item {
+    font-size: 0.875rem;
+    margin-bottom: 12px;
+  }
+  
+  .project-detail-info-item :deep(.v-icon) {
+    font-size: 18px !important;
+    width: 18px !important;
+    height: 18px !important;
+    margin-right: 6px;
+  }
+  
+  .project-detail-actions {
+    padding: 12px 0 0 0 !important;
+    margin-top: 20px;
     flex-direction: column;
+    gap: 8px;
   }
   
-  .projects-page :deep(.v-card-actions .v-btn) {
+  .project-detail-action-btn {
     width: 100%;
-    margin: 4px 0;
+    margin: 0;
+  }
+  
+  .project-detail-contacts :deep(.v-list-item) {
+    padding: 10px 0;
+    min-height: 44px;
+  }
+  
+  .project-detail-contacts :deep(.v-list-item-title) {
+    font-size: 0.875rem;
+  }
+  
+  .project-detail-contacts :deep(.v-icon) {
+    font-size: 18px !important;
+    width: 18px !important;
+    height: 18px !important;
+    margin-right: 8px;
+  }
+}
+
+@media (max-width: 600px) {
+  .project-detail-card {
+    padding: 12px;
+  }
+  
+  .project-detail-title-text {
+    font-size: 1.125rem;
+  }
+  
+  .project-detail-cover {
+    margin-bottom: 16px !important;
+    border-radius: 8px;
+  }
+  
+  .project-detail-section {
+    margin-bottom: 16px;
+  }
+  
+  .project-detail-section-title {
+    font-size: 0.9375rem;
+  }
+  
+  .project-detail-description {
+    font-size: 0.8125rem;
+  }
+  
+  .project-detail-info-item {
+    font-size: 0.8125rem;
+    margin-bottom: 10px;
+  }
+  
+  .project-detail-actions {
+    padding: 12px 0 0 0 !important;
+    gap: 6px;
   }
 }
 

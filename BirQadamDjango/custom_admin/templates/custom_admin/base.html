@@ -517,18 +517,18 @@
             <span>Admin Panel</span>
         </div>
         <ul class="sidebar-nav">
-            <li><a href="{% url 'dashboard' %}"><i class="fas fa-tachometer-alt"></i>Главная</a></li>
-            <li><a href="{% url 'volunteers' %}"><i class="fas fa-users"></i>Волонтеры</a></li>
-            <li><a href="{% url 'organizers' %}"><i class="fas fa-users-cog"></i>Организаторы</a></li>
-            <li><a href="{% url 'project_list' %}"><i class="fas fa-tasks"></i>Проекты</a></li>
-            <li><a href="{% url 'task_list' %}"><i class="fas fa-clipboard-list"></i>Задачи</a></li>
-            <li><a href="{% url 'calendar_admin' %}"><i class="fas fa-calendar-alt"></i>Календарь</a></li>
-            <li><a href="{% url 'analytics' %}"><i class="fas fa-chart-bar"></i>Аналитика</a></li>
-            <li><a href="{% url 'bulk_notifications' %}"><i class="fas fa-paper-plane"></i>Рассылки</a></li>
+            <li><a href="{% url 'custom_admin:dashboard' %}"><i class="fas fa-tachometer-alt"></i>Главная</a></li>
+            <li><a href="{% url 'custom_admin:volunteers' %}"><i class="fas fa-users"></i>Волонтеры</a></li>
+            <li><a href="{% url 'custom_admin:organizers' %}"><i class="fas fa-users-cog"></i>Организаторы</a></li>
+            <li><a href="{% url 'custom_admin:project_list' %}"><i class="fas fa-tasks"></i>Проекты</a></li>
+            <li><a href="{% url 'custom_admin:task_list' %}"><i class="fas fa-clipboard-list"></i>Задачи</a></li>
+            <li><a href="{% url 'custom_admin:calendar_admin' %}"><i class="fas fa-calendar-alt"></i>Календарь</a></li>
+            <li><a href="{% url 'custom_admin:analytics' %}"><i class="fas fa-chart-bar"></i>Аналитика</a></li>
+            <li><a href="{% url 'custom_admin:bulk_notifications' %}"><i class="fas fa-paper-plane"></i>Рассылки</a></li>
             <!-- <li><a href="{% url 'custom_admin:support_tickets' %}"><i class="fas fa-ticket-alt"></i>Тикеты</a></li> -->
-            <li><a href="{% url 'profile' %}"><i class="fas fa-user"></i>Профиль</a></li>
+            <li><a href="{% url 'custom_admin:profile' %}"><i class="fas fa-user"></i>Профиль</a></li>
             <li>
-                <form method="POST" action="{% url 'logout' %}" style="margin: 0;">
+                <form method="POST" action="{% url 'custom_admin:logout' %}" style="margin: 0;">
                     {% csrf_token %}
                     <button type="submit" class="w-100">
                         <i class="fas fa-sign-out-alt"></i>Выйти

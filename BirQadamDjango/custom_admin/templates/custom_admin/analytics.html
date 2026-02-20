@@ -283,7 +283,7 @@
         <div class="row g-3">
             <div class="col-md-8">
                 <label><i class="fas fa-calendar-alt me-2"></i>Период анализа</label>
-                <form method="GET" action="{% url 'analytics' %}" id="dateFilterForm">
+                <form method="GET" action="{% url 'custom_admin:analytics' %}" id="dateFilterForm">
                     <div class="row g-2">
                         <div class="col-md-5">
                             <input type="date" name="date_from" class="form-control" value="{{ date_from|date:'Y-m-d' }}" placeholder="От">
@@ -301,7 +301,7 @@
             </div>
             <div class="col-md-4">
                 <label><i class="fas fa-clock me-2"></i>Быстрые фильтры</label>
-                <form method="GET" action="{% url 'analytics' %}" id="quickFilterForm">
+                <form method="GET" action="{% url 'custom_admin:analytics' %}" id="quickFilterForm">
                     <a href="?period=week" class="quick-filter-btn {% if period == 'week' %}active{% endif %}">
                         <i class="fas fa-calendar-week me-1"></i>7 дней
                     </a>
@@ -511,7 +511,7 @@
                                         </div>
                                     </td>
                                     <td class="text-center">
-                                        <a href="{% url 'volunteer_analytics' volunteer.id %}" class="btn btn-sm btn-outline-primary">
+                                        <a href="{% url 'custom_admin:volunteer_analytics' volunteer.id %}" class="btn btn-sm btn-outline-primary">
                                             <i class="fas fa-chart-line me-1"></i>Профиль
                                         </a>
                                     </td>
@@ -551,7 +551,7 @@
             </div>
 
             <div class="modal-body" style="padding: 32px;">
-                <form method="POST" action="{% url 'export_report' %}" id="exportForm">
+                <form method="POST" action="{% url 'custom_admin:export_report' %}" id="exportForm">
                     {% csrf_token %}
 
                     <!-- Период -->

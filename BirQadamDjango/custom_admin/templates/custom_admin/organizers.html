@@ -167,13 +167,13 @@
                             </td>
                             <td>{{ organizer.organization_name|default:"Не указана" }}</td>
                             <td class="text-center">
-                                <form method="post" action="{% url 'approve_organizer' organizer.id %}" style="display: inline;">
+                                <form method="post" action="{% url 'custom_admin:approve_organizer' organizer.id %}" style="display: inline;">
                                     {% csrf_token %}
                                     <button type="submit" class="btn btn-sm btn-success">
                                         <i class="fas fa-check me-1"></i>Одобрить
                                     </button>
                                 </form>
-                                <form method="post" action="{% url 'reject_organizer' organizer.id %}" style="display: inline;">
+                                <form method="post" action="{% url 'custom_admin:reject_organizer' organizer.id %}" style="display: inline;">
                                     {% csrf_token %}
                                     <button type="submit" class="btn btn-sm btn-danger">
                                         <i class="fas fa-times me-1"></i>Отклонить
@@ -202,7 +202,7 @@
                         </div>
                         <div class="row mb-2">
                             <div class="col-6">
-                                <form method="post" action="{% url 'approve_organizer' organizer.id %}" class="w-100">
+                                <form method="post" action="{% url 'custom_admin:approve_organizer' organizer.id %}" class="w-100">
                                     {% csrf_token %}
                                     <button type="submit" class="btn btn-success w-100">
                                         <i class="fas fa-check me-1"></i>Одобрить
@@ -210,7 +210,7 @@
                                 </form>
                             </div>
                             <div class="col-6">
-                                <form method="post" action="{% url 'reject_organizer' organizer.id %}" class="w-100">
+                                <form method="post" action="{% url 'custom_admin:reject_organizer' organizer.id %}" class="w-100">
                                     {% csrf_token %}
                                     <button type="submit" class="btn btn-danger w-100">
                                         <i class="fas fa-times me-1"></i>Отклонить
@@ -230,7 +230,7 @@
     <div class="table-card">
         <div class="card-header d-flex justify-content-between align-items-center">
             <h6 class="m-0"><i class="fas fa-list me-2"></i>Одобренные организаторы</h6>
-            <a href="{% url 'analytics' %}" class="btn btn-sm btn-light">
+            <a href="{% url 'custom_admin:analytics' %}" class="btn btn-sm btn-light">
                 <i class="fas fa-chart-bar me-1"></i>Аналитика
             </a>
         </div>
@@ -267,7 +267,7 @@
                                 </span>
                             </td>
                             <td class="text-center">
-                                <a href="{% url 'organizer_analytics' organizer.id %}" class="btn btn-sm btn-outline-primary">
+                                <a href="{% url 'custom_admin:organizer_analytics' organizer.id %}" class="btn btn-sm btn-outline-primary">
                                     <i class="fas fa-chart-line me-1"></i>Аналитика
                                 </a>
                             </td>
@@ -310,7 +310,7 @@
                                 </span>
                             </div>
                         </div>
-                        <a href="{% url 'organizer_analytics' organizer.id %}" class="btn btn-primary w-100">
+                        <a href="{% url 'custom_admin:organizer_analytics' organizer.id %}" class="btn btn-primary w-100">
                             <i class="fas fa-chart-line me-1"></i>Посмотреть аналитику
                         </a>
                     </div>
@@ -354,7 +354,7 @@
                             </td>
                             <td>{{ organizer.organization_name|default:"Не указана" }}</td>
                             <td class="text-center">
-                                <form method="post" action="{% url 'approve_organizer' organizer.id %}" style="display: inline;">
+                                <form method="post" action="{% url 'custom_admin:approve_organizer' organizer.id %}" style="display: inline;">
                                     {% csrf_token %}
                                     <button type="submit" class="btn btn-sm btn-success">
                                         <i class="fas fa-check me-1"></i>Одобрить
@@ -377,7 +377,7 @@
                 <h1><i class="fas fa-user-cog me-2"></i>{{ organizer.name|default:organizer.username|default:"Организатор" }}</h1>
                 <p class="mb-0 opacity-75">Детальная информация об организаторе</p>
             </div>
-            <a href="{% url 'organizers' %}" class="btn btn-light">
+            <a href="{% url 'custom_admin:organizers' %}" class="btn btn-light">
                 <i class="fas fa-arrow-left me-1"></i>Назад
             </a>
         </div>
