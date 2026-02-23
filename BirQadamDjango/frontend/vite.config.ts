@@ -30,7 +30,7 @@ export default defineConfig({
       '/api': {
         // Можно использовать локальный сервер: 'http://localhost:8000'
         // Или production: 'https://cleanup.almau.edu.kz'
-        target: process.env.VITE_API_TARGET || 'http://localhost:8000',
+        target: process.env.VITE_API_TARGET || 'https://cleanup.almau.edu.kz',
         changeOrigin: true,
         secure: false, // Отключаем проверку SSL для разработки
         ws: true, // Поддержка WebSocket
@@ -50,7 +50,7 @@ export default defineConfig({
       },
       '/custom-admin/api': {
         // Прокси для custom-admin API
-        target: process.env.VITE_API_TARGET || 'http://localhost:8000',
+        target: process.env.VITE_API_TARGET || 'https://cleanup.almau.edu.kz',
         changeOrigin: true,
         secure: false,
         ws: true,

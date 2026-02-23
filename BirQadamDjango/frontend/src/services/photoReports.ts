@@ -1,10 +1,13 @@
 import { httpClient } from './http';
 import type { VolunteerPhotoSummary } from './dashboard';
 
-export async function uploadPhotoReport(taskId: number, file: File, comment?: string) {
+export async function uploadPhotoReport(taskId: number, files: File | File[], comment?: string) {
   const formData = new FormData();
   // Бэкенд ожидает 'photos' (множественное число) как список файлов
-  formData.append('photos', file);
+  const fileArray = Array.isArray(files) ? files : [files];
+  fileArray.forEach(file => {
+    formData.append('photos', file);
+  });
   if (comment) {
     formData.append('comment', comment);
   }

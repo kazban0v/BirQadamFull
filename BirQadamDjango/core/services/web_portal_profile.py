@@ -2,12 +2,15 @@ from __future__ import annotations
 
 from datetime import datetime
 from typing import Any, Dict, List, Tuple
+import logging
 
 from django.db.models import Count, Q
 
 from django.utils import timezone
 
-from core.models import Achievement, UserAchievement, Activity
+from core.models import Achievement, UserAchievement, Activity, TaskAssignment, Photo, VolunteerProject
+
+logger = logging.getLogger(__name__)
 
 
 def get_volunteer_stats(user) -> Dict[str, Any]:  # type: ignore[no-any-unimported]
@@ -98,15 +101,7 @@ def get_volunteer_activity(user, months: int = 6) -> Dict[str, Any]:  # type: ig
     start_year, start_month = month_sequence[0]
     start_date = datetime(year=start_year, month=start_month, day=1, tzinfo=timezone.get_current_timezone())
 
-    activities_qs = (
-        Activity.objects.filter(
-            user=user,
-            created_at__gte=start_date,
-            type__in=['task_assigned', 'task_completed', 'photo_uploaded', 'project_joined'],
-        )
-        .values('type', 'created_at__year', 'created_at__month')
-        .annotate(total=Count('id'))
-    )
+    logger.info(f"Getting activity for user {user.username}, months={months}, start_date={start_date}")
 
     data = {
         'months': [f"{year}-{month:02d}" for year, month in month_sequence],
@@ -118,15 +113,76 @@ def get_volunteer_activity(user, months: int = 6) -> Dict[str, Any]:  # type: ig
 
     index_map = { (year, month): idx for idx, (year, month) in enumerate(month_sequence) }
 
-    for row in activities_qs:
-        key = (row['created_at__year'], row['created_at__month'])
+    # Задач взято (TaskAssignment с accepted=True)
+    # Используем дату создания задачи как приблизительную дату принятия
+    # (так как TaskAssignment не имеет created_at)
+    task_assigned_qs = (
+        TaskAssignment.objects.filter(
+            volunteer=user,
+            accepted=True,
+            task__created_at__gte=start_date,
+        )
+        .select_related('task')
+        .values('task__created_at__year', 'task__created_at__month')
+        .annotate(total=Count('id'))
+    )
+
+    for row in task_assigned_qs:
+        key = (row['task__created_at__year'], row['task__created_at__month'])
         idx = index_map.get(key)
-        if idx is None:
-            continue
-        activity_type = row['type']
-        total = row['total']
-        if activity_type in data:
-            data[activity_type][idx] = total
+        if idx is not None:
+            data['task_assigned'][idx] = row['total']
+
+    # Задач выполнено (TaskAssignment с completed=True и completed_at)
+    task_completed_qs = (
+        TaskAssignment.objects.filter(
+            volunteer=user,
+            completed=True,
+            completed_at__isnull=False,
+            completed_at__gte=start_date,
+        )
+        .values('completed_at__year', 'completed_at__month')
+        .annotate(total=Count('id'))
+    )
+
+    for row in task_completed_qs:
+        key = (row['completed_at__year'], row['completed_at__month'])
+        idx = index_map.get(key)
+        if idx is not None:
+            data['task_completed'][idx] = row['total']
+
+    # Фотоотчётов (Photo)
+    photo_uploaded_qs = (
+        Photo.objects.filter(
+            volunteer=user,
+            is_deleted=False,
+            uploaded_at__gte=start_date,
+        )
+        .values('uploaded_at__year', 'uploaded_at__month')
+        .annotate(total=Count('id'))
+    )
+
+    for row in photo_uploaded_qs:
+        key = (row['uploaded_at__year'], row['uploaded_at__month'])
+        idx = index_map.get(key)
+        if idx is not None:
+            data['photo_uploaded'][idx] = row['total']
+
+    # Новые проекты (VolunteerProject использует joined_at, а не created_at)
+    project_joined_qs = (
+        VolunteerProject.objects.filter(
+            volunteer=user,
+            joined_at__gte=start_date,
+        )
+        .values('joined_at__year', 'joined_at__month')
+        .annotate(total=Count('id'))
+    )
+
+    for row in project_joined_qs:
+        key = (row['joined_at__year'], row['joined_at__month'])
+        idx = index_map.get(key)
+        if idx is not None:
+            data['project_joined'][idx] = row['total']
 
     totals = {
         'task_assigned': sum(data['task_assigned']),
@@ -134,6 +190,8 @@ def get_volunteer_activity(user, months: int = 6) -> Dict[str, Any]:  # type: ig
         'photo_uploaded': sum(data['photo_uploaded']),
         'project_joined': sum(data['project_joined']),
     }
+
+    logger.info(f"Activity totals for {user.username}: {totals}")
 
     return {
         'months': data['months'],

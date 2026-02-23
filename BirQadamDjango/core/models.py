@@ -341,10 +341,12 @@ class TrustFactorHistory(models.Model):
     """История изменений TrustFactor"""
     REASON_CHOICES = (
         ('project_leave', 'Выход из проекта'),
+        ('task_decline', 'Отклонение задачи'),
         ('photo_rating_5', 'Оценка фотоотчета: 5 звезд'),
         ('photo_rating_4', 'Оценка фотоотчета: 4 звезды'),
         ('photo_rating_3', 'Оценка фотоотчета: 3 звезды'),
         ('photo_rating_1_2', 'Оценка фотоотчета: 1-2 звезды'),
+        ('photo_rejected', 'Отклонение фотоотчета организатором'),
         ('daily_penalty', 'Штраф за пропуск задания'),
         ('bonus_consecutive_tasks', 'Бонус: 5 заданий подряд'),
         ('bonus_consecutive_photos', 'Бонус: 3 фотоотчета на 5 звезд'),
@@ -693,10 +695,17 @@ class Photo(models.Model):
                     assignment.feedback = feedback  # Сохраняем причину отклонения
                     assignment.save()
 
-                # Возвращаем статус задачи в 'failed' при отклонении
-                self.task.status = 'failed'
+                # Возвращаем статус задачи в 'in_progress' для второго шанса
+                self.task.status = 'in_progress'
                 self.task.save()
-                logger.info(f"Task {self.task.id} status changed to 'failed' after photo rejection")
+                logger.info(f"Task {self.task.id} status changed to 'in_progress' after photo rejection - giving second chance")
+                
+                # Применяем штраф -1 к Trust Factor за отклонение фотоотчета
+                if self.volunteer:
+                    # Получаем пользователя с блокировкой для безопасного изменения TF
+                    user = User.objects.select_for_update().get(pk=self.volunteer.pk)
+                    user._change_trust_factor(-1, 'photo_rejected', 'photo', self.id)
+                    logger.info(f"Applied -1 Trust Factor penalty to {user.username} for rejected photo {self.id}")
 
     async def async_reject(self, context: Any) -> None:
         try:

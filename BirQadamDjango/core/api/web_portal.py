@@ -1058,6 +1058,11 @@ class VolunteerTaskDeclineAPIView(APIView):
             volunteer=request.user,
         ).first()
 
+        # Флаг для применения штрафа: штраф применяется только если задача была принята
+        should_penalize = False
+        if assignment and assignment.accepted:
+            should_penalize = True
+
         if assignment:
             assignment.accepted = False
             assignment.completed = False
@@ -1073,11 +1078,32 @@ class VolunteerTaskDeclineAPIView(APIView):
                 accepted=False,
             )
 
+        # Применяем штраф -2 TF за отклонение принятой задачи
+        updated_trust_factor = None
+        if should_penalize:
+            from django.db import transaction
+            
+            with transaction.atomic():
+                # Получаем пользователя с блокировкой
+                user = User.objects.select_for_update().get(pk=request.user.pk)
+                # Изменяем TF (метод сам сохранит историю)
+                user._change_trust_factor(-2, 'task_decline', 'task', task_id)
+            
+            # Обновляем request.user для ответа
+            request.user.refresh_from_db()
+            updated_trust_factor = request.user.trust_factor  # type: ignore[attr-defined]
+
+        response_data = {
+            'message': 'Задача скрыта из ваших активных.',
+            'task_status': task.status,
+        }
+        
+        if updated_trust_factor is not None:
+            response_data['trust_factor'] = updated_trust_factor
+            response_data['penalty_applied'] = True
+
         return Response(
-            {
-                'message': 'Задача скрыта из ваших активных.',
-                'task_status': task.status,
-            },
+            response_data,
             status=status.HTTP_200_OK,
         )
 

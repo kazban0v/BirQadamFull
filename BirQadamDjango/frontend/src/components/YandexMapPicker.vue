@@ -19,7 +19,6 @@
           <circle cx="16" cy="16" r="12" stroke="rgba(139,195,74,0.18)" stroke-width="3"/>
           <path d="M16 4a12 12 0 0 1 12 12" stroke="#8bc34a" stroke-width="3" stroke-linecap="round"/>
         </svg>
-        <span>Загрузка карты…</span>
         </div>
 
       <!-- Error -->
@@ -32,7 +31,7 @@
             <path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4-4.64 4.36A9 9 0 0 1 3.51 15" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
         </button>
-      </div>   
+      </div>
       
       <!-- ── Search overlay (поверх карты) ── -->
       <div v-if="mapLoaded && !mapError" class="mp__overlay">

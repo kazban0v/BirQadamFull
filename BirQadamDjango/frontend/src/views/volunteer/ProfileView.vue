@@ -64,6 +64,7 @@ const profile = computed(() => {
 const trustFactorHistory = ref<TrustFactorHistoryResponse | null>(null);
 const trustFactorHistoryDialog = ref(false);
 const trustFactorHistoryLoading = ref(false);
+const trustFactorInfoDialog = ref(false);
 
 // Telegram синхронизация
 const telegramSync = ref<{
@@ -549,7 +550,20 @@ onMounted(async () => {
             <div class="stat-icon-wrapper">
               <v-icon size="32" color="info">mdi-shield-check</v-icon>
             </div>
-            <div class="stat-title">Trust Factor</div>
+            <div class="d-flex align-center justify-space-between">
+              <div class="stat-title">Trust Factor</div>
+              <v-btn
+                icon
+                size="small"
+                variant="text"
+                color="info"
+                @click="trustFactorInfoDialog = true"
+                class="ml-2"
+              >
+                <v-icon size="20">mdi-information-outline</v-icon>
+                <v-tooltip activator="parent" location="top">Как работает Trust Factor?</v-tooltip>
+              </v-btn>
+            </div>
             <div class="stat-main-value">
               <span class="rating-number" :class="{
                 'text-success': (profile?.trust_factor ?? 20) >= 20,
@@ -626,8 +640,9 @@ onMounted(async () => {
                 <div class="activity-item">
                   <v-icon size="20" color="success" class="mr-2">mdi-check-circle</v-icon>
                   <div class="flex-grow-1">
-                    <div class="activity-label">Задач выполнено</div>
+                    <div class="activity-label">Задач завершено</div>
                     <div class="activity-value">{{ activity?.totals?.task_completed ?? 0 }}</div>
+                    <div class="text-caption text-medium-emphasis mt-1">(с одобренными фотоотчётами)</div>
                   </div>
                 </div>
                 
@@ -1022,6 +1037,139 @@ onMounted(async () => {
           <v-spacer />
           <v-btn variant="text" @click="trustFactorHistoryDialog = false" :block="$vuetify.display.mobile">
             Закрыть
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- Диалог объяснения Trust Factor -->
+    <v-dialog
+      v-model="trustFactorInfoDialog"
+      max-width="600"
+      scrollable
+    >
+      <v-card>
+        <v-card-title class="d-flex align-center justify-space-between pa-4">
+          <div class="d-flex align-center">
+            <v-icon size="28" color="info" class="mr-3">mdi-shield-check</v-icon>
+            <span class="text-h6">Как работает Trust Factor?</span>
+          </div>
+          <v-btn icon variant="text" size="small" @click="trustFactorInfoDialog = false">
+            <v-icon>mdi-close</v-icon>
+          </v-btn>
+        </v-card-title>
+        <v-divider />
+        <v-card-text class="pa-4">
+          <div class="mb-4">
+            <p class="text-body-1 mb-3">
+              <strong>Trust Factor (TF)</strong> — это показатель вашей надежности как волонтёра. 
+              Максимальное значение: <strong>30 баллов</strong>.
+            </p>
+            <p class="text-body-2 text-medium-emphasis mb-4">
+              При TF = 0 вы не сможете присоединяться к новым проектам.
+            </p>
+          </div>
+
+          <v-divider class="mb-4" />
+
+          <!-- Плюсы -->
+          <div class="mb-4">
+            <div class="d-flex align-center mb-3">
+              <v-icon color="success" size="24" class="mr-2">mdi-plus-circle</v-icon>
+              <h3 class="text-h6 text-success">Когда начисляются баллы (+)</h3>
+            </div>
+            <v-list density="compact" class="bg-success-lighten-5 rounded-lg">
+              <v-list-item>
+                <template #prepend>
+                  <v-icon color="success" size="20">mdi-star</v-icon>
+                </template>
+                <v-list-item-title class="text-body-2">
+                  <strong>Оценка фотоотчета: 5 звёзд</strong> — <span class="text-success">+2 балла</span>
+                </v-list-item-title>
+              </v-list-item>
+              <v-list-item>
+                <template #prepend>
+                  <v-icon color="success" size="20">mdi-star</v-icon>
+                </template>
+                <v-list-item-title class="text-body-2">
+                  <strong>Оценка фотоотчета: 4 звезды</strong> — <span class="text-success">+1 балл</span>
+                </v-list-item-title>
+              </v-list-item>
+              <v-list-item>
+                <template #prepend>
+                  <v-icon color="success" size="20">mdi-star</v-icon>
+                </template>
+                <v-list-item-title class="text-body-2">
+                  <strong>Оценка фотоотчета: 3 звезды</strong> — <span class="text-success">+0 баллов</span>
+                </v-list-item-title>
+              </v-list-item>
+            </v-list>
+          </div>
+
+          <!-- Минусы -->
+          <div>
+            <div class="d-flex align-center mb-3">
+              <v-icon color="error" size="24" class="mr-2">mdi-minus-circle</v-icon>
+              <h3 class="text-h6 text-error">Когда снимаются баллы (-)</h3>
+            </div>
+            <v-list density="compact" class="bg-error-lighten-5 rounded-lg">
+              <v-list-item>
+                <template #prepend>
+                  <v-icon color="error" size="20">mdi-exit-to-app</v-icon>
+                </template>
+                <v-list-item-title class="text-body-2">
+                  <strong>Выход из проекта</strong> — <span class="text-error">-5 баллов</span>
+                </v-list-item-title>
+                <v-list-item-subtitle class="text-caption text-medium-emphasis">
+                  Штраф применяется при добровольном выходе из проекта
+                </v-list-item-subtitle>
+              </v-list-item>
+              <v-list-item>
+                <template #prepend>
+                  <v-icon color="error" size="20">mdi-star-outline</v-icon>
+                </template>
+                <v-list-item-title class="text-body-2">
+                  <strong>Оценка фотоотчета: 1-2 звезды</strong> — <span class="text-error">-1 балл</span>
+                </v-list-item-title>
+                <v-list-item-subtitle class="text-caption text-medium-emphasis">
+                  Низкое качество выполненной работы
+                </v-list-item-subtitle>
+              </v-list-item>
+              <v-list-item>
+                <template #prepend>
+                  <v-icon color="error" size="20">mdi-close-circle</v-icon>
+                </template>
+                <v-list-item-title class="text-body-2">
+                  <strong>Отклонение задачи</strong> — <span class="text-error">-2 балла</span>
+                </v-list-item-title>
+                <v-list-item-subtitle class="text-caption text-medium-emphasis">
+                  При отказе от принятой задачи
+                </v-list-item-subtitle>
+              </v-list-item>
+            </v-list>
+          </div>
+
+          <v-alert
+            type="info"
+            variant="tonal"
+            density="compact"
+            class="mt-4"
+          >
+            <div class="text-caption">
+              <strong>Совет:</strong> Регулярно загружайте качественные фотоотчёты и завершайте начатые проекты, 
+              чтобы поддерживать высокий Trust Factor!
+            </div>
+          </v-alert>
+        </v-card-text>
+        <v-card-actions class="pa-4">
+          <v-spacer />
+          <v-btn
+            color="primary"
+            variant="flat"
+            @click="trustFactorInfoDialog = false"
+            :block="$vuetify.display.mobile"
+          >
+            Понятно
           </v-btn>
         </v-card-actions>
       </v-card>

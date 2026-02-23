@@ -136,7 +136,7 @@ function toggleFaq(index: number, event?: KeyboardEvent) {
       <div class="hero__inner">
 
         <!-- Eyebrow -->
-        <div class="hero__eyebrow">
+        <div class="hero__eyebrow" style="display: none;">
           <svg class="hero__leaf" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/>
             <path d="M12 6v6l4 2"/>
@@ -198,7 +198,7 @@ function toggleFaq(index: number, event?: KeyboardEvent) {
         </div>
 
         <!-- Trust row -->
-        <div class="hero__trust">
+        <div class="hero__trust" style="display: none;">
           <div class="trust-item">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke="currentColor" stroke-width="2"/></svg>
             Проверенные проекты
@@ -221,7 +221,7 @@ function toggleFaq(index: number, event?: KeyboardEvent) {
     <!-- ════════════════════════════════
          HOW IT WORKS
     ════════════════════════════════ -->
-    <section class="how">
+    <section class="how" style="display: none;">
       <div class="how__inner">
 
         <div class="section-eyebrow">Как это работает</div>
@@ -304,9 +304,9 @@ function toggleFaq(index: number, event?: KeyboardEvent) {
             v-if="showRegistrationCTA"
             to="/register/volunteer" 
             class="cta-btn cta-btn--green" 
-            aria-label="Начать как волонтёр"
+            aria-label="Стать волонтёром"
           >
-            Начать как волонтёр →
+            Стать волонтёром →
           </RouterLink>
           <RouterLink 
             v-else-if="isVolunteer"
@@ -356,9 +356,9 @@ function toggleFaq(index: number, event?: KeyboardEvent) {
             v-if="showRegistrationCTA"
             to="/register/organizer" 
             class="cta-btn cta-btn--lime" 
-            aria-label="Начать как организатор"
+            aria-label="Организовывать проект"
           >
-            Начать как организатор →
+            Организовывать проект →
           </RouterLink>
           <RouterLink 
             v-else-if="isOrganizer"

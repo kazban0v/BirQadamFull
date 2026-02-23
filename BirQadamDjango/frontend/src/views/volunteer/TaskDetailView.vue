@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue';
+import { computed, onMounted, reactive, ref, nextTick, onUnmounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import type { VForm } from 'vuetify/components';
 
@@ -31,14 +31,20 @@ function statusCfg(s: string) {
 }
 
 // ─── Photo state ──────────────────────────────────────────────────
-const photoFile        = ref<File | null>(null);
-const photoPreview     = ref<string | null>(null);
+const photoFiles       = ref<File[]>([]);
+const photoPreviews    = ref<string[]>([]);
 const photoComment     = ref('');
 const uploadingPhoto   = ref(false);
 const withdrawingPhoto = ref(false);
 const photoFormRef     = ref<VForm | null>(null);
 const hasUploadedPhoto = ref(false);
 const taskPhotos       = ref<any[]>([]);
+
+// ─── Camera state ──────────────────────────────────────────────────
+const showCameraDialog = ref(false);
+const cameraStream     = ref<MediaStream | null>(null);
+const videoRef         = ref<HTMLVideoElement | null>(null);
+const canvasRef        = ref<HTMLCanvasElement | null>(null);
 
 // ─── Formatters ───────────────────────────────────────────────────
 const dateFmt     = new Intl.DateTimeFormat('ru-RU', { day: '2-digit', month: 'long', year: 'numeric' });
@@ -139,32 +145,138 @@ async function handleCompleteTask() {
 
 // ─── Photo actions ────────────────────────────────────────────────
 function handlePhotoSelect(event: Event) {
-  const file = (event.target as HTMLInputElement).files?.[0];
-  if (!file) return;
-  if (file.size > 10 * 1024 * 1024) { showSnackbar('Файл не должен превышать 10 МБ.', 'error'); return; }
-  if (!file.type.startsWith('image/')) { showSnackbar('Пожалуйста, выберите изображение.', 'error'); return; }
-  photoFile.value = file;
-  const reader = new FileReader();
-  reader.onload = e => { photoPreview.value = e.target?.result as string; };
-  reader.readAsDataURL(file);
-}
-
-function removePhoto() {
-  photoFile.value    = null;
-  photoPreview.value = null;
+  const files = (event.target as HTMLInputElement).files;
+  if (!files || files.length === 0) return;
+  
+  const maxFiles = 5;
+  const currentCount = photoFiles.value.length;
+  const remainingSlots = maxFiles - currentCount;
+  
+  if (files.length > remainingSlots) {
+    showSnackbar(`Можно загрузить максимум ${maxFiles} фотографий. Уже выбрано: ${currentCount}.`, 'error');
+    const el = document.querySelector('#photo-input') as HTMLInputElement;
+    if (el) el.value = '';
+    return;
+  }
+  
+  Array.from(files).slice(0, remainingSlots).forEach(file => {
+    if (file.size > 10 * 1024 * 1024) {
+      showSnackbar(`Файл ${file.name} превышает 10 МБ.`, 'error');
+      return;
+    }
+    if (!file.type.startsWith('image/')) {
+      showSnackbar(`Файл ${file.name} не является изображением.`, 'error');
+      return;
+    }
+    
+    photoFiles.value.push(file);
+    const reader = new FileReader();
+    reader.onload = e => {
+      if (e.target?.result) {
+        photoPreviews.value.push(e.target.result as string);
+      }
+    };
+    reader.readAsDataURL(file);
+  });
+  
   const el = document.querySelector('#photo-input') as HTMLInputElement;
   if (el) el.value = '';
 }
 
+function removePhoto(index: number) {
+  photoFiles.value.splice(index, 1);
+  photoPreviews.value.splice(index, 1);
+}
+
+function removeAllPhotos() {
+  photoFiles.value = [];
+  photoPreviews.value = [];
+  const el = document.querySelector('#photo-input') as HTMLInputElement;
+  if (el) el.value = '';
+}
+
+// ─── Camera actions ────────────────────────────────────────────────
+async function openCamera() {
+  if (photoFiles.value.length >= 5) {
+    showSnackbar('Можно загрузить максимум 5 фотографий.', 'error');
+    return;
+  }
+  
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ 
+      video: { facingMode: 'environment' }, 
+      audio: false 
+    });
+    cameraStream.value = stream;
+    showCameraDialog.value = true;
+    await nextTick();
+    if (videoRef.value) {
+      videoRef.value.srcObject = stream;
+    }
+  } catch (error: any) {
+    showSnackbar('Не удалось получить доступ к камере. ' + (error.message || ''), 'error');
+  }
+}
+
+function closeCamera() {
+  if (cameraStream.value) {
+    cameraStream.value.getTracks().forEach(track => track.stop());
+    cameraStream.value = null;
+  }
+  showCameraDialog.value = false;
+}
+
+function capturePhoto() {
+  if (!videoRef.value || !canvasRef.value) return;
+  
+  if (photoFiles.value.length >= 5) {
+    showSnackbar('Можно загрузить максимум 5 фотографий.', 'error');
+    return;
+  }
+  
+  const video = videoRef.value;
+  const canvas = canvasRef.value;
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  
+  const ctx = canvas.getContext('2d');
+  if (ctx) {
+    ctx.drawImage(video, 0, 0);
+    canvas.toBlob((blob) => {
+      if (blob) {
+        const file = new File([blob], `photo-${Date.now()}.jpg`, { type: 'image/jpeg' });
+        photoFiles.value.push(file);
+        photoPreviews.value.push(URL.createObjectURL(blob));
+        closeCamera();
+      }
+    }, 'image/jpeg', 0.9);
+  }
+}
+
+// Cleanup camera on unmount
+onUnmounted(() => {
+  if (cameraStream.value) {
+    cameraStream.value.getTracks().forEach(track => track.stop());
+    cameraStream.value = null;
+  }
+});
+
 async function handleUploadPhoto() {
-  if (!task.value || !photoFile.value) return;
+  if (!task.value || photoFiles.value.length === 0) return;
   const v = await photoFormRef.value?.validate();
   if (!v?.valid) return;
+  
+  if (photoFiles.value.length > 5) {
+    showSnackbar('Можно загрузить максимум 5 фотографий за один отчёт.', 'error');
+    return;
+  }
+  
   uploadingPhoto.value = true;
   try {
-    await uploadPhotoReport(task.value.id, photoFile.value, photoComment.value || undefined);
-    showSnackbar('Фото успешно загружено!', 'success');
-    removePhoto();
+    // Загружаем все фото одним запросом
+    await uploadPhotoReport(task.value.id, photoFiles.value, photoComment.value || undefined);
+    showSnackbar(`Успешно загружено ${photoFiles.value.length} ${photoFiles.value.length === 1 ? 'фото' : 'фото'}!`, 'success');
+    removeAllPhotos();
     photoComment.value     = '';
     hasUploadedPhoto.value = true;
     await loadTask(false);
@@ -183,7 +295,7 @@ async function handleWithdrawPhoto() {
     showSnackbar(res.message || 'Фотоотчёт отозван.', 'success');
     hasUploadedPhoto.value = false;
     taskPhotos.value       = [];
-    removePhoto();
+    removeAllPhotos();
     photoComment.value = '';
     await checkPhotoStatus();
     await loadTask(false);
@@ -298,25 +410,15 @@ onMounted(() => loadTask());
             </button>
           </template>
 
-          <!-- Active task: complete + decline -->
+          <!-- Active task: decline -->
           <template v-else-if="isActiveTask">
-            <div class="complete-group">
-              <button
-                class="btn btn--primary"
-                :disabled="loading || !canComplete"
-                @click="handleCompleteTask"
-              >
-                <v-icon icon="mdi-check-all" size="17" />
-                Отметить выполненной
-              </button>
-              <p v-if="!hasUploadedPhoto" class="complete-hint">
-                <v-icon icon="mdi-information-outline" size="13" />
-                Сначала загрузите фотоотчёт ниже
-              </p>
-            </div>
             <button class="btn btn--red-outline" :disabled="loading" @click="handleDeclineTask">
               <v-icon icon="mdi-close-circle-outline" size="17" />
               Отказаться от задачи
+            </button>
+            <button v-if="hasUploadedPhoto" class="btn btn--red-outline" :disabled="withdrawingPhoto || loading" @click="handleWithdrawPhoto">
+              <v-icon :icon="withdrawingPhoto ? 'mdi-loading' : 'mdi-undo'" size="17" :class="{ spin: withdrawingPhoto }" />
+              {{ withdrawingPhoto ? 'Отзываем...' : 'Отозвать фотоотчёт' }}
             </button>
           </template>
 
@@ -358,11 +460,6 @@ onMounted(() => loadTask());
             <p v-if="photo.rejection_reason"  class="photo-item__note photo-item__note--err"><b>Причина отклонения:</b> {{ photo.rejection_reason }}</p>
           </div>
         </div>
-
-        <button class="btn btn--red-outline" :disabled="withdrawingPhoto" @click="handleWithdrawPhoto">
-          <v-icon :icon="withdrawingPhoto ? 'mdi-loading' : 'mdi-undo'" size="16" :class="{ spin: withdrawingPhoto }" />
-          {{ withdrawingPhoto ? 'Отзываем...' : 'Отозвать фотоотчёт' }}
-        </button>
       </div>
 
       <!-- ═══ Upload photo (active, no photo yet) ═══ -->
@@ -371,37 +468,52 @@ onMounted(() => loadTask());
 
         <v-form ref="photoFormRef" @submit.prevent="handleUploadPhoto">
 
-          <!-- Drop zone -->
-          <div
-            class="upload-zone"
-            :class="{ 'upload-zone--has-file': !!photoFile }"
-            @click="($refs.fileInputEl as HTMLInputElement).click()"
-          >
-            <v-icon
-              :icon="photoFile ? 'mdi-image-edit-outline' : 'mdi-camera-plus-outline'"
-              size="34"
-            />
-            <span class="upload-zone__label">
-              {{ photoFile ? photoFile.name : 'Нажмите, чтобы выбрать фото' }}
-            </span>
-            <span class="upload-zone__hint">JPG, PNG, WebP · до 10 МБ</span>
-            <input
-              ref="fileInputEl"
-              id="photo-input"
-              type="file"
-              accept="image/*"
-              style="display:none"
-              @change="handlePhotoSelect"
-            />
+          <!-- Drop zone and camera button -->
+          <div class="d-flex gap-2 mb-3">
+            <div
+              class="upload-zone flex-grow-1"
+              :class="{ 'upload-zone--has-file': photoFiles.length > 0, 'upload-zone--disabled': photoFiles.length >= 5 || uploadingPhoto }"
+              :style="{ cursor: (photoFiles.length >= 5 || uploadingPhoto) ? 'not-allowed' : 'pointer', opacity: (photoFiles.length >= 5 || uploadingPhoto) ? 0.6 : 1 }"
+              @click="photoFiles.length < 5 && !uploadingPhoto && ($refs.fileInputEl as HTMLInputElement).click()"
+            >
+              <v-icon
+                :icon="photoFiles.length > 0 ? 'mdi-image-multiple-outline' : 'mdi-image-plus-outline'"
+                size="34"
+              />
+              <span class="upload-zone__label">
+                {{ photoFiles.length > 0 ? `Выбрано фото: ${photoFiles.length} / 5` : 'Нажмите, чтобы выбрать фото' }}
+              </span>
+              <span class="upload-zone__hint">JPG, PNG, WebP · до 10 МБ каждое · максимум 5 фото</span>
+              <input
+                ref="fileInputEl"
+                id="photo-input"
+                type="file"
+                accept="image/*"
+                multiple
+                style="display:none"
+                @change="handlePhotoSelect"
+              />
+            </div>
+            <button
+              type="button"
+              class="btn btn--green"
+              @click="openCamera"
+              :disabled="uploadingPhoto || photoFiles.length >= 5"
+            >
+              <v-icon icon="mdi-camera" size="20" />
+              Камера
+            </button>
           </div>
 
-          <!-- Preview -->
-          <div v-if="photoPreview" class="photo-preview">
-            <v-img :src="photoPreview" max-height="280" class="photo-preview__img" cover />
-            <button type="button" class="btn btn--red-outline btn--sm mt-2" @click="removePhoto">
-              <v-icon icon="mdi-delete-outline" size="15" />
-              Удалить фото
-            </button>
+          <!-- Previews -->
+          <div v-if="photoPreviews.length > 0" class="photo-previews-grid mb-3">
+            <div v-for="(preview, index) in photoPreviews" :key="index" class="photo-preview-item">
+              <v-img :src="preview" max-height="200" class="photo-preview__img" cover />
+              <button type="button" class="btn btn--red-outline btn--sm mt-2" @click="removePhoto(index)">
+                <v-icon icon="mdi-delete-outline" size="15" />
+                Удалить
+              </button>
+            </div>
           </div>
 
           <!-- Comment -->
@@ -418,17 +530,50 @@ onMounted(() => loadTask());
           <button
             type="submit"
             class="btn btn--primary mt-3"
-            :disabled="!photoFile || uploadingPhoto"
+            :disabled="photoFiles.length === 0 || uploadingPhoto"
           >
             <v-icon
               :icon="uploadingPhoto ? 'mdi-loading' : 'mdi-upload'"
               size="17"
               :class="{ spin: uploadingPhoto }"
             />
-            {{ uploadingPhoto ? 'Загружаем...' : 'Загрузить фотоотчёт' }}
+            {{ uploadingPhoto ? 'Загружаем...' : `Загрузить фотоотчёт${photoFiles.length > 0 ? ` (${photoFiles.length})` : ''}` }}
           </button>
         </v-form>
       </div>
+
+      <!-- Camera Dialog -->
+      <v-dialog v-model="showCameraDialog" max-width="600" @update:model-value="(val) => { if (!val) closeCamera(); }">
+        <v-card>
+          <v-card-title class="d-flex align-center justify-space-between">
+            <span>Сделать фото</span>
+            <v-btn icon variant="text" size="small" @click="closeCamera">
+              <v-icon>mdi-close</v-icon>
+            </v-btn>
+          </v-card-title>
+          <v-card-text class="pa-0">
+            <div class="camera-container" style="position: relative; background: #000; min-height: 400px;">
+              <video
+                ref="videoRef"
+                autoplay
+                playsinline
+                style="width: 100%; height: auto; display: block;"
+              />
+              <canvas ref="canvasRef" style="display: none;" />
+            </div>
+          </v-card-text>
+          <v-card-actions class="pa-4">
+            <v-spacer />
+            <v-btn color="error" variant="flat" @click="closeCamera">
+              Отмена
+            </v-btn>
+            <v-btn color="success" variant="flat" @click="capturePhoto">
+              <v-icon icon="mdi-camera" class="mr-2" />
+              Сделать фото
+            </v-btn>
+          </v-card-actions>
+        </v-card>
+      </v-dialog>
 
       <!-- ═══ Completed: read-only photos ═══ -->
       <div v-if="isCompleted && taskPhotos.length > 0" class="card">
@@ -737,6 +882,35 @@ onMounted(() => loadTask());
 /* ─── Photo preview ─── */
 .photo-preview { display: flex; flex-direction: column; gap: 0; margin-top: 12px; }
 .photo-preview__img { border-radius: 12px; overflow: hidden; }
+
+.photo-previews-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 12px;
+}
+
+.photo-preview-item {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.photo-preview-item .photo-preview__img {
+  width: 100%;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.camera-container {
+  position: relative;
+  width: 100%;
+  min-height: 400px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #000;
+}
+
 
 /* ════════════════════════════
    RESPONSIVE
