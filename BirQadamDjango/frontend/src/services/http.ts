@@ -4,7 +4,7 @@ import axios from 'axios';
 // В development можно задать в .env файле или через vite.config.ts
 // Для локального тестирования используй: 'http://localhost:8000'
 // Для production: 'https://cleanup.almau.edu.kz'
-const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'https://cleanup.almau.edu.kz';
+const apiBaseUrl ='https://cleanup.almau.edu.kz';
 // PROD: 'https://cleanup.almau.edu.kz'
 // const apiBaseUrl = '/custom-admin/api';
 
