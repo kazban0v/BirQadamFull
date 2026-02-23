@@ -23,6 +23,7 @@ export interface VolunteerProjectCatalogItem {
   contact_email?: string | null;
   contact_telegram?: string | null;
   info_url?: string | null;
+  gis2_url?: string | null;
   tags?: string[];
   cover_image_url?: string | null;
   created_at?: string | null;

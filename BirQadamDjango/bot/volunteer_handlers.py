@@ -65,8 +65,19 @@ def create_photo(volunteer: User, project: Project, file_path: str, task: Option
 
 @sync_to_async
 def get_approved_projects(volunteer: User, city: Optional[str] = None, tag: Optional[str] = None) -> list[tuple[Project, str, str, list[str]]]:
+    from datetime import date
+    from django.db.models import Q
+    
     logger.info(f"Fetching approved projects for volunteer {volunteer.username} (city={city}, tag={tag})")
-    projects = Project.objects.filter(status='approved')
+    today = date.today()
+    
+    # Показываем только одобренные проекты, которые еще не закончились
+    projects = Project.objects.filter(
+        status='approved',
+    ).filter(
+        Q(end_date__isnull=True) | Q(end_date__gte=today)
+    )
+    
     if city:
         projects = projects.filter(city__iexact=city)
     if tag:

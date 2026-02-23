@@ -1453,6 +1453,7 @@ class OrganizerProjectsAPIView(APIView):
                 'contact_email': project.contact_email,
                 'contact_telegram': project.contact_telegram,
                 'info_url': project.info_url,
+                'gis2_url': project.gis2_url,
                 'tags': list(project.tags.names()),
                 'cover_image_url': OrganizerProjectsAPIView._build_https_absolute_uri(request, project.cover_image.url) if project.cover_image and project.cover_image.url else None,
             })
@@ -1465,6 +1466,11 @@ class OrganizerProjectsAPIView(APIView):
             return Response({'error': 'Not authorized'}, status=status.HTTP_403_FORBIDDEN)
 
         data = request.data
+        
+        # Логирование для отладки
+        logger.info(f"[OrganizerProjectsAPIView] POST request data keys: {list(data.keys())}")
+        logger.info(f"[OrganizerProjectsAPIView] gis2_url value: {data.get('gis2_url')}")
+        logger.info(f"[OrganizerProjectsAPIView] end_date value: {data.get('end_date')}")
 
         from datetime import datetime, timedelta
 
@@ -1474,11 +1480,30 @@ class OrganizerProjectsAPIView(APIView):
         volunteer_type = data.get('volunteer_type', 'any')
 
         if not all([title, description, city]):
+            logger.warning(f"[OrganizerProjectsAPIView] Missing required fields: title={bool(title)}, description={bool(description)}, city={bool(city)}")
             return Response({'error': 'Missing required fields'}, status=status.HTTP_400_BAD_REQUEST)
 
+        # Дата начала автоматически устанавливается на сегодня, если не указана
         start_date = self._parse_date(data.get('start_date')) or datetime.now().date()
-        # end_date устанавливается только если указана явно
+        
+        # Дата окончания обязательна
         end_date = self._parse_date(data.get('end_date'))
+        if not end_date:
+            logger.warning(f"[OrganizerProjectsAPIView] End date validation failed. Received: {data.get('end_date')}")
+            return Response({'error': 'Дата завершения проекта обязательна'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Ссылка на 2ГИС обязательна
+        gis2_url = data.get('gis2_url', '').strip()
+        if not gis2_url:
+            logger.warning(f"[OrganizerProjectsAPIView] gis2_url is empty or missing. Received: {repr(data.get('gis2_url'))}")
+            return Response({'error': 'Ссылка на 2ГИС обязательна'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Валидация формата ссылки 2ГИС
+        import re
+        gis2_pattern = re.compile(r'^https?://(go\.)?2gis\.(com|kz|ru)(/.+)?$', re.IGNORECASE)
+        if not gis2_pattern.match(gis2_url):
+            logger.warning(f"[OrganizerProjectsAPIView] gis2_url format validation failed. Received: {gis2_url}")
+            return Response({'error': 'Введите корректную ссылку на 2ГИС (например: https://go.2gis.com/vOZEO или https://2gis.kz/...)'}, status=status.HTTP_400_BAD_REQUEST)
 
         latitude = self._parse_float(data.get('latitude'))
         longitude = self._parse_float(data.get('longitude'))
@@ -1502,6 +1527,7 @@ class OrganizerProjectsAPIView(APIView):
             contact_email=data.get('contact_email'),
             contact_telegram=data.get('contact_telegram', ''),
             info_url=data.get('info_url'),
+            gis2_url=gis2_url,
         )
 
         cover_image = request.FILES.get('cover_image')
@@ -1530,6 +1556,7 @@ class OrganizerProjectsAPIView(APIView):
             'contact_email': project.contact_email,
             'contact_telegram': project.contact_telegram,
             'info_url': project.info_url,
+            'gis2_url': project.gis2_url,
             'tags': tags,
             'cover_image_url': request.build_absolute_uri(project.cover_image.url) if project.cover_image and project.cover_image.url else None,
         }, status=status.HTTP_201_CREATED)
@@ -1595,6 +1622,16 @@ class OrganizerProjectsAPIView(APIView):
             project.contact_telegram = data.get('contact_telegram', '')
         if 'info_url' in data:
             project.info_url = data.get('info_url')
+        if 'gis2_url' in data:
+            gis2_url_value = data.get('gis2_url', '').strip()
+            if not gis2_url_value:
+                return Response({'error': 'Ссылка на 2ГИС обязательна'}, status=status.HTTP_400_BAD_REQUEST)
+            # Валидация формата ссылки 2ГИС
+            import re
+            gis2_pattern = re.compile(r'^https?://(go\.)?2gis\.(com|kz|ru)(/.+)?$', re.IGNORECASE)
+            if not gis2_pattern.match(gis2_url_value):
+                return Response({'error': 'Введите корректную ссылку на 2ГИС (например: https://go.2gis.com/vOZEO или https://2gis.kz/...)'}, status=status.HTTP_400_BAD_REQUEST)
+            project.gis2_url = gis2_url_value
 
         # Обновляем обложку
         cover_image = request.FILES.get('cover_image')
@@ -1666,6 +1703,7 @@ class OrganizerProjectsAPIView(APIView):
             'contact_email': project.contact_email,
             'contact_telegram': project.contact_telegram,
             'info_url': project.info_url,
+            'gis2_url': project.gis2_url,
             'tags': list(project.tags.names()),
             'cover_image_url': request.build_absolute_uri(project.cover_image.url) if project.cover_image and project.cover_image.url else None,
         }, status=status.HTTP_200_OK)

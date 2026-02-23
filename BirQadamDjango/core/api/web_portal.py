@@ -351,10 +351,21 @@ class PasswordResetRequestAPIView(APIView):
             )
         
         try:
-            user = User.objects.get(email__iexact=email, is_active=True)
+            # Сначала проверяем, существует ли пользователь вообще (без условия is_active)
+            user = User.objects.get(email__iexact=email)
+            logger.info(f"User found for password reset: {email}, is_active={user.is_active}, username={user.username}")
+            
+            # Если пользователь неактивен, все равно разрешаем сброс пароля
+            if not user.is_active:
+                logger.info(f"Password reset requested for inactive user: {email} (user_id={user.id})")
+                # Продолжаем выполнение - разрешаем сброс пароля для неактивных пользователей
         except User.DoesNotExist:
             # Не раскрываем информацию о том, существует ли пользователь
             logger.warning(f"Password reset requested for non-existent email: {email}")
+            # Проверяем, может быть email с другой регистрацией
+            similar_emails = User.objects.filter(email__icontains=email.split('@')[0]).values_list('email', flat=True)
+            if similar_emails:
+                logger.info(f"Found similar emails: {list(similar_emails)}")
             return Response(
                 {
                     'message': 'Если аккаунт с таким email существует, на него будет отправлен код для сброса пароля.'
@@ -423,13 +434,19 @@ class PasswordResetRequestAPIView(APIView):
 """
             
             from django.core.mail import send_mail
-            send_mail(
-                subject=subject,
-                message=message,
-                from_email=settings.DEFAULT_FROM_EMAIL,
-                recipient_list=[email],
-                fail_silently=False,
-            )
+            try:
+                send_mail(
+                    subject=subject,
+                    message=message,
+                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    recipient_list=[email],
+                    fail_silently=False,
+                )
+                logger.info(f"Password reset code sent to email: {email}, code: {code}")
+            except Exception as email_error:
+                logger.error(f"Failed to send password reset email to {email}: {str(email_error)}")
+                logger.error(f"Email settings: FROM={settings.DEFAULT_FROM_EMAIL}, HOST={getattr(settings, 'EMAIL_HOST', 'N/A')}")
+                raise  # Пробрасываем ошибку дальше
             
             logger.info(f"Password reset code sent to email: {email}")
             return Response(
@@ -1590,12 +1607,23 @@ class VolunteerProjectDetailAPIView(APIView):
         try:
             from core.models import VolunteerProject
             from django.db.models import Count, Q
+            from datetime import date
             
             project = Project.objects.select_related('creator').prefetch_related('tags').get(
                 id=project_id,
                 is_deleted=False,
                 status='approved',
             )
+            
+            # Для волонтеров: проверяем, что проект не закончился
+            # Организаторы видят все свои проекты (включая архивные)
+            is_organizer = hasattr(request.user, 'is_organizer') and request.user.is_organizer
+            is_project_creator = project.creator == request.user
+            
+            if not is_organizer and not is_project_creator:
+                # Для волонтеров: если проект закончился, возвращаем 404
+                if project.end_date and project.end_date < date.today():
+                    return Response({'detail': 'Проект не найден.'}, status=status.HTTP_404_NOT_FOUND)
             
             # Проверяем, присоединен ли волонтер к проекту
             volunteer_project = VolunteerProject.objects.filter(
@@ -1643,6 +1671,7 @@ class VolunteerProjectDetailAPIView(APIView):
                     'contact_email': project.contact_email,
                     'contact_telegram': project.contact_telegram,
                     'info_url': project.info_url,
+                    'gis2_url': project.gis2_url,
                     'tags': list(project.tags.names()),
                     'cover_image_url': self._get_full_image_url(request, project.cover_image) if project.cover_image else None,
                     'created_at': project.created_at.isoformat() if project.created_at else None,

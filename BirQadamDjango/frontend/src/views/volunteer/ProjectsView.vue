@@ -1079,7 +1079,7 @@ onUnmounted(() => {
             </div>
           </div>
 
-          <div class="contact-card" v-if="project.contact_person || project.contact_phone || project.contact_telegram || project.info_url">
+          <div class="contact-card" v-if="project.contact_person || project.contact_phone || project.contact_telegram || project.info_url || project.gis2_url">
             <div class="text-caption text-medium-emphasis mb-2">Контакты</div>
             <ul class="text-body-2 text-medium-emphasis pa-0 ma-0 contact-list">
               <li v-if="project.contact_person">
@@ -1101,6 +1101,10 @@ onUnmounted(() => {
               <li v-if="project.info_url">
                 <v-icon icon="mdi-web" size="16" class="me-1" />
                 <a :href="project.info_url" class="link" target="_blank">Дополнительная информация</a>
+              </li>
+              <li v-if="project.gis2_url">
+                <v-icon icon="mdi-map-marker" size="16" class="me-1" />
+                <a :href="project.gis2_url" class="link" target="_blank">Открыть в 2ГИС</a>
               </li>
             </ul>
           </div>
@@ -1474,7 +1478,7 @@ onUnmounted(() => {
               class="project-detail-section mb-6"
             >
               <h3 class="project-detail-section-title mb-3">Местоположение</h3>
-              <div class="project-map-container">
+              <div class="project-map-container mb-3">
                 <iframe
                   :src="`https://yandex.ru/map-widget/v1/?ll=${projectDetail.longitude},${projectDetail.latitude}&z=15&pt=${projectDetail.longitude},${projectDetail.latitude}`"
                   width="100%"
@@ -1484,11 +1488,37 @@ onUnmounted(() => {
                   loading="lazy"
                 />
               </div>
+              <!-- Ссылка на 2ГИС -->
+              <div v-if="projectDetail.gis2_url" class="d-flex flex-wrap ga-2">
+                <v-btn
+                  :href="projectDetail.gis2_url"
+                  target="_blank"
+                  color="primary"
+                  variant="outlined"
+                  prepend-icon="mdi-map-marker"
+                  size="small"
+                  class="text-none"
+                >
+                  Открыть в 2ГИС
+                  <v-icon icon="mdi-open-in-new" size="16" class="ms-1" />
+                </v-btn>
+                <v-btn
+                  href="https://2gis.kz"
+                  target="_blank"
+                  color="primary"
+                  variant="text"
+                  prepend-icon="mdi-web"
+                  size="small"
+                  class="text-none"
+                >
+                  Сайт 2ГИС
+                </v-btn>
+              </div>
             </div>
 
             <!-- Контакты -->
             <div
-              v-if="projectDetail.contact_person || projectDetail.contact_phone || projectDetail.contact_email || projectDetail.contact_telegram || projectDetail.info_url"
+              v-if="projectDetail.contact_person || projectDetail.contact_phone || projectDetail.contact_email || projectDetail.contact_telegram || projectDetail.info_url || projectDetail.gis2_url"
               class="project-detail-section mb-6"
             >
               <h3 class="project-detail-section-title mb-3">Контакты</h3>
@@ -1536,6 +1566,17 @@ onUnmounted(() => {
                   <v-list-item-title>
                     <a :href="projectDetail.info_url" target="_blank" class="text-decoration-none">
                       Дополнительная информация
+                    </a>
+                  </v-list-item-title>
+                </v-list-item>
+                <v-list-item v-if="projectDetail.gis2_url" class="px-0">
+                  <template #prepend>
+                    <v-icon icon="mdi-map-marker" size="20" class="me-2" />
+                  </template>
+                  <v-list-item-title>
+                    <a :href="projectDetail.gis2_url" target="_blank" class="text-decoration-none">
+                      Открыть в 2ГИС
+                      <v-icon icon="mdi-open-in-new" size="14" class="ms-1" />
                     </a>
                   </v-list-item-title>
                 </v-list-item>

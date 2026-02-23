@@ -31,9 +31,8 @@
             <path d="M1 4v6h6M23 20v-6h-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
             <path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4-4.64 4.36A9 9 0 0 1 3.51 15" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
-          Повторить
         </button>
-      </div>
+      </div>   
       
       <!-- ── Search overlay (поверх карты) ── -->
       <div v-if="mapLoaded && !mapError" class="mp__overlay">

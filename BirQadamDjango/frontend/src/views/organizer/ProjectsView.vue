@@ -49,7 +49,7 @@ const createFormState = reactive({
   description: '',
   city: '',
   volunteer_type: 'social',
-  start_date: null as string | null,
+  start_date: null as string | null, // Автоматически устанавливается при открытии диалога
   start_time: null as string | null,
   end_date: null as string | null,
   end_time: null as string | null,
@@ -62,6 +62,7 @@ const createFormState = reactive({
   contact_email: '',
   contact_telegram: '',
   info_url: '',
+  gis2_url: '', // Ссылка на 2ГИС
   cover_image: null as File | File[] | null,
 });
 
@@ -83,6 +84,7 @@ const editFormState = reactive({
   contact_email: '',
   contact_telegram: '',
   info_url: '',
+  gis2_url: '',
   cover_image: null as File | File[] | null,
 });
 
@@ -133,6 +135,13 @@ const getFullImageUrl = (url: string | null | undefined): string | null => {
   }
 };
 
+// Безопасное открытие ссылки в новой вкладке
+const openUrl = (url: string) => {
+  if (typeof window !== 'undefined' && window.open) {
+    window.open(url, '_blank', 'noopener,noreferrer');
+  }
+};
+
 const volunteerTypeIcon = (value: string) => {
   const icons: Record<string, string> = {
     social: 'mdi-hand-heart-outline',
@@ -140,6 +149,16 @@ const volunteerTypeIcon = (value: string) => {
     cultural: 'mdi-palette-outline',
   };
   return icons[value] || 'mdi-account-heart-outline';
+};
+
+// Проверка, является ли проект архивным (дата окончания прошла)
+const isProjectArchived = (project: OrganizerProject): boolean => {
+  if (!project.end_date) return false;
+  const endDate = new Date(project.end_date);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  endDate.setHours(0, 0, 0, 0);
+  return endDate < today;
 };
 
 const statusConfig = (status: string) => {
@@ -193,8 +212,15 @@ const parseDateForSubmit = (dateStr: string | null): string | null => {
   }
 };
 
-const combineDateTime = (date: string | null, _time: string | null): string | undefined => {
+const combineDateTime = (date: string | Date | null, _time: string | null): string | undefined => {
   if (!date) return undefined;
+  
+  // Если это Date объект, преобразуем в ISO строку (YYYY-MM-DD)
+  if (date instanceof Date) {
+    return date.toISOString().split('T')[0];
+  }
+  
+  // Если это строка, обрабатываем через parseDateForSubmit
   return parseDateForSubmit(date) || undefined;
 };
 
@@ -224,6 +250,16 @@ const roadmap = [
 
 const rules = {
   required: (value: string) => !!value || 'Поле обязательно к заполнению.',
+  gis2Url: (value: string) => {
+    if (!value) return 'Ссылка на 2ГИС обязательна.';
+    // Проверяем формат ссылки 2ГИС
+    // Поддерживаем: https://go.2gis.com/vOZEO, https://2gis.kz/..., https://2gis.ru/...
+    const gis2Pattern = /^https?:\/\/(go\.)?2gis\.(com|kz|ru)(\/.+)?$/i;
+    if (!gis2Pattern.test(value)) {
+      return 'Введите корректную ссылку на 2ГИС (например: https://go.2gis.com/vOZEO или https://2gis.kz/...)';
+    }
+    return true;
+  },
 };
 
 onMounted(() => {
@@ -233,12 +269,17 @@ onMounted(() => {
 });
 
 const openCreateDialog = () => {
+  // Устанавливаем дату начала как сегодняшний день
+  const today = new Date();
+  const todayStr = today.toISOString().split('T')[0]; // Формат YYYY-MM-DD
+  
   Object.assign(createFormState, {
     title: '', description: '', city: '', volunteer_type: 'social',
-    start_date: null, start_time: null, end_date: null, end_time: null,
+    start_date: todayStr, // Автоматически устанавливаем сегодняшний день
+    start_time: null, end_date: null, end_time: null,
     address: '', tags: [], latitude: null, longitude: null,
     contact_person: '', contact_phone: '', contact_email: '',
-    contact_telegram: '', info_url: '', cover_image: null,
+    contact_telegram: '', info_url: '', gis2_url: '', cover_image: null,
   });
   createDialog.value = true;
 };
@@ -247,7 +288,19 @@ const closeCreateDialog = () => { createDialog.value = false; };
 
 const submitCreateProject = async () => {
   const { valid } = (await createFormRef.value?.validate()) ?? { valid: false };
-  if (!valid) return;
+  if (!valid) {
+    console.warn('[ProjectsView] Form validation failed');
+    return;
+  }
+  
+  // Логирование перед отправкой
+  const endDateCombined = combineDateTime(createFormState.end_date, createFormState.end_time);
+  console.log('[ProjectsView] Submitting project:', {
+    end_date_raw: createFormState.end_date,
+    end_date_combined: endDateCombined,
+    gis2_url: createFormState.gis2_url,
+  });
+  
   createLoading.value = true;
   try {
     await organizerStore.createProject({
@@ -256,7 +309,7 @@ const submitCreateProject = async () => {
       city: createFormState.city,
       volunteer_type: createFormState.volunteer_type,
       start_date: combineDateTime(createFormState.start_date, createFormState.start_time),
-      end_date: combineDateTime(createFormState.end_date, createFormState.end_time),
+      end_date: endDateCombined,
       address: createFormState.address || undefined,
       tags: createFormState.tags,
       latitude: parseCoordinate(createFormState.latitude),
@@ -266,6 +319,7 @@ const submitCreateProject = async () => {
       contact_email: createFormState.contact_email || undefined,
       contact_telegram: createFormState.contact_telegram || undefined,
       info_url: createFormState.info_url || undefined,
+      gis2_url: createFormState.gis2_url, // Обязательное поле, всегда отправляем (даже пустую строку)
       cover_image: Array.isArray(createFormState.cover_image) ? createFormState.cover_image[0] : createFormState.cover_image || undefined,
     });
     snackbar.message = 'Проект отправлен на модерацию.';
@@ -273,7 +327,18 @@ const submitCreateProject = async () => {
     snackbar.show = true;
     closeCreateDialog();
   } catch (error: any) {
-    snackbar.message = error?.response?.data?.error || error?.response?.data?.detail || error?.message || 'Не удалось создать проект.';
+    // Логируем ошибку для отладки
+    console.error('[ProjectsView] Error creating project:', error);
+    console.error('[ProjectsView] Error response:', error?.response?.data);
+    
+    // Показываем понятное сообщение об ошибке
+    const errorMessage = error?.response?.data?.error 
+      || error?.response?.data?.detail 
+      || error?.response?.data?.message
+      || error?.message 
+      || 'Не удалось создать проект.';
+    
+    snackbar.message = errorMessage;
     snackbar.color = 'error';
     snackbar.show = true;
   } finally {
@@ -323,6 +388,7 @@ const openEditDialog = (project: OrganizerProject) => {
     editFormState.contact_email = project.contact_email || '';
     editFormState.contact_telegram = project.contact_telegram || '';
     editFormState.info_url = project.info_url || '';
+    editFormState.gis2_url = (project as any).gis2_url || '';
     editFormState.cover_image = null;
     editDialog.value = true;
   } catch (error) {
@@ -418,6 +484,7 @@ const submitEditProject = async () => {
       contact_email: editFormState.contact_email || undefined,
       contact_telegram: editFormState.contact_telegram || undefined,
       info_url: editFormState.info_url || undefined,
+      gis2_url: editFormState.gis2_url || undefined,
       cover_image: Array.isArray(editFormState.cover_image) ? editFormState.cover_image[0] : editFormState.cover_image || undefined,
     });
     closeEditDialog();
@@ -561,6 +628,16 @@ const datePickerHandler = (stateObj: any, field: string, isActive: any) => (valu
                 >
                   <v-icon :icon="statusConfig(project.status).icon" start size="14" />
                   {{ statusConfig(project.status).label }}
+                </v-chip>
+                <v-chip
+                  v-if="isProjectArchived(project)"
+                  color="grey-darken-1"
+                  variant="flat"
+                  size="small"
+                  class="text-none font-weight-semibold ms-2"
+                >
+                  <v-icon icon="mdi-archive" start size="14" />
+                  В архиве
                 </v-chip>
               </div>
             </div>
@@ -778,19 +855,32 @@ const datePickerHandler = (stateObj: any, field: string, isActive: any) => (valu
               <div class="form-section__label">Период проекта</div>
               <v-row dense>
                 <v-col cols="12" md="6">
-                  <v-dialog max-width="360">
-                    <template #activator="{ props }">
-                      <v-text-field :model-value="formatDateForDisplay(createFormState.start_date)" label="Дата начала" variant="outlined" density="comfortable" prepend-inner-icon="mdi-calendar-start" readonly v-bind="props" placeholder="дд.мм.гггг" />
-                    </template>
-                    <template #default="{ isActive }">
-                      <v-card rounded="xl"><v-date-picker v-model="createFormState.start_date" locale="ru" :first-day-of-week="1" color="primary" @update:model-value="datePickerHandler(createFormState, 'start_date', isActive)" /></v-card>
-                    </template>
-                  </v-dialog>
+                  <v-text-field 
+                    :model-value="formatDateForDisplay(createFormState.start_date)" 
+                    label="Дата начала" 
+                    variant="outlined" 
+                    density="comfortable" 
+                    prepend-inner-icon="mdi-calendar-start" 
+                    readonly 
+                    disabled
+                    hint="Автоматически устанавливается на сегодняшний день"
+                    persistent-hint
+                  />
                 </v-col>
                 <v-col cols="12" md="6">
                   <v-dialog max-width="360">
                     <template #activator="{ props }">
-                      <v-text-field :model-value="formatDateForDisplay(createFormState.end_date)" label="Дата завершения" variant="outlined" density="comfortable" prepend-inner-icon="mdi-calendar-end" readonly v-bind="props" placeholder="дд.мм.гггг" />
+                      <v-text-field 
+                        :model-value="formatDateForDisplay(createFormState.end_date)" 
+                        label="Дата завершения" 
+                        variant="outlined" 
+                        density="comfortable" 
+                        prepend-inner-icon="mdi-calendar-end" 
+                        readonly 
+                        v-bind="props" 
+                        placeholder="дд.мм.гггг"
+                        :rules="[rules.required]"
+                      />
                     </template>
                     <template #default="{ isActive }">
                       <v-card rounded="xl"><v-date-picker v-model="createFormState.end_date" locale="ru" :first-day-of-week="1" color="primary" @update:model-value="datePickerHandler(createFormState, 'end_date', isActive)" /></v-card>
@@ -817,6 +907,39 @@ const datePickerHandler = (stateObj: any, field: string, isActive: any) => (valu
                 </v-col>
                 <v-col cols="12">
                   <v-text-field v-model="createFormState.info_url" label="Сайт / доп. ссылка" variant="outlined" density="comfortable" prepend-inner-icon="mdi-web" />
+                </v-col>
+                <v-col cols="12">
+                  <v-text-field 
+                    v-model="createFormState.gis2_url" 
+                    label="Ссылка на 2ГИС" 
+                    variant="outlined" 
+                    density="comfortable" 
+                    prepend-inner-icon="mdi-map-marker"
+                    :rules="[rules.gis2Url]"
+                    hint="Пример: https://go.2gis.com/vOZEO или https://2gis.kz/..."
+                    persistent-hint
+                  >
+                    <template #append-inner>
+                      <v-btn
+                        icon="mdi-open-in-new"
+                        variant="text"
+                        size="small"
+                        :disabled="!createFormState.gis2_url || !rules.gis2Url(createFormState.gis2_url) || rules.gis2Url(createFormState.gis2_url) !== true"
+                        @click="() => { if (createFormState.gis2_url) openUrl(createFormState.gis2_url); }"
+                      />
+                    </template>
+                  </v-text-field>
+                  <div class="mt-2">
+                    <v-btn
+                      variant="outlined"
+                      size="small"
+                      color="primary"
+                      prepend-icon="mdi-map-search"
+                      @click="() => openUrl('https://2gis.kz')"
+                    >
+                      Открыть 2ГИС
+                    </v-btn>
+                  </div>
                 </v-col>
               </v-row>
             </div>
@@ -959,6 +1082,39 @@ const datePickerHandler = (stateObj: any, field: string, isActive: any) => (valu
                 </v-col>
                 <v-col cols="12">
                   <v-text-field v-model="editFormState.info_url" label="Сайт / доп. ссылка" variant="outlined" density="comfortable" prepend-inner-icon="mdi-web" />
+                </v-col>
+                <v-col cols="12">
+                  <v-text-field 
+                    v-model="editFormState.gis2_url" 
+                    label="Ссылка на 2ГИС" 
+                    variant="outlined" 
+                    density="comfortable" 
+                    prepend-inner-icon="mdi-map-marker"
+                    :rules="[rules.gis2Url]"
+                    hint="Пример: https://go.2gis.com/vOZEO или https://2gis.kz/..."
+                    persistent-hint
+                  >
+                    <template #append-inner>
+                      <v-btn
+                        icon="mdi-open-in-new"
+                        variant="text"
+                        size="small"
+                        :disabled="!editFormState.gis2_url || !rules.gis2Url(editFormState.gis2_url) || rules.gis2Url(editFormState.gis2_url) !== true"
+                        @click="() => { if (editFormState.gis2_url) openUrl(editFormState.gis2_url); }"
+                      />
+                    </template>
+                  </v-text-field>
+                  <div class="mt-2">
+                    <v-btn
+                      variant="outlined"
+                      size="small"
+                      color="primary"
+                      prepend-icon="mdi-map-search"
+                      @click="() => openUrl('https://2gis.kz')"
+                    >
+                      Открыть 2ГИС
+                    </v-btn>
+                  </div>
                 </v-col>
               </v-row>
             </div>

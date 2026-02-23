@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
+from datetime import date
 
 from django.db.models import Count, Exists, OuterRef, Q
 
@@ -37,29 +38,39 @@ def get_projects_catalog(user, request=None) -> Dict[str, Any]:  # type: ignore[
     joined_project_ids = joined_projects.values_list('project_id', flat=True)
     joined_at_by_project_id = dict(joined_projects.values_list('project_id', 'joined_at'))
 
+    # Для волонтеров скрываем проекты, у которых дата окончания прошла
+    # Организаторы видят все свои проекты (включая архивные)
+    today = date.today()
+    is_organizer = hasattr(user, 'is_organizer') and user.is_organizer
+    
     projects_qs = (
         Project.objects.select_related('creator')
         .filter(
             is_deleted=False,
             status='approved',
         )
-        .annotate(
-            tasks_count=Count('tasks', filter=Q(tasks__is_deleted=False)),
-            active_members=Count(
-                'volunteer_projects',
-                filter=Q(volunteer_projects__is_active=True),
-            ),
-            joined=Exists(
-                VolunteerProject.objects.filter(
-                    volunteer=user,
-                    project=OuterRef('pk'),
-                    is_active=True,
-                )
-            ),
-        )
-        .prefetch_related('tags')
-        .order_by('start_date', '-created_at')
     )
+    
+    # Для волонтеров: скрываем проекты с истекшей датой окончания
+    if not is_organizer:
+        projects_qs = projects_qs.filter(
+            Q(end_date__isnull=True) | Q(end_date__gte=today)
+        )
+    
+    projects_qs = projects_qs.annotate(
+        tasks_count=Count('tasks', filter=Q(tasks__is_deleted=False)),
+        active_members=Count(
+            'volunteer_projects',
+            filter=Q(volunteer_projects__is_active=True),
+        ),
+        joined=Exists(
+            VolunteerProject.objects.filter(
+                volunteer=user,
+                project=OuterRef('pk'),
+                is_active=True,
+            )
+        ),
+    ).prefetch_related('tags').order_by('start_date', '-created_at')
 
     projects = []
     for project in projects_qs:
@@ -88,6 +99,7 @@ def get_projects_catalog(user, request=None) -> Dict[str, Any]:  # type: ignore[
                 'contact_email': project.contact_email,
                 'contact_telegram': project.contact_telegram,
                 'info_url': project.info_url,
+                'gis2_url': project.gis2_url,
                 'tags': list(project.tags.names()),
                 'cover_image_url': _get_full_image_url(request, project.cover_image) if project.cover_image and request else None,
                 'created_at': project.created_at.isoformat() if project.created_at else None,

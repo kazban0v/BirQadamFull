@@ -62,8 +62,14 @@ class MapProjectsView(APIView):
                     Q(creator=request.user) | Q(status='approved')
                 )
             else:
-                # Волонтер видит только одобренные
-                projects = projects.filter(status='approved')
+                # Волонтер видит только одобренные и не закончившиеся проекты
+                from datetime import date
+                today = date.today()
+                projects = projects.filter(
+                    status='approved',
+                ).filter(
+                    Q(end_date__isnull=True) | Q(end_date__gte=today)
+                )
             
             # Применяем фильтры
             if volunteer_type:

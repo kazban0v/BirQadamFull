@@ -439,6 +439,7 @@ class Project(models.Model):
     contact_email = models.EmailField(blank=True, null=True)
     contact_telegram = models.CharField(max_length=150, blank=True, default='')
     info_url = models.URLField(blank=True, null=True)
+    gis2_url = models.URLField(blank=True, null=True, max_length=500, verbose_name='Ссылка на 2ГИС')
     cover_image = models.ImageField(upload_to=project_cover_upload_path, null=True, blank=True, max_length=255)
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
     deleted_at = models.DateTimeField(null=True, blank=True)

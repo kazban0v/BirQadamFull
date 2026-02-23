@@ -20,6 +20,7 @@ export interface OrganizerProject {
   contact_email?: string | null;
   contact_telegram?: string | null;
   info_url?: string | null;
+  gis2_url?: string | null;
   tags?: string[];
   cover_image_url?: string | null;
 }
@@ -39,6 +40,7 @@ export interface CreateProjectPayload {
   contact_email?: string;
   contact_telegram?: string;
   info_url?: string;
+  gis2_url?: string;
   tags?: string[];
   cover_image?: File | null;
 }
@@ -181,8 +183,40 @@ export async function createOrganizerProject(payload: CreateProjectPayload): Pro
   formData.append('description', payload.description);
   formData.append('city', payload.city);
   if (payload.volunteer_type) formData.append('volunteer_type', payload.volunteer_type);
-  if (payload.start_date) formData.append('start_date', payload.start_date);
-  if (payload.end_date) formData.append('end_date', payload.end_date);
+  
+  // Преобразуем Date объекты в строки ISO формата
+  const formatDateForFormData = (date: any): string => {
+    if (!date) return '';
+    if (date instanceof Date) {
+      return date.toISOString().split('T')[0]; // YYYY-MM-DD
+    }
+    if (typeof date === 'string') {
+      // Если строка уже в формате ISO, возвращаем как есть
+      // Если содержит время, берем только дату
+      return date.split('T')[0];
+    }
+    return String(date);
+  };
+  
+  if (payload.start_date) {
+    formData.append('start_date', formatDateForFormData(payload.start_date));
+  }
+  
+  // end_date обязательное поле, всегда отправляем
+  formData.append('end_date', formatDateForFormData(payload.end_date));
+  
+  // Логирование для отладки
+  console.log('[organizer.ts] Creating project with payload:', {
+    title: payload.title,
+    city: payload.city,
+    start_date_raw: payload.start_date,
+    start_date_formatted: payload.start_date ? formatDateForFormData(payload.start_date) : null,
+    end_date_raw: payload.end_date,
+    end_date_type: typeof payload.end_date,
+    end_date_isDate: payload.end_date instanceof Date,
+    end_date_formatted: formatDateForFormData(payload.end_date),
+    gis2_url: payload.gis2_url,
+  });
   if (payload.latitude !== undefined && payload.latitude !== null) formData.append('latitude', String(payload.latitude));
   if (payload.longitude !== undefined && payload.longitude !== null) formData.append('longitude', String(payload.longitude));
   if (payload.address) formData.append('address', payload.address);
@@ -191,11 +225,21 @@ export async function createOrganizerProject(payload: CreateProjectPayload): Pro
   if (payload.contact_email) formData.append('contact_email', payload.contact_email);
   if (payload.contact_telegram) formData.append('contact_telegram', payload.contact_telegram);
   if (payload.info_url) formData.append('info_url', payload.info_url);
+  // gis2_url обязательное поле, всегда отправляем (даже если пустая строка)
+  formData.append('gis2_url', payload.gis2_url || '');
   if (payload.tags && payload.tags.length) formData.append('tags', payload.tags.join(','));
   if (payload.cover_image) formData.append('cover_image', payload.cover_image);
 
-
-
+  // Логирование FormData для отладки
+  const formDataEntries: Record<string, string> = {};
+  for (const [key, value] of formData.entries()) {
+    if (value instanceof File) {
+      formDataEntries[key] = `[File: ${value.name}]`;
+    } else {
+      formDataEntries[key] = String(value);
+    }
+  }
+  console.log('[organizer.ts] FormData entries:', formDataEntries);
 
   const { data } = await httpClient.post(ORGANIZER_PROJECTS_URL, formData, {
     withCredentials: true,
@@ -320,6 +364,7 @@ export async function updateOrganizerProject(
   if (payload.contact_email !== undefined) formData.append('contact_email', payload.contact_email || '');
   if (payload.contact_telegram !== undefined) formData.append('contact_telegram', payload.contact_telegram || '');
   if (payload.info_url !== undefined) formData.append('info_url', payload.info_url || '');
+  if (payload.gis2_url !== undefined) formData.append('gis2_url', payload.gis2_url || '');
   if (payload.tags !== undefined) {
     if (payload.tags && payload.tags.length) {
       formData.append('tags', payload.tags.join(','));

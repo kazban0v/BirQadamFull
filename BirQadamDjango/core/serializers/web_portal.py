@@ -277,6 +277,7 @@ class VolunteerProjectCatalogSerializer(serializers.Serializer):
     contact_email = serializers.EmailField(allow_null=True, allow_blank=True)
     contact_telegram = serializers.CharField(allow_null=True, allow_blank=True)
     info_url = serializers.URLField(allow_null=True, allow_blank=True)
+    gis2_url = serializers.URLField(allow_null=True, allow_blank=True)
     tags = serializers.ListField(child=serializers.CharField(), allow_empty=True)
     cover_image_url = serializers.URLField(allow_null=True, allow_blank=True, read_only=True)
     created_at = serializers.DateTimeField(allow_null=True)
