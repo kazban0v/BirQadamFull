@@ -1,0 +1,225 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <title>FAQ — BirQadam</title>
+    <meta charset="utf-8" />
+    <link rel="icon" href="{% static 'public_site/images/logob.png' %}" type="image/png">
+    <link rel="apple-touch-icon" href="{% static 'public_site/images/logob.png' %}">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="{% static 'public_site/css/style.css' %}">
+    <link rel="stylesheet" href="{% static 'public_site/css/aos.css' %}">
+    <link rel="stylesheet" href="{% static 'public_site/css/bootstrap.min.css' %}">
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;800&display=swap');
+
+        :root {
+            --birqadam-primary: #8BC34A;
+            --birqadam-accent: #e3794d;
+            --birqadam-success: #4CAF50;
+            --birqadam-gray: #EDEDED;
+            --birqadam-white: #f8ecc4;
+            --birqadam-pure-white: #FFFFFF;
+        }
+
+        body {
+            font-family: 'Montserrat', sans-serif;
+            color: #333;
+            background: var(--birqadam-white);
+            margin: 0;
+            padding: 0;
+            overflow-x: hidden;
+        }
+
+        a {
+            text-decoration: none;
+            color: inherit;
+        }
+
+        h1,
+        h2,
+        h3 {
+            font-weight: 800;
+            color: var(--birqadam-primary);
+        }
+
+        p {
+            color: #555;
+            line-height: 1.6;
+        }
+
+        .header-wrapper {
+            max-width: 1140px;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 1rem;
+        }
+
+        header {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            padding: 1rem 0;
+            background: var(--birqadam-primary);
+            z-index: 100;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, .1);
+        }
+
+        header .site-logo a {
+            font-weight: 800;
+            font-size: 1.5rem;
+            color: white;
+        }
+
+        .site-menu {
+            display: flex;
+            list-style: none;
+            gap: 2rem;
+            margin: 0;
+            padding: 0;
+            align-items: center;
+        }
+
+        .site-menu a {
+            color: white;
+            font-weight: 600;
+            transition: opacity 0.3s;
+        }
+
+        .site-menu a:hover {
+            opacity: 0.8;
+        }
+
+        .section {
+            max-width: 1140px;
+            margin: 120px auto 60px;
+            padding: 2rem;
+            background: var(--birqadam-pure-white);
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .faq-item {
+            margin-bottom: 2rem;
+            padding: 1.5rem;
+            background: var(--birqadam-gray);
+            border-radius: 8px;
+            border-left: 4px solid var(--birqadam-primary);
+        }
+
+        .faq-question {
+            font-weight: 800;
+            font-size: 1.2rem;
+            color: var(--birqadam-primary);
+            margin-bottom: 0.5rem;
+        }
+
+        .faq-answer {
+            color: #555;
+            line-height: 1.8;
+        }
+
+        @media (max-width: 768px) {
+            .section {
+                margin: 100px 1rem 40px;
+                padding: 1.5rem;
+            }
+
+            .site-menu {
+                flex-direction: column;
+                gap: 1rem;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <div class="header-wrapper">
+            <div class="site-logo"><a href="{% url 'public_site:home' %}">BirQadam</a></div>
+            <ul class="site-menu">
+                <a href="{% url 'public_site:home' %}">Главная</a>
+                <a href="{% url 'public_site:services' %}">Функционал</a>
+                <a href="{% url 'public_site:faq' %}" class="active">FAQ</a>
+                <li class="dropdown">
+                    <a href="{% url 'public_site:instruction' %}" class="dropdown-trigger">Инструкция</a>
+                    <div class="dropdown-content">
+                        <a href="{% url 'public_site:volunteer_guide' %}">Волонтёр</a>
+                        <a href="{% url 'public_site:organizer_guide' %}">Организатор</a>
+                        <a href="{% url 'public_site:admin_guide' %}">Админ</a>
+                    </div>
+                </li>
+            </ul>
+        </div>
+    </header>
+
+    <section class="section">
+        <h1 style="text-align: center; margin-bottom: 3rem;">Часто задаваемые вопросы (FAQ)</h1>
+
+        <div class="faq-item">
+            <div class="faq-question">Что такое BirQadam?</div>
+            <div class="faq-answer">
+                BirQadam — это платформа для волонтёров и организаторов социальных проектов в Казахстане.
+                Мы объединяем людей, которые хотят делать добрые дела, и организации, которые нуждаются в помощи.
+            </div>
+        </div>
+
+        <div class="faq-item">
+            <div class="faq-question">Как стать волонтёром?</div>
+            <div class="faq-answer">
+                Для того чтобы стать волонтёром, вам нужно зарегистрироваться на платформе,
+                выбрать интересующие вас проекты и присоединиться к ним. Вы сможете выполнять задания,
+                получать достижения и помогать обществу.
+            </div>
+        </div>
+
+        <div class="faq-item">
+            <div class="faq-question">Как создать проект как организатор?</div>
+            <div class="faq-answer">
+                Зарегистрируйтесь как организатор, заполните информацию о вашей организации,
+                создайте проект с описанием задач и пригласите волонтёров присоединиться.
+                Вы сможете управлять проектом, назначать задания и отслеживать прогресс.
+            </div>
+        </div>
+
+        <div class="faq-item">
+            <div class="faq-question">Какие типы проектов поддерживаются?</div>
+            <div class="faq-answer">
+                Платформа поддерживает три основных типа волонтёрства: социальная помощь,
+                экологические проекты и культурные мероприятия. Вы можете выбрать проекты,
+                которые соответствуют вашим интересам и возможностям.
+            </div>
+        </div>
+
+        <div class="faq-item">
+            <div class="faq-question">Как отслеживать свой прогресс?</div>
+            <div class="faq-answer">
+                В вашем личном кабинете вы можете видеть все выполненные задания, полученные достижения,
+                статистику участия в проектах и фотоотчёты о проделанной работе.
+            </div>
+        </div>
+
+        <div class="faq-item">
+            <div class="faq-question">Можно ли выйти из проекта?</div>
+            <div class="faq-answer">
+                Да, вы можете покинуть проект в любой момент, если по каким-то причинам не можете
+                продолжать участие. Для этого используйте кнопку "Выйти из проекта" в карточке проекта.
+            </div>
+        </div>
+
+        <div class="faq-item">
+            <div class="faq-question">Как связаться с поддержкой?</div>
+            <div class="faq-answer">
+                Если у вас возникли вопросы или проблемы, вы можете обратиться к организатору проекта
+                через встроенный чат или связаться с администрацией платформы через форму обратной связи.
+            </div>
+        </div>
+    </section>
+</body>
+
+</html>
