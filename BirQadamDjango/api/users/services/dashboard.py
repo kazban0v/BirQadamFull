@@ -150,6 +150,23 @@ def get_volunteer_dashboard_data(user) -> Dict[str, Any]:  # type: ignore[no-any
         status__in=['pending', 'sent'],
     ).count()
 
+    # Расчет общего времени участия в проектах (в часах)
+    # Считаем время с момента первого присоединения к любому активному проекту
+    # Это общее время волонтерской деятельности пользователя
+    total_hours = 0
+    first_join_date = None
+    
+    # Находим самую раннюю дату присоединения к активному проекту
+    for vp in volunteer_projects_qs:
+        if vp.joined_at:
+            if first_join_date is None or vp.joined_at < first_join_date:
+                first_join_date = vp.joined_at
+    
+    # Если есть активные проекты, считаем время с первой даты присоединения
+    if first_join_date:
+        time_diff = now - first_join_date
+        total_hours = time_diff.total_seconds() / 3600
+
     summary = {
         'active_tasks': tasks_qs.count(),
         'completed_tasks': completed_assignments_count,
@@ -158,6 +175,7 @@ def get_volunteer_dashboard_data(user) -> Dict[str, Any]:  # type: ignore[no-any
         'pending_photos': pending_photo_reports,
         'total_photos': photo_reports_qs.count(),
         'unread_notifications': unread_notifications,
+        'total_hours': round(total_hours, 1),  # Округляем до 1 знака после запятой
     }
 
     return {

@@ -1,0 +1,63 @@
+{
+  "expo": {
+    "name": "BirQadam",
+    "slug": "BirQadam",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#10B981"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.birqadam.app"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#10B981",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false,
+      "package": "com.birqadam.app"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro"
+    },
+    "plugins": [
+      "expo-font",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "BirQadam требует доступ к вашим фото для загрузки аватара и фотоотчётов"
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "BirQadam требует доступ к камере для сканирования QR-кодов и фотоотчётов"
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "BirQadam требует доступ к геолокации для поиска ближайших задач"
+        }
+      ],
+      "expo-secure-store",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#10B981",
+          "sounds": ["./assets/notification-sound.wav"]
+        }
+      ]
+    ]
+  }
+}

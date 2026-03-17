@@ -7,7 +7,7 @@ from .views.views import ProfileView, ProfileUpdateView, RapidPasswordResetView
 from .views.views import project_detail, ProjectUpdateView, ProjectDeleteView
 from .views.views import RegisterAPIView, LoginAPIView, ProfileAPIView, ProjectsAPIView, JoinProjectAPIView, UserTasksAPIView, OrganizerProjectsAPIView, ProjectParticipantsAPIView, ProjectManagementAPIView, ProjectTasksAPIView, LeaveProjectAPIView, DeviceTokenAPIView, ActivitiesAPIView, AchievementsAPIView, UserProgressAPIView, LeaderboardAPIView, TrustFactorHistoryAPIView
 from .api.photo import SubmitPhotoReportAPIView, OrganizerPhotoReportsAPIView, PhotoReportDetailAPIView, RatePhotoReportAPIView, RejectPhotoReportAPIView, VolunteerPhotoReportsAPIView, TaskPhotosAPIView
-from .api.task import AcceptTaskAPIView, DeclineTaskAPIView, CompleteTaskAPIView
+from .api.task import AcceptTaskAPIView, DeclineTaskAPIView, CompleteTaskAPIView, VolunteerTaskDismissAPIView
 from .api.bulk_notifications import create_bulk_notification, send_bulk_notification, list_bulk_notifications, get_bulk_notification, list_notification_templates, preview_recipients
 from .api.search import global_search, advanced_user_search, advanced_project_search, save_search_filter, list_saved_filters
 from .api.map import get_projects_map_data, get_heatmap_data, get_city_statistics, get_project_clusters, get_volunteer_heatmap
@@ -114,6 +114,7 @@ urlpatterns = [
     path('api/v1/tasks/<int:task_id>/accept/', AcceptTaskAPIView.as_view(), name='api_v1_accept_task'),
     path('api/v1/tasks/<int:task_id>/decline/', DeclineTaskAPIView.as_view(), name='api_v1_decline_task'),
     path('api/v1/tasks/<int:task_id>/complete/', CompleteTaskAPIView.as_view(), name='api_v1_complete_task'),
+    path('api/v1/tasks/<int:task_id>/dismiss/', VolunteerTaskDismissAPIView.as_view(), name='api_v1_dismiss_task'),
     path('api/v1/tasks/<int:task_id>/photos/', TaskPhotosAPIView.as_view(), name='api_v1_task_photos'),
     
     # 📨 Bulk Notifications API v1

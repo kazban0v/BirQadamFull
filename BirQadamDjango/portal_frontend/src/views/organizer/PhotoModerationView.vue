@@ -31,7 +31,7 @@ const getFullImageUrl = (url: string | null | undefined): string | null => {
     // Для localhost всегда используем http (не https)
     const baseUrl = isDevelopment 
       ? `http://${window.location.hostname}:8000`
-      : 'https://birqadam.almau.edu.kz';
+      : (import.meta.env.VITE_API_BASE_URL || 'https://cleanup.almau.edu.kz');
     
     // Убеждаемся, что путь начинается с /
     const cleanPath = url.startsWith('/') ? url : `/${url}`;
@@ -55,7 +55,7 @@ const handleImageError = (photoId: number, imageUrl: string | null, event: Event
     // Для localhost всегда используем http (не https)
     const baseUrl = isDevelopment 
       ? `http://${window.location.hostname}:8000`
-      : 'https://birqadam.almau.edu.kz';
+      : (import.meta.env.VITE_API_BASE_URL || 'https://cleanup.almau.edu.kz');
     const fallbackUrl = `${baseUrl}${relativePath}`;
     
     console.warn(`[PhotoModeration] Image load error for photo ${photoId}, retry ${retryCount + 1} with fallback URL:`, fallbackUrl);

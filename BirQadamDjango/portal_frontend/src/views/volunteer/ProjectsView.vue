@@ -208,9 +208,10 @@ const getFullImageUrl = (url: string | null | undefined): string | null => {
     // Если относительный путь, определяем базовый URL в зависимости от окружения
     const isDevelopment = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
     // Для localhost всегда используем http (не https)
+    // В production используем тот же домен, что и для API
     const baseUrl = isDevelopment 
       ? `http://${window.location.hostname}:8000`
-      : 'https://birqadam.almau.edu.kz';
+      : (import.meta.env.VITE_API_BASE_URL || 'https://cleanup.almau.edu.kz');
     
     // Убеждаемся, что путь начинается с /
     const cleanPath = url.startsWith('/') ? url : `/${url}`;

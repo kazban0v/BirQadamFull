@@ -1276,7 +1276,7 @@ class UserTasksAPIView(APIView):
         from api.models import VolunteerProject
 
         # ✅ ИСПРАВЛЕНИЕ НП-1: Добавлен select_related для оптимизации
-        # Получаем проекты с датами присоединения
+        # Получаем активные проекты с датами присоединения
         joined_projects_data = VolunteerProject.objects.select_related('project', 'project__creator').filter(  # type: ignore[attr-defined]
             volunteer=request.user,
             is_active=True
@@ -1286,14 +1286,26 @@ class UserTasksAPIView(APIView):
         project_join_dates = {vp['project_id']: vp['joined_at'] for vp in joined_projects_data}
         joined_projects = list(project_join_dates.keys())
 
-        if not joined_projects:
+        # Также собираем ID проектов, из которых волонтёр вышел/были закрыты
+        # (нужны для отображения архивных задач)
+        archived_projects_data = VolunteerProject.objects.filter(  # type: ignore[attr-defined]
+            volunteer=request.user,
+            is_active=False
+        ).values('project_id', 'joined_at')
+        archived_project_join_dates = {vp['project_id']: vp['joined_at'] for vp in archived_projects_data}
+
+        # Если нет ни активных, ни старых проектов — возвращаем пустой список
+        if not joined_projects and not archived_project_join_dates:
             return Response([], status=status.HTTP_200_OK)
 
-        # Получаем ID заданий, которые назначены текущему пользователю (accepted=True)
-        assigned_task_ids = TaskAssignment.objects.filter(  # type: ignore[attr-defined]
+        # Получаем назначения текущего пользователя (accepted=True) вместе с рейтингом
+        accepted_assignments = TaskAssignment.objects.filter(  # type: ignore[attr-defined]
             volunteer=request.user,
             accepted=True
-        ).values_list('task_id', flat=True)
+        ).values('task_id', 'rating')
+        assigned_task_ids = set(a['task_id'] for a in accepted_assignments)
+        # Словарь task_id -> rating (оценка организатора)
+        assignment_rating_map: dict = {a['task_id']: a['rating'] for a in accepted_assignments}
 
         # Получаем ID заданий, которые волонтер отклонил (accepted=False)
         declined_task_ids = TaskAssignment.objects.filter(  # type: ignore[attr-defined]
@@ -1301,7 +1313,7 @@ class UserTasksAPIView(APIView):
             accepted=False
         ).values_list('task_id', flat=True)
 
-        # Получаем все задачи из этих проектов, исключая отклоненные и удаленные
+        # 1. Обычные задачи из активных проектов (не удалённые, не архивные)
         tasks_qs = Task.objects.filter(  # type: ignore[attr-defined]
             project_id__in=joined_projects,
             is_deleted=False  # Исключаем удаленные задачи
@@ -1309,33 +1321,54 @@ class UserTasksAPIView(APIView):
             id__in=declined_task_ids  # Исключаем отклоненные задачи
         ).select_related('project', 'creator').order_by('-created_at')
 
+        # 2. Задачи из закрытых/удалённых проектов (is_active=False):
+        #    - незавершённые → status='archived'
+        #    - завершённые   → status='completed' (остаются видимыми как завершённые)
+        #    Исключаем задачи, скрытые волонтёром через «dismiss» (accepted=False).
+        #    trust factor не затрагивается.
+        archived_tasks_qs = Task.objects.filter(  # type: ignore[attr-defined]
+            project_id__in=list(archived_project_join_dates.keys()),
+            status__in=['archived', 'completed'],
+            is_deleted=False
+        ).exclude(
+            id__in=declined_task_ids  # скрытые (dismissed) задачи тоже отфильтровываем
+        ).select_related('project', 'creator').order_by('-created_at')
+
+        # Объединяем join-даты для общего использования
+        all_join_dates = {**archived_project_join_dates, **project_join_dates}
+
         # Формируем результат с обработкой имени создателя
         tasks = []
-        for task in tasks_qs:
+
+        def _build_task_row(task) -> dict:  # type: ignore[no-untyped-def]
             is_assigned = task.id in assigned_task_ids  # type: ignore[attr-defined]
-            
-            # Определяем, обязательна ли задача (создана после присоединения)
-            joined_at = project_join_dates.get(task.project_id)  # type: ignore[attr-defined]
-            is_required = False
-            if joined_at:
-                # Задача обязательна, если она создана после присоединения
-                is_required = task.created_at >= joined_at  # type: ignore[attr-defined]
-            
-            tasks.append({
+            joined_at = all_join_dates.get(task.project_id)  # type: ignore[attr-defined]
+            is_required = bool(joined_at and task.created_at >= joined_at)  # type: ignore[attr-defined]
+            return {
                 'id': task.id,  # type: ignore[attr-defined]
                 'text': task.text,
-                'project_title': task.project.title,  # Исправлено
+                'project_title': task.project.title,
                 'project_id': task.project_id,  # type: ignore[attr-defined]
-                'creator_name': task.creator.name if task.creator.name else task.creator.username,  # Исправлено
+                'creator_name': task.creator.name if task.creator.name else task.creator.username,
                 'status': task.status,
-                'is_assigned': is_assigned,  # Добавлено
+                'is_assigned': is_assigned,
                 'assignment_status': is_assigned,  # Для совместимости
-                'is_required': is_required,  # Обязательна ли задача
+                'is_required': is_required,
+                'rating': assignment_rating_map.get(task.id),  # Оценка организатора (1–5 или null)
                 'deadline_date': task.deadline_date.isoformat() if task.deadline_date else None,
                 'start_time': task.start_time.strftime('%H:%M') if task.start_time else None,
                 'end_time': task.end_time.strftime('%H:%M') if task.end_time else None,
                 'created_at': task.created_at.isoformat()
-            })
+            }
+
+        for task in tasks_qs:
+            tasks.append(_build_task_row(task))
+
+        # Добавляем архивные задачи (избегаем дубликатов, если задача уже есть выше)
+        existing_ids = {t['id'] for t in tasks}
+        for task in archived_tasks_qs:
+            if task.id not in existing_ids:  # type: ignore[attr-defined]
+                tasks.append(_build_task_row(task))
 
         return Response(tasks, status=status.HTTP_200_OK)
 
@@ -1418,7 +1451,7 @@ class OrganizerProjectsAPIView(APIView):
 
         from api.models import VolunteerProject
         projects_qs = (
-            Project.objects.filter(creator=request.user, deleted_at__isnull=True)
+            Project.objects.filter(creator=request.user, is_deleted=False, deleted_at__isnull=True)
             .annotate(
                 volunteer_count=Count(
                     'volunteer_projects',
@@ -2033,31 +2066,45 @@ class ProjectTasksAPIView(APIView):
             except Exception as e:
                 logger.error(f"[WARNING] Failed to create Activity records for task {task.id}: {e}", exc_info=True)  # type: ignore[attr-defined]
             
-            # 📧 ОТПРАВЛЯЕМ EMAIL УВЕДОМЛЕНИЯ ВСЕМ ВОЛОНТЕРАМ
+            # 📧 ОТПРАВЛЯЕМ EMAIL И PUSH УВЕДОМЛЕНИЯ В ФОНОВОМ РЕЖИМЕ
+            # Чтобы не блокировать ответ API, запускаем уведомления асинхронно
+            from threading import Thread
             from shared.notifications.email.service import notify_volunteer_new_task
-            email_sent_count = 0
-            for vp in volunteer_projects:
-                if vp.volunteer and vp.volunteer.email:
-                    if notify_volunteer_new_task(vp.volunteer, task, project):
-                        email_sent_count += 1
-            if email_sent_count > 0:
-                logger.info(f"Sent email notifications to {email_sent_count} volunteers about new task {task.id}")
-            
-            # 🔔 ОТПРАВЛЯЕМ УВЕДОМЛЕНИЯ ВСЕМ ВОЛОНТЕРАМ (Telegram + FCM)
-            import asyncio
             from shared.notifications.utils import notify_all_project_volunteers
-
-            try:
-                # Запускаем асинхронную отправку уведомлений
-                loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(loop)
-                stats = loop.run_until_complete(notify_all_project_volunteers(project, task))
-                loop.close()
-
-                logger.info(f"[OK] Task {task.id} notifications sent: {stats}")  # type: ignore[attr-defined]
-            except Exception as e:
-                # Не блокируем создание задачи если уведомления не отправились
-                logger.error(f"[WARNING] Failed to send notifications for task {task.id}: {e}", exc_info=True)  # type: ignore[attr-defined]
+            import asyncio
+            
+            def send_notifications_background():
+                """Отправка уведомлений в фоновом потоке"""
+                try:
+                    # Email уведомления
+                    email_sent_count = 0
+                    for vp in volunteer_projects:
+                        if vp.volunteer and vp.volunteer.email:
+                            try:
+                                if notify_volunteer_new_task(vp.volunteer, task, project):
+                                    email_sent_count += 1
+                            except Exception as e:
+                                logger.warning(f"Failed to send email to {vp.volunteer.email}: {e}")
+                    
+                    if email_sent_count > 0:
+                        logger.info(f"Sent email notifications to {email_sent_count} volunteers about new task {task.id}")
+                    
+                    # Telegram + FCM уведомления
+                    try:
+                        loop = asyncio.new_event_loop()
+                        asyncio.set_event_loop(loop)
+                        stats = loop.run_until_complete(notify_all_project_volunteers(project, task))
+                        loop.close()
+                        logger.info(f"[OK] Task {task.id} notifications sent: {stats}")
+                    except Exception as e:
+                        logger.error(f"[WARNING] Failed to send push notifications for task {task.id}: {e}", exc_info=True)
+                except Exception as e:
+                    logger.error(f"[ERROR] Notifications background thread failed for task {task.id}: {e}", exc_info=True)
+            
+            # Запускаем отправку уведомлений в фоновом потоке
+            notification_thread = Thread(target=send_notifications_background, daemon=True)
+            notification_thread.start()
+            logger.info(f"[OK] Task {task.id} created, notifications scheduled in background")  # type: ignore[attr-defined]
 
             return Response({
                 'id': task.id,  # type: ignore[attr-defined]

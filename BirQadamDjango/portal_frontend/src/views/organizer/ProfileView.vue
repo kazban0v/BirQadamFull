@@ -199,7 +199,9 @@ const getFullImageUrl = (url: string | null | undefined): string | null => {
     return url;
   }
   // Если относительный путь, добавляем базовый URL
-  const baseUrl = 'https://birqadam.almau.edu.kz';
+  // Используем тот же домен, что и для API (из http.ts)
+  const baseUrl = import.meta.env.VITE_API_BASE_URL || 
+    (import.meta.env.PROD ? 'https://cleanup.almau.edu.kz' : window.location.origin);
   // Убираем двойные слеши и формируем правильный URL
   const cleanUrl = url.startsWith('/') ? url : `/${url}`;
   return `${baseUrl}${cleanUrl}`;

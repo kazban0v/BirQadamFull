@@ -68,8 +68,16 @@ class Project(models.Model):
             self.is_deleted = True
             self.save()
 
-            # Мягко удаляем связанные объекты
-            self.tasks.update(is_deleted=True)  # type: ignore[attr-defined]
+            # Незавершённые задачи → в архив (чтобы волонтёры видели во вкладке «В архиве»).
+            # Завершённые задачи остаются со статусом 'completed'.
+            # Trust factor при этом НЕ изменяется — архивирование автоматическое.
+            self.tasks.filter(  # type: ignore[attr-defined]
+                is_deleted=False
+            ).exclude(
+                status='completed'
+            ).update(status='archived')
+
+            # Мягко удаляем прочие связанные объекты (кроме задач — они остаются видимыми)
             self.photos.update(is_deleted=True)  # type: ignore[attr-defined]
             self.volunteer_projects.update(is_active=False)  # type: ignore[attr-defined]
 

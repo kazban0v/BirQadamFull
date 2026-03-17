@@ -159,7 +159,7 @@ type PhotoMutationResponse = {
   };
 };
 
-const ORGANIZER_PROJECTS_URL = '/custom-admin/api/organizer/projects/';
+const ORGANIZER_PROJECTS_URL = '/api/web/organizer/projects/';
 
 export async function fetchOrganizerProjects(): Promise<OrganizerProject[]> {
   const { data } = await httpClient.get(ORGANIZER_PROJECTS_URL);
@@ -375,7 +375,7 @@ export async function updateOrganizerProject(
   if (payload.cover_image) formData.append('cover_image', payload.cover_image);
 
   const { data } = await httpClient.patch(
-    `/custom-admin/api/v1/organizer/projects/${projectId}/`,
+    `/api/web/organizer/projects/${projectId}/`,
     formData,
     {
       headers: {
@@ -388,7 +388,7 @@ export async function updateOrganizerProject(
 
 export async function deleteOrganizerProject(projectId: number): Promise<{ message: string }> {
   const { data } = await httpClient.delete<{ message: string }>(
-    `/custom-admin/api/v1/organizer/projects/${projectId}/`
+    `/api/web/organizer/projects/${projectId}/`
   );
   return data;
 }

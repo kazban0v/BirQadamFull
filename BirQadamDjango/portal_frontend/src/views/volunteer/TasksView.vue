@@ -2,22 +2,51 @@
 import { computed, onMounted, reactive, ref } from 'vue';
 import { useRouter } from 'vue-router';
 
-import { fetchVolunteerTasks, type VolunteerTask } from '@/services/tasks';
+import { fetchVolunteerTasks, dismissTask, type VolunteerTask } from '@/services/tasks';
 
 const router = useRouter();
 
 const loading = ref(false);
 const tasks = ref<VolunteerTask[]>([]);
-const filter = ref<'all' | 'open' | 'in_progress' | 'completed'>('all');
+const filter = ref<'all' | 'open' | 'in_progress' | 'under_review' | 'completed' | 'archived'>('all');
 const snackbar = reactive({ show: false, message: '', color: 'success' });
+
+// ─── Delete confirmation ───────────────────────────────────────────
+const confirmDialog = reactive({ show: false, taskId: null as number | null, taskText: '' });
+const deleteLoading = ref(false);
+
+function askDelete(task: VolunteerTask, event: MouseEvent) {
+  event.stopPropagation();
+  confirmDialog.taskId   = task.id;
+  confirmDialog.taskText = task.text;
+  confirmDialog.show     = true;
+}
+
+async function confirmDelete() {
+  if (!confirmDialog.taskId) return;
+  deleteLoading.value = true;
+  try {
+    await dismissTask(confirmDialog.taskId);
+    tasks.value = tasks.value.filter(t => t.id !== confirmDialog.taskId);
+    showSnackbar('Задача удалена из списка', 'success');
+  } catch (e: any) {
+    showSnackbar(e?.response?.data?.error || 'Не удалось удалить задачу', 'error');
+  } finally {
+    deleteLoading.value  = false;
+    confirmDialog.show   = false;
+    confirmDialog.taskId = null;
+  }
+}
 
 // ─── Status config ────────────────────────────────────────────────
 const STATUS_MAP: Record<string, { text: string; color: string; bg: string }> = {
-  open:        { text: 'Открыто',   color: '#1565c0', bg: 'rgba(21,101,192,0.1)'  },
-  in_progress: { text: 'В работе',  color: '#e65100', bg: 'rgba(230,81,0,0.1)'    },
-  completed:   { text: 'Выполнено', color: '#2e7d32', bg: 'rgba(46,125,50,0.1)'   },
-  failed:      { text: 'Отклонено', color: '#c62828', bg: 'rgba(198,40,40,0.1)'   },
-  closed:      { text: 'Закрыто',   color: '#546e7a', bg: 'rgba(84,110,122,0.1)'  },
+  open:         { text: 'Открыто',      color: '#1565c0', bg: 'rgba(21,101,192,0.1)'   },
+  in_progress:  { text: 'В работе',     color: '#e65100', bg: 'rgba(230,81,0,0.1)'     },
+  under_review: { text: 'На проверке',  color: '#6a1b9a', bg: 'rgba(106,27,154,0.1)'   },
+  completed:    { text: 'Выполнено',    color: '#2e7d32', bg: 'rgba(46,125,50,0.1)'    },
+  failed:       { text: 'Отклонено',    color: '#c62828', bg: 'rgba(198,40,40,0.1)'    },
+  closed:       { text: 'Закрыто',      color: '#546e7a', bg: 'rgba(84,110,122,0.1)'   },
+  archived:     { text: 'В архиве',     color: '#37474f', bg: 'rgba(55,71,79,0.1)'     },
 };
 
 function statusCfg(status: string) {
@@ -26,23 +55,27 @@ function statusCfg(status: string) {
 
 // ─── Filter tabs ──────────────────────────────────────────────────
 const FILTER_TABS = [
-  { key: 'all',         label: 'Все' },
-  { key: 'open',        label: 'Открытые' },
-  { key: 'in_progress', label: 'В работе' },
-  { key: 'completed',   label: 'Завершённые' },
+  { key: 'all',          label: 'Все' },
+  { key: 'open',         label: 'Открытые' },
+  { key: 'in_progress',  label: 'В работе' },
+  { key: 'under_review', label: 'На проверке' },
+  { key: 'completed',    label: 'Завершённые' },
+  { key: 'archived',     label: 'В архиве' },
 ] as const;
 
 // ─── Summary ──────────────────────────────────────────────────────
 const summary = computed(() => {
   const list = tasks.value;
   return {
-    total:       list.length,
-    open:        list.filter(t => t.status === 'open' && !t.is_assigned).length,
-    in_progress: list.filter(t =>
+    total:        list.length,
+    open:         list.filter(t => t.status === 'open' && !t.is_assigned).length,
+    in_progress:  list.filter(t =>
       t.status === 'in_progress' ||
-      (t.is_assigned && !['completed', 'failed', 'closed'].includes(t.status)),
+      (t.is_assigned && !['completed', 'under_review', 'failed', 'closed', 'archived'].includes(t.status)),
     ).length,
-    completed:   list.filter(t => t.status === 'completed').length,
+    under_review: list.filter(t => t.status === 'under_review').length,
+    completed:    list.filter(t => t.status === 'completed').length,
+    archived:     list.filter(t => t.status === 'archived').length,
   };
 });
 
@@ -55,10 +88,14 @@ const filteredTasks = computed(() => {
     case 'in_progress':
       return list.filter(t =>
         t.status === 'in_progress' ||
-        (t.is_assigned && !['completed', 'failed', 'closed'].includes(t.status)),
+        (t.is_assigned && !['completed', 'under_review', 'failed', 'closed', 'archived'].includes(t.status)),
       );
+    case 'under_review':
+      return list.filter(t => t.status === 'under_review');
     case 'completed':
       return list.filter(t => t.status === 'completed');
+    case 'archived':
+      return list.filter(t => t.status === 'archived');
     default:
       return list;
   }
@@ -128,10 +165,20 @@ onMounted(loadTasks);
         <div class="stat-card__val">{{ summary.in_progress }}</div>
         <div class="stat-card__lbl">В работе</div>
       </div>
+      <div class="stat-card stat-card--purple">
+        <div class="stat-card__ico"><v-icon icon="mdi-magnify-scan" size="22" /></div>
+        <div class="stat-card__val">{{ summary.under_review }}</div>
+        <div class="stat-card__lbl">На проверке</div>
+      </div>
       <div class="stat-card stat-card--teal">
         <div class="stat-card__ico"><v-icon icon="mdi-check-circle-outline" size="22" /></div>
         <div class="stat-card__val">{{ summary.completed }}</div>
         <div class="stat-card__lbl">Завершено</div>
+      </div>
+      <div class="stat-card stat-card--grey">
+        <div class="stat-card__ico"><v-icon icon="mdi-archive-outline" size="22" /></div>
+        <div class="stat-card__val">{{ summary.archived }}</div>
+        <div class="stat-card__lbl">В архиве</div>
       </div>
     </div>
 
@@ -150,8 +197,10 @@ onMounted(loadTasks);
           class="filter-tab__count"
         >
           {{
-            tab.key === 'open'        ? summary.open :
-            tab.key === 'in_progress' ? summary.in_progress :
+            tab.key === 'open'         ? summary.open :
+            tab.key === 'in_progress'  ? summary.in_progress :
+            tab.key === 'under_review' ? summary.under_review :
+            tab.key === 'archived'     ? summary.archived :
             summary.completed
           }}
         </span>
@@ -220,15 +269,65 @@ onMounted(loadTasks);
           </div>
         </div>
 
+        <!-- Rating (stars from organizer) -->
+        <div
+          v-if="(task.status === 'completed' || task.status === 'archived') && task.rating"
+          class="task-card__rating"
+        >
+          <v-icon
+            v-for="star in 5"
+            :key="star"
+            :icon="star <= task.rating ? 'mdi-star' : 'mdi-star-outline'"
+            size="16"
+            :color="star <= task.rating ? '#f59e0b' : '#d1d5db'"
+          />
+          <span class="task-card__rating-label">{{ task.rating }}/5</span>
+        </div>
+
         <!-- Footer -->
         <div class="task-card__footer">
           <span class="task-card__go">
             Перейти к задаче
             <v-icon icon="mdi-arrow-right" size="14" />
           </span>
+          <button
+            v-if="task.status === 'completed' || task.status === 'archived'"
+            class="task-card__delete-btn"
+            title="Удалить из списка"
+            @click.stop="askDelete(task, $event)"
+          >
+            <v-icon icon="mdi-delete-outline" size="16" />
+          </button>
         </div>
       </div>
     </div>
+
+    <!-- ─── Confirm delete dialog ─── -->
+    <v-dialog v-model="confirmDialog.show" max-width="420" persistent>
+      <v-card rounded="xl" class="confirm-card">
+        <v-card-title class="confirm-card__title">
+          <v-icon icon="mdi-delete-alert-outline" color="error" size="24" />
+          Удалить задачу?
+        </v-card-title>
+        <v-card-text class="confirm-card__text">
+          Задача <strong>«{{ confirmDialog.taskText }}»</strong> будет убрана из вашего списка.
+          Это действие нельзя отменить.
+        </v-card-text>
+        <v-card-actions class="confirm-card__actions">
+          <v-btn variant="text" @click="confirmDialog.show = false" :disabled="deleteLoading">
+            Отмена
+          </v-btn>
+          <v-btn
+            color="error"
+            variant="elevated"
+            :loading="deleteLoading"
+            @click="confirmDelete"
+          >
+            Удалить
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
 
     <v-snackbar v-model="snackbar.show" :color="snackbar.color" timeout="4000">
       {{ snackbar.message }}
@@ -269,7 +368,7 @@ onMounted(loadTasks);
 /* ─── Summary grid ─── */
 .summary-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(6, 1fr);
   gap: 12px;
 }
 
@@ -297,7 +396,9 @@ onMounted(loadTasks);
 .stat-card--green  .stat-card__ico { background: rgba(139,195,74,0.12); color: #558b2f; }
 .stat-card--blue   .stat-card__ico { background: rgba(21,101,192,0.12); color: #1565c0; }
 .stat-card--orange .stat-card__ico { background: rgba(230,81,0,0.12);   color: #e65100; }
+.stat-card--purple .stat-card__ico { background: rgba(106,27,154,0.12); color: #6a1b9a; }
 .stat-card--teal   .stat-card__ico { background: rgba(0,105,92,0.12);   color: #00695c; }
+.stat-card--grey   .stat-card__ico { background: rgba(55,71,79,0.12);   color: #37474f; }
 
 .stat-card__val {
   font-size: 1.75rem;
@@ -454,6 +555,59 @@ onMounted(loadTasks);
 }
 .task-card:hover .task-card__go { gap: 9px; }
 
+/* ─── Delete button ─── */
+.task-card__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.task-card__delete-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  border: none;
+  background: rgba(198, 40, 40, 0.07);
+  color: #c62828;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  flex-shrink: 0;
+}
+.task-card__delete-btn:hover {
+  background: rgba(198, 40, 40, 0.16);
+}
+
+/* ─── Confirm dialog ─── */
+.confirm-card { padding: 8px 4px 4px; }
+.confirm-card__title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 1rem;
+  font-weight: 700;
+  padding-bottom: 4px;
+}
+.confirm-card__text { color: rgba(0,0,0,0.65); font-size: 0.9rem; }
+.confirm-card__actions { justify-content: flex-end; padding: 8px 16px 16px; gap: 8px; }
+
+/* ─── Rating ─── */
+.task-card__rating {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 6px 0 2px;
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
+  margin-top: 4px;
+}
+.task-card__rating-label {
+  margin-left: 5px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #f59e0b;
+}
+
 /* ─── Skeleton ─── */
 .task-skeleton {
   background: #fff;
@@ -488,6 +642,10 @@ onMounted(loadTasks);
 .empty-state__text  { font-size: 0.875rem; color: rgba(0,0,0,0.45); margin: 0; max-width: 320px; }
 
 /* ─── Responsive ─── */
+@media (max-width: 1100px) {
+  .summary-grid { grid-template-columns: repeat(3, 1fr); }
+}
+
 @media (max-width: 860px) {
   .summary-grid { grid-template-columns: repeat(2, 1fr); }
 }

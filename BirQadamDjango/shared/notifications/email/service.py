@@ -6,9 +6,32 @@ from django.conf import settings
 from django.utils import timezone
 from datetime import datetime
 import logging
+import os
 from typing import Optional
 
 logger = logging.getLogger(__name__)
+
+
+def get_frontend_base_url() -> str:
+    """
+    Получает базовый URL фронтенда из переменных окружения или настроек
+    """
+    # Проверяем переменную окружения (приоритет)
+    frontend_url = os.getenv('FRONTEND_URL', '').strip()
+    if frontend_url:
+        # Убираем /portal если есть, так как мы добавляем путь отдельно
+        if frontend_url.endswith('/portal'):
+            frontend_url = frontend_url[:-7]
+        elif frontend_url.endswith('/portal/'):
+            frontend_url = frontend_url[:-8]
+        return frontend_url.rstrip('/')
+    
+    # Используем значение из настроек или production по умолчанию
+    if settings.DEBUG:
+        return 'http://localhost:5173'
+    else:
+        # Production URL - используем cleanup.almau.edu.kz
+        return 'https://cleanup.almau.edu.kz'
 
 
 def send_email_notification(
@@ -90,7 +113,7 @@ def notify_organizer_new_volunteer_application(organizer, volunteer, project):
 
 Вы можете просмотреть заявку и принять решение в личном кабинете организатора.
 
-Ссылка: https://birqadam.almau.edu.kz/organizer/projects
+Ссылка: {get_frontend_base_url()}/organizer/projects
 """
     
     return send_email_notification(organizer, subject, message)
@@ -118,7 +141,7 @@ def notify_volunteer_new_task(volunteer, task, project):
 
 Вы можете просмотреть детали задачи и приступить к выполнению в личном кабинете.
 
-Ссылка: https://birqadam.almau.edu.kz/volunteer/tasks
+Ссылка: {get_frontend_base_url()}/volunteer/tasks
 """
     
     return send_email_notification(volunteer, subject, message)
@@ -143,7 +166,7 @@ def notify_organizer_new_photo_report(organizer, volunteer, photo, project):
 
 Фотоотчёт ожидает вашей проверки и одобрения.
 
-Ссылка: https://birqadam.almau.edu.kz/organizer/photo-moderation
+Ссылка: {get_frontend_base_url()}/organizer/photo-moderation
 """
     
     return send_email_notification(organizer, subject, message)
@@ -167,7 +190,7 @@ def notify_volunteers_project_updated(volunteers, project, changes: Optional[str
 
 Вы можете просмотреть обновления в личном кабинете.
 
-Ссылка: https://birqadam.almau.edu.kz/volunteer/projects
+Ссылка: {get_frontend_base_url()}/volunteer/projects
 """
     
     sent_count = 0
@@ -199,7 +222,7 @@ def notify_organizer_application_status(organizer, status: str, reason: Optional
 
 Добро пожаловать в BirQadam!
 
-Ссылка: https://birqadam.almau.edu.kz/organizer/dashboard
+Ссылка: {get_frontend_base_url()}/organizer/dashboard
 """
     elif status == 'rejected':
         subject = "Заявка организатора требует доработки"
@@ -211,7 +234,7 @@ def notify_organizer_application_status(organizer, status: str, reason: Optional
 
 Если у вас есть вопросы, напишите в поддержку BirQadam.
 
-Ссылка: https://birqadam.almau.edu.kz/organizer/profile
+Ссылка: {get_frontend_base_url()}/organizer/profile
 """
     else:
         return False
@@ -237,7 +260,7 @@ def notify_volunteer_photo_approved(volunteer, photo, project, rating: Optional[
 
 Спасибо за вашу активность и вклад в проект!
 
-Ссылка: https://birqadam.almau.edu.kz/volunteer/projects
+Ссылка: {get_frontend_base_url()}/volunteer/projects
 """
     
     return send_email_notification(volunteer, subject, message)
@@ -260,7 +283,7 @@ def notify_volunteer_photo_rejected(volunteer, photo, project, reason: Optional[
 
 Вы можете загрузить новый фотоотчёт в личном кабинете.
 
-Ссылка: https://birqadam.almau.edu.kz/volunteer/projects
+Ссылка: {get_frontend_base_url()}/volunteer/projects
 """
     
     return send_email_notification(volunteer, subject, message)

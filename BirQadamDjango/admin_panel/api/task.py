@@ -148,6 +148,49 @@ class DeclineTaskAPIView(APIView):
             )
 
 
+class VolunteerTaskDismissAPIView(APIView):
+    """Волонтёр убирает завершённую или архивную задачу из своего списка"""
+    permission_classes = [IsAuthenticated]
+    authentication_classes = [CsrfExemptSessionAuthentication]
+
+    def delete(self, request: Request, task_id: int) -> Response:  # type: ignore[override]
+        try:
+            task = Task.objects.get(
+                id=task_id,
+                is_deleted=False,
+                status__in=['completed', 'archived'],
+            )
+        except Task.DoesNotExist:  # type: ignore[attr-defined]
+            return Response(
+                {'error': 'Задача не найдена или её нельзя удалить из списка'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        # Помечаем назначение как «отклонено» — это скрывает задачу из списка.
+        # Если назначения нет (задача была открыта и заархивирована без принятия),
+        # создаём запись с accepted=False как «маркер скрытия».
+        assignment = TaskAssignment.objects.filter(
+            task=task,
+            volunteer=request.user,
+        ).first()
+
+        if assignment:
+            assignment.accepted = False
+            assignment.save(update_fields=['accepted'])
+        else:
+            TaskAssignment.objects.create(
+                task=task,
+                volunteer=request.user,
+                accepted=False,
+                completed=False,
+            )
+
+        logger.info(
+            f"User {getattr(request.user, 'username', 'unknown')} dismissed task {task_id}"
+        )
+        return Response({'message': 'Задача убрана из списка'}, status=status.HTTP_200_OK)
+
+
 class CompleteTaskAPIView(APIView):
     """Волонтёр завершает задачу"""
     permission_classes = [IsAuthenticated]

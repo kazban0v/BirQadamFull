@@ -2,15 +2,13 @@ import axios from 'axios';
 
 // ✅ PRODUCTION: VITE_API_BASE_URL должен быть задан через переменную окружения
 // В development можно задать в .env файле или через vite.config.ts
-// Для локального тестирования используй: 'http://localhost:8000'
-// Для production: 'https://cleanup.almau.edu.kz'
-const apiBaseUrl ='https://cleanup.almau.edu.kz';
-// PROD: 'https://cleanup.almau.edu.kz'
-// const apiBaseUrl = '/custom-admin/api';
+// Для production используйте переменную окружения или production URL
+const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 
+  (import.meta.env.PROD ? 'https://cleanup.almau.edu.kz' : 'http://localhost:8000');
 
 export const httpClient = axios.create({
   baseURL: apiBaseUrl,
-  timeout: 15000,
+  timeout: 60000, // Увеличен таймаут до 60 секунд для операций с уведомлениями
   withCredentials: true,
   xsrfCookieName: 'csrftoken',
   xsrfHeaderName: 'X-CSRFToken',
@@ -41,7 +39,6 @@ httpClient.interceptors.request.use((config) => {
   if (method && !CSRF_SAFE_METHODS.includes(method)) {
     const csrfToken = getCookie('csrftoken');
     if (csrfToken) {
-      if (!config.headers) config.headers = {};
       config.headers['X-CSRFToken'] = csrfToken;
     }
   }

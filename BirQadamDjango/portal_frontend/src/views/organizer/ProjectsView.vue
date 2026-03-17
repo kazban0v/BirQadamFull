@@ -122,9 +122,10 @@ const getFullImageUrl = (url: string | null | undefined): string | null => {
     // Если относительный путь, определяем базовый URL в зависимости от окружения
     const isDevelopment = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
     // Для localhost всегда используем http (не https)
+    // В production используем тот же домен, что и для API
     const baseUrl = isDevelopment 
       ? `http://${window.location.hostname}:8000`
-      : 'https://birqadam.almau.edu.kz';
+      : (import.meta.env.VITE_API_BASE_URL || 'https://cleanup.almau.edu.kz');
     
     // Убеждаемся, что путь начинается с /
     const cleanPath = url.startsWith('/') ? url : `/${url}`;
@@ -183,16 +184,24 @@ const formatDate = (value: string | null | undefined) => {
   return new Intl.DateTimeFormat('ru-RU', { day: '2-digit', month: 'short', year: 'numeric' }).format(date);
 };
 
-const formatDateForDisplay = (dateStr: string | null): string => {
+const formatDateForDisplay = (dateStr: string | Date | null | undefined): string => {
   if (!dateStr) return '';
   try {
-    if (dateStr.includes('-')) {
+    // Если пришёл объект Date (v-date-picker через v-model)
+    if (dateStr instanceof Date) {
+      const day   = String(dateStr.getDate()).padStart(2, '0');
+      const month = String(dateStr.getMonth() + 1).padStart(2, '0');
+      const year  = dateStr.getFullYear();
+      return `${day}.${month}.${year}`;
+    }
+    // Строка YYYY-MM-DD
+    if (typeof dateStr === 'string' && dateStr.includes('-')) {
       const [year, month, day] = dateStr.split('-');
       return `${day}.${month}.${year}`;
     }
-    return dateStr;
+    return String(dateStr);
   } catch {
-    return dateStr;
+    return String(dateStr);
   }
 };
 

@@ -19,11 +19,13 @@ const snackbar = reactive({ show: false, message: '', color: 'success' });
 
 // ─── Status config ────────────────────────────────────────────────
 const STATUS_MAP: Record<string, { text: string; color: string; bg: string }> = {
-  open:        { text: 'Открыто',   color: '#1565c0', bg: 'rgba(21,101,192,0.1)'  },
-  in_progress: { text: 'В работе',  color: '#e65100', bg: 'rgba(230,81,0,0.1)'    },
-  completed:   { text: 'Выполнено', color: '#2e7d32', bg: 'rgba(46,125,50,0.1)'   },
-  failed:      { text: 'Отклонено', color: '#c62828', bg: 'rgba(198,40,40,0.1)'   },
-  closed:      { text: 'Закрыто',   color: '#546e7a', bg: 'rgba(84,110,122,0.1)'  },
+  open:         { text: 'Открыто',      color: '#1565c0', bg: 'rgba(21,101,192,0.1)'   },
+  in_progress:  { text: 'В работе',     color: '#e65100', bg: 'rgba(230,81,0,0.1)'     },
+  under_review: { text: 'На проверке',  color: '#6a1b9a', bg: 'rgba(106,27,154,0.1)'   },
+  completed:    { text: 'Выполнено',    color: '#2e7d32', bg: 'rgba(46,125,50,0.1)'    },
+  failed:       { text: 'Отклонено',    color: '#c62828', bg: 'rgba(198,40,40,0.1)'    },
+  closed:       { text: 'Закрыто',      color: '#546e7a', bg: 'rgba(84,110,122,0.1)'   },
+  archived:     { text: 'В архиве',     color: '#37474f', bg: 'rgba(55,71,79,0.1)'     },
 };
 
 function statusCfg(s: string) {
@@ -322,12 +324,15 @@ async function handleWithdrawPhoto() {
 }
 
 // ─── Permissions ──────────────────────────────────────────────────
+// Задача в архиве — только просмотр, никаких действий
+const isArchived = computed(() => task.value?.status === 'archived');
 // Задача открыта и не взята
 const canAccept = computed(() =>
-  task.value?.status === 'open' && !task.value?.is_assigned,
+  !isArchived.value && task.value?.status === 'open' && !task.value?.is_assigned,
 );
 // Взята и не завершена
 const isActiveTask = computed(() =>
+  !isArchived.value &&
   !!task.value?.is_assigned &&
   !['completed', 'failed', 'closed'].includes(task.value?.status ?? ''),
 );
@@ -410,8 +415,19 @@ onMounted(() => loadTask());
         </div>
       </div>
 
+      <!-- ═══ Archived: read-only banner ═══ -->
+      <div v-if="isArchived" class="card">
+        <div class="info-banner info-banner--archive">
+          <v-icon icon="mdi-archive-outline" size="20" />
+          <div>
+            <div style="font-weight:800; margin-bottom:2px;">Задача в архиве</div>
+            <div style="font-weight:400; opacity:0.8;">Проект был закрыт. Задача доступна только для просмотра — выполнять действия с ней невозможно.</div>
+          </div>
+        </div>
+      </div>
+
       <!-- ═══ Actions ═══ -->
-      <div class="card">
+      <div v-if="!isArchived" class="card">
         <h2 class="card__sub">Действия с задачей</h2>
 
         <div class="actions">
@@ -843,6 +859,14 @@ onMounted(() => loadTask());
   background: rgba(230,81,0,0.08);
   border: 1px solid rgba(230,81,0,0.22);
   color: #e65100;
+}
+
+.info-banner--archive {
+  background: rgba(55,71,79,0.06);
+  border: 1px solid rgba(55,71,79,0.2);
+  color: #37474f;
+  align-items: flex-start;
+  gap: 12px;
 }
 
 /* ─── Photo list ─── */

@@ -18,9 +18,11 @@ class Task(models.Model):
     STATUS_CHOICES = (
         ('open', 'Открыто'),
         ('in_progress', 'В работе'),
+        ('under_review', 'На проверке'),
         ('completed', 'Выполнено'),
         ('failed', 'Отклонено'),
         ('closed', 'Закрыто'),
+        ('archived', 'В архиве'),
     )
     project = models.ForeignKey('api.Project', on_delete=models.CASCADE, related_name='tasks')
     creator = models.ForeignKey('api.User', on_delete=models.CASCADE, related_name='created_tasks')

@@ -26,7 +26,7 @@ const getFullImageUrl = (url: string | null | undefined): string | null => {
   const isDevelopment = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
   const baseUrl = isDevelopment 
     ? `${window.location.protocol}//${window.location.hostname}:8000`
-    : 'https://birqadam.almau.edu.kz';
+    : (import.meta.env.VITE_API_BASE_URL || 'https://cleanup.almau.edu.kz');
   
   const cleanUrl = url.startsWith('/') ? url : `/${url}`;
   return `${baseUrl}${cleanUrl}`;

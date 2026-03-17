@@ -9,6 +9,7 @@ export interface VolunteerTask {
   status: string;
   is_assigned: boolean;
   assignment_status: boolean;
+  rating?: number | null;
   deadline_date?: string | null;
   start_time?: string | null;
   end_time?: string | null;
@@ -60,6 +61,13 @@ export async function declineTask(taskId: number) {
 export async function completeTask(taskId: number) {
   const { data } = await httpClient.post<{ message: string; task_status: string }>(
     `/api/web/volunteer/tasks/${taskId}/complete/`,
+  );
+  return data;
+}
+
+export async function dismissTask(taskId: number) {
+  const { data } = await httpClient.delete<{ message: string }>(
+    `/custom-admin/api/v1/tasks/${taskId}/dismiss/`,
   );
   return data;
 }

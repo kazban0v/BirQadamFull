@@ -54,13 +54,15 @@ const rules = {
 
 const taskStatusConfig = (status: string) => {
   const map: Record<string, { color: string; label: string; icon: string }> = {
-    open: { color: '#1565c0', label: 'Открыта', icon: 'mdi-circle-outline' },
-    in_progress: { color: '#ff9800', label: 'В работе', icon: 'mdi-clock-outline' },
-    completed: { color: '#2e7d32', label: 'Выполнена', icon: 'mdi-check-circle-outline' },
-    cancelled: { color: '#757575', label: 'Отменена', icon: 'mdi-cancel' },
-    failed: { color: '#c62828', label: 'Отклонена', icon: 'mdi-close-circle-outline' },
-    closed: { color: '#424242', label: 'Закрыта', icon: 'mdi-lock-outline' },
-    pending: { color: '#e65100', label: 'В ожидании', icon: 'mdi-clock-outline' },
+    open:         { color: '#1565c0', label: 'Открыта',      icon: 'mdi-circle-outline'        },
+    in_progress:  { color: '#ff9800', label: 'В работе',     icon: 'mdi-clock-outline'         },
+    under_review: { color: '#7b1fa2', label: 'На проверке',  icon: 'mdi-magnify-scan'          },
+    completed:    { color: '#2e7d32', label: 'Выполнена',    icon: 'mdi-check-circle-outline'  },
+    cancelled:    { color: '#757575', label: 'Отменена',     icon: 'mdi-cancel'                },
+    failed:       { color: '#c62828', label: 'Отклонена',    icon: 'mdi-close-circle-outline'  },
+    closed:       { color: '#424242', label: 'Закрыта',      icon: 'mdi-lock-outline'          },
+    archived:     { color: '#37474f', label: 'В архиве',     icon: 'mdi-archive-outline'       },
+    pending:      { color: '#e65100', label: 'В ожидании',   icon: 'mdi-clock-outline'         },
   };
   return map[status] || { color: '#757575', label: status, icon: 'mdi-help-circle-outline' };
 };
@@ -73,9 +75,11 @@ const formatDeadline = (date: string | null | undefined) => {
 const taskStats = computed(() => {
   const tasks = currentTasks.value;
   return {
-    total: tasks.length,
-    completed: tasks.filter(t => t.status === 'completed').length,
-    open: tasks.filter(t => t.status === 'open').length,
+    total:        tasks.length,
+    completed:    tasks.filter(t => t.status === 'completed').length,
+    open:         tasks.filter(t => t.status === 'open').length,
+    under_review: tasks.filter(t => t.status === 'under_review').length,
+    archived:     tasks.filter(t => t.status === 'archived').length,
   };
 });
 

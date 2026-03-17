@@ -82,8 +82,15 @@ class VolunteerRegistrationAPIView(APIView):
     authentication_classes = (CsrfExemptSessionAuthentication,)
 
     def post(self, request, *args, **kwargs):
+        # Логируем входящие данные для отладки
+        logger.info(f"[VOL_REGISTER] Received data: {request.data}")
+        logger.info(f"[VOL_REGISTER] Content-Type: {request.content_type}")
+        
         serializer = VolunteerRegistrationSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
+        
+        if not serializer.is_valid():
+            logger.error(f"[VOL_REGISTER] Validation errors: {serializer.errors}")
+            return Response({'detail': 'Ошибка валидации данных', 'errors': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
             payload = dict(serializer.validated_data)
@@ -293,6 +300,8 @@ class CancelRegistrationAPIView(APIView):
         """
         email = request.data.get('email')
         
+        logger.info(f"[CANCEL_REG] Received request to cancel registration for: {email}")
+        
         if not email:
             return Response(
                 {'detail': 'Email обязателен.'},
@@ -313,20 +322,20 @@ class CancelRegistrationAPIView(APIView):
             # Удаляем пользователя
             user.delete()
             
-            logger.info(f"Регистрация отменена, пользователь удален: {email}")
+            logger.info(f"[CANCEL_REG] ✅ Регистрация отменена, пользователь удален: {email}")
             return Response(
                 {'message': 'Регистрация отменена.'},
                 status=status.HTTP_200_OK
             )
         except User.DoesNotExist:
             # Пользователь не найден или уже активирован - это нормально
-            logger.info(f"Попытка отменить регистрацию для несуществующего или активного пользователя: {email}")
+            logger.info(f"[CANCEL_REG] ⚠️ Попытка отменить регистрацию для несуществующего или активного пользователя: {email}")
             return Response(
                 {'message': 'Регистрация не найдена или уже завершена.'},
                 status=status.HTTP_200_OK
             )
         except Exception as e:
-            logger.error(f"Ошибка при отмене регистрации для {email}: {str(e)}")
+            logger.error(f"[CANCEL_REG] ❌ Ошибка при отмене регистрации для {email}: {str(e)}")
             return Response(
                 {'detail': 'Не удалось отменить регистрацию. Попробуйте позже.'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
@@ -783,6 +792,11 @@ class VolunteerDashboardAPIView(APIView):
     authentication_classes = (CsrfExemptSessionAuthentication,)
 
     def get(self, request, *args, **kwargs):
+        # Отладка аутентификации
+        logger.info(f"[DASHBOARD] User: {request.user}, Authenticated: {request.user.is_authenticated}")
+        logger.info(f"[DASHBOARD] Headers: {dict(request.headers)}")
+        logger.info(f"[DASHBOARD] Cookies: {request.COOKIES}")
+        
         data = get_volunteer_dashboard_data(request.user)
         # Гарантируем, что всегда возвращаются массивы, даже если данные отсутствуют
         tasks_list = data.get('tasks') or []
@@ -872,6 +886,11 @@ class VolunteerTaskPhotoReportAPIView(APIView):
                 volunteer_comment=comment,
             )
             created_photos.append(photo)
+
+        # После отправки фотоотчёта задача переходит в статус "На проверке"
+        if task.status == 'in_progress':
+            task.status = 'under_review'
+            task.save(update_fields=['status'])
 
         Activity.objects.create(
             user=request.user,
@@ -1247,6 +1266,11 @@ class VolunteerProjectsAPIView(APIView):
     def get(self, request, *args, **kwargs):
         catalog = get_projects_catalog(request.user, request=request)
         logger.info(f"[DEBUG] VolunteerProjectsAPIView: catalog has {len(catalog['projects'])} projects, summary={catalog['summary']}")
+        
+        # Логируем названия всех проектов для отладки
+        project_titles = [p.get('title', 'N/A') for p in catalog['projects']]
+        logger.info(f"[DEBUG] VolunteerProjectsAPIView: Project titles: {project_titles}")
+        
         serializer = VolunteerProjectCatalogSerializer(catalog['projects'], many=True)
         response_data = {'projects': serializer.data, 'summary': catalog['summary']}
         logger.info(f"[DEBUG] VolunteerProjectsAPIView: returning {len(serializer.data)} serialized projects")
@@ -1300,6 +1324,115 @@ class VolunteerProjectJoinAPIView(APIView):
             },
             status=status.HTTP_200_OK,
         )
+
+
+@method_decorator(csrf_exempt, name='dispatch')
+class VolunteerProjectLeaveAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+    authentication_classes = (CsrfExemptSessionAuthentication,)
+
+    def post(self, request, project_id: int, *args, **kwargs):
+        """Выход волонтера из проекта"""
+        from api.projects.models import VolunteerProject
+        from api.tasks.models import TaskAssignment, Task
+        from api.models import Activity
+        from django.db import transaction
+        from django.utils import timezone
+        
+        # Получаем причину выхода из запроса
+        leave_reason = request.data.get('reason', '').strip()
+        
+        if not leave_reason:
+            return Response({
+                'error': 'Необходимо указать причину выхода из проекта'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            birqadam_project = VolunteerProject.objects.select_related('project').get(
+                volunteer=request.user,
+                project_id=project_id,
+                is_active=True
+            )
+            project = birqadam_project.project
+            
+            # Проверяем, не отменен ли проект организатором
+            # Если проект отменен, штраф не начисляется
+            should_penalize = project.status != 'cancelled'
+            
+            # Деактивируем участие вместо удаления (для истории)
+            birqadam_project.is_active = False
+            birqadam_project.save(update_fields=['is_active'])
+            
+            # Обрабатываем задачи волонтера при выходе из проекта
+            incomplete_assignments = TaskAssignment.objects.filter(
+                volunteer=request.user,
+                task__project=project,
+                task__is_deleted=False,
+                completed=False
+            ).select_related('task')
+            
+            # Отменяем все невыполненные назначения
+            for assignment in incomplete_assignments:
+                task = assignment.task
+                was_accepted = assignment.accepted
+                
+                # Отменяем назначение
+                assignment.accepted = False
+                assignment.completed = False
+                assignment.completed_at = None
+                assignment.save(update_fields=['accepted', 'completed', 'completed_at'])
+                
+                # Если задача была принята этим волонтером и больше нет принятых назначений,
+                # возвращаем задачу в статус 'open'
+                if was_accepted:
+                    has_other_accepted = TaskAssignment.objects.filter(
+                        task=task,
+                        accepted=True,
+                        completed=False
+                    ).exclude(volunteer=request.user).exists()
+                    
+                    if not has_other_accepted and task.status == 'in_progress':
+                        task.status = 'open'
+                        task.save(update_fields=['status'])
+            
+            # Начисляем штраф -5 TF, если проект не отменен
+            updated_trust_factor = None
+            if should_penalize:
+                with transaction.atomic():
+                    # Получаем пользователя с блокировкой
+                    user = request.user.__class__.objects.select_for_update().get(pk=request.user.pk)
+                    # Изменяем TF (метод сам сохранит историю)
+                    user._change_trust_factor(-5, 'project_leave', 'project', project_id)
+                
+                # Обновляем request.user для ответа
+                request.user.refresh_from_db()
+                updated_trust_factor = request.user.trust_factor  # type: ignore[attr-defined]
+            else:
+                updated_trust_factor = request.user.trust_factor  # type: ignore[attr-defined]
+            
+            # Создаём активность
+            Activity.objects.create(
+                user=request.user,
+                type='project_left',
+                title='Покинули проект',
+                description=f'Вы покинули проект "{project.title}". Причина: {leave_reason}',
+                project=project
+            )
+
+            return Response({
+                'message': 'Вы успешно покинули проект.',
+                'trust_factor': updated_trust_factor,
+                'penalty_applied': should_penalize,
+            }, status=status.HTTP_200_OK)
+        except VolunteerProject.DoesNotExist:
+            return Response({
+                'error': 'Вы не участвуете в этом проекте'
+            }, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            logger.error(f'Error leaving project: {e}', exc_info=True)
+            return Response({
+                'error': 'Произошла ошибка при выходе из проекта'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 @method_decorator(csrf_exempt, name='dispatch')
@@ -1752,6 +1885,25 @@ class VolunteerProjectDetailAPIView(APIView):
             tasks_count = Task.objects.filter(project=project, is_deleted=False).distinct().count()
             active_members = VolunteerProject.objects.filter(project=project, is_active=True).distinct().count()
             
+            # Получаем список участников проекта (все активные участники)
+            active_volunteers = VolunteerProject.objects.filter(
+                project=project,
+                is_active=True
+            ).select_related('volunteer').order_by('-joined_at')
+            
+            participants_list = []
+            for vp in active_volunteers:
+                volunteer = vp.volunteer
+                avatar_url = None
+                if hasattr(volunteer, 'avatar') and volunteer.avatar:
+                    avatar_url = self._get_full_image_url(request, volunteer.avatar)
+                participants_list.append({
+                    'id': volunteer.id,
+                    'name': volunteer.name or volunteer.username,
+                    'avatar_url': avatar_url,
+                    'joined_at': vp.joined_at.isoformat() if vp.joined_at else None,
+                })
+            
             # Получаем информацию об организаторе
             creator = project.creator
             organizer_info = {
@@ -1775,6 +1927,7 @@ class VolunteerProjectDetailAPIView(APIView):
                     'joined': bool(birqadam_project),
                     'joined_at': birqadam_project.joined_at.isoformat() if birqadam_project and birqadam_project.joined_at else None,
                     'active_members': active_members,
+                    'participants': participants_list,
                     'tasks_count': tasks_count,
                     'organizer_name': project.creator.name or project.creator.username,
                     'organizer_id': creator.id,
@@ -1799,6 +1952,378 @@ class VolunteerProjectDetailAPIView(APIView):
         except Exception as e:
             logger.error(f"Error getting project detail: {e}", exc_info=True)
             return Response({'detail': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@method_decorator(csrf_exempt, name='dispatch')
+class OrganizerProjectsAPIView(APIView):
+    """
+    API для получения и управления проектами организатора
+    """
+    permission_classes = [IsAuthenticated]
+    authentication_classes = (CsrfExemptSessionAuthentication,)
+    parser_classes = (MultiPartParser, FormParser)
+
+    def _is_approved_organizer(self, user):
+        """Проверяет, является ли пользователь одобренным организатором"""
+        is_organizer = getattr(user, 'is_organizer', False) or getattr(user, 'role', None) == 'organizer'
+        organizer_status = getattr(user, 'organizer_status', None)
+        return bool(is_organizer and organizer_status == 'approved')
+
+    def _get_full_image_url(self, request, image_field):
+        """Вспомогательный метод для получения полного URL изображения"""
+        if not image_field or not image_field.url:
+            return None
+        try:
+            url = request.build_absolute_uri(image_field.url)
+            if not url.startswith('http'):
+                scheme = 'https'
+                host = request.get_host() if hasattr(request, 'get_host') else ''
+                if host:
+                    url = f'{scheme}://{host}{image_field.url}'
+            elif url.startswith('http://'):
+                url = url.replace('http://', 'https://')
+            return url
+        except Exception:
+            return image_field.url if image_field.url else None
+
+    def get(self, request, *args, **kwargs):
+        """Получить список проектов организатора"""
+        if not self._is_approved_organizer(request.user):
+            return Response({'error': 'Not authorized'}, status=status.HTTP_403_FORBIDDEN)
+
+        from django.db.models import Count, Q
+        
+        projects_qs = (
+            Project.objects.filter(creator=request.user, is_deleted=False)
+            .annotate(
+                volunteer_count=Count(
+                    'volunteer_projects',
+                    filter=Q(volunteer_projects__is_active=True),
+                    distinct=True
+                ),
+                task_count=Count('tasks', filter=Q(tasks__is_deleted=False), distinct=True),
+            )
+            .prefetch_related('tags')
+            .order_by('-created_at')
+        )
+
+        projects = []
+        for project in projects_qs:
+            projects.append({
+                'id': project.id,
+                'title': project.title,
+                'description': project.description,
+                'city': project.city,
+                'status': project.status,
+                'volunteer_type': project.volunteer_type,
+                'start_date': project.start_date.isoformat() if project.start_date else None,
+                'end_date': project.end_date.isoformat() if project.end_date else None,
+                'created_at': project.created_at.isoformat() if project.created_at else None,
+                'volunteer_count': project.volunteer_count,
+                'task_count': project.task_count,
+                'address': project.address,
+                'latitude': float(project.latitude) if project.latitude else None,
+                'longitude': float(project.longitude) if project.longitude else None,
+                'contact_person': project.contact_person,
+                'contact_phone': project.contact_phone,
+                'contact_email': project.contact_email,
+                'contact_telegram': project.contact_telegram,
+                'info_url': project.info_url,
+                'gis2_url': project.gis2_url,
+                'tags': list(project.tags.names()),
+                'cover_image_url': self._get_full_image_url(request, project.cover_image) if project.cover_image else None,
+            })
+
+        return Response(projects, status=status.HTTP_200_OK)
+
+    def _parse_tags(self, raw_tags):
+        """Парсит теги из различных форматов"""
+        import json
+        if not raw_tags:
+            return []
+        if isinstance(raw_tags, list):
+            return [str(tag).strip() for tag in raw_tags if str(tag).strip()]
+        if isinstance(raw_tags, str):
+            raw_tags = raw_tags.strip()
+            if not raw_tags:
+                return []
+            try:
+                parsed = json.loads(raw_tags)
+                if isinstance(parsed, list):
+                    return [str(tag).strip() for tag in parsed if str(tag).strip()]
+            except json.JSONDecodeError:
+                pass
+            return [tag.strip() for tag in raw_tags.split(',') if tag.strip()]
+        return []
+
+    def _parse_date(self, value):
+        """Парсит дату из различных форматов"""
+        from datetime import datetime
+        if not value:
+            return None
+        if isinstance(value, datetime):
+            return value.date()
+        if isinstance(value, (list, tuple)):
+            value = value[0]
+        if isinstance(value, str):
+            value = value.strip()
+            if not value:
+                return None
+            # Поддерживаем форматы: YYYY-MM-DD, YYYY-MM-DDTHH:mm, YYYY-MM-DDTHH:mm:ss, DD.MM.YYYY
+            if 'T' in value:
+                value = value.split('T')[0]
+            for fmt in ('%Y-%m-%d', '%d.%m.%Y'):
+                try:
+                    return datetime.strptime(value, fmt).date()
+                except ValueError:
+                    continue
+        return None
+
+    def _parse_float(self, value):
+        """Парсит float значение"""
+        if value in (None, '', 'null'):
+            return None
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return None
+
+    def post(self, request, *args, **kwargs):
+        """Создать новый проект"""
+        if not self._is_approved_organizer(request.user):
+            return Response({'error': 'Not authorized'}, status=status.HTTP_403_FORBIDDEN)
+
+        data = request.data
+        
+        logger.info(f"[OrganizerProjectsAPIView] POST request data keys: {list(data.keys())}")
+        logger.info(f"[OrganizerProjectsAPIView] gis2_url value: {data.get('gis2_url')}")
+        logger.info(f"[OrganizerProjectsAPIView] end_date value: {data.get('end_date')}")
+
+        from datetime import datetime
+
+        title = data.get('title')
+        description = data.get('description')
+        city = data.get('city')
+        volunteer_type = data.get('volunteer_type', 'any')
+
+        if not all([title, description, city]):
+            logger.warning(f"[OrganizerProjectsAPIView] Missing required fields: title={bool(title)}, description={bool(description)}, city={bool(city)}")
+            return Response({'error': 'Missing required fields'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Дата начала автоматически устанавливается на сегодня, если не указана
+        start_date = self._parse_date(data.get('start_date')) or datetime.now().date()
+        
+        # Дата окончания обязательна
+        end_date = self._parse_date(data.get('end_date'))
+        if not end_date:
+            logger.warning(f"[OrganizerProjectsAPIView] End date validation failed. Received: {data.get('end_date')}")
+            return Response({'error': 'Дата завершения проекта обязательна'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Ссылка на 2ГИС обязательна
+        gis2_url = data.get('gis2_url', '').strip()
+        if not gis2_url:
+            logger.warning(f"[OrganizerProjectsAPIView] gis2_url is empty or missing. Received: {repr(data.get('gis2_url'))}")
+            return Response({'error': 'Ссылка на 2ГИС обязательна'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Валидация формата ссылки 2ГИС
+        import re
+        gis2_pattern = re.compile(r'^https?://(go\.)?2gis\.(com|kz|ru)(/.+)?$', re.IGNORECASE)
+        if not gis2_pattern.match(gis2_url):
+            logger.warning(f"[OrganizerProjectsAPIView] gis2_url format validation failed. Received: {gis2_url}")
+            return Response({'error': 'Введите корректную ссылку на 2ГИС (например: https://go.2gis.com/vOZEO или https://2gis.kz/...)'}, status=status.HTTP_400_BAD_REQUEST)
+
+        latitude = self._parse_float(data.get('latitude'))
+        longitude = self._parse_float(data.get('longitude'))
+        tags = self._parse_tags(data.get('tags'))
+
+        project = Project.objects.create(
+            title=title,
+            description=description,
+            city=city,
+            start_date=start_date,
+            end_date=end_date,
+            volunteer_type=volunteer_type,
+            creator=request.user,
+            status='pending',
+            latitude=latitude,
+            longitude=longitude,
+            address=data.get('address', ''),
+            contact_person=data.get('contact_person', ''),
+            contact_phone=data.get('contact_phone', ''),
+            contact_email=data.get('contact_email'),
+            contact_telegram=data.get('contact_telegram', ''),
+            info_url=data.get('info_url'),
+            gis2_url=gis2_url,
+        )
+
+        cover_image = request.FILES.get('cover_image')
+        if cover_image:
+            project.cover_image = cover_image
+            project.save(update_fields=['cover_image'])
+
+        if tags:
+            project.tags.set(tags)
+
+        return Response({
+            'id': project.id,
+            'title': project.title,
+            'description': project.description,
+            'city': project.city,
+            'status': project.status,
+            'volunteer_count': 0,
+            'task_count': 0,
+            'created_at': project.created_at.isoformat() if project.created_at else None,
+            'volunteer_type': project.volunteer_type,
+            'start_date': project.start_date.isoformat() if project.start_date else None,
+            'end_date': project.end_date.isoformat() if project.end_date else None,
+            'address': project.address,
+            'latitude': float(project.latitude) if project.latitude else None,
+            'longitude': float(project.longitude) if project.longitude else None,
+            'contact_person': project.contact_person,
+            'contact_phone': project.contact_phone,
+            'contact_email': project.contact_email,
+            'contact_telegram': project.contact_telegram,
+            'info_url': project.info_url,
+            'gis2_url': project.gis2_url,
+            'tags': tags,
+            'cover_image_url': self._get_full_image_url(request, project.cover_image) if project.cover_image else None,
+        }, status=status.HTTP_201_CREATED)
+
+    def patch(self, request, project_id: int = None, *args, **kwargs):
+        """Редактирование проекта"""
+        if not self._is_approved_organizer(request.user):
+            return Response({'error': 'Not authorized'}, status=status.HTTP_403_FORBIDDEN)
+
+        # Получаем project_id из kwargs (из URL)
+        if project_id is None:
+            project_id = kwargs.get('project_id')
+        if project_id is None:
+            return Response({'error': 'Project ID is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            project = Project.objects.get(id=project_id, creator=request.user, is_deleted=False)
+        except Project.DoesNotExist:
+            return Response({'error': 'Project not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        # Проверяем наличие участников в проекте
+        from api.projects.models import VolunteerProject
+        participants_count = VolunteerProject.objects.filter(
+            project=project,
+            is_active=True
+        ).count()
+        
+        if participants_count > 0:
+            return Response({
+                'error': 'Редактирование проекта запрещено, так как в проекте уже есть участники. Удалите всех участников перед редактированием.'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        data = request.data
+
+        # Обновляем поля
+        if 'title' in data:
+            project.title = data.get('title')
+        if 'description' in data:
+            project.description = data.get('description')
+        if 'city' in data:
+            project.city = data.get('city')
+        if 'volunteer_type' in data:
+            project.volunteer_type = data.get('volunteer_type', 'any')
+        if 'start_date' in data:
+            parsed_start_date = self._parse_date(data.get('start_date'))
+            if parsed_start_date is not None:
+                project.start_date = parsed_start_date
+        if 'end_date' in data:
+            parsed_end_date = self._parse_date(data.get('end_date'))
+            if parsed_end_date is not None:
+                project.end_date = parsed_end_date
+        if 'latitude' in data:
+            project.latitude = self._parse_float(data.get('latitude'))
+        if 'longitude' in data:
+            project.longitude = self._parse_float(data.get('longitude'))
+        if 'address' in data:
+            project.address = data.get('address', '')
+        if 'contact_person' in data:
+            project.contact_person = data.get('contact_person', '')
+        if 'contact_phone' in data:
+            project.contact_phone = data.get('contact_phone', '')
+        if 'contact_email' in data:
+            project.contact_email = data.get('contact_email')
+        if 'contact_telegram' in data:
+            project.contact_telegram = data.get('contact_telegram', '')
+        if 'info_url' in data:
+            project.info_url = data.get('info_url')
+        if 'gis2_url' in data:
+            gis2_url_value = data.get('gis2_url', '').strip()
+            if not gis2_url_value:
+                return Response({'error': 'Ссылка на 2ГИС обязательна'}, status=status.HTTP_400_BAD_REQUEST)
+            import re
+            gis2_pattern = re.compile(r'^https?://(go\.)?2gis\.(com|kz|ru)(/.+)?$', re.IGNORECASE)
+            if not gis2_pattern.match(gis2_url_value):
+                return Response({'error': 'Введите корректную ссылку на 2ГИС (например: https://go.2gis.com/vOZEO или https://2gis.kz/...)'}, status=status.HTTP_400_BAD_REQUEST)
+            project.gis2_url = gis2_url_value
+
+        # Обновляем обложку
+        cover_image = request.FILES.get('cover_image')
+        if cover_image:
+            project.cover_image = cover_image
+
+        # Обновляем теги
+        if 'tags' in data:
+            tags = self._parse_tags(data.get('tags'))
+            project.tags.set(tags)
+
+        # При редактировании проекта отправляем его на модерацию заново
+        project.status = 'pending'
+        project.save()
+
+        from django.db.models import Count, Q
+        project.refresh_from_db()
+        
+        return Response({
+            'id': project.id,
+            'title': project.title,
+            'description': project.description,
+            'city': project.city,
+            'status': project.status,
+            'volunteer_count': VolunteerProject.objects.filter(project=project, is_active=True).count(),
+            'task_count': project.tasks.filter(is_deleted=False).count(),
+            'start_date': project.start_date.isoformat() if project.start_date else None,
+            'end_date': project.end_date.isoformat() if project.end_date else None,
+            'created_at': project.created_at.isoformat() if project.created_at else None,
+            'volunteer_type': project.volunteer_type,
+            'address': project.address,
+            'latitude': float(project.latitude) if project.latitude else None,
+            'longitude': float(project.longitude) if project.longitude else None,
+            'contact_person': project.contact_person,
+            'contact_phone': project.contact_phone,
+            'contact_email': project.contact_email,
+            'contact_telegram': project.contact_telegram,
+            'info_url': project.info_url,
+            'gis2_url': project.gis2_url,
+            'tags': list(project.tags.names()),
+            'cover_image_url': self._get_full_image_url(request, project.cover_image) if project.cover_image else None,
+        }, status=status.HTTP_200_OK)
+
+    def delete(self, request, project_id: int = None, *args, **kwargs):
+        """Удаление проекта"""
+        if not self._is_approved_organizer(request.user):
+            return Response({'error': 'Not authorized'}, status=status.HTTP_403_FORBIDDEN)
+
+        # Получаем project_id из kwargs (из URL)
+        if project_id is None:
+            project_id = kwargs.get('project_id')
+        if project_id is None:
+            return Response({'error': 'Project ID is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            project = Project.objects.get(id=project_id, creator=request.user, is_deleted=False)
+        except Project.DoesNotExist:
+            return Response({'error': 'Project not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        # Мягкое удаление проекта
+        project.delete()
+
+        return Response({'message': 'Проект успешно удалён'}, status=status.HTTP_200_OK)
 
 
 class AIAssistantAPIView(APIView):
@@ -1860,6 +2385,8 @@ urlpatterns = [
     path('volunteer/profile/', VolunteerProfileAPIView.as_view(), name='volunteer_profile'),
     path('organizer/profile/', OrganizerProfileAPIView.as_view(), name='organizer_profile'),
     path('organizer/<int:organizer_id>/portfolio/', OrganizerPortfolioAPIView.as_view(), name='organizer_portfolio'),
+    path('organizer/projects/', OrganizerProjectsAPIView.as_view(), name='organizer_projects'),
+    path('organizer/projects/<int:project_id>/', OrganizerProjectsAPIView.as_view(), name='organizer_project_detail'),
     path('volunteer/dashboard/', VolunteerDashboardAPIView.as_view(), name='volunteer_dashboard'),
     path('volunteer/tasks/<int:task_id>/photo-reports/', VolunteerTaskPhotoReportAPIView.as_view(), name='volunteer_task_photo_reports'),
     path('volunteer/photo-reports/', VolunteerPhotoReportsAPIView.as_view(), name='volunteer_photo_reports'),
@@ -1871,6 +2398,7 @@ urlpatterns = [
     path('volunteer/projects/', VolunteerProjectsAPIView.as_view(), name='volunteer_projects'),
     path('volunteer/projects/<int:project_id>/', VolunteerProjectDetailAPIView.as_view(), name='volunteer_project_detail'),
     path('volunteer/projects/<int:project_id>/join/', VolunteerProjectJoinAPIView.as_view(), name='volunteer_project_join'),
+    path('volunteer/projects/<int:project_id>/leave/', VolunteerProjectLeaveAPIView.as_view(), name='volunteer_project_leave'),
     path('volunteer/notifications/', VolunteerNotificationsAPIView.as_view(), name='volunteer_notifications'),
     path('volunteer/notifications/read-all/', VolunteerNotificationReadAllAPIView.as_view(), name='volunteer_notifications_read_all'),
     path('volunteer/notifications/<int:notification_id>/read/', VolunteerNotificationReadAPIView.as_view(), name='volunteer_notification_read'),

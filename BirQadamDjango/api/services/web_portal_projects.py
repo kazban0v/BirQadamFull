@@ -18,17 +18,9 @@ def _get_full_image_url(request, image_field):
         return None
     try:
         url = request.build_absolute_uri(image_field.url)
-        # Убеждаемся, что это полный URL и используем https
-        if not url.startswith('http'):
-            scheme = 'https'  # Всегда используем https
-            host = request.get_host() if hasattr(request, 'get_host') else ''
-            if host:
-                url = f'{scheme}://{host}{image_field.url}'
-        # Заменяем http на https, если есть
-        elif url.startswith('http://'):
-            url = url.replace('http://', 'https://')
         return url
-    except Exception:
+    except Exception as e:
+        logger.error(f"[ERROR] Failed to build image URL: {e}")
         # Fallback на относительный путь, если не удалось построить абсолютный
         return image_field.url if image_field.url else None
 
@@ -47,12 +39,23 @@ def get_projects_catalog(user, request=None) -> Dict[str, Any]:  # type: ignore[
     today = date.today()
     is_organizer = hasattr(user, 'is_organizer') and user.is_organizer
     
-    # Логирование для диагностики
-    total_projects = Project.objects.count()
-    approved_projects = Project.objects.filter(status='approved', is_deleted=False).count()
-    all_statuses = list(Project.objects.values_list('status', flat=True).distinct())
-    logger.info(f"[DEBUG] get_projects_catalog for user {user.username}: total_projects={total_projects}, approved_not_deleted={approved_projects}, is_organizer={is_organizer}, all_statuses={all_statuses}")
-    print(f"[DEBUG] get_projects_catalog: total={total_projects}, approved={approved_projects}, statuses={all_statuses}")  # Для консоли
+    # 🔍 ДИАГНОСТИКА: Проверяем ВСЕ проекты в БД
+    all_projects = Project.objects.filter(is_deleted=False)
+    logger.info(f"🔍 [get_projects_catalog] User: {user.username}")
+    logger.info(f"📊 Всего проектов в БД (не удалённых): {all_projects.count()}")
+    
+    # Проверяем проекты с разными статусами
+    pending_count = all_projects.filter(status='pending').count()
+    approved_count_all = all_projects.filter(status='approved').count()
+    rejected_count = all_projects.filter(status='rejected').count()
+    logger.info(f"📊 Статусы проектов: pending={pending_count}, approved={approved_count_all}, rejected={rejected_count}")
+    
+    # Ищем проект "2GIS" или похожие
+    gis_projects = all_projects.filter(title__icontains='2gis').values('id', 'title', 'status', 'is_deleted')
+    if gis_projects.exists():
+        logger.info(f"🔍 Найдены проекты с '2gis' в названии:")
+        for p in gis_projects:
+            logger.info(f"  📋 ID={p['id']}, Title={p['title']}, Status={p['status']}, is_deleted={p['is_deleted']}")
     
     projects_qs = (
         Project.objects.select_related('creator')
@@ -62,23 +65,23 @@ def get_projects_catalog(user, request=None) -> Dict[str, Any]:  # type: ignore[
         )
     )
     
-    before_date_filter = projects_qs.count()
-    logger.info(f"[DEBUG] Projects before date filter: {before_date_filter}")
-    print(f"[DEBUG] Projects before date filter: {before_date_filter}")
+    approved_count = projects_qs.count()
+    logger.info(f"✅ Одобренных проектов (approved): {approved_count}")
     
     # Для волонтеров: скрываем проекты с истекшей датой окончания
-    if not is_organizer:
-        # Проверяем даты окончания проектов
-        expired_projects = projects_qs.filter(end_date__lt=today, end_date__isnull=False).count()
-        logger.info(f"[DEBUG] Expired projects (end_date < {today}): {expired_projects}")
-        print(f"[DEBUG] Expired projects: {expired_projects}")
-        
-        projects_qs = projects_qs.filter(
-            Q(end_date__isnull=True) | Q(end_date__gte=today)
-        )
-        after_date_filter = projects_qs.count()
-        logger.info(f"[DEBUG] Projects after date filter (today={today}): {after_date_filter}")
-        print(f"[DEBUG] Projects after date filter: {after_date_filter}")
+    # ВРЕМЕННО ОТКЛЮЧЕНО ДЛЯ ОТЛАДКИ
+    # if not is_organizer:
+    #     # Проверяем даты окончания проектов
+    #     expired_projects = projects_qs.filter(end_date__lt=today, end_date__isnull=False).count()
+    #     logger.info(f"[DEBUG] Expired projects (end_date < {today}): {expired_projects}")
+    #     print(f"[DEBUG] Expired projects: {expired_projects}")
+    #     
+    #     projects_qs = projects_qs.filter(
+    #         Q(end_date__isnull=True) | Q(end_date__gte=today)
+    #     )
+    #     after_date_filter = projects_qs.count()
+    #     logger.info(f"[DEBUG] Projects after date filter (today={today}): {after_date_filter}")
+    #     print(f"[DEBUG] Projects after date filter: {after_date_filter}")
     
     projects_qs = projects_qs.annotate(
         tasks_count=Count('tasks', filter=Q(tasks__is_deleted=False)),
@@ -95,14 +98,14 @@ def get_projects_catalog(user, request=None) -> Dict[str, Any]:  # type: ignore[
         ),
     ).prefetch_related('tags').order_by('start_date', '-created_at')
 
-    final_count = projects_qs.count()
-    logger.info(f"[DEBUG] Final projects count after all filters: {final_count}")
-
     projects = []
     for project in projects_qs:
         joined_at = joined_at_by_project_id.get(project.id)
-        projects.append(
-            {
+        
+        # Строим URL изображения
+        cover_image_url = _get_full_image_url(request, project.cover_image) if project.cover_image and request else None
+        
+        project_data = {
                 'id': project.id,
                 'title': project.title,
                 'description': project.description,
@@ -127,10 +130,14 @@ def get_projects_catalog(user, request=None) -> Dict[str, Any]:  # type: ignore[
                 'info_url': project.info_url,
                 'gis2_url': project.gis2_url,
                 'tags': list(project.tags.names()),
-                'cover_image_url': _get_full_image_url(request, project.cover_image) if project.cover_image and request else None,
+                'cover_image_url': cover_image_url,
                 'created_at': project.created_at.isoformat() if project.created_at else None,
             }
-        )
+        
+        logger.info(f"📤 Отправляем проект ID={project.id}: has_image={bool(project.cover_image)}, url={cover_image_url}")
+        projects.append(project_data)
+    
+    logger.info(f"📦 Итого отправляем проектов: {len(projects)}")
 
     return {
         'projects': projects,
