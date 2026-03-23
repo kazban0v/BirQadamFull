@@ -1,12 +1,14 @@
 # BirQadam Full Stack Project 🌱
 
 <div align="center">
-  <img src="BirQadamApp/assets/images/logo_birqadam.png" alt="BirQadam Logo" width="200"/>
+  <img src="BirQadamExpo/assets/images/logo_birqadam.png" alt="BirQadam Logo" width="200"/>
   
   **Комплексная платформа для управления волонтерскими проектами в Алматы**
   
-  [![Flutter](https://img.shields.io/badge/Flutter-3.24.0-blue)](https://flutter.dev)
+  [![React Native](https://img.shields.io/badge/React_Native-19.1.0-blue)](https://reactnative.dev)
+  [![Expo](https://img.shields.io/badge/Expo-54.0.33-black)](https://expo.dev)
   [![Django](https://img.shields.io/badge/Django-5.2-green.svg)](https://www.djangoproject.com/)
+  [![Vue.js](https://img.shields.io/badge/Vue.js-3.5-green.svg)](https://vuejs.org/)
   [![Python](https://img.shields.io/badge/Python-3.11-blue.svg)](https://www.python.org/)
   [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 </div>
@@ -17,7 +19,7 @@
 
 **BirQadam** (ранее CleanUpAlmaty) - это полнофункциональная платформа для координации волонтерской деятельности, включающая:
 
-- 📱 **Мобильное приложение** (Flutter) для iOS и Android
+- 📱 **Мобильное приложение** (React Native / Expo) для iOS и Android
 - 🌐 **Веб-портал** (Vue.js + Vite)
 - 🔧 **Backend API** (Django REST Framework)
 - 🎨 **Admin Panel** (Vue.js + Django)
@@ -29,11 +31,11 @@
 
 ```
 BirQadamFull/
-├── BirQadamApp/              # Flutter мобильное приложение
-│   ├── lib/                  # Исходный код Dart
-│   ├── android/              # Android конфигурация
-│   ├── ios/                  # iOS конфигурация
-│   └── README.md             # Документация приложения
+├── BirQadamExpo/             # React Native (Expo) мобильное приложение
+│   ├── src/                  # Исходный код приложения
+│   ├── assets/               # Ресурсы (изображения, шрифты)
+│   ├── App.tsx               # Точка входа в приложение
+│   └── package.json          # Зависимости проекта
 │
 ├── BirQadamDjango/           # Django Backend + Admin Panel
 │   ├── api/                  # API модуль (доменная архитектура)
@@ -50,7 +52,7 @@ BirQadamFull/
 │   ├── public_site/          # Публичный сайт (landing page)
 │   ├── shared/               # Инфраструктурные сервисы (AI, notifications)
 │   ├── common/               # Общие утилиты
-│   ├── deployment/           # Docker и Jenkins конфигурации
+│   ├── deployment/           # Docker конфигурации
 │   ├── config/               # Конфигурационные файлы (секреты)
 │   └── birqadam_project/     # Основные настройки Django
 │
@@ -67,7 +69,7 @@ BirQadamFull/
 - 📊 Отслеживание прогресса и статистики
 - 🏆 Система достижений и рейтинга
 - 📸 Загрузка фотоотчетов
-- 🔔 Push-уведомления (FCM)
+- 🔔 Push-уведомления (Expo Notifications)
 - 📍 Геолокация проектов
 - 💬 Чат с организаторами
 
@@ -84,12 +86,15 @@ BirQadamFull/
 
 ## 🛠 Технологии
 
-### Mobile App (BirQadamApp)
-- **Flutter** 3.24.0
-- **Dart** 3.0
-- **Provider** - State Management
-- **Firebase** - Push Notifications
-- **Google Maps** - Карты и геолокация
+### Mobile App (BirQadamExpo)
+- **React Native** 0.81.5
+- **Expo** ~54.0.33
+- **TypeScript** ~5.9.2
+- **Zustand** - State Management
+- **React Navigation** - Навигация
+- **Expo Notifications** - Push уведомления
+- **Expo Location** - Геолокация
+- **Axios** - HTTP-клиент
 
 ### Backend (BirQadamDjango)
 - **Django** 5.2
@@ -97,7 +102,6 @@ BirQadamFull/
 - **PostgreSQL** - База данных
 - **Celery** - Асинхронные задачи
 - **Redis** - Кэширование и брокер сообщений
-- **Firebase Admin SDK** - Push уведомления
 - **python-telegram-bot** - Telegram интеграция
 
 ### Web Portal (BirQadamDjango/portal_frontend)
@@ -107,32 +111,24 @@ BirQadamFull/
 - **Pinia** - State Management
 - **Vite** - Build tool
 
-### Admin Panel (BirQadamDjango/admin_panel)
-- **Vue.js** 3
-- **TypeScript**
-- **Vuetify** - UI компоненты
-- **Django Templates** - Backend рендеринг
-
 ---
 
 ## 🚀 Быстрый старт
 
-### Мобильное приложение
+### Мобильное приложение (React Native / Expo)
 
 ```bash
-cd BirQadamApp
-flutter pub get
-flutter run
+cd BirQadamExpo
+npm install
+npx expo start
 ```
-
-Подробнее: [BirQadamApp/README.md](BirQadamApp/README.md)
 
 ### Backend API
 
 ```bash
 cd BirQadamDjango
 python -m venv venv
-source venv/bin/activate  # Windows: venv\Scripts\activate
+source venv/bin/activate  # Windows: venv\\Scripts\\activate
 pip install -r requirements.txt
 python manage.py migrate
 python manage.py runserver
@@ -145,10 +141,6 @@ cd BirQadamDjango/portal_frontend
 npm install
 npm run dev
 ```
-
-### Admin Panel
-
-Админ-панель доступна по адресу: `http://localhost:8000/custom-admin/`
 
 ### Telegram Bot
 
@@ -167,9 +159,6 @@ python telegram_bot/bot.py
 
 - **Docker** - Контейнеризация приложения
 - **Docker Compose** - Оркестрация сервисов (Django, Celery, Redis, Frontend)
-- **Jenkins** - CI/CD pipeline для автоматического деплоя
-- **Firebase** - Push уведомления
-- **Google Play / App Store** - Мобильное приложение
 
 ### Docker Compose
 
@@ -177,8 +166,6 @@ python telegram_bot/bot.py
 cd BirQadamDjango/deployment
 docker compose -f docker-compose.yml up -d
 ```
-
-Подробнее: [BirQadamDjango/deployment/README.md](BirQadamDjango/deployment/README.md)
 
 ---
 
@@ -195,7 +182,7 @@ docker compose -f docker-compose.yml up -d
 - **api/support/** - Поддержка пользователей
 
 **Инфраструктурные сервисы:**
-- **shared/ai/** - AI сервисы (Gemini, OpenAI)
+- **shared/ai/** - AI сервисы
 - **shared/notifications/** - Email и push уведомления
 - **common/storage/** - Общие утилиты для работы с файлами
 
@@ -204,7 +191,7 @@ docker compose -f docker-compose.yml up -d
 ## 👥 Команда
 
 - **Backend Developer**: Beybit Kazbanov
-- **Mobile Developer**: Flutter Team
+- **Mobile Developer**: React Native (Expo) Team
 - **UI/UX Designer**: Design Team
 
 ---
@@ -213,7 +200,6 @@ docker compose -f docker-compose.yml up -d
 
 - **Email**: kazban0v.beybit@gmail.com
 - **GitHub**: [@kazban0v](https://github.com/kazban0v)
-- **Telegram Bot**: @VolunteerDlyaLyudei_bot
 
 ---
 
