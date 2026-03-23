@@ -42,6 +42,3 @@ class Command(BaseCommand):
 
 
 
-
-
-

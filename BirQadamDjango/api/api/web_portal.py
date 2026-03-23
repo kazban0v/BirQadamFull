@@ -605,16 +605,9 @@ class VolunteerLoginAPIView(APIView):
         is_organizer = (getattr(user, 'role', None) == 'organizer' or getattr(user, 'is_organizer', False)) and \
                        getattr(user, 'organizer_status', None) == 'approved'
         dashboard_url = '/organizer/dashboard' if is_organizer else '/volunteer/dashboard'
-        # Генерируем JWT токены для мобильного приложения
-        from rest_framework_simplejwt.tokens import RefreshToken
-        refresh = RefreshToken.for_user(user)
-        access_token = str(refresh.access_token)
-        refresh_token = str(refresh)
         return Response(
             {
                 'message': 'Вход выполнен успешно.',
-                'access_token': access_token,
-                'refresh_token': refresh_token,
                 'user': {
                     'id': user.id,
                     'username': user.username,
@@ -1182,45 +1175,6 @@ class VolunteerTaskCompleteAPIView(APIView):
         return Response(
             {
                 'message': 'Задача отмечена выполненной. Не забудьте прикрепить фотоотчёт.',
-                'task_status': task.status,
-            },
-            status=status.HTTP_200_OK,
-        )
-
-
-@method_decorator(csrf_exempt, name='dispatch')
-class VolunteerTaskArchiveAPIView(APIView):
-    """Архивация задачи волонтером (только для завершенных или закрытых)"""
-    permission_classes = [IsAuthenticated]
-    authentication_classes = (CsrfExemptSessionAuthentication,)
-
-    def post(self, request, task_id: int, *args, **kwargs):
-        from django.db.models import Q
-        try:
-            # Задача должна принадлежать проекту, в котором участвует волонтер,
-            # либо волонтер должен быть на нее назначен
-            task = Task.objects.filter(
-                Q(project__volunteer_projects__volunteer=request.user) |
-                Q(assignments__volunteer=request.user),
-                id=task_id,
-                is_deleted=False
-            ).distinct().get()
-        except Task.DoesNotExist:
-            return Response({'detail': 'Задача не найдена или у вас нет к ней доступа.'}, status=status.HTTP_404_NOT_FOUND)
-
-        # Разрешаем архивировать только завершенные или просроченные/закрытые задачи
-        if task.status not in ['completed', 'closed', 'failed']:
-            return Response(
-                {'detail': 'Можно архивировать только завершенные, отклоненные или закрытые задачи.'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        task.status = 'archived'
-        task.save(update_fields=['status'])
-
-        return Response(
-            {
-                'message': 'Задача перенесена в архив.',
                 'task_status': task.status,
             },
             status=status.HTTP_200_OK,
@@ -2440,7 +2394,6 @@ urlpatterns = [
     path('volunteer/tasks/<int:task_id>/decline/', VolunteerTaskDeclineAPIView.as_view(), name='volunteer_task_decline'),
     path('volunteer/tasks/<int:task_id>/retry/', VolunteerTaskRetryAPIView.as_view(), name='volunteer_task_retry'),
     path('volunteer/tasks/<int:task_id>/complete/', VolunteerTaskCompleteAPIView.as_view(), name='volunteer_task_complete'),
-    path('volunteer/tasks/<int:task_id>/archive/', VolunteerTaskArchiveAPIView.as_view(), name='volunteer_task_archive'),
     path('volunteer/tasks/<int:task_id>/retry/', VolunteerTaskRetryAPIView.as_view(), name='volunteer_task_retry'),
     path('volunteer/projects/', VolunteerProjectsAPIView.as_view(), name='volunteer_projects'),
     path('volunteer/projects/<int:project_id>/', VolunteerProjectDetailAPIView.as_view(), name='volunteer_project_detail'),

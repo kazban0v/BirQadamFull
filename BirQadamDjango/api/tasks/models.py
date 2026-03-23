@@ -38,7 +38,7 @@ class Task(models.Model):
     decline_reason = models.TextField(null=True, blank=True, verbose_name='Причина отклонения')
 
     def is_expired(self) -> bool:
-        now = timezone.localtime(timezone.now())
+        now = timezone.now()
 
         if self.deadline_date:
             if now.date() > self.deadline_date:

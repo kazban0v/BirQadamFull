@@ -1,6 +1,10 @@
+"""
+User dashboard service
+Сервис для работы с дашбордом пользователя
+"""
 from __future__ import annotations
 
-from datetime import timedelta, datetime, date, time
+from datetime import timedelta
 from typing import Any, Dict
 
 from django.db.models import Count, Q, Exists, OuterRef, Subquery
@@ -99,7 +103,6 @@ def get_volunteer_dashboard_data(user) -> Dict[str, Any]:  # type: ignore[no-any
                 'project_title': task.project.title,
                 'project_city': task.project.city,
                 'project_status': task.project.status,
-                'image': task.task_image.url if task.task_image else (task.project.cover_image.url if task.project.cover_image else None),
                 'accepted': accepted,
                 'completed': completed,
                 'is_expired': task.is_expired(),
@@ -164,70 +167,15 @@ def get_volunteer_dashboard_data(user) -> Dict[str, Any]:  # type: ignore[no-any
         time_diff = now - first_join_date
         total_hours = time_diff.total_seconds() / 3600
 
-    # Получаем все проекты (и активные, и архивные)
-    all_project_ids = list(
-        VolunteerProject.objects.filter(
-            volunteer=user,
-            project__is_deleted=False,
-        ).values_list('project_id', flat=True)
-    )
-    # Расширенная статистика для summary
-    
-    # Все назначения пользователя (включая архивные проекты)
-    all_assignment_qs = TaskAssignment.objects.filter(
-        volunteer=user,
-        task__is_deleted=False
-    ).select_related('task')
-    
-    # Общее количество задач (принятых и не отклоненных)
-    # Включаем задачи из архивных проектов, чтобы совпадало с "Мои задачи"
-    total_tasks_count = all_assignment_qs.filter(
-        accepted=True
-    ).count()
-    
-    # Количество выполненных задач
-    completed_tasks_count = all_assignment_qs.filter(
-        completed=True
-    ).count()
-    
-    # Расчет общего количества часов (сумма длительности выполненных задач)
-    total_seconds = 0
-    completed_assignments = all_assignment_qs.filter(completed=True)
-    for assignment in completed_assignments:
-        task = assignment.task
-        if task.start_time and task.end_time:
-            # Используем фиктивную дату для расчета разницы во времени
-            dummy_date = date(2000, 1, 1)
-            t1 = datetime.combine(dummy_date, task.start_time)
-            t2 = datetime.combine(dummy_date, task.end_time)
-            if t2 > t1:
-                total_seconds += (t2 - t1).total_seconds()
-            else:
-                # Если задача длится через полночь (маловероятно, но на всякий случай)
-                total_seconds += (t2 + timedelta(days=1) - t1).total_seconds()
-    
-    total_hours = total_seconds / 3600
-    
-    # Общее количество проектов, в которых участвует волонтер (все когда-либо присоединенные)
-    total_projects_count = VolunteerProject.objects.filter(
-        volunteer=user,
-        project__is_deleted=False
-    ).count()
-
     summary = {
-        'total_tasks_count': total_tasks_count,
         'active_tasks': tasks_qs.count(),
-        'completed_tasks': completed_tasks_count,
-        'upcoming_tasks': all_assignment_qs.filter(accepted=True, completed=False).count(),
-        'active_projects': total_projects_count,
+        'completed_tasks': completed_assignments_count,
+        'upcoming_tasks': upcoming_assignments_count,
+        'active_projects': projects_total,
         'pending_photos': pending_photo_reports,
         'total_photos': photo_reports_qs.count(),
         'unread_notifications': unread_notifications,
-        'total_hours': float(round(total_hours, 1)),
-        'rating': getattr(user, 'rating', 0),
-        'trust_factor': getattr(user, 'trust_factor', 100),
-        'average_rating': getattr(user, 'average_rating', 0),
-        'achievements_count': user.user_achievements.count(),
+        'total_hours': round(total_hours, 1),  # Округляем до 1 знака после запятой
     }
 
     return {

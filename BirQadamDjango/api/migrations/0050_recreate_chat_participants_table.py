@@ -42,6 +42,3 @@ class Migration(migrations.Migration):
 
 
 
-
-
-

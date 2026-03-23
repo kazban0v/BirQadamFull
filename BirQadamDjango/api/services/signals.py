@@ -185,10 +185,62 @@ def create_geofence_for_project(sender: Any, instance: VolunteerProject, created
         logger.error(f"Error creating geofence reminder: {e}")
 
 
-# @receiver(m2m_changed, sender=Event.participants.through)
-# def create_geofence_for_event(sender, instance, action, pk_set, **kwargs):
-#     """Автоматически создает геонапоминание когда волонтер присоединяется к событию"""
-#     pass
+@receiver(m2m_changed, sender=Event.participants.through)
+def create_geofence_for_event(sender, instance, action, pk_set, **kwargs):
+    """Автоматически создает геонапоминание когда волонтер присоединяется к событию"""
+    if action != 'post_add':
+        return
+    
+    event = instance
+    
+    # Проверяем что у события есть координаты (из проекта или задачи)
+    latitude = None
+    longitude = None
+    
+    if event.project and event.project.latitude and event.project.longitude:
+        latitude = event.project.latitude
+        longitude = event.project.longitude
+    elif event.task and event.task.project and event.task.project.latitude and event.task.project.longitude:
+        latitude = event.task.project.latitude
+        longitude = event.task.project.longitude
+    
+    if not latitude or not longitude:
+        logger.info(f"Event {event.id} has no coordinates, skipping geofence creation")
+        return
+    
+    # Создаем напоминание для каждого нового участника
+    from api.users.models import User
+    for user_id in pk_set:
+        try:
+            user = User.objects.get(id=user_id)
+            
+            # Проверяем что напоминание еще не создано
+            existing = GeofenceReminder.objects.filter(
+                user=user,
+                event=event,
+            ).exists()
+            
+            if existing:
+                logger.info(f"Geofence reminder already exists for user {user.id if hasattr(user, 'id') else 'unknown'} and event {event.id if hasattr(event, 'id') else 'unknown'}")  # type: ignore[attr-defined]
+                continue
+            
+            # Создаем напоминание
+            reminder = GeofenceReminder.objects.create(
+                user=user,
+                event=event,
+                project=event.project,
+                title=event.title,
+                message=f"Привет! 👋\nВы находитесь рядом с \"{event.title}\". "
+                        f"Не забудьте подтвердить своё участие и приступайте к выполнению задания. "
+                        f"Спасибо, что помогаете делать мир чище! 💚",
+                latitude=latitude,
+                longitude=longitude,
+                radius=500,  # 500 метров по умолчанию
+                is_active=True,
+            )
+            logger.info(f"[OK] Created geofence reminder {reminder.id if hasattr(reminder, 'id') else 'unknown'} for user {user.username if hasattr(user, 'username') else 'unknown'} and event {event.title}")  # type: ignore[attr-defined]
+        except Exception as e:
+            logger.error(f"Error creating geofence reminder for user {user_id}: {e}")
 
 
 # Временно отключен сигнал для SupportTicket
