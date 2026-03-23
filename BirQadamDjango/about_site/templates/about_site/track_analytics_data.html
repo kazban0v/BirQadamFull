@@ -1,0 +1,600 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <title>BirQadam - Один шаг к лучшему миру</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="BirQadam - платформа для волонтёров и организаторов социальных проектов в Казахстане" />
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;800&display=swap" rel="stylesheet" />
+
+    <script>
+        (function(w, d, s, l, i) {
+            w[l] = w[l] || [];
+            w[l].push({
+                'gtm.start': new Date().getTime(),
+                event: 'gtm.js'
+            });
+            var f = d.getElementsByTagName(s)[0],
+                j = d.createElement(s),
+                dl = l != 'dataLayer' ? '&l=' + l : '';
+            j.async = true;
+            j.src =
+                'https://www.googletagmanager.com/gtm.js?id=' + i + dl;
+            f.parentNode.insertBefore(j, f);
+        })(window, document, 'script', 'dataLayer', 'GTM-M5X2K92L');
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;800&display=swap');
+
+        :root {
+            /* BirQadam Brand Colors */
+            --birqadam-primary: #8BC34A;
+            /* Primary Color (Светло-зеленый) */
+            --birqadam-accent: #e3794d;
+            /* Accent Color (Оранжево-персиковый) */
+            --birqadam-success: #4CAF50;
+            /* Success Green (оставлен для отличия) */
+            --birqadam-gray: #FAFAFA;
+            /* Background Gray */
+            --birqadam-pure-white: #FFFFFF;
+            /* Чисто белый для текста на цветных фонах */
+            --birqadam-background: #f8ecc4;
+            /* фон задний */
+        }
+
+        body {
+            font-family: 'Montserrat', sans-serif;
+            color: #333;
+            /* ИСПОЛЬЗУЕМ НОВЫЙ ФОН */
+            background: var(--birqadam-background);
+            margin: 0;
+            padding: 0;
+            overflow-x: hidden;
+        }
+
+        a {
+            text-decoration: none;
+            color: inherit;
+        }
+
+        h1,
+        h3 {
+            font-weight: 800;
+            /* Используем чисто белый для заголовков на цветных блоках (например, hero) */
+            color: var(--birqadam-pure-white);
+        }
+
+        h2 {
+            font-weight: 800;
+            /* ИСПОЛЬЗУЕМ НОВЫЙ PRIMARY ЦВЕТ */
+            color: var(--birqadam-primary);
+        }
+
+        p {
+            /* Цвет текста на Hero-блоке, был #ddd, меняю на чисто белый для Hero */
+            color: var(--birqadam-pure-white);
+            line-height: 1.6;
+        }
+
+        .header-wrapper {
+            max-width: 1140px;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 1rem;
+        }
+
+        header {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            padding: 1rem 0;
+            /* ИСПОЛЬЗУЕМ НОВЫЙ PRIMARY ЦВЕТ */
+            background: var(--birqadam-primary);
+            z-index: 100;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, .1);
+        }
+
+        header .site-logo a {
+            font-weight: 800;
+            font-size: 1.5rem;
+            /* Используем чисто белый для текста в хедере */
+            color: var(--birqadam-pure-white);
+        }
+
+        .site-menu {
+            list-style: none;
+            display: flex;
+            gap: 2rem;
+        }
+
+        .site-menu a {
+            /* Используем чисто белый для меню */
+            color: var(--birqadam-pure-white);
+            padding-bottom: 0.25rem;
+            border-bottom: 2px solid transparent;
+            transition: all 0.3s ease;
+            font-weight: 600;
+        }
+
+        /* ИСПРАВЛЕНИЕ: Отдельные стили для hover и active */
+        .site-menu a:hover {
+            border-color: transparent;
+            /* Убираем линию */
+            transform: none;
+            /* Убираем масштабирование */
+            text-shadow: 0 0 5px rgba(255, 255, 255, 0.5);
+            /* Немного тени для эффекта подсветки */
+        }
+
+        .site-menu a.active {
+            border-color: var(--birqadam-pure-white);
+            /* Линия остается только для активной страницы */
+            transform: none;
+            /* Убираем масштабирование */
+            text-shadow: 0 2px 8px rgba(0, 32, 91, 0.3);
+        }
+
+        /* КОНЕЦ ИСПРАВЛЕНИЯ */
+
+        /* КОНТЕЙНЕР ДЛЯ ДВУХ КНОПОК */
+        .hero-actions {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            /* Для мобильных устройств */
+        }
+
+        .btn-base {
+            border-radius: 9999px;
+            padding: 0.75rem 2rem;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            font-weight: 600;
+            display: inline-block;
+            text-align: center;
+            white-space: nowrap;
+            text-decoration: none !important;
+            /* Убираем подчеркивание */
+        }
+
+        /* ОБЕ КНОПКИ ТЕПЕРЬ ИМЕЮТ СТИЛЬ SECONDARY (Белый фон, Зеленая рамка) */
+        .btn-primary,
+        .btn-secondary {
+            background-color: var(--birqadam-pure-white);
+            color: var(--birqadam-primary);
+            border: 2px solid var(--birqadam-primary);
+        }
+
+        .btn-primary:hover,
+        .btn-secondary:hover {
+            /* Заливка (фон) PRIMARY (Светло-зеленый), Рамка ACCENT (Персиковый) */
+            background-color: var(--birqadam-primary);
+            color: var(--birqadam-pure-white);
+            border-color: var(--birqadam-accent);
+            /* Персиковый бордер */
+            transform: scale(1.05);
+            box-shadow: 0 4px 16px rgba(0, 32, 91, 0.3);
+        }
+
+        /* КОНЕЦ БЛОКА КНОПОК */
+
+
+        .section {
+            padding: 4rem 1rem;
+        }
+
+        .section h2 {
+            font-size: 2rem;
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .section p {
+            max-width: 800px;
+            margin: 0 auto 1rem;
+            text-align: center;
+            /* Секции не в Hero, поэтому текст должен быть темным */
+            color: #555;
+        }
+
+        /* НОВОЕ ПРАВИЛО: для персикового заголовка */
+        .section-accent-title {
+            color: var(--birqadam-accent);
+        }
+
+        /* КОНЕЦ НОВОГО ПРАВИЛА */
+
+
+        .hero {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            text-align: left;
+            /* ОБНОВЛЕННЫЙ ГРАДИЕНТ: теперь с более нейтральными оттенками для читаемости */
+            background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+            url('{% static "about_site/images/hero-bg.jpg" %}') center/cover no-repeat;
+            padding: 0 5%;
+            /* Используем чисто белый для текста на Hero-блоке */
+            color: var(--birqadam-pure-white);
+            position: relative;
+        }
+
+        .hero h1 {
+            font-size: 3rem;
+        }
+
+        .hero p {
+            font-size: 1.25rem;
+            margin-bottom: 2rem;
+        }
+
+        .common-card {
+            background: var(--birqadam-pure-white);
+            /* Карточки оставим белыми, чтобы выделялись на фоне */
+            padding: 2rem;
+            border-radius: 1rem;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+            /* ИСПОЛЬЗУЕМ НОВЫЙ PRIMARY ЦВЕТ */
+            border: 2px solid var(--birqadam-primary);
+            text-align: center;
+            transition: 0.3s ease;
+            font-weight: 600;
+            width: 100%;
+            flex: 1 1 300px;
+        }
+
+        .common-card:hover {
+            transform: scale(1.03);
+            /* ИСПОЛЬЗУЕМ АКЦЕНТНЫЙ ЦВЕТ (Оранжевый) */
+            border-color: var(--birqadam-accent);
+            box-shadow: 0 8px 20px rgba(227, 121, 77, 0.3);
+        }
+
+        .common-card h3 {
+            font-weight: 700;
+            margin-bottom: 1rem;
+            /* ИСПОЛЬЗУЕМ НОВЫЙ PRIMARY ЦВЕТ */
+            color: var(--birqadam-primary);
+        }
+
+        .common-card p {
+            /* Текст внутри карточки */
+            color: #555;
+            font-size: 0.95rem;
+        }
+
+        /* Убираем подчеркивание в ссылках внутри карточек */
+        .common-card a {
+            text-decoration: none !important;
+        }
+
+        .why-we-box {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1.5rem;
+            justify-content: center;
+            max-width: 1140px;
+            margin: 0 auto;
+        }
+
+        footer {
+            /* ИСПОЛЬЗУЕМ АКЦЕНТНЫЙ ЦВЕТ (Оранжевый) */
+            background: var(--birqadam-accent);
+            color: var(--birqadam-pure-white);
+            padding: 2rem;
+            text-align: center;
+        }
+
+        footer a {
+            color: var(--birqadam-pure-white);
+            text-decoration: underline;
+        }
+
+        footer a:hover {
+            opacity: 0.8;
+        }
+
+        .alma-footer-manual {
+            position: relative;
+            background-color: var(--birqadam-background);
+            overflow: hidden;
+            padding: 4rem 2rem 2rem;
+            text-align: center;
+            /* ИСПОЛЬЗУЕМ НОВЫЙ PRIMARY ЦВЕТ */
+            color: var(--birqadam-primary);
+        }
+
+        .footer-logos {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 1.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .footer-shapes {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 200px;
+            z-index: 0;
+        }
+
+        .red-corner,
+        .blue-corner {
+            position: absolute;
+            bottom: 0;
+            width: 300px;
+            height: 300px;
+            z-index: 1;
+        }
+
+        .red-corner {
+            left: -100px;
+            /* ИСПОЛЬЗУЕМ АКЦЕНТНЫЙ ЦВЕТ (Оранжевый) */
+            background: var(--birqadam-accent);
+            transform: rotate(45deg);
+        }
+
+        .blue-corner {
+            right: -100px;
+            /* ИСПОЛЬЗУЕМ НОВЫЙ PRIMARY ЦВЕТ */
+            background: var(--birqadam-primary);
+            transform: rotate(-45deg);
+        }
+
+        .footer-content {
+            position: relative;
+            z-index: 2;
+        }
+
+        .footer-content p {
+            margin-top: 1rem;
+            font-weight: 600;
+        }
+
+        .alma-logo,
+        .footer-logo-birqadam {
+            width: 120px;
+            height: auto;
+        }
+
+        @media (max-width: 768px) {
+            .header-wrapper {
+                flex-direction: column;
+                gap: 1rem;
+            }
+
+            .hero h1 {
+                font-size: 2rem;
+            }
+
+            .hero p {
+                font-size: 1rem;
+            }
+
+            .site-menu {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .common-card {
+                flex: 1 1 100%;
+            }
+
+            .footer-logos {
+                flex-direction: column;
+            }
+
+            /* Кнопки на мобильном будут занимать всю ширину */
+            .hero-actions .btn-base {
+                flex: 1 1 100%;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-M5X2K92L" height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+    <header>
+        <div class="header-wrapper">
+            <div class="site-logo"><a href="{% url 'about_site:home' %}">BirQadam</a></div>
+            <ul class="site-menu">
+                <a href="{% url 'about_site:home' %}" class="active">Главная</a>
+                <a href="{% url 'about_site:services' %}">Функционал</a>
+                <a href="{% url 'about_site:instruction' %}">Инструкция</a>
+            </ul>
+        </div>
+    </header>
+
+    <section class="hero" id="hero">
+        <div class="container" data-aos="fade-up">
+            <h1>Один шаг к лучшему</h1>
+            <p>С помощью технологий и вашего участия</p>
+
+            <div class="hero-actions">
+                <a href="https://t.me/cleanupalmaty_bot" class="btn-primary btn-base" id="telegram-button">Перейти в Telegram</a>
+                <a href="#browser-version-link" class="btn-secondary btn-base" id="browser-button">Версия для браузера</a>
+            </div>
+
+        </div>
+    </section>
+
+    <section class="section" id="features">
+        <div class="container" data-aos="fade-up">
+            <h2 class="mb-5 text-center section-accent-title">Почему мы?</h2>
+            <div class="why-we-box">
+                <div class="common-card">
+                    <p><strong>Наш бот улучшает инфраструктуру университетов.</strong> С помощью TelegramBot студенты и сотрудники университета всегда в курсе актуальных волонтёрских акций...</p>
+                </div>
+                <div class="common-card">
+                    <p><strong>Это решение нужно крупным организациям.</strong> Компании смогут использовать нашего бота для управления волонтёрами без лишней бюрократии.</p>
+                </div>
+                <div class="common-card">
+                    <p><strong>Бот упрощает поиск организаторов.</strong> Нет необходимости искать контакты вручную — всё собрано в одном месте.</p>
+                </div>
+            </div>
+    </section>
+
+    <footer class="alma-footer-manual">
+        <div class="footer-shapes">
+            <div class="red-corner"></div>
+            <div class="blue-corner"></div>
+        </div>
+        <div class="footer-content">
+            <div class="footer-logos">
+                <img src="{% static 'about_site/images/logob.png' %}" alt="BirQadam Logo" class="footer-logo-birqadam">
+
+
+            </div>
+    </footer>
+    <script src="{% static 'about_site/js/jquery-3.3.1.min.js' %}"></script>
+    <script src="{% static 'about_site/js/aos.js' %}"></script>
+    <script>
+        // JS для вашей кастомной аналитики
+
+        // Функции для работы с куки и генерацией ID
+        function getCookie(name) {
+            const nameEQ = name + "=";
+            const ca = document.cookie.split(';');
+            for (let i = 0; i < ca.length; i++) {
+                let c = ca[i];
+                while (c.charAt(0) === ' ') c = c.substring(1, c.length);
+                if (c.indexOf(nameEQ) === 0) return c.substring(nameEQ.length, c.length);
+            }
+            return null;
+        }
+
+        // --- Получение CSRF-токена для Django ---
+        function getCsrfToken() {
+            return getCookie('csrftoken');
+        }
+
+        function setCookie(name, value, days) {
+            let expires = "";
+            if (days) {
+                const date = new Date();
+                date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+                expires = "; expires=" + date.toUTCString();
+            }
+            document.cookie = name + "=" + (value || "") + expires + "; path=/; SameSite=Lax";
+        }
+
+        function generateUserId() {
+            // Простой генератор UUID
+            return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+                const r = Math.random() * 16 | 0,
+                    v = c === 'x' ? r : (r & 0x3 | 0x8);
+                return v.toString(16);
+            });
+        }
+
+        const USER_ID_COOKIE = 'birqadam_user_id';
+        let userId = getCookie(USER_ID_COOKIE);
+
+        // Переменная для отслеживания, является ли визит новым
+        let isNewVisit = false;
+
+        // --- Функция для отправки объединенного запроса на Django-бэкенд ---
+        const ANALYTICS_ENDPOINT = '/api/track/data/'; // <-- URL, который мы настроили в Django
+
+        function sendAnalyticsData(buttonAction = null) {
+            const csrfToken = getCsrfToken();
+
+            if (!csrfToken) {
+                console.error("CSRF token not found. Cannot send data to Django backend.");
+                return;
+            }
+
+            // Если user ID еще не установлен, генерируем и устанавливаем его
+            if (!userId) {
+                userId = generateUserId();
+                setCookie(USER_ID_COOKIE, userId, 365);
+                isNewVisit = true;
+            }
+
+            const data = {
+                user_id: userId,
+                visit_data: {
+                    type: isNewVisit ? 'new' : 'returning',
+                    url: window.location.pathname,
+                    referrer: document.referrer || null,
+                },
+                event_data: buttonAction ? {
+                    event_name: 'click',
+                    action: buttonAction,
+                    url: window.location.pathname
+                } : null
+            };
+
+            // Если визит не новый И нет события, мы не отправляем ничего.
+            if (!isNewVisit && !buttonAction) {
+                return;
+            }
+
+            fetch(ANALYTICS_ENDPOINT, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken
+                    },
+                    body: JSON.stringify(data),
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`Server error: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('Analytics data sent successfully (combined request):', data);
+                    // После успешной отправки сбрасываем флаг нового визита, 
+                    // чтобы не отправлять 'new' повторно
+                    if (isNewVisit) isNewVisit = false;
+                })
+                .catch((error) => {
+                    console.error('Error sending analytics data:', error);
+                });
+        }
+
+        // --- Инициализация при загрузке страницы ---
+        if (!userId) {
+            isNewVisit = true;
+            console.log("Analytics: New User ID initialized. Waiting for first event...");
+        } else {
+            console.log("Analytics: Returning User.");
+        }
+
+        // --- Привязка логики к событиям DOM ---
+        document.addEventListener('DOMContentLoaded', () => {
+            const telegramBtn = document.getElementById('telegram-button');
+            const browserBtn = document.getElementById('browser-button');
+
+            if (telegramBtn) {
+                telegramBtn.addEventListener('click', () => {
+                    sendAnalyticsData('Telegram_Link_Clicked');
+                    // Дополнительный код для предотвращения немедленного перехода 
+                    // может быть добавлен здесь, если вам нужно гарантировать отправку данных.
+                });
+            }
+
+            if (browserBtn) {
+                browserBtn.addEventListener('click', () => {
+                    sendAnalyticsData('Browser_Version_Clicked');
+                });
+            }
+
+            AOS.init({
+                once: true
+            });
+        });
+    </script>
+</body>
+
+</html>

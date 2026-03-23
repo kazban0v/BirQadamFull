@@ -1,0 +1,650 @@
+{% extends 'custom_admin/base.html' %} {% load static %} {% block extra_css %}
+<style>
+    :root {
+        --card-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.15);
+        --card-hover-shadow: 0 0.3rem 2rem 0 rgba(58, 59, 69, 0.25);
+        --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        --success-gradient: linear-gradient(135deg, #56ab2f 0%, #a8e063 100%);
+        --info-gradient: linear-gradient(135deg, #2193b0 0%, #6dd5ed 100%);
+        --warning-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+
+    /* Page Header */
+    .page-header {
+        background: var(--primary-gradient);
+        border-radius: 15px;
+        padding: 2rem;
+        margin-bottom: 2rem;
+        color: white;
+        box-shadow: var(--card-shadow);
+    }
+
+    .page-header h1 {
+        margin: 0;
+        font-size: 2rem;
+        font-weight: 700;
+    }
+
+    /* Stats Cards */
+    .stats-card {
+        background: white;
+        border-radius: 15px;
+        box-shadow: var(--card-shadow);
+        transition: all 0.3s ease;
+        border: none;
+        overflow: hidden;
+        margin-bottom: 1.5rem;
+        height: 100%;
+    }
+
+    .stats-card:hover {
+        transform: translateY(-5px);
+        box-shadow: var(--card-hover-shadow);
+    }
+
+    .stats-card .card-body {
+        padding: 1.5rem;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .stats-card .icon-wrapper {
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 1rem;
+    }
+
+    .stats-card.primary .icon-wrapper {
+        background: var(--primary-gradient);
+    }
+
+    .stats-card.success .icon-wrapper {
+        background: var(--success-gradient);
+    }
+
+    .stats-card.info .icon-wrapper {
+        background: var(--info-gradient);
+    }
+
+    .stats-card.warning .icon-wrapper {
+        background: var(--warning-gradient);
+    }
+
+    .stats-card .icon-wrapper i {
+        color: white;
+        font-size: 1.8rem;
+    }
+
+    .stats-card h2 {
+        font-size: 2rem;
+        font-weight: 700;
+        margin: 0.5rem 0;
+        color: #333;
+    }
+
+    .stats-card .card-title {
+        font-size: 0.875rem;
+        color: #6c757d;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin: 0;
+    }
+
+    /* Chart Cards */
+    .chart-card {
+        background: white;
+        border-radius: 15px;
+        box-shadow: var(--card-shadow);
+        transition: all 0.3s ease;
+        border: none;
+        margin-bottom: 1.5rem;
+        overflow: hidden;
+    }
+
+    .chart-card:hover {
+        box-shadow: var(--card-hover-shadow);
+    }
+
+    .chart-card .card-header {
+        border-radius: 15px 15px 0 0 !important;
+        border: none;
+        padding: 1.25rem 1.5rem;
+        font-weight: 700;
+        color: white;
+    }
+
+    .chart-card.primary .card-header {
+        background: var(--primary-gradient);
+    }
+
+    .chart-card.success .card-header {
+        background: var(--success-gradient);
+    }
+
+    .chart-card.info .card-header {
+        background: var(--info-gradient);
+    }
+
+    .chart-card.warning .card-header {
+        background: var(--warning-gradient);
+    }
+
+    .chart-card .card-body {
+        padding: 1.5rem;
+    }
+
+    .chart-container {
+        position: relative;
+        height: 300px;
+    }
+
+    /* Tables */
+    .modern-table {
+        border-radius: 10px;
+        overflow: hidden;
+    }
+
+    .modern-table thead {
+        background: linear-gradient(135deg, #f2994a 0%, #f2c94c 100%);
+        color: white;
+    }
+
+    .modern-table thead th {
+        border: none;
+        padding: 1rem;
+        font-weight: 600;
+    }
+
+    .modern-table tbody tr {
+        transition: all 0.3s ease;
+        border-bottom: 1px solid #f0f0f0;
+    }
+
+    .modern-table tbody tr:hover {
+        background: rgba(242, 153, 74, 0.05);
+        transform: scale(1.01);
+    }
+
+    .modern-table tbody td {
+        padding: 1rem;
+        vertical-align: middle;
+    }
+
+    /* Back Button */
+    .back-button {
+        background: white;
+        border: 2px solid #f2994a;
+        color: #f2994a;
+        border-radius: 10px;
+        padding: 0.75rem 1.5rem;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .back-button:hover {
+        background: #f2994a;
+        color: white;
+        transform: translateY(-2px);
+        box-shadow: var(--card-shadow);
+    }
+
+    /* Empty State */
+    .empty-state {
+        text-align: center;
+        padding: 3rem 1rem;
+        color: #6c757d;
+    }
+
+    .empty-state i {
+        font-size: 4rem;
+        opacity: 0.3;
+        margin-bottom: 1rem;
+    }
+
+    /* Mobile Responsive */
+    @media (max-width: 768px) {
+        .page-header {
+            padding: 1.5rem;
+        }
+
+        .page-header h1 {
+            font-size: 1.5rem;
+        }
+
+        .stats-card h2 {
+            font-size: 1.5rem;
+        }
+
+        .chart-container {
+            height: 250px;
+        }
+    }
+
+    @media (max-width: 576px) {
+        .stats-card .icon-wrapper {
+            width: 50px;
+            height: 50px;
+        }
+
+        .stats-card .icon-wrapper i {
+            font-size: 1.5rem;
+        }
+
+        .chart-container {
+            height: 200px;
+        }
+    }
+
+    /* Animation */
+    @keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .fade-in-up {
+        animation: fadeInUp 0.5s ease-out;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Header -->
+    <div class="page-header fade-in-up">
+        <div class="d-flex justify-content-between align-items-center flex-wrap">
+            <div>
+                <h1><i class="fas fa-user-cog me-2"></i>Аналитика организатора</h1>
+                <p class="mb-0 opacity-75">{{ organizer.username }} - Детальная статистика</p>
+            </div>
+            <a href="{% url 'organizers' %}" class="back-button mt-2 mt-md-0">
+                <i class="fas fa-arrow-left"></i>
+                Назад к списку
+            </a>
+        </div>
+    </div>
+
+    <!-- Stats Row -->
+    <div class="row">
+        <div class="col-xl-6 col-md-6 fade-in-up" style="animation-delay: 0.1s;">
+            <div class="stats-card card primary">
+                <div class="card-body">
+                    <div class="icon-wrapper">
+                        <i class="fas fa-project-diagram"></i>
+                    </div>
+                    <h2>{{ stats.project_count }}</h2>
+                    <p class="card-title">Созданных проектов</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-6 col-md-6 fade-in-up" style="animation-delay: 0.2s;">
+            <div class="stats-card card success">
+                <div class="card-body">
+                    <div class="icon-wrapper">
+                        <i class="fas fa-tasks"></i>
+                    </div>
+                    <h2>{{ stats.task_count }}</h2>
+                    <p class="card-title">Созданных задач</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts Row -->
+    <div class="row">
+        <div class="col-xl-6 fade-in-up" style="animation-delay: 0.6s;">
+            <div class="chart-card card info">
+                <div class="card-header">
+                    <i class="fas fa-chart-pie me-2"></i>Статус проектов
+                </div>
+                <div class="card-body">
+                    <div class="chart-container">
+                        <canvas id="projectStatusChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-6 fade-in-up" style="animation-delay: 0.7s;">
+            <div class="chart-card card warning">
+                <div class="card-header">
+                    <i class="fas fa-chart-area me-2"></i>Статус задач
+                </div>
+                <div class="card-body">
+                    <div class="chart-container">
+                        <canvas id="taskStatusChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Created Projects Table -->
+    <div class="row">
+        <div class="col-12 fade-in-up" style="animation-delay: 0.8s;">
+            <div class="chart-card card primary">
+                <div class="card-header">
+                    <i class="fas fa-project-diagram me-2"></i>Созданные проекты
+                </div>
+                <div class="card-body">
+                    {% if organizer.created_projects.exists %}
+                    <div class="table-responsive">
+                        <table class="table modern-table">
+                            <thead>
+                                <tr>
+                                    <th><i class="fas fa-project-diagram me-2"></i>Проект</th>
+                                    <th class="text-center"><i class="fas fa-calendar-alt me-2"></i>Дата создания</th>
+                                    <th class="text-center"><i class="fas fa-users me-2"></i>Волонтёры</th>
+                                    <th class="text-center"><i class="fas fa-tasks me-2"></i>Задачи</th>
+                                    <th class="text-center"><i class="fas fa-flag me-2"></i>Статус</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for project in organizer.created_projects.all %}
+                                <tr>
+                                    <td>
+                                        <strong>{{ project.title }}</strong>
+                                    </td>
+                                    <td class="text-center">
+                                        <small class="text-muted">{{ project.created_at|date:"d.m.Y" }}</small>
+                                    </td>
+                                    <td class="text-center">
+                                        <span class="badge bg-info rounded-pill">
+                                            {{ project.volunteer_projects.count }}
+                                        </span>
+                                    </td>
+                                    <td class="text-center">
+                                        <span class="badge bg-primary rounded-pill">
+                                            {{ project.tasks.count }}
+                                        </span>
+                                    </td>
+                                    <td class="text-center">
+                                        <span class="badge bg-{% if project.status == 'approved' %}success{% elif project.status == 'rejected' %}danger{% else %}warning{% endif %} rounded-pill">
+                                            {{ project.get_status_display }}
+                                        </span>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="empty-state">
+                        <i class="fas fa-project-diagram"></i>
+                        <p>Нет созданных проектов</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Created Tasks Table -->
+    <div class="row">
+        <div class="col-12 fade-in-up" style="animation-delay: 0.9s;">
+            <div class="chart-card card success">
+                <div class="card-header">
+                    <i class="fas fa-tasks me-2"></i>Созданные задачи (последние 20)
+                </div>
+                <div class="card-body">
+                    {% if organizer.created_projects.exists %}
+                    <div class="table-responsive">
+                        <table class="table modern-table">
+                            <thead>
+                                <tr>
+                                    <th><i class="fas fa-tasks me-2"></i>Задача</th>
+                                    <th><i class="fas fa-project-diagram me-2"></i>Проект</th>
+                                    <th class="text-center"><i class="fas fa-flag me-2"></i>Статус</th>
+                                    <th class="text-center"><i class="fas fa-calendar-alt me-2"></i>Срок</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for project in organizer.created_projects.all %}
+                                    {% for task in project.tasks.all|slice:":20" %}
+                                    <tr>
+                                        <td>
+                                            <strong>{{ task.text|truncatechars:60 }}</strong>
+                                        </td>
+                                        <td>
+                                            <small class="text-muted">{{ project.title|truncatechars:30 }}</small>
+                                        </td>
+                                        <td class="text-center">
+                                            <span class="badge bg-{% if task.status == 'completed' %}success{% elif task.status == 'in_progress' %}warning{% else %}secondary{% endif %} rounded-pill">
+                                                {{ task.get_status_display }}
+                                            </span>
+                                        </td>
+                                        <td class="text-center">
+                                            <small class="text-muted">{{ task.deadline_date|date:"d.m.Y"|default:"-" }}</small>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="empty-state">
+                        <i class="fas fa-tasks"></i>
+                        <p>Нет созданных задач</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('Organizer Analytics page loaded');
+
+        // Common chart options
+        const commonOptions = {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        padding: 15,
+                        font: {
+                            size: window.innerWidth < 768 ? 11 : 13,
+                            family: "'Nunito', sans-serif",
+                            weight: '600'
+                        },
+                        usePointStyle: true
+                    }
+                },
+                tooltip: {
+                    backgroundColor: 'rgba(0, 0, 0, 0.85)',
+                    padding: 12,
+                    titleFont: {
+                        size: 14,
+                        weight: 'bold'
+                    },
+                    bodyFont: {
+                        size: 13
+                    },
+                    borderColor: 'rgba(255, 255, 255, 0.2)',
+                    borderWidth: 1
+                }
+            },
+            animation: {
+                duration: 1000,
+                easing: 'easeInOutQuart'
+            }
+        };
+
+        // Project Status Chart
+        const projectStatusData = {
+            approved: 0,
+            pending: 0,
+            rejected: 0
+        };
+
+        {% for project in organizer.created_projects.all %}
+            {% if project.status == 'approved' %}
+                projectStatusData.approved++;
+            {% elif project.status == 'pending' %}
+                projectStatusData.pending++;
+            {% elif project.status == 'rejected' %}
+                projectStatusData.rejected++;
+            {% endif %}
+        {% endfor %}
+
+        const projectStatusCtx = document.getElementById('projectStatusChart');
+        if (projectStatusCtx) {
+            new Chart(projectStatusCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Одобрено', 'На модерации', 'Отклонено'],
+                    datasets: [{
+                        data: [
+                            projectStatusData.approved,
+                            projectStatusData.pending,
+                            projectStatusData.rejected
+                        ],
+                        backgroundColor: [
+                            'rgba(86, 171, 47, 0.8)',
+                            'rgba(242, 153, 74, 0.8)',
+                            'rgba(235, 51, 73, 0.8)'
+                        ],
+                        hoverBackgroundColor: [
+                            'rgba(86, 171, 47, 1)',
+                            'rgba(242, 153, 74, 1)',
+                            'rgba(235, 51, 73, 1)'
+                        ],
+                        borderWidth: 3,
+                        borderColor: '#fff'
+                    }]
+                },
+                options: {
+                    ...commonOptions,
+                    cutout: '60%',
+                    plugins: {
+                        ...commonOptions.plugins,
+                        tooltip: {
+                            ...commonOptions.plugins.tooltip,
+                            callbacks: {
+                                label: function(context) {
+                                    const label = context.label || '';
+                                    const value = context.raw || 0;
+                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                    const percentage = total > 0 ? Math.round((value / total) * 100) : 0;
+                                    return `${label}: ${value} (${percentage}%)`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Task Status Chart
+        const taskStatusData = {
+            open: 0,
+            in_progress: 0,
+            completed: 0,
+            failed: 0,
+            closed: 0
+        };
+
+        {% for project in organizer.created_projects.all %}
+            {% for task in project.tasks.all %}
+                {% if task.status == 'open' %}
+                    taskStatusData.open++;
+                {% elif task.status == 'in_progress' %}
+                    taskStatusData.in_progress++;
+                {% elif task.status == 'completed' %}
+                    taskStatusData.completed++;
+                {% elif task.status == 'failed' %}
+                    taskStatusData.failed++;
+                {% elif task.status == 'closed' %}
+                    taskStatusData.closed++;
+                {% endif %}
+            {% endfor %}
+        {% endfor %}
+
+        const taskStatusCtx = document.getElementById('taskStatusChart');
+        if (taskStatusCtx) {
+            new Chart(taskStatusCtx, {
+                type: 'bar',
+                data: {
+                    labels: ['Открыто', 'В работе', 'Выполнено', 'Не выполнено'],
+                    datasets: [{
+                        label: 'Количество задач',
+                        data: [
+                            taskStatusData.open,
+                            taskStatusData.in_progress,
+                            taskStatusData.completed,
+                            taskStatusData.failed,
+                            taskStatusData.closed
+                        ],
+                        backgroundColor: [
+                            'rgba(33, 150, 243, 0.8)',
+                            'rgba(255, 193, 7, 0.8)',
+                            'rgba(76, 175, 80, 0.8)',
+                            'rgba(244, 67, 54, 0.8)',
+                            'rgba(158, 158, 158, 0.8)'
+                        ],
+                        borderColor: [
+                            '#2196F3',
+                            '#FFC107',
+                            '#4CAF50',
+                            '#F44336',
+                            '#9E9E9E'
+                        ],
+                        borderWidth: 2,
+                        borderRadius: 8
+                    }]
+                },
+                options: {
+                    ...commonOptions,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.05)'
+                            },
+                            ticks: {
+                                font: {
+                                    size: 11
+                                },
+                                stepSize: 1
+                            }
+                        },
+                        x: {
+                            grid: {
+                                display: false
+                            },
+                            ticks: {
+                                font: {
+                                    size: 10
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+    });
+</script>
+{% endblock %}

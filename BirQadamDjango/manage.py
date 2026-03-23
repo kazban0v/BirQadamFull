@@ -11,7 +11,11 @@ if sys.platform == 'win32':
 
 def main() -> None:
     """Run administrative tasks."""
+<<<<<<< HEAD
     os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'birqadam_project.settings')
+=======
+    os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'volunteer_project.settings')
+>>>>>>> 454d8bbea435ed81a976fb150730645318bfb4cd
     try:
         from django.core.management import execute_from_command_line
     except ImportError as exc:

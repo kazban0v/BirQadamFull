@@ -37,6 +37,7 @@ __MACOSX/
 
 # Node (если есть фронтенд в проекте)
 node_modules/
+<<<<<<< HEAD
 # dist/ - раскомментировано, чтобы коммитить собранный фронтенд для Railway
 # Исключаем только node_modules и другие временные файлы
 # BirQadamDjango/frontend/dist/ должен быть в git для production deployment
@@ -48,3 +49,10 @@ backup_DB/
 *.bak
 *.sql
 *.dump
+=======
+build/
+# Frontend build output (не коммитим скомпилированные файлы)
+BirQadamDjango/frontend/dist/
+BirQadamDjango/frontend/.idea/
+BirQadamDjango/frontend/.vscode/
+>>>>>>> 454d8bbea435ed81a976fb150730645318bfb4cd

@@ -1,0 +1,811 @@
+ERROR 2025-11-02 04:27:50,450 log 40392 26748 Internal Server Error: /custom-admin/api/v1/bulk-notifications/
+Traceback (most recent call last):
+  File "C:\Users\User\Desktop\BirQadam\BirQadamdjango\benv\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+  File "C:\Users\User\Desktop\BirQadam\BirQadamdjango\custom_admin\middleware\middleware.py", line 106, in __call__
+    if self.is_rate_limited(ip_address, request.path):
+       ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\Desktop\BirQadam\BirQadamdjango\custom_admin\middleware\middleware.py", line 143, in is_rate_limited
+    cache.incr(cache_key)
+    ~~~~~~~~~~^^^^^^^^^^^
+  File "C:\Users\User\Desktop\BirQadam\BirQadamdjango\benv\Lib\site-packages\django\core\cache\backends\locmem.py", line 71, in incr
+    raise ValueError("Key '%s' not found" % key)
+ValueError: Key ':1:rate_limit_127.0.0.1' not found
+ERROR 2025-11-02 04:27:50,457 basehttp 40392 26748 "GET /custom-admin/api/v1/bulk-notifications/ HTTP/1.1" 500 13553
+ERROR 2025-11-10 01:00:33,443 log 40108 11824 Internal Server Error: /api/web/register/volunteer/
+Traceback (most recent call last):
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\django\core\handlers\base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\django\views\decorators\csrf.py", line 65, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\django\views\generic\base.py", line 104, in view
+    return self.dispatch(request, *args, **kwargs)
+           ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\django\utils\decorators.py", line 48, in _wrapper
+    return bound_method(*args, **kwargs)
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\django\views\decorators\csrf.py", line 65, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\rest_framework\views.py", line 515, in dispatch
+    response = self.handle_exception(exc)
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\rest_framework\views.py", line 475, in handle_exception
+    self.raise_uncaught_exception(exc)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\rest_framework\views.py", line 486, in raise_uncaught_exception
+    raise exc
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\rest_framework\views.py", line 512, in dispatch
+    response = handler(request, *args, **kwargs)
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\core\api\web_portal.py", line 75, in post
+    result = register_volunteer(**serializer.validated_data)
+  File "C:\Users\User\AppData\Local\Programs\Python\Python313\Lib\contextlib.py", line 85, in inner
+    return func(*args, **kwds)
+TypeError: register_volunteer() missing 2 required keyword-only arguments: 'email' and 'password'
+ERROR 2025-11-10 01:00:33,447 basehttp 40108 11824 "POST /api/web/register/volunteer/ HTTP/1.1" 500 8353
+ERROR 2025-11-11 01:41:59,867 log 25480 28196 Internal Server Error: /custom-admin/api/projects/7/tasks/
+ERROR 2025-11-11 01:41:59,870 basehttp 25480 28196 "POST /custom-admin/api/projects/7/tasks/ HTTP/1.1" 500 173
+ERROR 2025-11-11 01:42:08,130 log 25480 28196 Internal Server Error: /custom-admin/api/projects/7/tasks/
+ERROR 2025-11-11 01:42:08,132 basehttp 25480 28196 "POST /custom-admin/api/projects/7/tasks/ HTTP/1.1" 500 173
+ERROR 2025-11-11 01:42:12,899 log 25480 28196 Internal Server Error: /custom-admin/api/projects/7/tasks/
+ERROR 2025-11-11 01:42:12,901 basehttp 25480 28196 "POST /custom-admin/api/projects/7/tasks/ HTTP/1.1" 500 173
+ERROR 2025-11-11 11:59:40,415 log 8288 24404 Internal Server Error: /api/web/volunteer/projects/
+Traceback (most recent call last):
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\django\db\models\sql\query.py", line 2234, in add_fields
+    join_info = self.setup_joins(
+        name.split(LOOKUP_SEP), opts, alias, allow_many=allow_m2m
+    )
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\django\db\models\sql\query.py", line 1897, in setup_joins
+    path, final_field, targets, rest = self.names_to_path(
+                                       ~~~~~~~~~~~~~~~~~~^
+        names[:pivot],
+        ^^^^^^^^^^^^^^
+    ...<2 lines>...
+        fail_on_missing=True,
+        ^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\django\db\models\sql\query.py", line 1802, in names_to_path
+    raise FieldError(
+    ...<2 lines>...
+    )
+django.core.exceptions.FieldError: Cannot resolve keyword 'created_at' into field. Choices are: id, is_active, joined_at, project, project_id, volunteer, volunteer_id
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\django\core\handlers\base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\django\views\decorators\csrf.py", line 65, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\django\views\generic\base.py", line 104, in view
+    return self.dispatch(request, *args, **kwargs)
+           ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\django\utils\decorators.py", line 48, in _wrapper
+    return bound_method(*args, **kwargs)
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\django\views\decorators\csrf.py", line 65, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\rest_framework\views.py", line 515, in dispatch
+    response = self.handle_exception(exc)
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\rest_framework\views.py", line 475, in handle_exception
+    self.raise_uncaught_exception(exc)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\rest_framework\views.py", line 486, in raise_uncaught_exception
+    raise exc
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\rest_framework\views.py", line 512, in dispatch
+    response = handler(request, *args, **kwargs)
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\core\api\web_portal.py", line 550, in get
+    catalog = get_projects_catalog(request.user)
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\core\services\web_portal_projects.py", line 17, in get_projects_catalog
+    for project_id, created_at in joined_projects.values_list('project_id', 'created_at')
+                                  ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\django\db\models\query.py", line 1397, in values_list
+    clone = self._values(*_fields, **expressions)
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\django\db\models\query.py", line 1360, in _values
+    clone.query.set_values(fields)
+    ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\django\db\models\sql\query.py", line 2557, in set_values
+    self.add_fields(field_names, True)
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\django\db\models\sql\query.py", line 2262, in add_fields
+    raise FieldError(
+    ...<2 lines>...
+    )
+django.core.exceptions.FieldError: Cannot resolve keyword 'created_at' into field. Choices are: id, is_active, joined_at, project, project_id, volunteer, volunteer_id
+ERROR 2025-11-11 11:59:40,424 basehttp 8288 24404 "GET /api/web/volunteer/projects/ HTTP/1.1" 500 8658
+ERROR 2025-11-11 12:00:20,035 log 8288 24404 Internal Server Error: /api/web/volunteer/projects/
+Traceback (most recent call last):
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\django\db\models\sql\query.py", line 2234, in add_fields
+    join_info = self.setup_joins(
+        name.split(LOOKUP_SEP), opts, alias, allow_many=allow_m2m
+    )
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\django\db\models\sql\query.py", line 1897, in setup_joins
+    path, final_field, targets, rest = self.names_to_path(
+                                       ~~~~~~~~~~~~~~~~~~^
+        names[:pivot],
+        ^^^^^^^^^^^^^^
+    ...<2 lines>...
+        fail_on_missing=True,
+        ^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\django\db\models\sql\query.py", line 1802, in names_to_path
+    raise FieldError(
+    ...<2 lines>...
+    )
+django.core.exceptions.FieldError: Cannot resolve keyword 'created_at' into field. Choices are: id, is_active, joined_at, project, project_id, volunteer, volunteer_id
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\django\core\handlers\base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\django\views\decorators\csrf.py", line 65, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\django\views\generic\base.py", line 104, in view
+    return self.dispatch(request, *args, **kwargs)
+           ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\django\utils\decorators.py", line 48, in _wrapper
+    return bound_method(*args, **kwargs)
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\django\views\decorators\csrf.py", line 65, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\rest_framework\views.py", line 515, in dispatch
+    response = self.handle_exception(exc)
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\rest_framework\views.py", line 475, in handle_exception
+    self.raise_uncaught_exception(exc)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\rest_framework\views.py", line 486, in raise_uncaught_exception
+    raise exc
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\rest_framework\views.py", line 512, in dispatch
+    response = handler(request, *args, **kwargs)
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\core\api\web_portal.py", line 550, in get
+    catalog = get_projects_catalog(request.user)
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\core\services\web_portal_projects.py", line 17, in get_projects_catalog
+    for project_id, created_at in joined_projects.values_list('project_id', 'created_at')
+                                  ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\django\db\models\query.py", line 1397, in values_list
+    clone = self._values(*_fields, **expressions)
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\django\db\models\query.py", line 1360, in _values
+    clone.query.set_values(fields)
+    ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\django\db\models\sql\query.py", line 2557, in set_values
+    self.add_fields(field_names, True)
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\django\db\models\sql\query.py", line 2262, in add_fields
+    raise FieldError(
+    ...<2 lines>...
+    )
+django.core.exceptions.FieldError: Cannot resolve keyword 'created_at' into field. Choices are: id, is_active, joined_at, project, project_id, volunteer, volunteer_id
+ERROR 2025-11-11 12:00:20,041 basehttp 8288 24404 "GET /api/web/volunteer/projects/ HTTP/1.1" 500 8710
+ERROR 2025-11-11 12:00:56,348 log 8288 24404 Internal Server Error: /api/web/volunteer/projects/
+Traceback (most recent call last):
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\django\db\models\sql\query.py", line 2234, in add_fields
+    join_info = self.setup_joins(
+        name.split(LOOKUP_SEP), opts, alias, allow_many=allow_m2m
+    )
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\django\db\models\sql\query.py", line 1897, in setup_joins
+    path, final_field, targets, rest = self.names_to_path(
+                                       ~~~~~~~~~~~~~~~~~~^
+        names[:pivot],
+        ^^^^^^^^^^^^^^
+    ...<2 lines>...
+        fail_on_missing=True,
+        ^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\django\db\models\sql\query.py", line 1802, in names_to_path
+    raise FieldError(
+    ...<2 lines>...
+    )
+django.core.exceptions.FieldError: Cannot resolve keyword 'created_at' into field. Choices are: id, is_active, joined_at, project, project_id, volunteer, volunteer_id
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\django\core\handlers\base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\django\views\decorators\csrf.py", line 65, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\django\views\generic\base.py", line 104, in view
+    return self.dispatch(request, *args, **kwargs)
+           ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\django\utils\decorators.py", line 48, in _wrapper
+    return bound_method(*args, **kwargs)
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\django\views\decorators\csrf.py", line 65, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\rest_framework\views.py", line 515, in dispatch
+    response = self.handle_exception(exc)
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\rest_framework\views.py", line 475, in handle_exception
+    self.raise_uncaught_exception(exc)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\rest_framework\views.py", line 486, in raise_uncaught_exception
+    raise exc
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\rest_framework\views.py", line 512, in dispatch
+    response = handler(request, *args, **kwargs)
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\core\api\web_portal.py", line 550, in get
+    catalog = get_projects_catalog(request.user)
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\core\services\web_portal_projects.py", line 17, in get_projects_catalog
+    for project_id, created_at in joined_projects.values_list('project_id', 'created_at')
+                                  ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\django\db\models\query.py", line 1397, in values_list
+    clone = self._values(*_fields, **expressions)
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\django\db\models\query.py", line 1360, in _values
+    clone.query.set_values(fields)
+    ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\django\db\models\sql\query.py", line 2557, in set_values
+    self.add_fields(field_names, True)
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\django\db\models\sql\query.py", line 2262, in add_fields
+    raise FieldError(
+    ...<2 lines>...
+    )
+django.core.exceptions.FieldError: Cannot resolve keyword 'created_at' into field. Choices are: id, is_active, joined_at, project, project_id, volunteer, volunteer_id
+ERROR 2025-11-11 12:00:56,356 basehttp 8288 24404 "GET /api/web/volunteer/projects/ HTTP/1.1" 500 8727
+ERROR 2025-11-11 12:17:19,726 log 15924 15712 Internal Server Error: /api/web/volunteer/projects/
+Traceback (most recent call last):
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\django\db\models\sql\query.py", line 2234, in add_fields
+    join_info = self.setup_joins(
+        name.split(LOOKUP_SEP), opts, alias, allow_many=allow_m2m
+    )
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\django\db\models\sql\query.py", line 1897, in setup_joins
+    path, final_field, targets, rest = self.names_to_path(
+                                       ~~~~~~~~~~~~~~~~~~^
+        names[:pivot],
+        ^^^^^^^^^^^^^^
+    ...<2 lines>...
+        fail_on_missing=True,
+        ^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\django\db\models\sql\query.py", line 1802, in names_to_path
+    raise FieldError(
+    ...<2 lines>...
+    )
+django.core.exceptions.FieldError: Cannot resolve keyword 'created_at' into field. Choices are: id, is_active, joined_at, project, project_id, volunteer, volunteer_id
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\django\core\handlers\base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\django\views\decorators\csrf.py", line 65, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\django\views\generic\base.py", line 104, in view
+    return self.dispatch(request, *args, **kwargs)
+           ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\django\utils\decorators.py", line 48, in _wrapper
+    return bound_method(*args, **kwargs)
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\django\views\decorators\csrf.py", line 65, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\rest_framework\views.py", line 515, in dispatch
+    response = self.handle_exception(exc)
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\rest_framework\views.py", line 475, in handle_exception
+    self.raise_uncaught_exception(exc)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\rest_framework\views.py", line 486, in raise_uncaught_exception
+    raise exc
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\rest_framework\views.py", line 512, in dispatch
+    response = handler(request, *args, **kwargs)
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\core\api\web_portal.py", line 550, in get
+    catalog = get_projects_catalog(request.user)
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\core\services\web_portal_projects.py", line 17, in get_projects_catalog
+    for project_id, created_at in joined_projects.values_list('project_id', 'created_at')
+                                  ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\django\db\models\query.py", line 1397, in values_list
+    clone = self._values(*_fields, **expressions)
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\django\db\models\query.py", line 1360, in _values
+    clone.query.set_values(fields)
+    ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\django\db\models\sql\query.py", line 2557, in set_values
+    self.add_fields(field_names, True)
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\django\db\models\sql\query.py", line 2262, in add_fields
+    raise FieldError(
+    ...<2 lines>...
+    )
+django.core.exceptions.FieldError: Cannot resolve keyword 'created_at' into field. Choices are: id, is_active, joined_at, project, project_id, volunteer, volunteer_id
+ERROR 2025-11-11 12:17:19,747 basehttp 15924 15712 "GET /api/web/volunteer/projects/ HTTP/1.1" 500 8717
+ERROR 2025-11-11 12:17:23,051 log 15924 15712 Internal Server Error: /api/web/volunteer/projects/
+Traceback (most recent call last):
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\django\db\models\sql\query.py", line 2234, in add_fields
+    join_info = self.setup_joins(
+        name.split(LOOKUP_SEP), opts, alias, allow_many=allow_m2m
+    )
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\django\db\models\sql\query.py", line 1897, in setup_joins
+    path, final_field, targets, rest = self.names_to_path(
+                                       ~~~~~~~~~~~~~~~~~~^
+        names[:pivot],
+        ^^^^^^^^^^^^^^
+    ...<2 lines>...
+        fail_on_missing=True,
+        ^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\django\db\models\sql\query.py", line 1802, in names_to_path
+    raise FieldError(
+    ...<2 lines>...
+    )
+django.core.exceptions.FieldError: Cannot resolve keyword 'created_at' into field. Choices are: id, is_active, joined_at, project, project_id, volunteer, volunteer_id
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\django\core\handlers\base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\django\views\decorators\csrf.py", line 65, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\django\views\generic\base.py", line 104, in view
+    return self.dispatch(request, *args, **kwargs)
+           ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\django\utils\decorators.py", line 48, in _wrapper
+    return bound_method(*args, **kwargs)
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\django\views\decorators\csrf.py", line 65, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\rest_framework\views.py", line 515, in dispatch
+    response = self.handle_exception(exc)
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\rest_framework\views.py", line 475, in handle_exception
+    self.raise_uncaught_exception(exc)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\rest_framework\views.py", line 486, in raise_uncaught_exception
+    raise exc
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\rest_framework\views.py", line 512, in dispatch
+    response = handler(request, *args, **kwargs)
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\core\api\web_portal.py", line 550, in get
+    catalog = get_projects_catalog(request.user)
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\core\services\web_portal_projects.py", line 17, in get_projects_catalog
+    for project_id, created_at in joined_projects.values_list('project_id', 'created_at')
+                                  ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\django\db\models\query.py", line 1397, in values_list
+    clone = self._values(*_fields, **expressions)
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\django\db\models\query.py", line 1360, in _values
+    clone.query.set_values(fields)
+    ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\django\db\models\sql\query.py", line 2557, in set_values
+    self.add_fields(field_names, True)
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\django\db\models\sql\query.py", line 2262, in add_fields
+    raise FieldError(
+    ...<2 lines>...
+    )
+django.core.exceptions.FieldError: Cannot resolve keyword 'created_at' into field. Choices are: id, is_active, joined_at, project, project_id, volunteer, volunteer_id
+ERROR 2025-11-11 12:17:23,061 basehttp 15924 15712 "GET /api/web/volunteer/projects/ HTTP/1.1" 500 8696
+ERROR 2025-11-11 12:17:34,578 log 15924 15712 Internal Server Error: /api/web/volunteer/projects/
+Traceback (most recent call last):
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\django\db\models\sql\query.py", line 2234, in add_fields
+    join_info = self.setup_joins(
+        name.split(LOOKUP_SEP), opts, alias, allow_many=allow_m2m
+    )
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\django\db\models\sql\query.py", line 1897, in setup_joins
+    path, final_field, targets, rest = self.names_to_path(
+                                       ~~~~~~~~~~~~~~~~~~^
+        names[:pivot],
+        ^^^^^^^^^^^^^^
+    ...<2 lines>...
+        fail_on_missing=True,
+        ^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\django\db\models\sql\query.py", line 1802, in names_to_path
+    raise FieldError(
+    ...<2 lines>...
+    )
+django.core.exceptions.FieldError: Cannot resolve keyword 'created_at' into field. Choices are: id, is_active, joined_at, project, project_id, volunteer, volunteer_id
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\django\core\handlers\base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\django\views\decorators\csrf.py", line 65, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\django\views\generic\base.py", line 104, in view
+    return self.dispatch(request, *args, **kwargs)
+           ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\django\utils\decorators.py", line 48, in _wrapper
+    return bound_method(*args, **kwargs)
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\django\views\decorators\csrf.py", line 65, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\rest_framework\views.py", line 515, in dispatch
+    response = self.handle_exception(exc)
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\rest_framework\views.py", line 475, in handle_exception
+    self.raise_uncaught_exception(exc)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\rest_framework\views.py", line 486, in raise_uncaught_exception
+    raise exc
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\rest_framework\views.py", line 512, in dispatch
+    response = handler(request, *args, **kwargs)
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\core\api\web_portal.py", line 550, in get
+    catalog = get_projects_catalog(request.user)
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\core\services\web_portal_projects.py", line 17, in get_projects_catalog
+    for project_id, created_at in joined_projects.values_list('project_id', 'created_at')
+                                  ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\django\db\models\query.py", line 1397, in values_list
+    clone = self._values(*_fields, **expressions)
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\django\db\models\query.py", line 1360, in _values
+    clone.query.set_values(fields)
+    ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\django\db\models\sql\query.py", line 2557, in set_values
+    self.add_fields(field_names, True)
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\django\db\models\sql\query.py", line 2262, in add_fields
+    raise FieldError(
+    ...<2 lines>...
+    )
+django.core.exceptions.FieldError: Cannot resolve keyword 'created_at' into field. Choices are: id, is_active, joined_at, project, project_id, volunteer, volunteer_id
+ERROR 2025-11-11 12:17:34,586 basehttp 15924 15712 "GET /api/web/volunteer/projects/ HTTP/1.1" 500 8631
+ERROR 2025-11-11 12:17:38,441 log 15924 15712 Internal Server Error: /api/web/volunteer/projects/
+Traceback (most recent call last):
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\django\db\models\sql\query.py", line 2234, in add_fields
+    join_info = self.setup_joins(
+        name.split(LOOKUP_SEP), opts, alias, allow_many=allow_m2m
+    )
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\django\db\models\sql\query.py", line 1897, in setup_joins
+    path, final_field, targets, rest = self.names_to_path(
+                                       ~~~~~~~~~~~~~~~~~~^
+        names[:pivot],
+        ^^^^^^^^^^^^^^
+    ...<2 lines>...
+        fail_on_missing=True,
+        ^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\django\db\models\sql\query.py", line 1802, in names_to_path
+    raise FieldError(
+    ...<2 lines>...
+    )
+django.core.exceptions.FieldError: Cannot resolve keyword 'created_at' into field. Choices are: id, is_active, joined_at, project, project_id, volunteer, volunteer_id
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\django\core\handlers\base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\django\views\decorators\csrf.py", line 65, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\django\views\generic\base.py", line 104, in view
+    return self.dispatch(request, *args, **kwargs)
+           ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\django\utils\decorators.py", line 48, in _wrapper
+    return bound_method(*args, **kwargs)
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\django\views\decorators\csrf.py", line 65, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\rest_framework\views.py", line 515, in dispatch
+    response = self.handle_exception(exc)
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\rest_framework\views.py", line 475, in handle_exception
+    self.raise_uncaught_exception(exc)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\rest_framework\views.py", line 486, in raise_uncaught_exception
+    raise exc
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\rest_framework\views.py", line 512, in dispatch
+    response = handler(request, *args, **kwargs)
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\core\api\web_portal.py", line 550, in get
+    catalog = get_projects_catalog(request.user)
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\core\services\web_portal_projects.py", line 17, in get_projects_catalog
+    for project_id, created_at in joined_projects.values_list('project_id', 'created_at')
+                                  ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\django\db\models\query.py", line 1397, in values_list
+    clone = self._values(*_fields, **expressions)
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\django\db\models\query.py", line 1360, in _values
+    clone.query.set_values(fields)
+    ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\django\db\models\sql\query.py", line 2557, in set_values
+    self.add_fields(field_names, True)
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\django\db\models\sql\query.py", line 2262, in add_fields
+    raise FieldError(
+    ...<2 lines>...
+    )
+django.core.exceptions.FieldError: Cannot resolve keyword 'created_at' into field. Choices are: id, is_active, joined_at, project, project_id, volunteer, volunteer_id
+ERROR 2025-11-11 12:17:38,454 basehttp 15924 15712 "GET /api/web/volunteer/projects/ HTTP/1.1" 500 8691
+ERROR 2025-11-11 12:27:27,376 log 22428 20548 Internal Server Error: /api/web/register/organizer/
+Traceback (most recent call last):
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\django\db\backends\utils.py", line 105, in _execute
+    return self.cursor.execute(sql, params)
+           ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+psycopg2.errors.StringDataRightTruncation: ОШИБКА:  значение не умещается в тип character varying(15)
+
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\django\core\handlers\base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\django\views\decorators\csrf.py", line 65, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\django\views\generic\base.py", line 104, in view
+    return self.dispatch(request, *args, **kwargs)
+           ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\django\utils\decorators.py", line 48, in _wrapper
+    return bound_method(*args, **kwargs)
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\django\views\decorators\csrf.py", line 65, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\rest_framework\views.py", line 515, in dispatch
+    response = self.handle_exception(exc)
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\rest_framework\views.py", line 475, in handle_exception
+    self.raise_uncaught_exception(exc)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\rest_framework\views.py", line 486, in raise_uncaught_exception
+    raise exc
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\rest_framework\views.py", line 512, in dispatch
+    response = handler(request, *args, **kwargs)
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\core\api\web_portal.py", line 110, in post
+    result = register_organizer(**serializer.validated_data)
+  File "C:\Users\User\AppData\Local\Programs\Python\Python313\Lib\contextlib.py", line 85, in inner
+    return func(*args, **kwds)
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\core\services\registration.py", line 128, in register_organizer
+    user.save()
+    ~~~~~~~~~^^
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\core\models.py", line 143, in save
+    super().save(*args, **kwargs)
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\django\contrib\auth\base_user.py", line 65, in save
+    super().save(*args, **kwargs)
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\django\db\models\base.py", line 902, in save
+    self.save_base(
+    ~~~~~~~~~~~~~~^
+        using=using,
+        ^^^^^^^^^^^^
+    ...<2 lines>...
+        update_fields=update_fields,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\django\db\models\base.py", line 1008, in save_base
+    updated = self._save_table(
+        raw,
+    ...<4 lines>...
+        update_fields,
+    )
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\django\db\models\base.py", line 1169, in _save_table
+    results = self._do_insert(
+        cls._base_manager, using, fields, returning_fields, raw
+    )
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\django\db\models\base.py", line 1210, in _do_insert
+    return manager._insert(
+           ~~~~~~~~~~~~~~~^
+        [self],
+        ^^^^^^^
+    ...<3 lines>...
+        raw=raw,
+        ^^^^^^^^
+    )
+    ^
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\django\db\models\manager.py", line 87, in manager_method
+    return getattr(self.get_queryset(), name)(*args, **kwargs)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\django\db\models\query.py", line 1854, in _insert
+    return query.get_compiler(using=using).execute_sql(returning_fields)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\django\db\models\sql\compiler.py", line 1881, in execute_sql
+    cursor.execute(sql, params)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\django\db\backends\utils.py", line 122, in execute
+    return super().execute(sql, params)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\django\db\backends\utils.py", line 79, in execute
+    return self._execute_with_wrappers(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        sql, params, many=False, executor=self._execute
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\django\db\backends\utils.py", line 92, in _execute_with_wrappers
+    return executor(sql, params, many, context)
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\django\db\backends\utils.py", line 100, in _execute
+    with self.db.wrap_database_errors:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\django\db\utils.py", line 91, in __exit__
+    raise dj_exc_value.with_traceback(traceback) from exc_value
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\benv\Lib\site-packages\django\db\backends\utils.py", line 105, in _execute
+    return self.cursor.execute(sql, params)
+           ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+django.db.utils.DataError: ОШИБКА:  значение не умещается в тип character varying(15)
+
+ERROR 2025-11-11 12:27:27,411 basehttp 22428 20548 "POST /api/web/register/organizer/ HTTP/1.1" 500 8997
+ERROR 2025-11-17 22:19:11,089 log 5328 25008 Internal Server Error: /admin/core/user/
+Traceback (most recent call last):
+  File "C:\Users\User\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\db\backends\utils.py", line 105, in _execute
+    return self.cursor.execute(sql, params)
+           ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+psycopg2.errors.UndefinedTable: ОШИБКА:  отношение "core_emailverificationcode" не существует
+LINE 1: ...."avatar", "core_user"."registration_source" FROM "core_emai...
+                                                             ^
+
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\User\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+  File "C:\Users\User\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\core\handlers\base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+  File "C:\Users\User\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\contrib\admin\options.py", line 719, in wrapper
+    return self.admin_site.admin_view(view)(*args, **kwargs)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\utils\decorators.py", line 192, in _view_wrapper
+    result = _process_exception(request, e)
+  File "C:\Users\User\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\utils\decorators.py", line 190, in _view_wrapper
+    response = view_func(request, *args, **kwargs)
+  File "C:\Users\User\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\views\decorators\cache.py", line 80, in _view_wrapper
+    response = view_func(request, *args, **kwargs)
+  File "C:\Users\User\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\contrib\admin\sites.py", line 246, in inner
+    return view(request, *args, **kwargs)
+  File "C:\Users\User\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\utils\decorators.py", line 48, in _wrapper
+    return bound_method(*args, **kwargs)
+  File "C:\Users\User\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\utils\decorators.py", line 192, in _view_wrapper
+    result = _process_exception(request, e)
+  File "C:\Users\User\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\utils\decorators.py", line 190, in _view_wrapper
+    response = view_func(request, *args, **kwargs)
+  File "C:\Users\User\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\contrib\admin\options.py", line 2057, in changelist_view
+    response = self.response_action(
+        request, queryset=cl.get_queryset(request)
+    )
+  File "C:\Users\User\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\contrib\admin\options.py", line 1686, in response_action
+    response = func(self, request, queryset)
+  File "C:\Users\User\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\contrib\admin\actions.py", line 39, in delete_selected
+    ) = modeladmin.get_deleted_objects(queryset, request)
+        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\contrib\admin\options.py", line 2199, in get_deleted_objects
+    return get_deleted_objects(objs, request, self.admin_site)
+  File "C:\Users\User\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\contrib\admin\utils.py", line 138, in get_deleted_objects
+    collector.collect(objs)
+    ~~~~~~~~~~~~~~~~~^^^^^^
+  File "C:\Users\User\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\contrib\admin\utils.py", line 205, in collect
+    return super().collect(objs, source_attr=source_attr, **kwargs)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\db\models\deletion.py", line 343, in collect
+    if getattr(on_delete, "lazy_sub_objs", False) or sub_objs:
+                                                     ^^^^^^^^
+  File "C:\Users\User\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\db\models\query.py", line 398, in __bool__
+    self._fetch_all()
+    ~~~~~~~~~~~~~~~^^
+  File "C:\Users\User\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\db\models\query.py", line 1935, in _fetch_all
+    self._result_cache = list(self._iterable_class(self))
+                         ~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\db\models\query.py", line 91, in __iter__
+    results = compiler.execute_sql(
+        chunked_fetch=self.chunked_fetch, chunk_size=self.chunk_size
+    )
+  File "C:\Users\User\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\db\models\sql\compiler.py", line 1622, in execute_sql
+    cursor.execute(sql, params)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\Users\User\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\db\backends\utils.py", line 122, in execute
+    return super().execute(sql, params)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\Users\User\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\db\backends\utils.py", line 79, in execute
+    return self._execute_with_wrappers(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        sql, params, many=False, executor=self._execute
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\User\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\db\backends\utils.py", line 92, in _execute_with_wrappers
+    return executor(sql, params, many, context)
+  File "C:\Users\User\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\db\backends\utils.py", line 100, in _execute
+    with self.db.wrap_database_errors:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\db\utils.py", line 91, in __exit__
+    raise dj_exc_value.with_traceback(traceback) from exc_value
+  File "C:\Users\User\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\db\backends\utils.py", line 105, in _execute
+    return self.cursor.execute(sql, params)
+           ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+django.db.utils.ProgrammingError: ОШИБКА:  отношение "core_emailverificationcode" не существует
+LINE 1: ...."avatar", "core_user"."registration_source" FROM "core_emai...
+                                                             ^
+
+ERROR 2025-11-17 22:19:11,106 basehttp 5328 25008 "POST /admin/core/user/?q=7760051224 HTTP/1.1" 500 24208
+ERROR 2025-11-17 22:22:26,763 basehttp 5328 25008 "POST /admin/core/user/?q= HTTP/1.1" 500 23831
+ERROR 2025-11-17 22:24:43,843 basehttp 8136 32336 "POST /admin/core/user/?q= HTTP/1.1" 500 23820
+ERROR 2025-11-17 22:24:55,512 basehttp 8136 32336 "POST /admin/core/user/?q= HTTP/1.1" 500 23774
+ERROR 2025-11-17 22:25:15,105 basehttp 8136 5988 "POST /admin/core/user/ HTTP/1.1" 500 23778
+ERROR 2025-11-17 22:27:17,868 basehttp 18588 17544 "POST /admin/core/user/ HTTP/1.1" 500 24096
+ERROR 2025-11-17 22:29:06,868 log 18588 17544 Internal Server Error: /admin/core/user/
+Traceback (most recent call last):
+  File "C:\Users\User\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\db\backends\utils.py", line 105, in _execute
+    return self.cursor.execute(sql, params)
+           ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+psycopg2.errors.NotNullViolation: ОШИБКА:  значение NULL в столбце "photo_id" отношения "core_photocomment" нарушает ограничение NOT NULL
+DETAIL:  Ошибочная строка содержит (1, privet, 2025-10-28 15:38:01.49203+00, 2025-10-28 15:38:01.492045+00, f, null, 7).
+CONTEXT:  SQL-оператор: "UPDATE ONLY "public"."core_photocomment" SET "photo_id" = NULL WHERE $1 OPERATOR(pg_catalog.=) "photo_id""
+
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\User\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+  File "C:\Users\User\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\core\handlers\base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+  File "C:\Users\User\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\contrib\admin\options.py", line 719, in wrapper
+    return self.admin_site.admin_view(view)(*args, **kwargs)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\utils\decorators.py", line 192, in _view_wrapper
+    result = _process_exception(request, e)
+  File "C:\Users\User\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\utils\decorators.py", line 190, in _view_wrapper
+    response = view_func(request, *args, **kwargs)
+  File "C:\Users\User\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\views\decorators\cache.py", line 80, in _view_wrapper
+    response = view_func(request, *args, **kwargs)
+  File "C:\Users\User\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\contrib\admin\sites.py", line 246, in inner
+    return view(request, *args, **kwargs)
+  File "C:\Users\User\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\utils\decorators.py", line 48, in _wrapper
+    return bound_method(*args, **kwargs)
+  File "C:\Users\User\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\utils\decorators.py", line 192, in _view_wrapper
+    result = _process_exception(request, e)
+  File "C:\Users\User\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\utils\decorators.py", line 190, in _view_wrapper
+    response = view_func(request, *args, **kwargs)
+  File "C:\Users\User\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\contrib\admin\options.py", line 2081, in changelist_view
+    response = self.response_action(
+        request, queryset=cl.get_queryset(request)
+    )
+  File "C:\Users\User\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\contrib\admin\options.py", line 1686, in response_action
+    response = func(self, request, queryset)
+  File "C:\Users\User\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\contrib\admin\actions.py", line 49, in delete_selected
+    modeladmin.delete_queryset(request, queryset)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\Desktop\BirQadam\BirQadamDjango\core\admin.py", line 62, in delete_queryset
+    super().delete_queryset(request, queryset)
+    ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\contrib\admin\options.py", line 1324, in delete_queryset
+    queryset.delete()
+    ~~~~~~~~~~~~~~~^^
+  File "C:\Users\User\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\db\models\query.py", line 1197, in delete
+    num_deleted, num_deleted_per_model = collector.delete()
+                                         ~~~~~~~~~~~~~~~~^^
+  File "C:\Users\User\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\db\models\deletion.py", line 501, in delete
+    count = query.delete_batch(pk_list, self.using)
+  File "C:\Users\User\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\db\models\sql\subqueries.py", line 42, in delete_batch
+    num_deleted += self.do_query(
+                   ~~~~~~~~~~~~~^
+        self.get_meta().db_table, self.where, using=using
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\User\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\db\models\sql\subqueries.py", line 24, in do_query
+    return self.get_compiler(using).execute_sql(ROW_COUNT)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^
+  File "C:\Users\User\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\db\models\sql\compiler.py", line 1622, in execute_sql
+    cursor.execute(sql, params)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\Users\User\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\db\backends\utils.py", line 122, in execute
+    return super().execute(sql, params)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\Users\User\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\db\backends\utils.py", line 79, in execute
+    return self._execute_with_wrappers(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        sql, params, many=False, executor=self._execute
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\User\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\db\backends\utils.py", line 92, in _execute_with_wrappers
+    return executor(sql, params, many, context)
+  File "C:\Users\User\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\db\backends\utils.py", line 100, in _execute
+    with self.db.wrap_database_errors:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\db\utils.py", line 91, in __exit__
+    raise dj_exc_value.with_traceback(traceback) from exc_value
+  File "C:\Users\User\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\db\backends\utils.py", line 105, in _execute
+    return self.cursor.execute(sql, params)
+           ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+django.db.utils.IntegrityError: ОШИБКА:  значение NULL в столбце "photo_id" отношения "core_photocomment" нарушает ограничение NOT NULL
+DETAIL:  Ошибочная строка содержит (1, privet, 2025-10-28 15:38:01.49203+00, 2025-10-28 15:38:01.492045+00, f, null, 7).
+CONTEXT:  SQL-оператор: "UPDATE ONLY "public"."core_photocomment" SET "photo_id" = NULL WHERE $1 OPERATOR(pg_catalog.=) "photo_id""
+
+ERROR 2025-11-17 22:29:06,882 basehttp 18588 17544 "POST /admin/core/user/ HTTP/1.1" 500 25703
+ERROR 2025-11-17 22:33:21,637 basehttp 18588 17544 "POST /admin/core/user/ HTTP/1.1" 500 24148
+ERROR 2025-11-17 22:36:31,956 basehttp 18588 17544 "POST /admin/core/user/ HTTP/1.1" 500 24099

@@ -1,0 +1,27 @@
+[phases.setup]
+nixPkgs = ["python311", "postgresql_16.dev", "gcc"]
+cmds = [
+    "python3 --version",
+    "python3 -m venv /opt/venv",
+    "/opt/venv/bin/pip install --upgrade pip setuptools wheel"
+]
+
+[variables]
+PYTHON_VERSION = "3.11"
+PATH = "/opt/venv/bin:/usr/local/bin:/usr/bin:${PATH}"
+
+[phases.install]
+cmds = [
+    "python3 --version",
+    "/opt/venv/bin/pip --version",
+    "/opt/venv/bin/pip install --no-cache-dir --upgrade pip setuptools wheel",
+    "/opt/venv/bin/pip install --no-cache-dir -r requirements.txt",
+    "mkdir -p /usr/local/bin /usr/bin",
+    "ln -sf /opt/venv/bin/pip /usr/local/bin/pip",
+    "ln -sf /opt/venv/bin/python /usr/local/bin/python",
+    "ln -sf /opt/venv/bin/pip /usr/bin/pip 2>/dev/null || true"
+]
+
+[start]
+cmd = "chmod +x start.sh && bash start.sh"
+
