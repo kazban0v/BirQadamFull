@@ -1,1 +1,0 @@
-import{C as e}from"./index-BJLPefUW.js";async function s(){return(await e.get("/api/web/volunteer/stats/")).data}async function r(t=6){const{data:a}=await e.get("/api/web/volunteer/activity/",{params:{months:t}});return a}export{r as a,s as f};
