@@ -186,7 +186,7 @@ class Event(models.Model):
     task = models.ForeignKey('api.Task', on_delete=models.CASCADE, null=True, blank=True, related_name='events', verbose_name='Задача')
     
     # Участники (для встреч)
-    participants = models.ManyToManyField('api.User', related_name='event_participations', blank=True, verbose_name='Участники')
+    # participants = models.ManyToManyField('api.User', related_name='event_participations', blank=True, verbose_name='Участники')
     
     # Настройки
     visibility = models.CharField(max_length=10, choices=VISIBILITY_CHOICES, default='public')
@@ -221,7 +221,7 @@ class Event(models.Model):
         now = timezone.now().date()
         return self.start_date >= now
     
-    def get_participants_count(self) -> int:
-        """Количество участников"""
-        return self.participants.count()
+    # def get_participants_count(self) -> int:
+    #     """Количество участников"""
+    #     return self.participants.count()
 

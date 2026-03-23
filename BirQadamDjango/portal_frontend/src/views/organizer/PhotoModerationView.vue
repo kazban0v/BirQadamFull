@@ -741,8 +741,19 @@ watch(() => detailDialog.open, (open) => { if (!open) detailDialog.slide = 0; })
           </div>
         </div>
 
-        <div class="detail-modal__footer">
-          <button class="detail-close-btn" @click="closePhotoDetail">Закрыть</button>
+        <div class="detail-modal__footer d-flex align-center justify-space-between ga-3">
+          <div v-if="currentDetail && currentDetail.status === 'pending'" class="d-flex ga-3 flex-grow-1" style="max-width: 400px;">
+            <button class="action-btn action-btn--approve" :disabled="photoActionLoading(currentDetail.id)" @click="openApproveDialog(currentDetail.id)">
+              <v-icon icon="mdi-check" size="16" />
+              Одобрить
+            </button>
+            <button class="action-btn action-btn--reject" :disabled="photoActionLoading(currentDetail.id)" @click="openRejectDialog(currentDetail.id)">
+              <v-icon icon="mdi-close" size="16" />
+              Отклонить
+            </button>
+          </div>
+          <div v-else></div>
+          <button class="detail-close-btn flex-shrink-0" @click="closePhotoDetail">Закрыть</button>
         </div>
       </div>
     </v-dialog>

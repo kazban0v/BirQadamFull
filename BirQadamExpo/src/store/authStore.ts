@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import * as SecureStore from 'expo-secure-store';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { authAPI } from '../services/api';
 import type { User, LoginCredentials, VolunteerRegistrationData, OrganizerRegistrationData, AuthResponse } from '../types';
 
@@ -43,6 +44,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       const data: AuthResponse = response.data;
       
       await SecureStore.setItemAsync(USER_KEY, JSON.stringify(data.user));
+      // Сохраняем JWT токен для API-запросов
+      if (data.access_token) {
+        await AsyncStorage.setItem('auth_token', data.access_token);
+      }
+      if (data.refresh_token) {
+        await AsyncStorage.setItem('refresh_token', data.refresh_token);
+      }
       
       set({
         user: data.user,
@@ -115,6 +123,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       console.log('[AUTH] Email verified, response:', data);
       
       await SecureStore.setItemAsync(USER_KEY, JSON.stringify(data.user));
+      // Сохраняем JWT токен для API-запросов
+      if (data.access_token) {
+        await AsyncStorage.setItem('auth_token', data.access_token);
+      }
+      if (data.refresh_token) {
+        await AsyncStorage.setItem('refresh_token', data.refresh_token);
+      }
       
       set({
         user: data.user,
@@ -193,6 +208,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       console.error('Logout error:', error);
     } finally {
       await SecureStore.deleteItemAsync(USER_KEY);
+      await AsyncStorage.multiRemove(['auth_token', 'refresh_token', 'sessionid']);
       set({
         user: null,
         isAuthenticated: false,

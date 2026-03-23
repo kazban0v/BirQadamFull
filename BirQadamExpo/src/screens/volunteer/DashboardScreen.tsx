@@ -62,6 +62,7 @@ export const VolunteerDashboardScreen: React.FC<VolunteerDashboardScreenProps> =
     total_hours: 0,
     total_points: 0,
     upcoming_tasks: 0,
+    active_projects: 0,
   }, [data?.stats]);
   
   const projects = useMemo(() => data?.projects || [], [data?.projects]);
@@ -540,8 +541,8 @@ export const VolunteerDashboardScreen: React.FC<VolunteerDashboardScreenProps> =
 
   // Количество проектов, в которых участвует пользователь
   const joinedProjectsCount = useMemo(() => {
-    return projects.filter(p => p.joined).length;
-  }, [projects]);
+    return stats.active_projects || 0;
+  }, [stats.active_projects]);
 
   // Обработчики нажатий на карточки статистики
   const handleProjectsPress = useCallback(() => {
@@ -1458,7 +1459,11 @@ export const VolunteerDashboardScreen: React.FC<VolunteerDashboardScreenProps> =
                   onPress={() => setShowJoinModal(false)}
                   disabled={isJoining}
                 >
-                  <Text style={styles.modalButtonSecondaryText}>Отмена</Text>
+                  <Text 
+                    style={styles.modalButtonSecondaryText}
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                  >Отмена</Text>
                 </TouchableOpacity>
                 
                 <TouchableOpacity
@@ -1469,7 +1474,11 @@ export const VolunteerDashboardScreen: React.FC<VolunteerDashboardScreenProps> =
                   {isJoining ? (
                     <ActivityIndicator size="small" color="#FFFFFF" />
                   ) : (
-                    <Text style={styles.modalButtonText}>Присоединиться</Text>
+                    <Text 
+                      style={styles.modalButtonText}
+                      numberOfLines={1}
+                      adjustsFontSizeToFit
+                    >Присоединиться</Text>
                   )}
                 </TouchableOpacity>
               </View>
@@ -1532,7 +1541,11 @@ export const VolunteerDashboardScreen: React.FC<VolunteerDashboardScreenProps> =
                   onPress={() => setShowLeaveModal(false)}
                   disabled={isLeaving}
                 >
-                  <Text style={styles.modalButtonSecondaryText}>Отмена</Text>
+                  <Text 
+                    style={styles.modalButtonSecondaryText}
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                  >Отмена</Text>
                 </TouchableOpacity>
                 
                 <TouchableOpacity
@@ -1543,7 +1556,11 @@ export const VolunteerDashboardScreen: React.FC<VolunteerDashboardScreenProps> =
                   {isLeaving ? (
                     <ActivityIndicator size="small" color="#FFFFFF" />
                   ) : (
-                    <Text style={styles.modalButtonText}>Выйти</Text>
+                    <Text 
+                      style={styles.modalButtonText}
+                      numberOfLines={1}
+                      adjustsFontSizeToFit
+                    >Выйти</Text>
                   )}
                 </TouchableOpacity>
               </View>
@@ -1925,6 +1942,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     color: '#FFFFFF',
+    paddingHorizontal: 4,
   },
   // Trust Factor Modal Styles
   infoIconButton: {
@@ -2089,6 +2107,7 @@ const styles = StyleSheet.create({
     fontSize: Platform.OS === 'ios' ? 16 : 15,
     fontWeight: '700',
     color: '#6B7280',
+    paddingHorizontal: 4,
   },
   modalButtonDanger: {
     flex: 1,

@@ -111,6 +111,10 @@ class SubmitPhotoReportAPIView(APIView):
                 project=task.project
             )
 
+            # Обновляем статус задачи на "under_review" (На проверке)
+            task.status = 'under_review'
+            task.save(update_fields=['status'])
+
             # Отправляем уведомление организатору о новом фотоотчете
             from shared.notifications.utils import notify_organizer_new_photo
             from asgiref.sync import async_to_sync

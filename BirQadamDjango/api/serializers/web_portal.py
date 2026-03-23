@@ -1,4 +1,5 @@
 from __future__ import annotations
+from typing import Any
 
 from django.contrib.auth.password_validation import validate_password
 from rest_framework import serializers
@@ -94,6 +95,30 @@ class VolunteerTaskSummarySerializer(serializers.Serializer):
     has_photo_report = serializers.BooleanField()
     photo_status = serializers.CharField(allow_null=True)
     can_upload_photo = serializers.BooleanField()
+    image = serializers.SerializerMethodField()
+
+    def get_image(self, obj: Any) -> str | None:
+        request = self.context.get('request')
+        task = getattr(obj, 'task', obj) # Handle both task objects and manual dicts/wrappers if needed
+        
+        # Determine the image path
+        path = None
+        if hasattr(task, 'task_image') and task.task_image:
+            path = task.task_image.url
+        elif hasattr(task, 'project') and task.project and hasattr(task.project, 'cover_image') and task.project.cover_image:
+            path = task.project.cover_image.url
+        
+        if not path:
+            return None
+            
+        if request:
+            url = request.build_absolute_uri(path)
+            # Local dev HTTPS fix
+            is_local = any(x in url for x in ['localhost', '127.0.0.1', '192.168.', '10.', '172.'])
+            if url.startswith('http://') and not is_local:
+                url = url.replace('http://', 'https://')
+            return url
+        return path
 
 
 class VolunteerProjectSerializer(serializers.ModelSerializer):
@@ -104,6 +129,8 @@ class VolunteerProjectSerializer(serializers.ModelSerializer):
     volunteer_type = serializers.CharField(source='project.volunteer_type')
     start_date = serializers.DateField(source='project.start_date', allow_null=True)
     end_date = serializers.DateField(source='project.end_date', allow_null=True)
+    joined_at = serializers.DateTimeField(read_only=True)
+    joined = serializers.ReadOnlyField(default=True)
     organizer_name = serializers.SerializerMethodField()
     active_members = serializers.SerializerMethodField()
 
@@ -119,6 +146,7 @@ class VolunteerProjectSerializer(serializers.ModelSerializer):
             'start_date',
             'end_date',
             'joined_at',
+            'joined',
             'organizer_name',
             'active_members',
         )

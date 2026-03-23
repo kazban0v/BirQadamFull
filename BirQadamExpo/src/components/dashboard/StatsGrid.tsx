@@ -79,7 +79,7 @@ export const StatsGrid: React.FC<StatsGridProps> = React.memo(({
             <View style={styles.statIcon}>
               <Ionicons name="checkmark-circle-outline" size={20} color="#F59E0B" />
             </View>
-            <Text style={styles.statValue} numberOfLines={1}>{stats.completed_tasks}</Text>
+            <Text style={styles.statValue} numberOfLines={1}>{stats.total_tasks}</Text>
             <Text style={styles.statLabel}>ЗАДАЧ</Text>
           </TouchableOpacity>
         </Animated.View>

@@ -18,13 +18,14 @@ import type { Task } from '../../types';
 
 type RootStackParamList = {
   VolunteerTaskDetail: { taskId: number };
+  SubmitPhotoReport: { taskId: number };
 };
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 export const VolunteerTasksScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
-  
+
   const [tasks, setTasks] = useState<Task[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -43,10 +44,12 @@ export const VolunteerTasksScreen: React.FC = () => {
         project_id: item.project_id,
         project_title: item.project_title,
         location: item.project_title || 'Локация не указана',
-        start_date: item.created_at || item.deadline_date || new Date().toISOString(),
+        start_date: item.deadline_date || item.created_at || new Date().toISOString(),
         end_date: item.deadline_date || item.created_at || new Date().toISOString(),
         status: item.status || (item.is_assigned ? 'in_progress' : 'pending'),
         assigned_users_count: item.is_assigned ? 1 : 0,
+        start_time: item.start_time,
+        end_time: item.end_time,
         reward_points: item.reward_points,
         image: item.image,
       }));
@@ -118,21 +121,22 @@ export const VolunteerTasksScreen: React.FC = () => {
     );
   };
 
-  const handleCompleteTask = async (taskId: number) => {
+
+  const handleArchiveTask = async (taskId: number) => {
     Alert.alert(
-      'Завершить задачу?',
-      'Вы уверены, что хотите завершить эту задачу?',
+      'Архивировать задачу?',
+      'Вы уверены, что хотите перенести эту задачу в архив? Она перестанет отображаться в списке активных.',
       [
         { text: 'Отмена', style: 'cancel' },
         {
-          text: 'Завершить',
+          text: 'Архивировать',
           onPress: async () => {
             try {
-              await volunteerAPI.completeTask(taskId);
-              Alert.alert('Успешно', 'Задача завершена! Ожидайте подтверждения.');
+              await volunteerAPI.archiveTask(taskId);
+              Alert.alert('Успешно', 'Задача перенесена в архив');
               await loadTasks();
             } catch (error: any) {
-              const errorMsg = error?.response?.data?.detail || error?.response?.data?.error || 'Не удалось завершить задачу';
+              const errorMsg = error?.response?.data?.detail || error?.response?.data?.error || 'Не удалось архивировать задачу';
               Alert.alert('Ошибка', errorMsg);
             }
           },
@@ -141,16 +145,68 @@ export const VolunteerTasksScreen: React.FC = () => {
     );
   };
 
-  const getDeadlineText = (endDate: string) => {
+  const formatDateTimeRange = (startStr: string, endStr: string, startTimeStr?: string, endTimeStr?: string) => {
+    const start = new Date(startStr);
+    const end = new Date(endStr);
+    const now = new Date();
+
+    const midnightStart = new Date(start.getFullYear(), start.getMonth(), start.getDate()).getTime();
+    const midnightNow = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+    const diffDays = Math.round((midnightStart - midnightNow) / (1000 * 60 * 60 * 24));
+
+    const formatDate = (date: Date) => {
+      return date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' }).replace('.', '');
+    };
+
+    const formatTime = (date: Date, explicitTime?: string) => {
+      if (explicitTime) {
+        // explicitTime is "HH:mm:ss" or "HH:mm"
+        const parts = explicitTime.split(':');
+        if (parts.length >= 2) {
+          return `${parts[0]}:${parts[1]}`;
+        }
+      }
+      return date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+    };
+
+    let dateTextStr = formatDate(start);
+    if (diffDays === 0) dateTextStr = 'Сегодня';
+    else if (diffDays === 1) dateTextStr = 'Завтра';
+    else if (diffDays === -1) dateTextStr = 'Вчера';
+
+    const isSameDay = start.toDateString() === end.toDateString();
+
+    if (isSameDay) {
+      return {
+        dateText: dateTextStr,
+        timeText: `${formatTime(start, startTimeStr)} - ${formatTime(end, endTimeStr)}`
+      };
+    }
+    return {
+      dateText: `${formatDate(start)} - ${formatDate(end)}`,
+      timeText: `${formatTime(start, startTimeStr)} - ${formatTime(end, endTimeStr)}`
+    };
+  };
+
+  const getDeadlineText = (endDate: string, status: string | undefined) => {
+    // Priority statuses based on backend labels
+    if (status === 'under_review') return { text: 'На проверке', color: '#6B7280', bgColor: '#F3F4F6' };
+    if (status === 'in_progress' || status === 'active') return { text: 'В работе', color: '#3B82F6', bgColor: '#EFF6FF' };
+    if (status === 'completed') return { text: 'Завершено', color: '#10B981', bgColor: '#ECFDF5' };
+    if (status === 'archived') return { text: 'В архиве', color: '#6B7280', bgColor: '#F3F4F6' };
+    if (status === 'failed' || status === 'rejected') return { text: 'Отклонено', color: '#EF4444', bgColor: '#FEE2E2' };
+    if (status === 'closed') return { text: 'Закрыто', color: '#4B5563', bgColor: '#E5E7EB' };
+
     const end = new Date(endDate);
     const now = new Date();
-    const diffTime = end.getTime() - now.getTime();
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    
-    if (diffDays < 0) return { text: 'Просрочено', color: '#EF4444' };
-    if (diffDays === 0) return { text: 'Сегодня', color: '#F59E0B' };
-    if (diffDays === 1) return { text: 'Завтра', color: '#F59E0B' };
-    return { text: `${diffDays} дн.`, color: '#10B981' };
+    const midnightEnd = new Date(end.getFullYear(), end.getMonth(), end.getDate()).getTime();
+    const midnightNow = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+    const diffDays = Math.round((midnightEnd - midnightNow) / (1000 * 60 * 60 * 24));
+
+    if (diffDays < 0) return { text: 'Просрочено', color: '#EF4444', bgColor: '#FEE2E2' };
+
+    // Default label for open tasks (even if it's today/tomorrow, we show "Открыто")
+    return { text: 'Открыто', color: '#10B981', bgColor: '#D1FAE5' };
   };
 
   const normalizeImageUrl = (url: string | undefined | null): string | undefined => {
@@ -167,7 +223,7 @@ export const VolunteerTasksScreen: React.FC = () => {
   };
 
   const filteredTasks = tasks.filter((task) => {
-    if (filter === 'assigned') return task.status === 'pending' || task.status === 'open' || (!task.status && !task.project_title);
+    if (filter === 'assigned') return true; // "Мои задачи" shows all tasks
     if (filter === 'in_progress') return task.status === 'in_progress' || task.status === 'active';
     if (filter === 'under_review') return task.status === 'under_review';
     if (filter === 'completed') return task.status === 'completed';
@@ -177,7 +233,7 @@ export const VolunteerTasksScreen: React.FC = () => {
   });
 
   const getFilterCount = (filterName: string) => {
-    if (filterName === 'assigned') return tasks.filter(t => t.status === 'pending' || t.status === 'open' || (!t.status && !t.project_title)).length;
+    if (filterName === 'assigned') return tasks.length; // Count all tasks for "Мои задачи"
     if (filterName === 'in_progress') return tasks.filter(t => t.status === 'in_progress' || t.status === 'active').length;
     if (filterName === 'under_review') return tasks.filter(t => t.status === 'under_review').length;
     if (filterName === 'completed') return tasks.filter(t => t.status === 'completed').length;
@@ -186,8 +242,9 @@ export const VolunteerTasksScreen: React.FC = () => {
   };
 
   const TaskCard = ({ task }: { task: Task }) => {
-    const deadline = getDeadlineText(task.end_date);
+    const deadline = getDeadlineText(task.end_date, task.status);
     const imageUrl = normalizeImageUrl(task.image);
+    const { dateText, timeText } = formatDateTimeRange(task.start_date, task.end_date, task.start_time, task.end_time);
 
     return (
       <TouchableOpacity
@@ -195,87 +252,111 @@ export const VolunteerTasksScreen: React.FC = () => {
         onPress={() => navigation.navigate('VolunteerTaskDetail', { taskId: task.id })}
         activeOpacity={0.7}
       >
-        <View style={styles.taskImageContainer}>
-          {imageUrl ? (
-            <Image source={{ uri: imageUrl }} style={styles.taskImage} resizeMode="cover" />
-          ) : (
-            <View style={styles.taskImagePlaceholder}>
-              <Ionicons name="image-outline" size={40} color="#9CA3AF" />
+        {/* Top Info Row */}
+        <View style={styles.cardTopRow}>
+          {/* Image */}
+          <View style={styles.taskImageContainer}>
+            {imageUrl ? (
+              <Image source={{ uri: imageUrl }} style={styles.taskImage} resizeMode="cover" />
+            ) : (
+              <View style={styles.taskImagePlaceholder}>
+                <Ionicons name="image-outline" size={32} color="#9CA3AF" />
+              </View>
+            )}
+          </View>
+
+          {/* Texts */}
+          <View style={styles.taskContentRight}>
+            <View style={styles.taskHeader}>
+              <Text style={styles.projectName} numberOfLines={1}>
+                {task.project_title || 'Локальная задача'}
+              </Text>
+              {/* Status Badge */}
+              <View style={[styles.statusBadge, { backgroundColor: deadline.bgColor }]}>
+                <Text style={[styles.statusBadgeText, { color: deadline.color }]}>
+                  {deadline.text.toUpperCase()}
+                </Text>
+              </View>
             </View>
-          )}
+
+            <Text style={styles.taskTitle} numberOfLines={2}>{task.title}</Text>
+
+            <View style={styles.deadlineColumn}>
+              <View style={styles.deadlineRow}>
+                <Ionicons name="calendar-outline" size={14} color={deadline.color === '#EF4444' ? '#EF4444' : '#10B981'} />
+                <Text style={[styles.deadlineText, { color: deadline.color === '#EF4444' ? '#EF4444' : '#10B981' }]}>
+                  {dateText}
+                </Text>
+              </View>
+              <View style={styles.deadlineRow}>
+                <Ionicons name="time-outline" size={14} color={deadline.color === '#EF4444' ? '#EF4444' : '#10B981'} />
+                <Text style={[styles.deadlineText, { color: deadline.color === '#EF4444' ? '#EF4444' : '#10B981' }]}>
+                  {timeText}
+                </Text>
+              </View>
+            </View>
+          </View>
         </View>
 
-        <View style={styles.taskContent}>
-          <View style={styles.taskHeader}>
-            <Text style={styles.projectName}>{task.project_title || 'BirQadam'}</Text>
-            {task.reward_points && (
-              <View style={styles.rewardBadge}>
-                <Ionicons name="star" size={12} color="#F59E0B" />
-                <Text style={styles.rewardText}>{task.reward_points}</Text>
-              </View>
-            )}
-          </View>
-
-          <Text style={styles.taskTitle} numberOfLines={2}>{task.title}</Text>
-
-          <View style={styles.deadlineRow}>
-            <Ionicons name="time-outline" size={16} color="#EF4444" />
-            <Text style={styles.deadlineText}>
-              Дедлайн: {new Date(task.end_date).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })}
-            </Text>
-          </View>
-
-          <View style={styles.taskActions}>
-            {(task.status === 'pending' || !task.project_title) && (
-              <>
-                <TouchableOpacity
-                  style={styles.acceptButton}
-                  onPress={(e) => { e.stopPropagation(); handleAcceptTask(task.id); }}
-                >
-                  <Ionicons name="checkmark-circle" size={18} color="#FFFFFF" />
-                  <Text style={styles.acceptButtonText}>Принять</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.declineButton}
-                  onPress={(e) => { e.stopPropagation(); handleDeclineTask(task.id); }}
-                >
-                  <Ionicons name="close-circle" size={18} color="#EF4444" />
-                  <Text style={styles.declineButtonText}>Отклонить</Text>
-                </TouchableOpacity>
-              </>
-            )}
-
-            {(task.status === 'active' || task.status === 'in_progress') && (
+        {/* Bottom Actions Row */}
+        <View style={styles.taskActions}>
+          {(task.status === 'pending' || !task.project_title) && (
+            <>
               <TouchableOpacity
-                style={styles.completeButton}
-                onPress={(e) => { e.stopPropagation(); handleCompleteTask(task.id); }}
+                style={styles.acceptButton}
+                onPress={(e) => { e.stopPropagation(); handleAcceptTask(task.id); }}
               >
-                <Ionicons name="checkmark-done-circle" size={20} color="#FFFFFF" />
-                <Text style={styles.completeButtonText}>Завершить</Text>
+                <Text style={styles.acceptButtonText}>Принять</Text>
               </TouchableOpacity>
-            )}
+              <TouchableOpacity
+                style={styles.declineButton}
+                onPress={(e) => { e.stopPropagation(); handleDeclineTask(task.id); }}
+              >
+                <Text style={styles.declineButtonText}>Отклонить</Text>
+              </TouchableOpacity>
+            </>
+          )}
 
-            {task.status === 'completed' && (
-              <View style={styles.completedBadge}>
-                <Ionicons name="checkmark-done-circle" size={20} color="#10B981" />
-                <Text style={styles.completedText}>Завершено</Text>
-              </View>
-            )}
+          {(task.status === 'active' || task.status === 'in_progress') && (
+            <TouchableOpacity
+              style={styles.completeButton}
+              onPress={(e) => { e.stopPropagation(); navigation.navigate('SubmitPhotoReport', { taskId: task.id }); }}
+            >
+              <Ionicons name="camera-reverse-outline" size={20} color="#FFFFFF" />
+              <Text style={styles.completeButtonText}>Загрузить фотоотчет</Text>
+            </TouchableOpacity>
+          )}
 
-            {task.status === 'under_review' && (
-              <View style={styles.underReviewBadge}>
-                <Ionicons name="eye-outline" size={20} color="#7C3AED" />
-                <Text style={styles.underReviewText}>На проверке</Text>
-              </View>
-            )}
+          {task.status === 'completed' && (
+            <TouchableOpacity
+              style={styles.archiveButton}
+              onPress={(e) => { e.stopPropagation(); handleArchiveTask(task.id); }}
+            >
+              <Ionicons name="archive-outline" size={18} color="#6B7280" />
+              <Text style={styles.archiveButtonText}>В архив</Text>
+            </TouchableOpacity>
+          )}
 
-            {task.status === 'archived' && (
-              <View style={styles.archivedBadge}>
-                <Ionicons name="archive-outline" size={20} color="#6B7280" />
-                <Text style={styles.archivedText}>В архиве</Text>
-              </View>
-            )}
-          </View>
+          {task.status === 'completed' && (
+            <View style={styles.completedBadge}>
+              <Ionicons name="checkmark-done-circle" size={20} color="#10B981" />
+              <Text style={styles.completedText}>Завершено</Text>
+            </View>
+          )}
+
+          {task.status === 'under_review' && (
+            <View style={styles.underReviewBadge}>
+              <Ionicons name="eye-outline" size={20} color="#7C3AED" />
+              <Text style={styles.underReviewText}>Отчет на проверке</Text>
+            </View>
+          )}
+
+          {task.status === 'archived' && (
+            <View style={styles.archivedBadge}>
+              <Ionicons name="archive-outline" size={20} color="#6B7280" />
+              <Text style={styles.archivedText}>Перенесено в архив</Text>
+            </View>
+          )}
         </View>
       </TouchableOpacity>
     );
@@ -293,9 +374,7 @@ export const VolunteerTasksScreen: React.FC = () => {
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity>
-          <Ionicons name="menu-outline" size={28} color="#1F2937" />
-        </TouchableOpacity>
+        <View style={{ width: 28 }} />
         <Text style={styles.headerTitle}>Мои задачи</Text>
         <TouchableOpacity onPress={() => Alert.alert('Уведомления', 'В разработке')}>
           <Ionicons name="notifications-outline" size={24} color="#1F2937" />
@@ -314,7 +393,7 @@ export const VolunteerTasksScreen: React.FC = () => {
           onPress={() => setFilter('assigned')}
         >
           <Text style={[styles.filterTabText, filter === 'assigned' && styles.filterTabTextActive]}>
-            Назначенные
+            Мои задачи
           </Text>
           <View style={[styles.filterCount, filter === 'assigned' && styles.filterCountActive]}>
             <Text style={[styles.filterCountText, filter === 'assigned' && styles.filterCountTextActive]}>
@@ -356,7 +435,7 @@ export const VolunteerTasksScreen: React.FC = () => {
           onPress={() => setFilter('completed')}
         >
           <Text style={[styles.filterTabText, filter === 'completed' && styles.filterTabTextActive]}>
-            Завершённые
+            Завершено
           </Text>
           <View style={[styles.filterCount, filter === 'completed' && styles.filterCountActive]}>
             <Text style={[styles.filterCountText, filter === 'completed' && styles.filterCountTextActive]}>
@@ -439,25 +518,29 @@ const styles = StyleSheet.create({
   filterCountTextActive: { color: '#FFFFFF' },
   scrollView: { flex: 1 },
   scrollContent: { padding: 16, gap: 16 },
-  taskCard: { backgroundColor: '#FFFFFF', borderRadius: 16, overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 2 },
-  taskImageContainer: { width: '100%', height: 140, backgroundColor: '#F3F4F6' },
+  taskCard: { backgroundColor: '#FFFFFF', padding: 16, borderRadius: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 3, marginBottom: 4 },
+  cardTopRow: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 16 },
+  taskImageContainer: { width: 84, height: 84, borderRadius: 12, backgroundColor: '#F3F4F6', overflow: 'hidden' },
   taskImage: { width: '100%', height: '100%' },
   taskImagePlaceholder: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  taskContent: { padding: 16 },
-  taskHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
-  projectName: { fontSize: 12, fontWeight: '700', color: '#10B981', textTransform: 'uppercase', letterSpacing: 0.5 },
-  rewardBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FEF3C7', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 10, gap: 4 },
-  rewardText: { fontSize: 12, fontWeight: '700', color: '#F59E0B' },
-  taskTitle: { fontSize: 16, fontWeight: '700', color: '#1F2937', marginBottom: 8 },
-  deadlineRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 16 },
-  deadlineText: { fontSize: 13, color: '#EF4444', fontWeight: '500' },
+  taskContentRight: { flex: 1, marginLeft: 16, justifyContent: 'center' },
+  taskHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
+  projectName: { flex: 1, fontSize: 13, fontWeight: '700', color: '#10B981', textTransform: 'uppercase', letterSpacing: 0.5, marginRight: 8 },
+  statusBadge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
+  statusBadgeText: { fontSize: 10, fontWeight: '800' },
+  taskTitle: { fontSize: 17, fontWeight: '700', color: '#111827', marginBottom: 8, lineHeight: 22 },
+  deadlineColumn: { gap: 4, marginTop: 2 },
+  deadlineRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  deadlineText: { fontSize: 13, fontWeight: '500' },
   taskActions: { flexDirection: 'row', gap: 12 },
-  acceptButton: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#10B981', paddingVertical: 12, borderRadius: 10, gap: 6 },
+  acceptButton: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#10B981', paddingVertical: 12, borderRadius: 10 },
   acceptButtonText: { fontSize: 15, fontWeight: '700', color: '#FFFFFF' },
-  declineButton: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFFFFF', borderWidth: 2, borderColor: '#EF4444', paddingVertical: 10, borderRadius: 10, gap: 6 },
+  declineButton: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFFFFF', borderWidth: 1.5, borderColor: '#EF4444', paddingVertical: 10.5, borderRadius: 10 },
   declineButtonText: { fontSize: 15, fontWeight: '700', color: '#EF4444' },
   completeButton: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#10B981', paddingVertical: 12, borderRadius: 10, gap: 6 },
   completeButtonText: { fontSize: 15, fontWeight: '700', color: '#FFFFFF' },
+  archiveButton: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#F3F4F6', paddingVertical: 12, borderRadius: 10, gap: 8, borderWidth: 1, borderColor: '#E5E7EB' },
+  archiveButtonText: { fontSize: 15, fontWeight: '700', color: '#6B7280' },
   completedBadge: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#ECFDF5', paddingVertical: 12, borderRadius: 10, gap: 6 },
   completedText: { fontSize: 15, fontWeight: '700', color: '#10B981' },
   underReviewBadge: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#F5F3FF', paddingVertical: 12, borderRadius: 10, gap: 6 },

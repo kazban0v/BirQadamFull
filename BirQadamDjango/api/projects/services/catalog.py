@@ -25,9 +25,11 @@ def _get_full_image_url(request, image_field):
             host = request.get_host() if hasattr(request, 'get_host') else ''
             if host:
                 url = f'{scheme}://{host}{image_field.url}'
-        # Заменяем http на https, если есть
+        # Заменяем http на https, если есть и это не локальный адрес
         elif url.startswith('http://'):
-            url = url.replace('http://', 'https://')
+            is_local = any(x in url for x in ['localhost', '127.0.0.1', '192.168.', '10.', '172.'])
+            if not is_local:
+                url = url.replace('http://', 'https://')
         return url
     except Exception:
         # Fallback на относительный путь, если не удалось построить абсолютный

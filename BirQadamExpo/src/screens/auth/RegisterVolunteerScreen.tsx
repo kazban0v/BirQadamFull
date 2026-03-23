@@ -27,7 +27,6 @@ export const RegisterVolunteerScreen: React.FC<RegisterVolunteerScreenProps> = (
   navigation,
 }) => {
   const [formData, setFormData] = useState({
-    username: '',
     name: '',
     phone_number: '',
     email: '',
@@ -41,12 +40,8 @@ export const RegisterVolunteerScreen: React.FC<RegisterVolunteerScreenProps> = (
   const validate = () => {
     const newErrors: { [key: string]: string } = {};
     
-    if (!formData.username.trim()) {
-      newErrors.username = 'Введите имя пользователя';
-    }
-    
     if (!formData.name.trim()) {
-      newErrors.name = 'Введите ваше имя';
+      newErrors.name = 'Введите ФИО';
     }
     
     if (!formData.phone_number.trim()) {
@@ -80,7 +75,6 @@ export const RegisterVolunteerScreen: React.FC<RegisterVolunteerScreenProps> = (
     
     try {
       await registerVolunteer({
-        username: formData.username,
         name: formData.name,
         phone_number: formData.phone_number,
         email: formData.email,
@@ -185,24 +179,8 @@ export const RegisterVolunteerScreen: React.FC<RegisterVolunteerScreenProps> = (
         {/* Form */}
         <View style={styles.form}>
           <Input
-            label="Имя пользователя"
-            placeholder="Придумайте логин"
-            value={formData.username}
-            onChangeText={(text: string) => {
-              setFormData({ ...formData, username: text });
-              if (errors.username) {
-                const newErrors = { ...errors };
-                delete newErrors.username;
-                setErrors(newErrors);
-              }
-            }}
-            error={errors.username}
-            icon="person"
-          />
-
-          <Input
-            label="Ваше имя"
-            placeholder="Как к вам обращаться"
+            label="ФИО"
+            placeholder="Введите ваше полное имя"
             value={formData.name}
             onChangeText={(text: string) => {
               setFormData({ ...formData, name: text });
@@ -218,7 +196,7 @@ export const RegisterVolunteerScreen: React.FC<RegisterVolunteerScreenProps> = (
 
           <Input
             label="Номер телефона"
-            placeholder="+7 (___) ___-__-__"
+            placeholder="(___) ___-__-__"
             value={formData.phone_number}
             onChangeText={(text: string) => {
               setFormData({ ...formData, phone_number: text });
@@ -231,6 +209,8 @@ export const RegisterVolunteerScreen: React.FC<RegisterVolunteerScreenProps> = (
             error={errors.phone_number}
             keyboardType="phone-pad"
             icon="call"
+            prefix="+7"
+            isPhone={true}
           />
 
           <Input

@@ -1344,6 +1344,22 @@ class UserTasksAPIView(APIView):
             is_assigned = task.id in assigned_task_ids  # type: ignore[attr-defined]
             joined_at = all_join_dates.get(task.project_id)  # type: ignore[attr-defined]
             is_required = bool(joined_at and task.created_at >= joined_at)  # type: ignore[attr-defined]
+            
+            def get_absolute_url(path):
+                if not path: return None
+                url = request.build_absolute_uri(path)
+                # Don't force HTTPS for localhost or local network IPs
+                is_local = any(x in url for x in ['localhost', '127.0.0.1', '192.168.', '10.', '172.'])
+                if url.startswith('http://') and not is_local:
+                    url = url.replace('http://', 'https://')
+                return url
+
+            image = None
+            if hasattr(task, 'task_image') and getattr(task.task_image, 'name', None):
+                image = get_absolute_url(task.task_image.url)
+            elif hasattr(task.project, 'cover_image') and getattr(task.project.cover_image, 'name', None):
+                image = get_absolute_url(task.project.cover_image.url)
+
             return {
                 'id': task.id,  # type: ignore[attr-defined]
                 'text': task.text,
@@ -1358,6 +1374,7 @@ class UserTasksAPIView(APIView):
                 'deadline_date': task.deadline_date.isoformat() if task.deadline_date else None,
                 'start_time': task.start_time.strftime('%H:%M') if task.start_time else None,
                 'end_time': task.end_time.strftime('%H:%M') if task.end_time else None,
+                'image': image,
                 'created_at': task.created_at.isoformat()
             }
 
@@ -1850,30 +1867,38 @@ class ProjectTasksAPIView(APIView):
                 )
             
             # Получаем все задачи проекта (не удаленные)
-            tasks = Task.objects.filter(  # type: ignore[attr-defined]
+            tasks_qs = Task.objects.filter(  # type: ignore[attr-defined]
                 project_id=project_id,
                 is_deleted=False
-            ).values(
-                'id',
-                'text',
-                'status',
-                'created_at',
-                'deadline_date',
-                'start_time',
-                'end_time',
-            ).order_by('-created_at')
+            ).select_related('project').order_by('-created_at')
+
+            def get_absolute_url(path):
+                if not path: return None
+                url = request.build_absolute_uri(path)
+                # Don't force HTTPS for localhost or local network IPs
+                is_local = any(x in url for x in ['localhost', '127.0.0.1', '192.168.', '10.', '172.'])
+                if url.startswith('http://') and not is_local:
+                    url = url.replace('http://', 'https://')
+                return url
 
             normalized_tasks = []
-            for task in tasks:
+            for task in tasks_qs:
+                image = None
+                if hasattr(task, 'task_image') and getattr(task.task_image, 'name', None):
+                    image = get_absolute_url(task.task_image.url)
+                elif hasattr(task.project, 'cover_image') and getattr(task.project.cover_image, 'name', None):
+                    image = get_absolute_url(task.project.cover_image.url)
+
                 normalized_tasks.append(
                     {
-                        'id': task['id'],
-                        'text': task['text'],
-                        'status': task['status'],
-                        'created_at': task['created_at'].isoformat() if task['created_at'] else None,
-                        'deadline_date': task['deadline_date'].isoformat() if task['deadline_date'] else None,
-                        'start_time': task['start_time'].strftime('%H:%M') if task['start_time'] else None,
-                        'end_time': task['end_time'].strftime('%H:%M') if task['end_time'] else None,
+                        'id': task.id,
+                        'text': task.text,
+                        'status': task.status,
+                        'image': image,
+                        'created_at': task.created_at.isoformat() if task.created_at else None,
+                        'deadline_date': task.deadline_date.isoformat() if task.deadline_date else None,
+                        'start_time': task.start_time.strftime('%H:%M') if task.start_time else None,
+                        'end_time': task.end_time.strftime('%H:%M') if task.end_time else None,
                     }
                 )
 

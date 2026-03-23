@@ -158,4 +158,56 @@ def check_daily_activity() -> str:
     logger.info(f'[CELERY] Проверка активности завершена: {penalized_count} штрафов, {skipped_count} пропущено (нет проектов)')
     return f'Checked {volunteers.count()} volunteers: {penalized_count} penalized, {skipped_count} skipped'
 
+@shared_task(name='api.tasks.send_verification_email_task')
+def send_verification_email_task(email: str, subject: str, message: str) -> str:
+    """
+    Асинхронная отправка email с кодом подтверждения
+    """
+    from django.core.mail import send_mail
+    from django.conf import settings
+    
+    try:
+        logger.info(f'[CELERY] Начало отправки письма на {email}')
+        
+        send_mail(
+            subject=subject,
+            message=message,
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[email],
+            fail_silently=False,
+        )
+        
+        success_msg = f'Successfully sent verification email to {email}'
+        logger.info(f'[CELERY] [OK] {success_msg}')
+        return success_msg
+        
+    except Exception as e:
+        error_msg = f'Failed to send email to {email}: {str(e)}'
+        logger.error(f'[CELERY] [ERROR] {error_msg}')
+        # Пробрасываем ошибку, чтобы Celery мог попытаться повторить задачу (retry), если настроено
+        raise
 
+@shared_task(name='api.tasks.close_expired_tasks')
+def close_expired_tasks() -> str:
+    """
+    Автоматическое закрытие просроченных задач
+    Исполняется ежеминутно через celery beat
+    """
+    from api.tasks.models import Task
+    
+    # Ищем все задачи, которые открыты или в работе
+    active_tasks = Task.objects.filter(
+        status__in=['open', 'in_progress'],
+        is_deleted=False
+    )
+    
+    closed_count = 0
+    for task in active_tasks:
+        if task.is_expired():
+            task.close_if_expired()
+            closed_count += 1
+            
+    if closed_count > 0:
+        logger.info(f'[CELERY] Проверка просроченных задач завершена: закрыто {closed_count}')
+        
+    return f'Closed {closed_count} expired tasks'

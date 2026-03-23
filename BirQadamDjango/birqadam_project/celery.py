@@ -32,6 +32,10 @@ app.conf.beat_schedule = {
         'task': 'api.tasks.tasks.check_daily_activity',
         'schedule': crontab(hour=0, minute=0),  # Каждый день в 00:00
     },
+    'close-expired-tasks-minutely': {
+        'task': 'api.tasks.tasks.close_expired_tasks',
+        'schedule': crontab(minute='*'),  # Каждую минуту
+    },
 }
 
 @app.task(bind=True)

@@ -132,8 +132,18 @@ api.interceptors.response.use(
       }
     }
     if (error.response?.status === 401 || error.response?.status === 403) {
-      // Обработка неавторизованного доступа
-      await AsyncStorage.multiRemove(['auth_token', 'user', 'sessionid']);
+      // Обработка неавторизованного доступа через store, чтобы сбросить состояние и перенаправить на логин
+      try {
+        const { useAuthStore } = require('../store/authStore');
+        const logout = useAuthStore.getState().logout;
+        if (logout) {
+          await logout();
+        }
+      } catch (err) {
+        console.error('❌ Error during emergency logout:', err);
+        // Fallback: просто чистим хранилище
+        await AsyncStorage.multiRemove(['auth_token', 'user', 'sessionid']);
+      }
     }
     return Promise.reject(error);
   }
@@ -146,7 +156,6 @@ export const authAPI = {
   
   // Регистрация волонтёра
   registerVolunteer: (data: {
-    username: string;
     name: string;
     phone_number: string;
     email: string;
@@ -252,7 +261,7 @@ export const volunteerAPI = {
   declineTask: (taskId: number) => api.post(`/custom-admin/api/v1/tasks/${taskId}/decline/`),
   completeTask: (taskId: number) => api.post(`/custom-admin/api/v1/tasks/${taskId}/complete/`),
   retryTask: (taskId: number) => api.post(`/custom-admin/api/v1/tasks/${taskId}/retry/`),
-  archiveTask: (taskId: number) => api.post(`/custom-admin/api/v1/tasks/${taskId}/archive/`),
+  archiveTask: (taskId: number) => api.post(`/api/web/volunteer/tasks/${taskId}/archive/`),
   submitPhotoReportV1: (taskId: number, photos: FormData) =>
     api.post(`/custom-admin/api/v1/tasks/${taskId}/photo-reports/`, photos, {
       headers: { 'Content-Type': 'multipart/form-data' },

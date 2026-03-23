@@ -183,7 +183,7 @@ const menuItems = computed(() => {
       { title: 'Задачи', icon: 'mdi-clipboard-check-outline', to: '/organizer/tasks', badge: null },
       { title: 'Проекты', icon: 'mdi-briefcase-outline', to: '/organizer/projects', badge: organizerStore.projects.length || null },
       { title: 'Команда', icon: 'mdi-account-multiple-outline', to: '/organizer/volunteers', badge: null },
-      { title: 'Фотоотчёты', icon: 'mdi-image-multiple-outline', to: '/organizer/photo-moderation', badge: photoCount > 0 ? photoCount : null },
+      { title: 'На проверке', icon: 'mdi-image-multiple-outline', to: '/organizer/photo-moderation', badge: photoCount > 0 ? photoCount : null },
       { title: 'Аналитика', icon: 'mdi-chart-line', to: '/organizer/analytics', badge: null },
       { title: 'Профиль', icon: 'mdi-account-circle-outline', to: '/organizer/profile', badge: null },
     ];

@@ -7,11 +7,11 @@ from datetime import timedelta
 logger = logging.getLogger(__name__)
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-load_dotenv(BASE_DIR / '.env')
+load_dotenv(BASE_DIR / '.env', override=True)
 
 # Security
 SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-default-key-change-in-production')
-DEBUG = os.getenv('DEBUG', 'False') == 'True'
+DEBUG = os.getenv('DEBUG', 'False').strip().lower() == 'true'
 
 if DEBUG:
     ALLOWED_HOSTS = ['*']
@@ -172,6 +172,7 @@ MIDDLEWARE = [
     'admin_panel.middleware.middleware.RememberMeMiddleware',
     'admin_panel.middleware.middleware.RateLimitMiddleware',
     'admin_panel.middleware.middleware.LoginAttemptMiddleware',
+    'api.middleware.AutoCloseExpiredTasksMiddleware',
 ]
 
 if DEBUG:
@@ -353,18 +354,17 @@ else:
     EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
     EMAIL_HOST = os.getenv('EMAIL_HOST', 'smtp.gmail.com')
     
-    _email_port = os.getenv('EMAIL_PORT', '').strip()
-    if _email_port:
-        EMAIL_PORT = int(_email_port)
-    else:
-        EMAIL_PORT = 465
-    
+    # Безопасно считываем порт, по умолчанию 587
+    _email_port = os.getenv('EMAIL_PORT', '587').strip()
+    EMAIL_PORT = int(_email_port) if _email_port.isdigit() else 587
+
     EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', 'birqadamofficial@gmail.com')
     _email_password_raw = os.getenv('EMAIL_HOST_PASSWORD', '').strip()
     EMAIL_HOST_PASSWORD = _email_password_raw.replace(' ', '').replace('-', '') if _email_password_raw else ''
     DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', os.getenv('EMAIL_HOST_USER', 'birqadamofficial@gmail.com'))
     EMAIL_TIMEOUT = int(os.getenv('EMAIL_TIMEOUT', '30'))
     
+    # Логика TLS/SSL автоматически подстроится под порт
     if EMAIL_PORT == 465:
         EMAIL_USE_SSL = True
         EMAIL_USE_TLS = False
@@ -531,3 +531,6 @@ if SENTRY_DSN:
         logger.warning('sentry-sdk not installed - install: pip install sentry-sdk')
 else:
     logger.warning('SENTRY_DSN not set - error monitoring disabled')
+
+
+CELERY_TASK_ALWAYS_EAGER = True

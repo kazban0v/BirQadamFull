@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, reactive, ref } from 'vue';
+import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 
 import { useDashboardStore } from '@/stores/dashboard';
@@ -8,6 +8,7 @@ import { fetchVolunteerProjects, joinVolunteerProject, leaveVolunteerProject, fe
 import type { VolunteerProjectCatalogItem } from '@/services/projects';
 import { getProjectChat, getChatMessages, sendMessage, markMessagesRead, type Chat, type ChatMessage } from '@/services/chat';
 import { getOrganizerPortfolio, type OrganizerProfile } from '@/services/webPortal';
+import FilterDropdown from '@/components/FilterDropdown.vue';
 
 const dashboardStore = useDashboardStore();
 const authStore = useAuthStore();
@@ -20,14 +21,22 @@ const summary = reactive({
   total_available: 0,
   joined_count: 0,
 });
-const filter = ref<'all' | 'joined' | 'available'>('all');
-const typeFilter = ref<'all' | 'social' | 'environmental' | 'cultural'>('all');
-const selectedTags = ref<string[]>([]);
 const searchTitle = ref('');
+const viewMode = ref<'grid' | 'list'>('grid');
 const snackbar = reactive({
   show: false,
   message: '',
   color: 'success',
+});
+
+// Расширенные фильтры для FilterDropdown
+const advancedFilters = ref({
+  tags: [] as string[],
+  cities: [] as string[],
+  types: [] as string[],
+  statuses: [] as string[],
+  dateFrom: null as string | null,
+  dateTo: null as string | null,
 });
 
 // Состояние для деталей проекта
@@ -53,6 +62,22 @@ const chatMessages = ref<ChatMessage[]>([]);
 const chatLoading = ref(false);
 const sendingMessage = ref(false);
 const newMessageText = ref('');
+
+// Lightbox для фото
+const lightboxDialog = ref(false);
+const lightboxImageUrl = ref('');
+const lightboxTitle = ref('');
+
+function openLightbox(url: string | null | undefined, title: string = '') {
+  if (!url) return;
+  const fullUrl = getFullImageUrl(url);
+  if (fullUrl) {
+    lightboxImageUrl.value = fullUrl;
+    lightboxTitle.value = title;
+    lightboxDialog.value = true;
+  }
+}
+
 const chatUnreadCounts = ref<Record<number, number>>({});
 const messagesPollInterval = ref<ReturnType<typeof setInterval> | null>(null);
 const chatScrollRef = ref<HTMLElement | null>(null);
@@ -127,36 +152,126 @@ const availableTags = computed(() => {
   return Array.from(set);
 });
 
+// Доступные города для фильтра
+const availableCities = computed(() => {
+  const set = new Set<string>();
+  projects.value.forEach((project) => {
+    if (project.city) set.add(project.city);
+  });
+  return Array.from(set);
+});
+
+// Доступные типы проектов
+const availableTypes = computed(() => {
+  const set = new Set<string>();
+  projects.value.forEach((project) => {
+    set.add(project.volunteer_type);
+  });
+  return Array.from(set);
+});
+
+// Доступные статусы проектов
+const availableStatuses = computed(() => {
+  const set = new Set<string>();
+  projects.value.forEach((project) => {
+    set.add(project.status);
+  });
+  return Array.from(set);
+});
+
+// Конфигурация фильтров для компонента FilterDropdown
+const filterConfig = computed(() => ({
+  availableTags: availableTags.value,
+  availableCities: availableCities.value,
+  availableTypes: availableTypes.value,
+  availableStatuses: availableStatuses.value,
+}));
+
 const filteredProjects = computed(() => {
   let list = projects.value;
-
-  if (filter.value === 'joined') {
-    list = list.filter((project) => project.joined);
-  } else if (filter.value === 'available') {
-    list = list.filter((project) => !project.joined);
-  }
-
-  if (typeFilter.value !== 'all') {
-    list = list.filter((project) => project.volunteer_type === typeFilter.value);
-  }
-
-  if (selectedTags.value.length) {
-    list = list.filter((project) => {
-      if (!project.tags?.length) return false;
-      return selectedTags.value.every((tag) => project.tags?.includes(tag));
-    });
-  }
 
   // Поиск по названию
   if (searchTitle.value.trim()) {
     const searchLower = searchTitle.value.trim().toLowerCase();
-    list = list.filter((project) => 
+    list = list.filter((project) =>
       project.title.toLowerCase().includes(searchLower)
     );
   }
 
+  // Расширенные фильтры из FilterDropdown
+  // Фильтр по городам
+  if (advancedFilters.value.cities.length) {
+    list = list.filter((project) =>
+      project.city && advancedFilters.value.cities.includes(project.city)
+    );
+  }
+
+  // Фильтр по типам проектов (расширенный)
+  if (advancedFilters.value.types.length) {
+    list = list.filter((project) =>
+      advancedFilters.value.types.includes(project.volunteer_type)
+    );
+  }
+
+  // Фильтр по статусам
+  if (advancedFilters.value.statuses.length) {
+    list = list.filter((project) =>
+      advancedFilters.value.statuses.includes(project.status)
+    );
+  }
+
+  // Фильтр по тегам (расширенный)
+  if (advancedFilters.value.tags.length) {
+    list = list.filter((project) => {
+      if (!project.tags?.length) return false;
+      return advancedFilters.value.tags.every((tag) => project.tags?.includes(tag));
+    });
+  }
+
+  // Фильтр по дате начала (dateFrom)
+  if (advancedFilters.value.dateFrom) {
+    const fromDate = new Date(advancedFilters.value.dateFrom);
+    list = list.filter((project) => {
+      if (!project.start_date) return false;
+      const projectStartDate = new Date(project.start_date);
+      return projectStartDate >= fromDate;
+    });
+  }
+
+  // Фильтр по дате окончания (dateTo)
+  if (advancedFilters.value.dateTo) {
+    const toDate = new Date(advancedFilters.value.dateTo);
+    list = list.filter((project) => {
+      if (!project.end_date) return false;
+      const projectEndDate = new Date(project.end_date);
+      return projectEndDate <= toDate;
+    });
+  }
+
   return list;
 });
+
+// Пагинация
+const currentPage = ref(1);
+const itemsPerPage = 10;
+
+const totalPages = computed(() => Math.ceil(filteredProjects.value.length / itemsPerPage));
+
+const paginatedProjects = computed(() => {
+  const start = (currentPage.value - 1) * itemsPerPage;
+  const end = start + itemsPerPage;
+  return filteredProjects.value.slice(start, end);
+});
+
+// Сброс страницы при изменении фильтров
+watch(filteredProjects, () => {
+  currentPage.value = 1;
+});
+
+function handlePageChange(page: number) {
+  currentPage.value = page;
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
 
 function formatDate(value: string | null) {
   if (!value) return '—';
@@ -276,9 +391,6 @@ async function loadProjects() {
     }));
     summary.total_available = data.summary.total_available;
     summary.joined_count = data.summary.joined_count;
-    if (!availableTags.value.length) {
-      selectedTags.value = [];
-    }
   } catch (error: any) {
     // Обрабатываем ошибку 429
     if (error?.response?.status === 429) {
@@ -355,18 +467,27 @@ function showMessage(message: string, color: string = 'success') {
   snackbar.show = true;
 }
 
-function toggleTag(tag: string) {
-  const index = selectedTags.value.indexOf(tag);
-  if (index === -1) {
-    selectedTags.value.push(tag);
-  } else {
-    selectedTags.value.splice(index, 1);
-  }
+/**
+ * Обработчик применения фильтров из FilterDropdown
+ */
+function applyAdvancedFilters(filters: typeof advancedFilters.value) {
+  advancedFilters.value = { ...filters };
 }
 
-function clearFilters() {
+/**
+ * Обработчик сброса фильтров из FilterDropdown
+ */
+function resetAdvancedFilters() {
+  advancedFilters.value = {
+    tags: [],
+    cities: [],
+    types: [],
+    statuses: [],
+    dateFrom: null,
+    dateTo: null,
+  };
+  // Также сбрасываем поиск
   searchTitle.value = '';
-  selectedTags.value = [];
 }
 
 function requestJoin(projectId: number) {
@@ -840,111 +961,38 @@ onUnmounted(() => {
       </v-col>
     </v-row>
 
-    <!-- Фильтры -->
-    <v-card elevation="2" rounded="xl" class="mb-6" style="border: 1px solid rgba(0, 0, 0, 0.08);">
-      <v-card-text class="pa-6">
-        <v-row class="ga-4">
-          <!-- Показать -->
-          <v-col cols="12" md="4">
-            <div class="text-body-2 font-weight-medium mb-3 d-flex align-center text-primary">
-              <v-icon icon="mdi-filter-variant" size="20" class="me-2" />
-              Показать
-            </div>
-            <v-btn-toggle v-model="filter" mandatory color="primary" class="w-100" density="comfortable" variant="outlined" divided>
-              <v-btn value="all" class="flex-grow-1 text-none">Все</v-btn>
-              <v-btn value="available" class="flex-grow-1 text-none">Доступные</v-btn>
-              <v-btn value="joined" class="flex-grow-1 text-none">Мои</v-btn>
-            </v-btn-toggle>
-          </v-col>
-          
-          <!-- Тип волонтёрства -->
-          <v-col cols="12" md="4">
-            <div class="text-body-2 font-weight-medium mb-3 d-flex align-center text-primary">
-              <v-icon icon="mdi-heart-multiple" size="20" class="me-2" />
-              Тип волонтёрства
-            </div>
-            <v-btn-toggle v-model="typeFilter" mandatory color="primary" class="w-100" density="comfortable" variant="outlined" divided>
-              <v-btn value="all" class="flex-grow-1 text-none text-caption">Все</v-btn>
-              <v-btn value="social" class="flex-grow-1 text-none text-caption">Социальные</v-btn>
-              <v-btn value="environmental" class="flex-grow-1 text-none text-caption">Экологические</v-btn>
-            </v-btn-toggle>
-          </v-col>
-          
-          <!-- Поиск по названию -->
-          <v-col cols="12" md="4">
-            <div class="text-body-2 font-weight-medium mb-3 d-flex align-center text-primary">
-              <v-icon icon="mdi-magnify" size="20" class="me-2" />
-              Поиск по названию
-            </div>
-            <v-text-field
-              v-model="searchTitle"
-              placeholder="Введите название..."
-              prepend-inner-icon="mdi-magnify"
-              variant="outlined"
-              density="comfortable"
-              clearable
-              hide-details
-              bg-color="white"
-              rounded="lg"
-            />
-          </v-col>
-        </v-row>
-      </v-card-text>
-    </v-card>
-
-    <!-- Теги -->
-    <v-card elevation="2" rounded="lg" class="mb-6 tags-filter-card" style="border: 1px solid rgba(0, 0, 0, 0.08);" v-if="availableTags.length">
-      <v-card-text class="pa-4">
-        <div class="d-flex align-center justify-space-between mb-3 flex-wrap ga-2">
-          <div class="d-flex align-center">
-            <v-icon icon="mdi-tag-multiple" size="18" class="me-2 text-primary" />
-            <span class="text-body-2 font-weight-medium">Фильтр по тегам</span>
-            <v-chip 
-              size="x-small" 
-              variant="tonal" 
-              color="primary" 
-              v-if="selectedTags.length"
-              prepend-icon="mdi-check-circle"
-              class="ms-3"
-            >
-              {{ selectedTags.length }}
-            </v-chip>
-          </div>
-          <v-btn
-            v-if="searchTitle || selectedTags.length"
-            color="error"
-            variant="text"
-            size="small"
-            prepend-icon="mdi-filter-off"
-            @click="clearFilters"
-            class="text-none"
-            density="compact"
-          >
-            Сбросить
-          </v-btn>
-        </div>
-        <div class="tags-container">
-          <v-chip
-            v-for="tag in availableTags"
-            :key="tag"
-            filter
-            :variant="selectedTags.includes(tag) ? 'flat' : 'outlined'"
-            :color="selectedTags.includes(tag) ? 'primary' : 'default'"
-            size="small"
-            class="tag-chip cursor-pointer"
-            @click="toggleTag(tag)"
+    <!-- Поиск и фильтры -->
+    <div class="d-flex flex-wrap align-center justify-space-between w-100 ga-3 mb-6">
+      <div class="d-flex flex-wrap align-center ga-3 flex-grow-1" style="max-width: 600px;">
+        <div class="flex-grow-1" style="min-width: 250px;">
+          <v-text-field
+            v-model="searchTitle"
+            placeholder="Искать проекты..."
+            prepend-inner-icon="mdi-magnify"
+            variant="solo"
+            elevation="2"
+            density="comfortable"
+            clearable
+            hide-details
             rounded="lg"
-            density="compact"
-          >
-            <v-icon v-if="selectedTags.includes(tag)" icon="mdi-check-circle" start size="14" />
-            {{ tag }}
-          </v-chip>
+          />
         </div>
-      </v-card-text>
-    </v-card>
+        <div class="d-flex align-center">
+          <FilterDropdown
+            :filters="filterConfig"
+            v-model="advancedFilters"
+            v-model:viewMode="viewMode"
+            :on-apply="applyAdvancedFilters"
+            :on-reset="resetAdvancedFilters"
+            @apply="applyAdvancedFilters"
+            @reset="resetAdvancedFilters"
+          />
+        </div>
+      </div>
+    </div>
 
     <!-- Результаты поиска -->
-    <div class="mb-6 d-flex align-center ga-3 flex-wrap" v-if="filteredProjects.length !== projects.length || searchTitle || selectedTags.length">
+    <div class="mb-6 d-flex align-center ga-3 flex-wrap" v-if="filteredProjects.length !== projects.length || searchTitle">
       <v-chip
         color="primary"
         variant="flat"
@@ -967,41 +1015,45 @@ onUnmounted(() => {
 
         <v-row class="ga-6" v-if="filteredProjects.length">
           <v-col
-            v-for="project in filteredProjects"
+            v-for="project in paginatedProjects"
             :key="project.id"
             cols="12"
             sm="12"
-            md="6"
+            :md="viewMode === 'grid' ? 6 : 12"
           >
             <v-card 
               :data-project-id="project.id"
               elevation="3" 
               class="pa-6 h-100 d-flex flex-column"
             >
-          <v-img
-            v-if="project.cover_image_url"
-            :src="getFullImageUrl(project.cover_image_url) || ''"
-            height="160"
-            class="mb-4 rounded-lg"
-            cover
-            @error="(e) => {
-              // Скрываем ошибку в консоли, просто не показываем изображение
-              const img = e.target as HTMLImageElement;
-              if (img) {
-                img.style.display = 'none';
-              }
-            }"
-          >
-            <template #placeholder>
-              <div class="d-flex align-center justify-center fill-height bg-grey-lighten-4">
-                <v-icon icon="mdi-image-off" size="48" color="grey-lighten-1" />
-              </div>
-            </template>
-          </v-img>
-          <div v-else class="d-flex align-center justify-center mb-4 rounded-lg bg-grey-lighten-4" style="height: 160px;">
-            <v-icon icon="mdi-image-off" size="48" color="grey-lighten-1" />
-          </div>
-          <div class="d-flex justify-space-between align-start mb-4">
+              <!-- Обёртка для направления сетки/списка -->
+              <div :class="['d-flex flex-grow-1 min-width-0', viewMode === 'grid' ? 'project-card-grid flex-column' : 'project-card-list flex-column flex-md-row']">
+                <!-- Обложка -->
+                <v-img
+                  v-if="project.cover_image_url"
+                  :src="getFullImageUrl(project.cover_image_url) || ''"
+                  class="project-image rounded-lg flex-shrink-0 cursor-pointer"
+                  style="cursor: pointer;"
+                  @click="openLightbox(project.cover_image_url, project.title)"
+                  cover
+                  @error="(e) => {
+                    const img = e.target as HTMLImageElement;
+                    if (img) img.style.display = 'none';
+                  }"
+                >
+                  <template #placeholder>
+                    <div class="d-flex align-center justify-center fill-height bg-grey-lighten-4">
+                      <v-icon icon="mdi-image-off" size="48" color="grey-lighten-1" />
+                    </div>
+                  </template>
+                </v-img>
+                <div v-else class="project-image project-image-placeholder d-flex align-center justify-center rounded-lg bg-grey-lighten-4 flex-shrink-0">
+                  <v-icon icon="mdi-image-off" size="48" color="grey-lighten-1" />
+                </div>
+
+                <!-- Контент карточки -->
+                <div class="d-flex flex-column flex-grow-1 min-width-0 pt-0">
+                  <div class="d-flex justify-space-between align-start mb-4">
             <div>
               <h2 class="text-h6 font-weight-bold mb-2">{{ project.title }}</h2>
               <div class="text-body-2 text-medium-emphasis">
@@ -1035,13 +1087,11 @@ onUnmounted(() => {
               v-for="tag in project.tags"
               :key="tag"
               size="small"
-              :color="selectedTags.includes(tag) ? 'primary' : 'primary-lighten-4'"
-              :variant="selectedTags.includes(tag) ? 'flat' : 'outlined'"
-              class="text-none cursor-pointer"
-              @click="toggleTag(tag)"
+              color="primary-lighten-4"
+              variant="outlined"
+              class="text-none"
             >
               {{ tag }}
-              <v-icon v-if="selectedTags.includes(tag)" icon="mdi-check" size="14" class="ms-1" />
             </v-chip>
           </div>
 
@@ -1193,6 +1243,8 @@ onUnmounted(() => {
               </v-btn>
             </div>
           </div>
+          </div> <!-- End of inner card wrapper -->
+          </div> <!-- Закрытие контента карточки -->
 
           <!-- Расширяемая секция с заданиями проекта -->
           <v-expand-transition>
@@ -1266,6 +1318,18 @@ onUnmounted(() => {
         </v-card>
       </v-col>
     </v-row>
+
+    <!-- Пагинация -->
+    <div class="d-flex justify-center mt-8 mb-4" v-if="totalPages > 1 && !loading">
+      <v-pagination
+        v-model="currentPage"
+        :length="totalPages"
+        :total-visible="7"
+        color="primary"
+        rounded="circle"
+        @update:modelValue="handlePageChange"
+      ></v-pagination>
+    </div>
 
     <v-skeleton-loader
       v-if="loading"
@@ -1376,6 +1440,29 @@ onUnmounted(() => {
       {{ snackbar.message }}
     </v-snackbar>
 
+    <!-- Lightbox (Просмотр полноразмерного фото) -->
+    <v-dialog v-model="lightboxDialog" max-width="1200" transition="dialog-bottom-transition">
+      <v-card class="bg-black overflow-hidden" rounded="xl">
+        <v-toolbar color="rgba(0, 0, 0, 0.6)" theme="dark" class="position-absolute w-100" style="z-index: 10;">
+          <v-toolbar-title class="text-white text-body-1 font-weight-medium">{{ lightboxTitle }}</v-toolbar-title>
+          <v-spacer></v-spacer>
+          <v-btn icon="mdi-close" variant="text" @click="lightboxDialog = false" color="white"></v-btn>
+        </v-toolbar>
+        <v-img
+          :src="lightboxImageUrl"
+          width="100%"
+          max-height="90vh"
+          class="bg-black mt-1"
+        >
+          <template #placeholder>
+            <div class="d-flex align-center justify-center fill-height bg-grey-darken-4">
+              <v-progress-circular indeterminate color="primary"></v-progress-circular>
+            </div>
+          </template>
+        </v-img>
+      </v-card>
+    </v-dialog>
+
     <!-- Диалог с деталями проекта -->
     <v-dialog v-model="projectDialog" max-width="800" scrollable :fullscreen="$vuetify.display.mobile">
       <v-card v-if="projectDetail" class="project-detail-card">
@@ -1393,7 +1480,9 @@ onUnmounted(() => {
                 v-if="projectDetail.cover_image_url"
                 :src="getFullImageUrl(projectDetail.cover_image_url) || ''"
               :height="$vuetify.display.mobile ? '160' : '200'"
-              class="project-detail-cover mb-6 rounded-lg"
+              class="project-detail-cover mb-6 rounded-lg cursor-pointer"
+              style="cursor: pointer;"
+              @click="openLightbox(projectDetail.cover_image_url, projectDetail.title)"
               cover
               @error="(e) => console.error('Error loading project cover:', e, projectDetail.cover_image_url)"
               @load="() => console.log('Project cover loaded successfully')"
@@ -2612,5 +2701,31 @@ onUnmounted(() => {
     width: 100%;
   }
 }
-</style>
 
+/* Grid & List View Toggle Styles */
+.project-card-grid .project-image {
+  height: 160px !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  margin-bottom: 24px !important;
+  flex-shrink: 0 !important;
+}
+
+.project-card-list .project-image {
+  height: 160px !important;
+  width: 100% !important;
+  margin-bottom: 24px !important;
+  flex-shrink: 0 !important;
+}
+
+@media (min-width: 960px) {
+  .project-card-list .project-image {
+    width: 280px !important;
+    max-width: 280px !important;
+    height: 100% !important;
+    min-height: 200px !important;
+    margin-right: 28px !important;
+    margin-bottom: 0 !important;
+  }
+}
+</style>

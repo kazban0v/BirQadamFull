@@ -7,7 +7,7 @@ from .views.views import ProfileView, ProfileUpdateView, RapidPasswordResetView
 from .views.views import project_detail, ProjectUpdateView, ProjectDeleteView
 from .views.views import RegisterAPIView, LoginAPIView, ProfileAPIView, ProjectsAPIView, JoinProjectAPIView, UserTasksAPIView, OrganizerProjectsAPIView, ProjectParticipantsAPIView, ProjectManagementAPIView, ProjectTasksAPIView, LeaveProjectAPIView, DeviceTokenAPIView, ActivitiesAPIView, AchievementsAPIView, UserProgressAPIView, LeaderboardAPIView, TrustFactorHistoryAPIView
 from .api.photo import SubmitPhotoReportAPIView, OrganizerPhotoReportsAPIView, PhotoReportDetailAPIView, RatePhotoReportAPIView, RejectPhotoReportAPIView, VolunteerPhotoReportsAPIView, TaskPhotosAPIView
-from .api.task import AcceptTaskAPIView, DeclineTaskAPIView, CompleteTaskAPIView, VolunteerTaskDismissAPIView
+from .api.task import AcceptTaskAPIView, DeclineTaskAPIView, CompleteTaskAPIView, VolunteerTaskDismissAPIView, VolunteerTaskDetailAPIView
 from .api.bulk_notifications import create_bulk_notification, send_bulk_notification, list_bulk_notifications, get_bulk_notification, list_notification_templates, preview_recipients
 from .api.search import global_search, advanced_user_search, advanced_project_search, save_search_filter, list_saved_filters
 from .api.map import get_projects_map_data, get_heatmap_data, get_city_statistics, get_project_clusters, get_volunteer_heatmap
@@ -89,6 +89,8 @@ urlpatterns = [
     path('api/v1/projects/', ProjectsAPIView.as_view(), name='api_v1_projects'),
     path('api/v1/projects/<int:project_id>/join/', JoinProjectAPIView.as_view(), name='api_v1_join_project'),
     path('api/v1/tasks/', UserTasksAPIView.as_view(), name='api_v1_user_tasks'),
+    path('api/v1/tasks/<int:task_id>/', VolunteerTaskDetailAPIView.as_view(), name='api_v1_task_detail'),
+
     path('api/v1/organizer/projects/', OrganizerProjectsAPIView.as_view(), name='api_v1_organizer_projects'),
     path('api/v1/organizer/projects/<int:project_id>/', OrganizerProjectsAPIView.as_view(), name='api_v1_organizer_project_detail'),
     path('api/v1/projects/<int:project_id>/participants/', ProjectParticipantsAPIView.as_view(), name='api_v1_project_participants'),

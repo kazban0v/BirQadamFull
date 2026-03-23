@@ -70,10 +70,23 @@ export interface Task {
   location: string;
   start_date: string;
   end_date: string;
-  status: 'pending' | 'in_progress' | 'completed' | 'cancelled' | 'under_review' | 'archived' | 'rejected' | 'active';
+  status: 'pending' | 'open' | 'in_progress' | 'completed' | 'cancelled' | 'under_review' | 'archived' | 'rejected' | 'active' | 'failed' | 'closed';
   assigned_users_count?: number;
   reward_points?: number;
   image?: string;
+  start_time?: string;
+  end_time?: string;
+  creator_name?: string;
+  creator_avatar?: string;
+  accepted?: boolean;
+  accepted_at?: string;
+  photo_uploaded_at?: string;
+  photo_moderated_at?: string;
+  created_at?: string;
+  rating?: number;
+  has_photo_report?: boolean;
+  completed?: boolean;
+  can_upload_photo?: boolean;
 }
 
 // Типы для уведомлений
@@ -113,7 +126,6 @@ export interface LoginCredentials {
 }
 
 export interface VolunteerRegistrationData {
-  username: string;
   name: string;
   phone_number: string;
   email: string;
@@ -129,6 +141,8 @@ export interface OrganizerRegistrationData extends VolunteerRegistrationData {
 export interface AuthResponse {
   message: string;
   user: User;
+  access_token?: string;
+  refresh_token?: string;
   dashboard_url?: string;
   requires_email_verification?: boolean;
   temporary_password?: string;
@@ -141,6 +155,7 @@ export interface DashboardStats {
   total_hours: number;
   total_points: number;
   upcoming_tasks: number;
+  active_projects: number;
 }
 
 export interface DashboardData {

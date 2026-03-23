@@ -1,0 +1,408 @@
+
+--- User: 77546514545 (ID: 9506) ---
+{
+  "total_tasks_count": 0,
+  "active_tasks": 1,
+  "completed_tasks": 0,
+  "upcoming_tasks": 0,
+  "active_projects": 1,
+  "pending_photos": 0,
+  "total_photos": 0,
+  "unread_notifications": 0,
+  "total_hours": 0.0,
+  "rating": 750,
+  "trust_factor": 20,
+  "average_rating": 5.0,
+  "achievements_count": 7
+}
+
+--- User: 79504385031 (ID: 9547) ---
+{
+  "total_tasks_count": 0,
+  "active_tasks": 1,
+  "completed_tasks": 0,
+  "upcoming_tasks": 0,
+  "active_projects": 1,
+  "pending_photos": 0,
+  "total_photos": 0,
+  "unread_notifications": 0,
+  "total_hours": 0.0,
+  "rating": 750,
+  "trust_factor": 15,
+  "average_rating": 3.3333333333333335,
+  "achievements_count": 7
+}
+
+--- User: admin (ID: 9529) ---
+{
+  "total_tasks_count": 1,
+  "active_tasks": 6,
+  "completed_tasks": 0,
+  "upcoming_tasks": 1,
+  "active_projects": 4,
+  "pending_photos": 5,
+  "total_photos": 5,
+  "unread_notifications": 0,
+  "total_hours": 0.0,
+  "rating": 70,
+  "trust_factor": 29,
+  "average_rating": 5.0,
+  "achievements_count": 7
+}
+
+--- User: 74845962265 (ID: 9548) ---
+{
+  "total_tasks_count": 6,
+  "active_tasks": 0,
+  "completed_tasks": 0,
+  "upcoming_tasks": 6,
+  "active_projects": 2,
+  "pending_photos": 0,
+  "total_photos": 0,
+  "unread_notifications": 0,
+  "total_hours": 0.0,
+  "rating": 28,
+  "trust_factor": 14,
+  "average_rating": 3.6666666666666665,
+  "achievements_count": 6
+}
+
+--- User: 78451328477 (ID: 9559) ---
+{
+  "total_tasks_count": 2,
+  "active_tasks": 7,
+  "completed_tasks": 0,
+  "upcoming_tasks": 2,
+  "active_projects": 3,
+  "pending_photos": 0,
+  "total_photos": 4,
+  "unread_notifications": 0,
+  "total_hours": 0.0,
+  "rating": 13,
+  "trust_factor": 23,
+  "average_rating": 4.5,
+  "achievements_count": 1
+}
+
+--- User: Beybit (ID: 9477) ---
+{
+  "total_tasks_count": 0,
+  "active_tasks": 1,
+  "completed_tasks": 0,
+  "upcoming_tasks": 0,
+  "active_projects": 1,
+  "pending_photos": 0,
+  "total_photos": 0,
+  "unread_notifications": 0,
+  "total_hours": 0.0,
+  "rating": 5,
+  "trust_factor": 20,
+  "average_rating": 5.0,
+  "achievements_count": 0
+}
+
+--- User: 77068066636 (ID: 9505) ---
+{
+  "total_tasks_count": 0,
+  "active_tasks": 1,
+  "completed_tasks": 0,
+  "upcoming_tasks": 0,
+  "active_projects": 1,
+  "pending_photos": 0,
+  "total_photos": 0,
+  "unread_notifications": 0,
+  "total_hours": 0.0,
+  "rating": 2,
+  "trust_factor": 20,
+  "average_rating": 5.0,
+  "achievements_count": 0
+}
+
+--- User: 715193537654 (ID: 9514) ---
+{
+  "total_tasks_count": 0,
+  "active_tasks": 1,
+  "completed_tasks": 0,
+  "upcoming_tasks": 0,
+  "active_projects": 1,
+  "pending_photos": 0,
+  "total_photos": 0,
+  "unread_notifications": 0,
+  "total_hours": 0.0,
+  "rating": 0,
+  "trust_factor": 20,
+  "average_rating": 5.0,
+  "achievements_count": 0
+}
+
+--- User: 743579385754 (ID: 9539) ---
+{
+  "total_tasks_count": 0,
+  "active_tasks": 1,
+  "completed_tasks": 0,
+  "upcoming_tasks": 0,
+  "active_projects": 1,
+  "pending_photos": 0,
+  "total_photos": 0,
+  "unread_notifications": 0,
+  "total_hours": 0.0,
+  "rating": 0,
+  "trust_factor": 0,
+  "average_rating": 0.0,
+  "achievements_count": 0
+}
+
+--- User: 754547788985 (ID: 9508) ---
+{
+  "total_tasks_count": 0,
+  "active_tasks": 1,
+  "completed_tasks": 0,
+  "upcoming_tasks": 0,
+  "active_projects": 1,
+  "pending_photos": 0,
+  "total_photos": 0,
+  "unread_notifications": 0,
+  "total_hours": 0.0,
+  "rating": 0,
+  "trust_factor": 20,
+  "average_rating": 5.0,
+  "achievements_count": 0
+}
+
+--- User: 758496012941 (ID: 9540) ---
+{
+  "total_tasks_count": 0,
+  "active_tasks": 1,
+  "completed_tasks": 0,
+  "upcoming_tasks": 0,
+  "active_projects": 1,
+  "pending_photos": 0,
+  "total_photos": 0,
+  "unread_notifications": 0,
+  "total_hours": 0.0,
+  "rating": 0,
+  "trust_factor": 0,
+  "average_rating": 0.0,
+  "achievements_count": 0
+}
+
+--- User: 767413891122 (ID: 9528) ---
+{
+  "total_tasks_count": 0,
+  "active_tasks": 1,
+  "completed_tasks": 0,
+  "upcoming_tasks": 0,
+  "active_projects": 1,
+  "pending_photos": 0,
+  "total_photos": 0,
+  "unread_notifications": 0,
+  "total_hours": 0.0,
+  "rating": 0,
+  "trust_factor": 20,
+  "average_rating": 5.0,
+  "achievements_count": 0
+}
+
+--- User: 77065487659 (ID: 9563) ---
+{
+  "total_tasks_count": 0,
+  "active_tasks": 0,
+  "completed_tasks": 0,
+  "upcoming_tasks": 0,
+  "active_projects": 0,
+  "pending_photos": 0,
+  "total_photos": 0,
+  "unread_notifications": 0,
+  "total_hours": 0.0,
+  "rating": 0,
+  "trust_factor": 20,
+  "average_rating": 5.0,
+  "achievements_count": 0
+}
+
+--- User: 77068066630 (ID: 9552) ---
+{
+  "total_tasks_count": 0,
+  "active_tasks": 1,
+  "completed_tasks": 0,
+  "upcoming_tasks": 0,
+  "active_projects": 1,
+  "pending_photos": 0,
+  "total_photos": 0,
+  "unread_notifications": 0,
+  "total_hours": 0.0,
+  "rating": 0,
+  "trust_factor": 20,
+  "average_rating": 5.0,
+  "achievements_count": 0
+}
+
+--- User: 77068066638 (ID: 9553) ---
+{
+  "total_tasks_count": 0,
+  "active_tasks": 2,
+  "completed_tasks": 0,
+  "upcoming_tasks": 0,
+  "active_projects": 5,
+  "pending_photos": 0,
+  "total_photos": 0,
+  "unread_notifications": 0,
+  "total_hours": 0.0,
+  "rating": 0,
+  "trust_factor": 0,
+  "average_rating": 3.0,
+  "achievements_count": 0
+}
+
+--- User: 775454978754 (ID: 9564) ---
+{
+  "total_tasks_count": 0,
+  "active_tasks": 0,
+  "completed_tasks": 0,
+  "upcoming_tasks": 0,
+  "active_projects": 0,
+  "pending_photos": 0,
+  "total_photos": 0,
+  "unread_notifications": 0,
+  "total_hours": 0.0,
+  "rating": 0,
+  "trust_factor": 20,
+  "average_rating": 5.0,
+  "achievements_count": 0
+}
+
+--- User: 77708545810 (ID: 9565) ---
+{
+  "total_tasks_count": 1,
+  "active_tasks": 7,
+  "completed_tasks": 1,
+  "upcoming_tasks": 0,
+  "active_projects": 4,
+  "pending_photos": 0,
+  "total_photos": 0,
+  "unread_notifications": 0,
+  "total_hours": 8.0,
+  "rating": 0,
+  "trust_factor": 10,
+  "average_rating": 5.0,
+  "achievements_count": 0
+}
+
+--- User: 78345021230 (ID: 9561) ---
+{
+  "total_tasks_count": 0,
+  "active_tasks": 0,
+  "completed_tasks": 0,
+  "upcoming_tasks": 0,
+  "active_projects": 0,
+  "pending_photos": 0,
+  "total_photos": 0,
+  "unread_notifications": 0,
+  "total_hours": 0.0,
+  "rating": 0,
+  "trust_factor": 20,
+  "average_rating": 5.0,
+  "achievements_count": 0
+}
+
+--- User: 78451328471 (ID: 9556) ---
+{
+  "total_tasks_count": 0,
+  "active_tasks": 0,
+  "completed_tasks": 0,
+  "upcoming_tasks": 0,
+  "active_projects": 0,
+  "pending_photos": 0,
+  "total_photos": 0,
+  "unread_notifications": 0,
+  "total_hours": 0.0,
+  "rating": 0,
+  "trust_factor": 20,
+  "average_rating": 5.0,
+  "achievements_count": 0
+}
+
+--- User: 78451328472 (ID: 9558) ---
+{
+  "total_tasks_count": 0,
+  "active_tasks": 0,
+  "completed_tasks": 0,
+  "upcoming_tasks": 0,
+  "active_projects": 0,
+  "pending_photos": 0,
+  "total_photos": 0,
+  "unread_notifications": 0,
+  "total_hours": 0.0,
+  "rating": 0,
+  "trust_factor": 20,
+  "average_rating": 5.0,
+  "achievements_count": 0
+}
+
+--- User: 78451328474 (ID: 9557) ---
+{
+  "total_tasks_count": 0,
+  "active_tasks": 0,
+  "completed_tasks": 0,
+  "upcoming_tasks": 0,
+  "active_projects": 0,
+  "pending_photos": 0,
+  "total_photos": 0,
+  "unread_notifications": 0,
+  "total_hours": 0.0,
+  "rating": 0,
+  "trust_factor": 20,
+  "average_rating": 5.0,
+  "achievements_count": 0
+}
+
+--- User: 799663636125 (ID: 9519) ---
+{
+  "total_tasks_count": 0,
+  "active_tasks": 1,
+  "completed_tasks": 0,
+  "upcoming_tasks": 0,
+  "active_projects": 1,
+  "pending_photos": 0,
+  "total_photos": 0,
+  "unread_notifications": 0,
+  "total_hours": 0.0,
+  "rating": 0,
+  "trust_factor": 20,
+  "average_rating": 5.0,
+  "achievements_count": 0
+}
+
+--- User: biko (ID: 9530) ---
+{
+  "total_tasks_count": 0,
+  "active_tasks": 1,
+  "completed_tasks": 0,
+  "upcoming_tasks": 0,
+  "active_projects": 1,
+  "pending_photos": 0,
+  "total_photos": 0,
+  "unread_notifications": 0,
+  "total_hours": 0.0,
+  "rating": 0,
+  "trust_factor": 20,
+  "average_rating": 5.0,
+  "achievements_count": 0
+}
+
+--- User: nura (ID: 9550) ---
+{
+  "total_tasks_count": 0,
+  "active_tasks": 1,
+  "completed_tasks": 0,
+  "upcoming_tasks": 0,
+  "active_projects": 1,
+  "pending_photos": 0,
+  "total_photos": 0,
+  "unread_notifications": 0,
+  "total_hours": 0.0,
+  "rating": 0,
+  "trust_factor": 20,
+  "average_rating": 5.0,
+  "achievements_count": 0
+}

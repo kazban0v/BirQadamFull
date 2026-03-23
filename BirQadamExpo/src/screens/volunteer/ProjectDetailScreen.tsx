@@ -815,15 +815,23 @@ export const VolunteerProjectDetailScreen = ({
                   
                   <View style={styles.tfChangeContainer}>
                     <View style={styles.tfBox}>
-                      <Text style={styles.tfLabel}>Текущий TF</Text>
-                      <Text style={styles.tfValue}>{currentTF}</Text>
+                      <Text 
+                        style={styles.tfLabel}
+                        numberOfLines={1}
+                        adjustsFontSizeToFit
+                      >Текущий TF</Text>
+                      <Text style={styles.tfValue} numberOfLines={1} adjustsFontSizeToFit>{currentTF}</Text>
                     </View>
                     
-                    <Ionicons name="arrow-forward" size={24} color="#9CA3AF" />
+                    <Ionicons name="arrow-forward" size={18} color="#9CA3AF" />
                     
                     <View style={styles.tfBox}>
-                      <Text style={styles.tfLabel}>После выхода</Text>
-                      <Text style={[styles.tfValue, styles.tfValueDanger]}>{newTF}</Text>
+                      <Text 
+                        style={styles.tfLabel}
+                        numberOfLines={1}
+                        adjustsFontSizeToFit
+                      >После выхода</Text>
+                      <Text style={[styles.tfValue, styles.tfValueDanger]} numberOfLines={1} adjustsFontSizeToFit>{newTF}</Text>
                     </View>
                   </View>
                   
@@ -842,14 +850,22 @@ export const VolunteerProjectDetailScreen = ({
                     style={[styles.warningButton, styles.warningButtonCancel]}
                     onPress={() => setShowLeaveWarning(false)}
                   >
-                    <Text style={styles.warningButtonCancelText}>Отмена</Text>
+                    <Text 
+                      style={styles.warningButtonCancelText}
+                      numberOfLines={1}
+                      adjustsFontSizeToFit
+                    >Отмена</Text>
                   </TouchableOpacity>
                   
                   <TouchableOpacity
                     style={[styles.warningButton, styles.warningButtonContinue]}
                     onPress={proceedToLeaveReason}
                   >
-                    <Text style={styles.warningButtonContinueText}>Продолжить</Text>
+                    <Text 
+                      style={styles.warningButtonContinueText}
+                      numberOfLines={1}
+                      adjustsFontSizeToFit
+                    >Продолжить</Text>
                   </TouchableOpacity>
                 </View>
               </View>
@@ -913,7 +929,11 @@ export const VolunteerProjectDetailScreen = ({
                     style={[styles.confirmButton, styles.confirmButtonCancel]}
                     onPress={() => setShowJoinConfirm(false)}
                   >
-                    <Text style={styles.confirmButtonCancelText}>Отмена</Text>
+                    <Text 
+                      style={styles.confirmButtonCancelText}
+                      numberOfLines={1}
+                      adjustsFontSizeToFit
+                    >Отмена</Text>
                   </TouchableOpacity>
                   
                   <TouchableOpacity
@@ -928,8 +948,12 @@ export const VolunteerProjectDetailScreen = ({
                       <ActivityIndicator size="small" color="#FFFFFF" />
                     ) : (
                       <>
-                        <Ionicons name="checkmark-circle" size={20} color="#FFFFFF" />
-                        <Text style={styles.confirmButtonJoinText}>Присоединиться</Text>
+                        <Ionicons name="checkmark-circle" size={18} color="#FFFFFF" />
+                        <Text 
+                          style={styles.confirmButtonJoinText}
+                          numberOfLines={1}
+                          adjustsFontSizeToFit
+                        >Присоединиться</Text>
                       </>
                     )}
                   </TouchableOpacity>
@@ -1016,7 +1040,11 @@ export const VolunteerProjectDetailScreen = ({
                       setLeaveReason('');
                     }}
                   >
-                    <Text style={styles.leaveModalButtonCancelText}>Отмена</Text>
+                    <Text 
+                      style={styles.leaveModalButtonCancelText}
+                      numberOfLines={1}
+                      adjustsFontSizeToFit
+                    >Отмена</Text>
                   </TouchableOpacity>
                   
                   <TouchableOpacity
@@ -1031,7 +1059,11 @@ export const VolunteerProjectDetailScreen = ({
                     {leaving ? (
                       <ActivityIndicator size="small" color="#FFFFFF" />
                     ) : (
-                      <Text style={styles.leaveModalButtonConfirmText}>Подтвердить выход</Text>
+                      <Text 
+                        style={styles.leaveModalButtonConfirmText}
+                        numberOfLines={1}
+                        adjustsFontSizeToFit
+                      >Подтвердить выход</Text>
                     )}
                   </TouchableOpacity>
                 </View>
@@ -1185,14 +1217,22 @@ export const VolunteerProjectDetailScreen = ({
                     
                     <View style={styles.tfChangeRow}>
                       <View style={styles.tfChangeBox}>
-                        <Text style={styles.tfChangeLabel}>Trust Factor</Text>
+                        <Text 
+                          style={styles.tfChangeLabel}
+                          numberOfLines={1}
+                          adjustsFontSizeToFit
+                        >Trust Factor</Text>
                         <Text style={styles.tfChangeValue}>{leaveSuccessData.trustFactor + 5}</Text>
                       </View>
                       
-                      <Ionicons name="arrow-forward" size={20} color="#9CA3AF" />
+                      <Ionicons name="arrow-forward" size={16} color="#9CA3AF" />
                       
                       <View style={styles.tfChangeBox}>
-                        <Text style={styles.tfChangeLabel}>Новый TF</Text>
+                        <Text 
+                          style={styles.tfChangeLabel}
+                          numberOfLines={1}
+                          adjustsFontSizeToFit
+                        >Новый TF</Text>
                         <Text style={[styles.tfChangeValue, styles.tfChangeValueDanger]}>
                           {leaveSuccessData.trustFactor}
                         </Text>
@@ -1535,8 +1575,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    maxHeight: '85%',
-    paddingBottom: 30,
+    maxHeight: '90%',
+    paddingBottom: Platform.OS === 'ios' ? 40 : 30,
   },
   modalHeader: {
     flexDirection: 'row',
@@ -1691,9 +1731,9 @@ const styles = StyleSheet.create({
   warningModalContent: {
     backgroundColor: '#FFFFFF',
     borderRadius: 24,
-    padding: 24,
-    width: '90%',
-    maxWidth: '90%',
+    padding: 20,
+    width: '94%',
+    maxWidth: '94%',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.2,
@@ -1759,20 +1799,21 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#FFFFFF',
     borderRadius: 12,
-    padding: 12,
+    padding: 8,
     alignItems: 'center',
     minWidth: 0,
   },
   tfLabel: {
-    fontSize: 11,
-    fontWeight: '600',
+    fontSize: 10,
+    fontWeight: '700',
     color: '#6B7280',
     marginBottom: 4,
     textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    letterSpacing: 0.2,
+    textAlign: 'center',
   },
   tfValue: {
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: '800',
     color: '#10B981',
   },
@@ -1822,6 +1863,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     color: '#FFFFFF',
+    paddingHorizontal: 4,
   },
   // Join Confirmation Modal Styles
   confirmModalOverlay: {
@@ -1840,10 +1882,10 @@ const styles = StyleSheet.create({
   confirmModalContent: {
     backgroundColor: '#FFFFFF',
     borderRadius: 24,
-    padding: 28,
-    width: '90%',
-    maxWidth: '90%',
-    maxHeight: '80%',
+    padding: 20,
+    width: '94%',
+    maxWidth: '94%',
+    maxHeight: '90%',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.2,
@@ -1923,9 +1965,10 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   confirmButtonJoinText: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '700',
     color: '#FFFFFF',
+    flexShrink: 1,
   },
   // Leave Reason Modal Styles
   keyboardAvoidingView: {
@@ -2166,7 +2209,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#FFFFFF',
     borderRadius: 12,
-    padding: 12,
+    padding: 8,
     alignItems: 'center',
     minWidth: 0,
   },
@@ -2179,7 +2222,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   tfChangeValue: {
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: '800',
     color: '#10B981',
   },

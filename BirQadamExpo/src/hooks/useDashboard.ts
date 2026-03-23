@@ -48,11 +48,12 @@ export const useDashboard = () => {
       
       const summary = dashboardData.summary || {};
       const newStats: DashboardStats = {
-        total_tasks: summary.completed_tasks || 0,
+        total_tasks: summary.total_tasks_count || 0, // Показываем общее число всех назначенных задач
         completed_tasks: summary.completed_tasks || 0,
         total_hours: summary.total_hours || 0,
-        total_points: 0,
+        total_points: summary.achievements_count || 0, // Отображаем количество достижений (т.к. лейбл "ДОСТИЖЕНИЙ")
         upcoming_tasks: summary.upcoming_tasks || 0,
+        active_projects: summary.active_projects || 0,
       };
       
       // Сортируем проекты по дате создания (новые сверху)
