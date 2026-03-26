@@ -14,6 +14,9 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from api.projects.models import VolunteerProject
+from api.tasks.models import Task, TaskAssignment
+from django.shortcuts import get_object_or_404
 
 from api.serializers import (
     OrganizerRegistrationSerializer,
@@ -608,17 +611,7 @@ class VolunteerLoginAPIView(APIView):
         return Response(
             {
                 'message': 'Вход выполнен успешно.',
-                'user': {
-                    'id': user.id,
-                    'username': user.username,
-                    'full_name': user.name,
-                    'phone_number': user.phone_number,
-                    'email': user.email,
-                    'registration_source': user.registration_source,
-                    'role': getattr(user, 'role', None),
-                    'is_organizer': is_organizer,
-                    'organizer_status': getattr(user, 'organizer_status', None),
-                },
+                'user': VolunteerProfileSerializer(user).data,
                 'dashboard_url': dashboard_url,
             },
             status=status.HTTP_200_OK,
@@ -667,7 +660,7 @@ class VolunteerProfileAPIView(APIView):
     def get(self, request, *args, **kwargs):
         serializer = VolunteerProfileSerializer(request.user)
         data = serializer.data
-        logger.info(f"VolunteerProfileAPIView: Returning profile data for user {request.user.username}, trust_factor={data.get('trust_factor')}, average_rating={data.get('average_rating')}")
+        logger.info(f"VolunteerProfileAPIView: Full data for user {request.user.username}: {data}")
         return Response(data, status=status.HTTP_200_OK)
 
     def patch(self, request, *args, **kwargs):
@@ -854,7 +847,14 @@ class VolunteerTaskPhotoReportAPIView(APIView):
         except Task.DoesNotExist:
             return Response({'detail': 'Задача не найдена или не назначена вам.'}, status=status.HTTP_404_NOT_FOUND)
 
-        if Photo.objects.filter(task=task, volunteer=request.user, is_deleted=False).exists():
+        # Проверяем, есть ли уже активный фотоотчет (не отклоненный)
+        existing_active_photos = Photo.objects.filter(
+            task=task,
+            volunteer=request.user,
+            is_deleted=False
+        ).exclude(status='rejected').exists()
+
+        if existing_active_photos and task.status != 'revision':
             return Response(
                 {'detail': 'Вы уже отправили фотоотчёт для этой задачи.'},
                 status=status.HTTP_400_BAD_REQUEST,
@@ -888,7 +888,7 @@ class VolunteerTaskPhotoReportAPIView(APIView):
             created_photos.append(photo)
 
         # После отправки фотоотчёта задача переходит в статус "На проверке"
-        if task.status == 'in_progress':
+        if task.status in ['in_progress', 'revision']:
             task.status = 'under_review'
             task.save(update_fields=['status'])
 
@@ -1457,8 +1457,7 @@ class VolunteerNotificationsAPIView(APIView):
             .order_by('-created_at')[:limit]
         )
 
-        # Получаем только непрочитанные Activity записи (без фильтрации по is_read, так как у Activity нет такого поля)
-        # Для отслеживания прочитанных Activity используем отдельный механизм или фильтруем на фронтенде
+        # Получаем и непрочитанные Activity записи
         activities_qs = (
             Activity.objects.select_related('project')
             .filter(user=request.user)
@@ -1475,7 +1474,7 @@ class VolunteerNotificationsAPIView(APIView):
                 'subject': activity.title,
                 'message': activity.description,
                 'notification_type': activity.type,
-                'status': 'pending',  # Activity записи показываются как pending (непрочитанные)
+                'status': 'opened' if activity.is_read else 'pending',
                 'sent_at': activity.created_at.isoformat() if activity.created_at else None,
                 'delivered_at': activity.created_at.isoformat() if activity.created_at else None,
                 'opened_at': None,
@@ -1499,13 +1498,12 @@ class VolunteerNotificationsAPIView(APIView):
         # Берем только нужное количество
         all_notifications = all_notifications[:limit]
 
-        # Подсчитываем непрочитанные уведомления (без Activity, так как они отслеживаются на фронтенде)
         unread_count = (
             NotificationRecipient.objects.filter(
                 user=request.user,
                 status__in=['pending', 'sent'],
             ).count() +
-            activities_qs.count()  # Все Activity записи считаются непрочитанными (будут фильтроваться на фронтенде)
+            Activity.objects.filter(user=request.user, is_read=False).count()
         )
 
         return Response(
@@ -1536,8 +1534,8 @@ class VolunteerNotificationReadAPIView(APIView):
                     id=activity_id,
                     user=request.user,
                 )
-                # Для Activity записей можно пометить как прочитанные, удалив их из активных
-                # или просто вернуть успех (так как они не учитываются в непрочитанных после отметки)
+                activity.is_read = True
+                activity.save(update_fields=['is_read'])
                 return Response({'message': 'Уведомление отмечено прочитанным.'}, status=status.HTTP_200_OK)
             except Activity.DoesNotExist:  # type: ignore[attr-defined]
                 return Response({'detail': 'Уведомление не найдено.'}, status=status.HTTP_404_NOT_FOUND)
@@ -1571,8 +1569,8 @@ class VolunteerNotificationReadAllAPIView(APIView):
             status__in=['pending', 'sent'],
         ).update(status='opened', opened_at=timezone.now())
 
-        # Activity записи не помечаем как прочитанные, так как у них нет поля is_read
-        # Они будут исключаться из непрочитанных на фронтенде после отметки
+        # Помечаем все Activity записи как прочитанные
+        Activity.objects.filter(user=request.user, is_read=False).update(is_read=True)
         
         return Response(
             {
@@ -2375,6 +2373,67 @@ class AIAssistantAPIView(APIView):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
+class VolunteerTasksAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+    def get(self, request):
+        user = request.user
+        # Получаем задачи только из проектов, в которых состоит волонтер
+        joined_project_ids = VolunteerProject.objects.filter(
+            volunteer=user, is_active=True
+        ).values_list('project_id', flat=True)
+        
+        tasks = Task.objects.filter(project_id__in=joined_project_ids, is_deleted=False).order_by('deadline_date')
+        serializer = VolunteerTaskSummarySerializer(tasks, many=True, context={'request': request})
+        return Response({'tasks': serializer.data})
+
+class VolunteerTaskDetailAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+    def get(self, request, task_id):
+        task = get_object_or_404(Task, id=task_id, is_deleted=False)
+        serializer = VolunteerTaskSummarySerializer(task, context={'request': request})
+        return Response(serializer.data)
+
+@method_decorator(csrf_exempt, name='dispatch')
+class VolunteerTaskAcceptAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+    authentication_classes = (CsrfExemptSessionAuthentication,)
+    def post(self, request, task_id):
+        task = get_object_or_404(Task, id=task_id, is_deleted=False)
+        assignment, created = TaskAssignment.objects.get_or_create(task=task, volunteer=request.user)
+        assignment.accepted = True
+        assignment.accepted_at = timezone.now()
+        assignment.save()
+        
+        # Обновляем статус задачи
+        if task.status == 'open':
+            task.status = 'in_progress'
+            task.save(update_fields=['status'])
+            
+        return Response({'message': 'Задача успешно принята'})
+
+@method_decorator(csrf_exempt, name='dispatch')
+class VolunteerTaskDeclineAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+    authentication_classes = (CsrfExemptSessionAuthentication,)
+    def post(self, request, task_id):
+        task = get_object_or_404(Task, id=task_id, is_deleted=False)
+        assignment, created = TaskAssignment.objects.get_or_create(task=task, volunteer=request.user)
+        assignment.accepted = False
+        assignment.save()
+        return Response({'message': 'Задача отклонена и перенесена в архив'})
+
+@method_decorator(csrf_exempt, name='dispatch')
+class VolunteerTaskArchiveAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+    authentication_classes = (CsrfExemptSessionAuthentication,)
+    def post(self, request, task_id):
+        task = get_object_or_404(Task, id=task_id, is_deleted=False)
+        if task.status in ['completed', 'failed', 'closed']:
+            task.status = 'archived'
+            task.save(update_fields=['status'])
+            return Response({'message': 'Задача перенесена в архив'})
+        return Response({'error': 'Можно архивировать только завершенные или закрытые задачи'}, status=400)
+
 
 urlpatterns = [
     path('register/volunteer/', VolunteerRegistrationAPIView.as_view(), name='register_volunteer'),
@@ -2412,5 +2471,10 @@ urlpatterns = [
     path('password-reset/confirm/', PasswordResetConfirmAPIView.as_view(), name='password_reset_confirm'),
     path('change-password/', ChangePasswordAPIView.as_view(), name='change_password'),
     path('ai/ask/', AIAssistantAPIView.as_view(), name='ai_assistant'),
+    path('volunteer/tasks/', VolunteerTasksAPIView.as_view(), name='volunteer_tasks_list'),
+    path('volunteer/tasks/<int:task_id>/', VolunteerTaskDetailAPIView.as_view(), name='volunteer_task_detail'),
+    path('volunteer/tasks/<int:task_id>/accept/', VolunteerTaskAcceptAPIView.as_view(), name='volunteer_task_accept'),
+    path('volunteer/tasks/<int:task_id>/decline/', VolunteerTaskDeclineAPIView.as_view(), name='volunteer_task_decline'),
+    path('volunteer/tasks/<int:task_id>/archive/', VolunteerTaskArchiveAPIView.as_view(), name='volunteer_task_archive'),   
 ]
 

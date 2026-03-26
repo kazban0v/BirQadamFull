@@ -5,18 +5,20 @@ import { Ionicons } from '@expo/vector-icons';
 interface HeaderProps {
   userName: string;
   onNotificationPress: () => void;
+  hasUnreadNotifications?: boolean;
   onLayout?: (event: any) => void;
   innerRef?: React.RefObject<View | null>;
 }
 
-export const Header: React.FC<HeaderProps> = React.memo(({ 
-  userName, 
+export const Header: React.FC<HeaderProps> = React.memo(({
+  userName,
   onNotificationPress,
+  hasUnreadNotifications = false,
   onLayout,
   innerRef,
 }) => {
   return (
-    <View 
+    <View
       ref={innerRef}
       style={styles.header}
       onLayout={onLayout}
@@ -27,7 +29,7 @@ export const Header: React.FC<HeaderProps> = React.memo(({
         </View>
         <View>
           <Text style={styles.welcomeText}>С возвращением,</Text>
-          <Text style={styles.userNameText}>Привет, {userName}!</Text>
+          <Text style={styles.userNameText}>{userName}!</Text>
         </View>
       </View>
       <TouchableOpacity
@@ -35,7 +37,7 @@ export const Header: React.FC<HeaderProps> = React.memo(({
         onPress={onNotificationPress}
       >
         <Ionicons name="notifications-outline" size={24} color="#1F2937" />
-        <View style={styles.notificationDot} />
+        {hasUnreadNotifications && <View style={styles.notificationDot} />}
       </TouchableOpacity>
     </View>
   );

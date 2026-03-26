@@ -1,13 +1,15 @@
 from __future__ import annotations
 
+from typing import Any
 from django.contrib.auth.password_validation import validate_password
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
 
 from api.notifications.models import NotificationRecipient
-from api.tasks.models import Photo
+from api.tasks.models import Photo, Task, TaskAssignment
 from api.projects.models import VolunteerProject
 from api.achievements.models import Achievement
+from api.users.services.dashboard import get_volunteer_dashboard_data
 
 User = get_user_model()
 
@@ -54,6 +56,19 @@ class LoginSerializer(serializers.Serializer):
 class VolunteerProfileSerializer(serializers.ModelSerializer):
     trust_factor = serializers.IntegerField(read_only=True)
     average_rating = serializers.FloatField(read_only=True)
+    tasks_completed = serializers.SerializerMethodField()
+    total_hours = serializers.SerializerMethodField()
+    active_projects = serializers.SerializerMethodField()
+    total_photos = serializers.SerializerMethodField()
+    achievements_count = serializers.SerializerMethodField()
+    full_name = serializers.CharField(source='name', read_only=True)
+    
+    _dashboard_cache = None
+
+    def _get_dashboard_data(self, obj: User) -> dict:
+        if self._dashboard_cache is None:
+            self._dashboard_cache = get_volunteer_dashboard_data(obj)
+        return self._dashboard_cache
     
     class Meta:
         model = User
@@ -61,12 +76,54 @@ class VolunteerProfileSerializer(serializers.ModelSerializer):
             'id',
             'username',
             'name',
+            'full_name',
             'phone_number',
             'email',
+            'rating',
             'trust_factor',
             'average_rating',
+            'tasks_completed',
+            'total_hours',
+            'active_projects',
+            'total_photos',
+            'achievements_count',
         )
-        read_only_fields = ('id', 'username', 'trust_factor', 'average_rating')
+        read_only_fields = ('id', 'username', 'rating', 'trust_factor', 'average_rating')
+
+    def get_tasks_completed(self, obj: User) -> int:
+        try:
+            dashboard_data = self._get_dashboard_data(obj)
+            return dashboard_data.get('summary', {}).get('active_tasks', 0)
+        except Exception as e:
+            return 0
+
+    def get_total_hours(self, obj: User) -> float:
+        try:
+            dashboard_data = self._get_dashboard_data(obj)
+            return dashboard_data.get('summary', {}).get('total_hours', 0.0)
+        except Exception as e:
+            return 0.0
+
+    def get_active_projects(self, obj: User) -> int:
+        try:
+            dashboard_data = self._get_dashboard_data(obj)
+            return dashboard_data.get('summary', {}).get('active_projects', 0)
+        except Exception:
+            return 0
+
+    def get_total_photos(self, obj: User) -> int:
+        try:
+            dashboard_data = self._get_dashboard_data(obj)
+            return dashboard_data.get('summary', {}).get('total_photos', 0)
+        except Exception:
+            return 0
+
+    def get_achievements_count(self, obj: User) -> int:
+        try:
+            dashboard_data = self._get_dashboard_data(obj)
+            return dashboard_data.get('summary', {}).get('achievements_count', 0)
+        except Exception:
+            return 0
 
     def update(self, instance: User, validated_data: dict) -> User:
         instance.name = validated_data.get('name', instance.name)
@@ -76,24 +133,117 @@ class VolunteerProfileSerializer(serializers.ModelSerializer):
         return instance
 
 
-class VolunteerTaskSummarySerializer(serializers.Serializer):
-    id = serializers.IntegerField(source='task_id')
-    task_id = serializers.IntegerField()
-    text = serializers.CharField()
-    status = serializers.CharField()
-    deadline_date = serializers.DateField(allow_null=True)
-    start_time = serializers.TimeField(allow_null=True)
-    end_time = serializers.TimeField(allow_null=True)
-    project_id = serializers.IntegerField()
-    project_title = serializers.CharField()
-    project_city = serializers.CharField(allow_null=True)
-    project_status = serializers.CharField()
-    accepted = serializers.BooleanField()
-    completed = serializers.BooleanField()
-    is_expired = serializers.BooleanField()
-    has_photo_report = serializers.BooleanField()
-    photo_status = serializers.CharField(allow_null=True)
-    can_upload_photo = serializers.BooleanField()
+class VolunteerTaskSummarySerializer(serializers.ModelSerializer):
+    task_id = serializers.IntegerField(source='id')
+    project_title = serializers.CharField(source='project.title', read_only=True)
+    project_city = serializers.CharField(source='project.city', read_only=True)
+    project_status = serializers.CharField(source='project.status', read_only=True)
+    accepted = serializers.SerializerMethodField()
+    completed = serializers.SerializerMethodField()
+    is_expired = serializers.SerializerMethodField()
+    has_photo_report = serializers.SerializerMethodField()
+    photo_status = serializers.SerializerMethodField()
+    can_upload_photo = serializers.SerializerMethodField()
+    
+    # Новые поля для Expo приложения
+    location = serializers.SerializerMethodField()
+    start_date = serializers.DateField(read_only=True)
+    end_date = serializers.DateField(source='deadline_date', read_only=True)
+    accepted_at = serializers.SerializerMethodField()
+    photo_uploaded_at = serializers.SerializerMethodField()
+    creator_name = serializers.SerializerMethodField()
+    creator_avatar = serializers.SerializerMethodField()
+    status = serializers.SerializerMethodField()
+    
+    # Маппинг для фронтенда (текст в заголовок и описание)
+    title = serializers.CharField(source='text', read_only=True)
+    description = serializers.CharField(source='text', read_only=True)
+
+    class Meta:
+        model = Task
+        fields = (
+            'id', 'task_id', 'text', 'status', 'deadline_date',
+            'start_time', 'end_time', 'project_id', 'project_title',
+            'project_city', 'project_status', 'accepted', 'completed',
+            'is_expired', 'has_photo_report', 'photo_status', 'can_upload_photo',
+            # Дополнительные поля
+            'location', 'start_date', 'end_date', 'created_at',
+            'accepted_at', 'photo_uploaded_at', 'creator_name', 'creator_avatar',
+            'title', 'description'
+        )
+
+    def get_accepted(self, obj) -> bool:
+        user = self.context['request'].user
+        assignment = TaskAssignment.objects.filter(task=obj, volunteer=user).first()
+        return bool(assignment and assignment.accepted)
+
+    def get_completed(self, obj) -> bool:
+        user = self.context['request'].user
+        assignment = TaskAssignment.objects.filter(task=obj, volunteer=user).first()
+        return bool(assignment and assignment.completed)
+
+    def get_is_expired(self, obj) -> bool:
+        return obj.is_expired()
+
+    def get_has_photo_report(self, obj) -> bool:
+        user = self.context['request'].user
+        return Photo.objects.filter(task=obj, volunteer=user, is_deleted=False).exists()
+
+    def get_photo_status(self, obj) -> str | None:
+        user = self.context['request'].user
+        photo = Photo.objects.filter(task=obj, volunteer=user, is_deleted=False).order_by('-uploaded_at').first()
+        return photo.status if photo else None
+
+    def get_can_upload_photo(self, obj) -> bool:
+        accepted = self.get_accepted(obj)
+        photo_status = self.get_photo_status(obj)
+        return accepted and (not self.get_has_photo_report(obj) or photo_status == 'rejected')
+
+    def get_location(self, obj) -> str | None:
+        if obj.project:
+            return obj.project.address if obj.project.address else obj.project.city
+        return None
+
+    def get_accepted_at(self, obj) -> Any:
+        user = self.context['request'].user
+        assignment = TaskAssignment.objects.filter(task=obj, volunteer=user).first()
+        return assignment.accepted_at if assignment else None
+
+    def get_photo_uploaded_at(self, obj) -> Any:
+        user = self.context['request'].user
+        photo = Photo.objects.filter(task=obj, volunteer=user, is_deleted=False).order_by('-uploaded_at').first()
+        return photo.uploaded_at if photo else None
+
+    def get_creator_name(self, obj) -> str | None:
+        if obj.creator:
+            return obj.creator.name or obj.creator.username
+        return None
+
+    def get_creator_avatar(self, obj) -> str | None:
+        if obj.creator and obj.creator.avatar:
+            request = self.context.get('request')
+            if request:
+                return request.build_absolute_uri(obj.creator.avatar.url)
+            return obj.creator.avatar.url
+        return None
+
+    def get_status(self, obj) -> str:
+        # Если дедлайн прошел и задача не завершена/закрыта
+        if obj.is_expired() and obj.status not in ['completed', 'failed', 'closed', 'archived', 'revision']:
+            return 'expired'
+            
+        request = self.context.get('request')
+        if request and request.user.is_authenticated:
+            assignment = TaskAssignment.objects.filter(task=obj, volunteer=request.user).first()
+            if assignment:
+                # Если волонтер явно отклонил задачу — для него она в архиве
+                if assignment.accepted is False:
+                    return 'archived'
+                # Если волонтер принял задачу — для него она "в работе"
+                if assignment.accepted is True and obj.status in ['open', 'pending']:
+                    return 'in_progress'
+        
+        return obj.status
 
 
 class VolunteerProjectSerializer(serializers.ModelSerializer):

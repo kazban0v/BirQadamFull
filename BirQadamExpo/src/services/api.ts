@@ -12,37 +12,37 @@ const getApiBaseUrl = (): string => {
   if (envUrl) {
     return envUrl;
   }
-  
+
   // Production mode
   if (!__DEV__) {
     return 'https://cleanup.almau.edu.kz';
   }
-  
+
   // Development mode - используем переменную окружения или определяем автоматически
   // Для физических устройств используйте переменную окружения EXPO_PUBLIC_API_BASE_URL
-  // Например: EXPO_PUBLIC_API_BASE_URL=http://192.168.0.129:8000
-  
+  // Например: EXPO_PUBLIC_API_BASE_URL=http://192.168.0.13:8000
+
   // Эмуляторы и симуляторы
   if (Platform.OS === 'android') {
     return 'http://10.0.2.2:8000';  // Android эмулятор
     // Для физического Android устройства раскомментируйте следующую строку:
-    // return 'http://192.168.0.129:8000';
+    // return 'http://192.168.0.13:8000';
   } else if (Platform.OS === 'ios') {
     // Для iOS: используем IP адрес для физических устройств
     // Для iOS симулятора используйте: http://localhost:8000
     // Для физического устройства используйте IP адрес вашего компьютера
-    return 'http://192.168.0.129:8000';  // Физическое iOS устройство
+    return 'http://192.168.0.13:8000';  // Физическое iOS устройство
     // Для iOS симулятора раскомментируйте следующую строку:
     // return 'http://localhost:8000';
   }
-  
+
   // Fallback - в development используйте переменную окружения!
   console.warn('⚠️ [API] Using fallback URL. Set EXPO_PUBLIC_API_BASE_URL environment variable for production!');
-  return 'http://192.168.0.129:8000';  // Fallback для физических устройств
+  return 'http://192.168.0.13:8000';  // Fallback для физических устройств
 };
 
 const API_BASE_URL = getApiBaseUrl();
-  
+
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -70,13 +70,13 @@ api.interceptors.request.use(
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;
       }
-      
+
       // Session ID для Django session auth
       const sessionId = await AsyncStorage.getItem('sessionid');
       if (sessionId) {
         config.headers.Cookie = `sessionid=${sessionId}`;
       }
-      
+
       // CSRF токен (если используется)
       const csrfToken = await AsyncStorage.getItem('csrftoken');
       if (csrfToken) {
@@ -104,7 +104,7 @@ api.interceptors.response.use(
     if (csrfToken) {
       await AsyncStorage.setItem('csrftoken', csrfToken);
     }
-    
+
     // Сохраняем Session ID из cookies (для Django session auth)
     const setCookie = response.headers['set-cookie'];
     if (setCookie) {
@@ -116,7 +116,7 @@ api.interceptors.response.use(
         await AsyncStorage.setItem('sessionid', sessionMatch[1]);
       }
     }
-    
+
     return response;
   },
   async (error) => {
@@ -153,7 +153,7 @@ export const authAPI = {
   // Вход
   login: (identifier: string, password: string) =>
     api.post('/api/web/login/', { identifier, password }),
-  
+
   // Регистрация волонтёра
   registerVolunteer: (data: {
     name: string;
@@ -162,10 +162,10 @@ export const authAPI = {
     password: string;
   }) => {
     // Нормализуем номер телефона - добавляем + если его нет
-    const normalizedPhone = data.phone_number.startsWith('+') 
-      ? data.phone_number 
+    const normalizedPhone = data.phone_number.startsWith('+')
+      ? data.phone_number
       : `+${data.phone_number}`;
-    
+
     return api.post('/api/web/register/volunteer/', {
       full_name: data.name,  // Бэкенд ожидает full_name вместо name
       phone_number: normalizedPhone,
@@ -173,7 +173,7 @@ export const authAPI = {
       password: data.password,
     });
   },
-  
+
   // Регистрация организатора
   registerOrganizer: (data: {
     username: string;
@@ -186,10 +186,10 @@ export const authAPI = {
     bin: string;
   }) => {
     // Нормализуем номер телефона - добавляем + если его нет
-    const normalizedPhone = data.phone_number.startsWith('+') 
-      ? data.phone_number 
+    const normalizedPhone = data.phone_number.startsWith('+')
+      ? data.phone_number
       : `+${data.phone_number}`;
-    
+
     return api.post('/api/web/register/organizer/', {
       full_name: data.name,  // Бэкенд ожидает full_name вместо name
       organization_name: data.organization_name,
@@ -200,34 +200,34 @@ export const authAPI = {
       bin: data.bin,
     });
   },
-  
+
   // Подтверждение email
   verifyEmail: (email: string, code: string) =>
     api.post('/api/web/verify-email/', { email, code }),
-  
+
   // Повторная отправка кода
   resendVerificationCode: (email: string) =>
     api.post('/api/web/resend-verification-code/', { email }),
-  
+
   // Отмена регистрации
   cancelRegistration: (email: string) =>
     api.post('/api/web/cancel-registration/', { email }),
-  
+
   // Запрос сброса пароля
   requestPasswordReset: (email: string) =>
     api.post('/api/web/password-reset/request/', { email }),
-  
+
   // Подтверждение сброса пароля
   confirmPasswordReset: (email: string, code: string, new_password: string) =>
     api.post('/api/web/password-reset/confirm/', { email, code, new_password }),
-  
+
   // Смена пароля
   changePassword: (old_password: string, new_password: string) =>
     api.post('/api/web/change-password/', { old_password, new_password }),
-  
+
   // Выход
   logout: () => api.post('/api/web/logout/'),
-  
+
   // Получение текущего пользователя
   getMe: () => api.get('/api/web/me/'),
 };
@@ -235,50 +235,50 @@ export const authAPI = {
 export const volunteerAPI = {
   // Dashboard
   getDashboard: () => api.get('/api/web/volunteer/dashboard/'),
-  
+
   // Профиль
   getProfile: () => api.get('/api/web/volunteer/profile/'),
   updateProfile: (data: any) => api.patch('/api/web/volunteer/profile/', data),
-  
+
   // Статистика
   getStats: () => api.get('/api/web/volunteer/stats/'),
   getActivity: (params?: any) => api.get('/api/web/volunteer/activity/', { params }),
-  
+
   // Проекты
   getProjects: (params?: any) => api.get('/api/web/volunteer/projects/', { params }),
   getProjectDetail: (id: number) => api.get(`/api/web/volunteer/projects/${id}/`),
   joinProject: (projectId: number) => api.post(`/api/web/volunteer/projects/${projectId}/join/`),
-  leaveProject: (projectId: number, reason: string) => 
+  leaveProject: (projectId: number, reason: string) =>
     api.post(`/api/web/volunteer/projects/${projectId}/leave/`, { reason }),
-  
+
   // Организаторы
   getOrganizerPortfolio: (organizerId: number) => api.get(`/api/web/organizer/${organizerId}/portfolio/`),
-  
-  // Задачи - используем v1 API через custom-admin
-  getTasks: (params?: any) => api.get('/custom-admin/api/v1/tasks/', { params }),
-  getTaskDetail: (id: number) => api.get(`/custom-admin/api/v1/tasks/${id}/`),
-  acceptTask: (taskId: number) => api.post(`/custom-admin/api/v1/tasks/${taskId}/accept/`),
-  declineTask: (taskId: number) => api.post(`/custom-admin/api/v1/tasks/${taskId}/decline/`),
-  completeTask: (taskId: number) => api.post(`/custom-admin/api/v1/tasks/${taskId}/complete/`),
-  retryTask: (taskId: number) => api.post(`/custom-admin/api/v1/tasks/${taskId}/retry/`),
+
+  // Задачи (Переведены на web-portal для волонтёров)
+  getTasks: (params?: any) => api.get('/api/web/volunteer/tasks/', { params }),
+  getTaskDetail: (id: number) => api.get(`/api/web/volunteer/tasks/${id}/`),
+  acceptTask: (taskId: number) => api.post(`/api/web/volunteer/tasks/${taskId}/accept/`),
+  declineTask: (taskId: number) => api.post(`/api/web/volunteer/tasks/${taskId}/decline/`),
+  completeTask: (taskId: number) => api.post(`/api/web/volunteer/tasks/${taskId}/complete/`),
+  retryTask: (taskId: number) => api.post(`/api/web/volunteer/tasks/${taskId}/retry/`),
   archiveTask: (taskId: number) => api.post(`/api/web/volunteer/tasks/${taskId}/archive/`),
   submitPhotoReportV1: (taskId: number, photos: FormData) =>
-    api.post(`/custom-admin/api/v1/tasks/${taskId}/photo-reports/`, photos, {
+    api.post(`/api/web/volunteer/tasks/${taskId}/photo-reports/`, photos, {
       headers: { 'Content-Type': 'multipart/form-data' },
     }),
-  
+
   // Уведомления
   getNotifications: () => api.get('/api/web/volunteer/notifications/'),
-  markNotificationRead: (id: number) => api.post(`/api/web/volunteer/notifications/${id}/read/`),
+  markNotificationRead: (id: number, activityId?: number) => api.post(`/api/web/volunteer/notifications/${id}/read/`, { activity_id: activityId }),
   markAllNotificationsRead: () => api.post('/api/web/volunteer/notifications/read-all/'),
-  
+
   // Фотоотчёты
   getPhotoReports: (params?: any) => api.get('/api/web/volunteer/photo-reports/', { params }),
   submitPhotoReport: (taskId: number, photos: FormData) =>
     api.post(`/api/web/volunteer/tasks/${taskId}/photo-reports/`, photos, {
       headers: { 'Content-Type': 'multipart/form-data' },
     }),
-  
+
   // Telegram синхронизация
   getTelegramSync: () => api.get('/api/web/telegram/sync/'),
 };
@@ -286,32 +286,32 @@ export const volunteerAPI = {
 export const organizerAPI = {
   // Dashboard
   getDashboard: () => api.get('/api/web/organizer/dashboard/'),
-  
+
   // Профиль
   getProfile: () => api.get('/api/web/organizer/profile/'),
   updateProfile: (data: any) => api.patch('/api/web/organizer/profile/', data),
-  
+
   // Проекты
   getProjects: (params?: any) => api.get('/api/web/organizer/projects/', { params }),
   createProject: (data: any) => api.post('/api/web/organizer/projects/', data),
   updateProject: (id: number, data: any) => api.patch(`/api/web/organizer/projects/${id}/`, data),
   deleteProject: (id: number) => api.delete(`/api/web/organizer/projects/${id}/`),
-  
+
   // Волонтёры
   getVolunteers: (params?: any) => api.get('/api/web/organizer/volunteers/', { params }),
   getVolunteerDetail: (id: number) => api.get(`/api/web/organizer/volunteers/${id}/`),
-  
+
   // Задачи
   getTasks: (params?: any) => api.get('/api/web/organizer/tasks/', { params }),
   createTask: (projectId: number, data: any) => api.post(`/api/web/organizer/projects/${projectId}/tasks/`, data),
   updateTask: (id: number, data: any) => api.patch(`/api/web/organizer/tasks/${id}/`, data),
   deleteTask: (id: number) => api.delete(`/api/web/organizer/tasks/${id}/`),
-  
+
   // Модерация фото
   getPhotoModeration: () => api.get('/api/web/organizer/photo-moderation/'),
   approvePhoto: (id: number) => api.post(`/api/web/organizer/photos/${id}/approve/`),
   rejectPhoto: (id: number, reason: string) => api.post(`/api/web/organizer/photos/${id}/reject/`, { reason }),
-  
+
   // Аналитика
   getAnalytics: (params?: any) => api.get('/api/web/organizer/analytics/', { params }),
 };

@@ -12,8 +12,6 @@ from api.users.models import (
     OrganizerApplication,
     TrustFactorHistory,
     VerificationCode,
-    TelegramLinkCode,
-    EmailVerificationCode,
     Activity,
 )
 
@@ -70,8 +68,6 @@ __all__ = [
     'OrganizerApplication',
     'TrustFactorHistory',
     'VerificationCode',
-    'TelegramLinkCode',
-    'EmailVerificationCode',
     'Activity',
     # Projects
     'Project',

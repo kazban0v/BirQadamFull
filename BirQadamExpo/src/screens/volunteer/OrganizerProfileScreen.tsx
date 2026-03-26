@@ -115,7 +115,7 @@ export const OrganizerProfileScreen = ({
     
     if (__DEV__) {
       if (url.includes('cleanup.almau.edu.kz') || url.includes('birqadam.almau.edu.kz')) {
-        return url.replace(/https?:\/\/[^\/]+/, 'http://192.168.0.129:8000');
+        return url.replace(/https?:\/\/[^\/]+/, 'http://192.168.0.13:8000');
       }
       if (url.startsWith('https://')) {
         return url.replace('https://', 'http://');

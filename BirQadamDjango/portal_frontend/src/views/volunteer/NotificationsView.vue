@@ -143,7 +143,7 @@ async function handleMarkRead(notificationId: number, activityId?: number) {
       try {
         await markNotificationRead(notificationId, activityId);
       } catch {
-        // Игнорируем ошибки API для Activity, так как они хранятся в localStorage
+        // Игнорируем ошибки API для Activity, так как они храняны в localStorage
       }
     } else {
       // Обычное уведомление - вызываем API
@@ -232,616 +232,383 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="notifications-page">
-    <v-card elevation="4" class="notifications-header-card mb-6">
-      <div class="notifications-header">
-        <div class="notifications-header-content">
-          <h1 class="notifications-title">Уведомления</h1>
-          <p class="notifications-description">
-            Здесь отображаются все важные события, связанные с проектами, заданиями и модерацией.
-          </p>
-        </div>
-        <div class="notifications-actions">
-          <v-chip
-            color="primary"
-            variant="tonal"
-            class="text-none font-weight-medium unread-chip"
-          >
-            Непрочитанных: {{ computedUnreadCount }}
-          </v-chip>
-          <v-btn
-            color="primary"
-            variant="flat"
-            class="text-none font-weight-bold mark-all-btn"
-            :disabled="computedUnreadCount === 0 || loading"
-            @click="handleMarkAllRead"
-          >
-            <v-icon icon="mdi-check-all" start />
-            Прочитать все
-          </v-btn>
+  <div class="notifications-container">
+    <div class="notifications-page">
+      <div class="notifications-header-card mb-6">
+        <div class="notifications-header">
+          <div class="notifications-header-content">
+            <h1 class="notifications-title">Уведомления</h1>
+            <p class="notifications-description">
+              Важные события, связанные с вашими проектами и заданиями.
+            </p>
+          </div>
+          <div class="notifications-actions">
+            <v-chip
+              color="primary"
+              variant="tonal"
+              class="unread-chip"
+            >
+              {{ computedUnreadCount }} новых
+            </v-chip>
+            <v-btn
+              color="primary"
+              variant="flat"
+              class="text-none font-weight-bold mark-all-btn"
+              rounded="pill"
+              :disabled="computedUnreadCount === 0 || loading"
+              @click="handleMarkAllRead"
+            >
+              <v-icon icon="mdi-check-all" start />
+              Прочитать все
+            </v-btn>
+          </div>
         </div>
       </div>
-    </v-card>
 
-    <v-skeleton-loader
-      v-if="loading"
-      type="list-item-two-line@6"
-    />
+      <v-skeleton-loader
+        v-if="loading"
+        type="list-item-two-line@6"
+        class="bg-transparent"
+      />
 
-    <v-alert
-      v-else-if="!filteredNotifications.length"
-      type="info"
-      variant="tonal"
-    >
-      Пока уведомлений нет. Как только появятся события, вы увидите их здесь.
-    </v-alert>
-
-    <v-timeline v-else density="comfortable">
-      <v-timeline-item
-        v-for="notification in filteredNotifications"
-        :key="notification.id"
-        :dot-color="statusColor(notification.status)"
-        size="small"
+      <v-alert
+        v-else-if="!filteredNotifications.length"
+        type="info"
+        variant="tonal"
+        class="rounded-xl border-0"
       >
-        <div class="notification-header-row">
-          <div class="notification-subject">
-            {{ notification.subject }}
-          </div>
-          <v-chip
-            v-if="notification.status !== 'delivered' && notification.status !== 'opened' && notification.status !== 'clicked'"
-            size="x-small"
-            :color="statusColor(notification.status)"
-            variant="tonal"
-            class="notification-status-chip text-uppercase font-weight-medium"
-          >
-            {{ notification.status === 'pending' ? 'Новое' : notification.status === 'sent' ? 'Отправлено' : notification.status }}
-          </v-chip>
-        </div>
-        <div class="text-body-2 text-medium-emphasis mb-2">
-          {{ formatDateTime(notification.created_at) }}
-        </div>
-        <div class="text-body-2 mb-3">
-          {{ notification.message }}
-        </div>
-        
-        <!-- Дополнительная информация о проекте для уведомлений о заданиях -->
-        <v-card
-          v-if="notification.notification_type === 'task_assigned' && notification.project_id"
-          variant="outlined"
-          class="pa-3 mb-3"
-          style="background: rgba(139, 195, 74, 0.05);"
+        Пока уведомлений нет. Как только появятся события, они отобразятся здесь.
+      </v-alert>
+
+      <v-timeline 
+        v-else 
+        :density="$vuetify.display.mobile ? 'compact' : 'comfortable'"
+        line-color="rgba(139, 195, 74, 0.2)"
+        side="end"
+        align="start"
+        class="custom-timeline"
+      >
+        <v-timeline-item
+          v-for="notification in filteredNotifications"
+          :key="notification.id"
+          :dot-color="statusColor(notification.status)"
+          size="x-small"
+          class="mb-4"
         >
-          <div class="d-flex align-center ga-2 mb-2">
-            <v-icon icon="mdi-information-outline" size="20" color="primary" />
-            <div class="text-subtitle-2 font-weight-semibold">Детали задания</div>
-          </div>
-          <div class="text-body-2 text-medium-emphasis">
-            <div v-if="notification.project_title" class="mb-1">
-              <strong>Проект:</strong> {{ notification.project_title }}
+          <v-card variant="flat" class="notification-card">
+            <div class="notification-card-inner">
+              <div class="notification-header-row">
+                <div class="notification-subject">
+                  {{ notification.subject }}
+                </div>
+                <div class="text-caption text-medium-emphasis">
+                  {{ formatDateTime(notification.created_at) }}
+                </div>
+              </div>
+
+              <div class="notification-message text-body-2 mb-3">
+                {{ notification.message }}
+              </div>
+              
+              <v-card
+                v-if="notification.notification_type === 'task_assigned' && notification.project_id"
+                variant="outlined"
+                class="project-info-mini border-dashed"
+              >
+                <div class="d-flex align-center ga-2 mb-2">
+                  <v-icon icon="mdi-information-outline" size="18" color="primary" />
+                  <span class="text-subtitle-2 font-weight-bold">Детали проекта</span>
+                </div>
+                <div class="text-caption">
+                  <div v-if="notification.project_title"><strong>Проект:</strong> {{ notification.project_title }}</div>
+                  <div class="mt-1 opacity-70">Перейдите в проект, чтобы увидеть доступные задания.</div>
+                </div>
+              </v-card>
+              
+              <div class="notification-actions mt-3">
+                <v-btn
+                  v-if="notification.status === 'pending' || notification.status === 'sent'"
+                  color="primary"
+                  variant="text"
+                  size="small"
+                  class="text-none"
+                  rounded="pill"
+                  @click="handleMarkRead(notification.id, notification.activity_id)"
+                >
+                  <v-icon icon="mdi-email-open-outline" start size="16" />
+                  Прочитано
+                </v-btn>
+                <v-btn
+                  v-if="notification.notification_type === 'task_assigned' && notification.project_id"
+                  color="primary"
+                  variant="tonal"
+                  size="small"
+                  class="text-none"
+                  rounded="pill"
+                  @click="openProjectDialog(notification.project_id!)"
+                >
+                  Открыть проект
+                  <v-icon icon="mdi-arrow-right" end size="14" />
+                </v-btn>
+              </div>
             </div>
-            <div v-if="notification.project_id" class="mb-1">
-              <strong>ID проекта:</strong> {{ notification.project_id }}
-            </div>
-            <div class="text-caption text-medium-emphasis mt-2">
-              Перейдите во вкладку "Проекты" чтобы увидеть все задания проекта и принять участие.
-            </div>
-          </div>
-        </v-card>
-        
-        <div class="notification-actions">
-          <v-btn
-            v-if="(notification.status === 'pending' || notification.status === 'sent') && notification.status !== 'opened' && notification.status !== 'clicked'"
-            color="primary"
-            variant="text"
-            size="small"
-            class="text-none notification-action-btn"
-            @click="handleMarkRead(notification.id, notification.activity_id)"
-          >
-            Отметить прочитанным
-          </v-btn>
-          <v-btn
-            v-if="notification.notification_type === 'task_assigned' && notification.project_id"
-            color="primary"
-            variant="outlined"
-            size="small"
-            class="text-none notification-action-btn"
-            @click="openProjectDialog(notification.project_id!)"
-          >
-            Перейти в проект
-            <v-icon icon="mdi-arrow-right" end size="16" />
-          </v-btn>
-        </div>
-      </v-timeline-item>
-    </v-timeline>
+          </v-card>
+        </v-timeline-item>
+      </v-timeline>
 
-    <v-snackbar v-model="snackbar.show" :color="snackbar.color" timeout="4000">
-      {{ snackbar.message }}
-    </v-snackbar>
+      <v-snackbar v-model="snackbar.show" :color="snackbar.color" timeout="4000" rounded="pill">
+        {{ snackbar.message }}
+      </v-snackbar>
 
-    <!-- Диалог с деталями проекта -->
-    <v-dialog v-model="projectDialog" :max-width="$vuetify.display.mobile ? '100%' : '800'" :fullscreen="$vuetify.display.mobile" scrollable>
-      <v-card v-if="projectDetail" class="project-dialog-card">
-        <v-card-title class="project-dialog-title">
-          <h2 class="project-dialog-title-text">{{ projectDetail.title }}</h2>
-          <v-btn icon="mdi-close" variant="text" @click="projectDialog = false" class="project-dialog-close-btn" />
-        </v-card-title>
+      <v-dialog v-model="projectDialog" :max-width="$vuetify.display.mobile ? '100%' : '750'" :fullscreen="$vuetify.display.mobile" scrollable transition="dialog-bottom-transition">
+        <v-card v-if="projectDetail" class="project-dialog-card rounded-xl">
+          <v-toolbar color="transparent" class="px-2">
+            <v-toolbar-title class="font-weight-black">{{ projectDetail.title }}</v-toolbar-title>
+            <v-btn icon="mdi-close" variant="text" @click="projectDialog = false" />
+          </v-toolbar>
 
-        <v-card-text class="project-dialog-content">
-          <v-skeleton-loader v-if="loadingProject" type="article@3" />
+          <v-card-text class="pa-6">
+            <v-skeleton-loader v-if="loadingProject" type="article@2" />
 
-          <div v-else>
-            <!-- Обложка проекта -->
-            <v-img
-              v-if="projectDetail.cover_image_url"
-              :src="projectDetail.cover_image_url"
-              :height="$vuetify.display.mobile ? '150' : '200'"
-              class="mb-6 rounded-lg project-cover-image"
-              cover
-            />
+            <div v-else>
+              <v-img
+                v-if="projectDetail.cover_image_url"
+                :src="projectDetail.cover_image_url"
+                height="220"
+                class="mb-6 rounded-xl"
+                cover
+              />
 
-            <!-- Описание -->
-            <div class="mb-6">
-              <h3 class="text-h6 font-weight-bold mb-2">Описание</h3>
-              <p class="text-body-1">{{ projectDetail.description }}</p>
-            </div>
+              <section class="mb-8">
+                <h3 class="text-h6 font-weight-bold mb-3 d-flex align-center">
+                  <v-icon icon="mdi-text-subject" start color="primary" class="me-2" />
+                  Описание
+                </h3>
+                <p class="text-body-1 text-high-emphasis">{{ projectDetail.description }}</p>
+              </section>
 
-            <v-divider class="my-6" />
+              <v-card variant="tonal" border color="primary" class="pa-4 mb-8 rounded-lg">
+                <v-row dense>
+                  <v-col cols="12" sm="6">
+                    <div class="d-flex align-center mb-3">
+                      <v-icon icon="mdi-map-marker" size="18" class="me-2 opacity-70" />
+                      <span class="text-body-2"><strong>Город:</strong> {{ projectDetail.city || '—' }}</span>
+                    </div>
+                    <div class="d-flex align-center">
+                      <v-icon icon="mdi-calendar-range" size="18" class="me-2 opacity-70" />
+                      <span class="text-body-2"><strong>Срок:</strong> {{ formatDate(projectDetail.start_date) }}</span>
+                    </div>
+                  </v-col>
+                  <v-col cols="12" sm="6">
+                    <div class="d-flex align-center mb-3">
+                      <v-icon icon="mdi-account-group" size="18" class="me-2 opacity-70" />
+                      <span class="text-body-2"><strong>Участников:</strong> {{ projectDetail.active_members }}</span>
+                    </div>
+                    <div class="d-flex align-center">
+                      <v-icon icon="mdi-shield-check" size="18" class="me-2 opacity-70" />
+                      <span class="text-body-2"><strong>Организатор:</strong> {{ projectDetail.organizer_name }}</span>
+                    </div>
+                  </v-col>
+                </v-row>
+              </v-card>
 
-            <!-- Основная информация -->
-            <v-row class="mb-6">
-              <v-col cols="12" md="6">
-                <div class="mb-3">
-                  <v-icon icon="mdi-map-marker" size="20" class="me-2" />
-                  <strong>Город:</strong> {{ projectDetail.city || '—' }}
-                </div>
-                <div class="mb-3">
-                  <v-icon icon="mdi-calendar" size="20" class="me-2" />
-                  <strong>Период:</strong>
-                  <span v-if="projectDetail.start_date && projectDetail.end_date">
-                    {{ formatDate(projectDetail.start_date) }} - {{ formatDate(projectDetail.end_date) }}
-                  </span>
-                  <span v-else-if="projectDetail.start_date">
-                    С {{ formatDate(projectDetail.start_date) }}
-                  </span>
-                  <span v-else>—</span>
-                </div>
-                <div v-if="projectDetail.address" class="mb-3">
-                  <v-icon icon="mdi-map-marker-outline" size="20" class="me-2" />
-                  <strong>Адрес:</strong> {{ projectDetail.address }}
-                </div>
-              </v-col>
-              <v-col cols="12" md="6">
-                <div class="mb-3">
-                  <v-icon icon="mdi-account-group" size="20" class="me-2" />
-                  <strong>Участников:</strong> {{ projectDetail.active_members }}
-                </div>
-                <div class="mb-3">
-                  <v-icon icon="mdi-clipboard-check" size="20" class="me-2" />
-                  <strong>Заданий:</strong> {{ projectDetail.tasks_count }}
-                </div>
-                <div class="mb-3">
-                  <v-icon icon="mdi-account-tie" size="20" class="me-2" />
-                  <strong>Организатор:</strong> {{ projectDetail.organizer_name }}
-                </div>
-              </v-col>
-            </v-row>
-
-            <!-- Теги -->
-            <div v-if="projectDetail.tags && projectDetail.tags.length" class="mb-6">
-              <h3 class="text-h6 font-weight-bold mb-2">Теги</h3>
-              <div class="d-flex flex-wrap ga-2">
+              <div v-if="projectDetail.tags?.length" class="mb-4">
                 <v-chip
                   v-for="tag in projectDetail.tags"
                   :key="tag"
                   size="small"
+                  variant="outlined"
+                  class="me-2 mb-2 text-none"
                   color="primary"
-                  variant="tonal"
                 >
                   {{ tag }}
                 </v-chip>
               </div>
             </div>
+          </v-card-text>
 
-            <!-- Контакты -->
-            <div
-              v-if="projectDetail.contact_person || projectDetail.contact_phone || projectDetail.contact_email || projectDetail.contact_telegram || projectDetail.info_url"
-              class="mb-6"
-            >
-              <h3 class="text-h6 font-weight-bold mb-3">Контакты</h3>
-              <v-list density="compact" class="pa-0">
-                <v-list-item v-if="projectDetail.contact_person" class="px-0">
-                  <template #prepend>
-                    <v-icon icon="mdi-account-tie" size="20" class="me-2" />
-                  </template>
-                  <v-list-item-title>{{ projectDetail.contact_person }}</v-list-item-title>
-                </v-list-item>
-                <v-list-item v-if="projectDetail.contact_phone" class="px-0">
-                  <template #prepend>
-                    <v-icon icon="mdi-phone" size="20" class="me-2" />
-                  </template>
-                  <v-list-item-title>
-                    <a :href="`tel:${projectDetail.contact_phone}`" class="text-decoration-none">
-                      {{ projectDetail.contact_phone }}
-                    </a>
-                  </v-list-item-title>
-                </v-list-item>
-                <v-list-item v-if="projectDetail.contact_email" class="px-0">
-                  <template #prepend>
-                    <v-icon icon="mdi-email-outline" size="20" class="me-2" />
-                  </template>
-                  <v-list-item-title>
-                    <a :href="`mailto:${projectDetail.contact_email}`" class="text-decoration-none">
-                      {{ projectDetail.contact_email }}
-                    </a>
-                  </v-list-item-title>
-                </v-list-item>
-                <v-list-item v-if="projectDetail.contact_telegram" class="px-0">
-                  <template #prepend>
-                    <v-icon icon="mdi-send" size="20" class="me-2" />
-                  </template>
-                  <v-list-item-title>
-                    <a :href="projectDetail.contact_telegram" target="_blank" class="text-decoration-none">
-                      Telegram
-                    </a>
-                  </v-list-item-title>
-                </v-list-item>
-                <v-list-item v-if="projectDetail.info_url" class="px-0">
-                  <template #prepend>
-                    <v-icon icon="mdi-web" size="20" class="me-2" />
-                  </template>
-                  <v-list-item-title>
-                    <a :href="projectDetail.info_url" target="_blank" class="text-decoration-none">
-                      Дополнительная информация
-                    </a>
-                  </v-list-item-title>
-                </v-list-item>
-              </v-list>
-            </div>
-          </div>
-        </v-card-text>
-
-        <v-card-actions class="project-dialog-actions">
-          <v-spacer />
-          <div class="project-dialog-buttons">
+          <v-divider />
+          <v-card-actions class="pa-6">
+            <v-spacer />
             <v-btn
               color="primary"
               variant="flat"
-              class="text-none font-weight-bold project-dialog-btn"
+              rounded="pill"
+              class="px-8 text-none font-weight-black"
+              size="large"
+              elevation="4"
               :to="{ name: 'volunteer-projects', query: { project_id: projectDetail.project_id } }"
               @click="projectDialog = false"
             >
               Перейти к проекту
               <v-icon icon="mdi-arrow-right" end />
             </v-btn>
-            <v-btn
-              color="grey"
-              variant="text"
-              class="text-none project-dialog-btn"
-              @click="projectDialog = false"
-            >
-              Закрыть
-            </v-btn>
-          </div>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
+          </v-card-actions>
+        </v-card>
+      </v-dialog>
+    </div>
   </div>
 </template>
 
 <style scoped>
+.notifications-container {
+  max-width: 1000px;
+  margin: 0 auto;
+  width: 100%;
+}
+
 .notifications-page {
   display: flex;
   flex-direction: column;
-  gap: 24px;
 }
 
-/* Заголовок страницы */
+/* Header */
 .notifications-header-card {
-  padding: 24px;
+  padding: 8px 0;
 }
 
 .notifications-header {
   display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
   align-items: center;
-  gap: 16px;
-}
-
-.notifications-header-content {
-  flex: 1 1 auto;
-  min-width: 200px;
+  justify-content: space-between;
+  gap: 20px;
 }
 
 .notifications-title {
-  font-size: 1.5rem;
-  font-weight: 700;
-  margin-bottom: 8px;
-  line-height: 1.2;
+  font-size: 2.25rem;
+  font-weight: 900;
+  color: #1b2a1b;
+  letter-spacing: -1.5px;
+  margin: 0 0 4px 0;
+  line-height: 1.1;
 }
 
 .notifications-description {
-  font-size: 0.875rem;
-  color: rgba(0, 0, 0, 0.6);
+  font-size: 1rem;
+  color: rgba(27, 42, 27, 0.55);
   margin: 0;
-  line-height: 1.5;
 }
 
 .notifications-actions {
   display: flex;
-  gap: 8px;
   align-items: center;
-  flex-wrap: wrap;
-}
-
-.unread-chip {
-  white-space: nowrap;
-}
-
-.mark-all-btn {
-  white-space: nowrap;
-}
-
-/* Элементы уведомлений */
-.notification-header-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
   gap: 12px;
-  margin-bottom: 8px;
-  flex-wrap: wrap;
-}
-
-.notification-subject {
-  font-size: 0.875rem;
-  font-weight: 600;
-  flex: 1 1 auto;
-  min-width: 150px;
-  word-break: break-word;
-  line-height: 1.4;
-}
-
-.notification-status-chip {
   flex-shrink: 0;
 }
 
-.notification-actions {
+/* Notification Card */
+.notification-card {
+  background: #ffffff !important;
+  border: 1px solid rgba(139, 195, 74, 0.12) !important;
+  border-radius: 20px !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03) !important;
+}
+
+.notification-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.06) !important;
+  border-color: rgba(139, 195, 74, 0.3) !important;
+}
+
+.notification-card-inner {
+  padding: 16px 20px;
+}
+
+.notification-header-row {
   display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-  margin-top: 12px;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  gap: 12px;
 }
 
-.notification-action-btn {
-  flex: 1 1 auto;
-  min-width: 120px;
+.notification-subject {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: #1a1a1a;
+  letter-spacing: -0.3px;
 }
 
-/* Карточка с деталями проекта в уведомлении */
-.notifications-page :deep(.v-timeline-item .v-card) {
-  word-break: break-word;
+.notification-message {
+  color: rgba(0, 0, 0, 0.7);
+  line-height: 1.5;
 }
 
-/* Мобильная адаптация */
+.project-info-mini {
+  padding: 12px;
+  border-radius: 12px !important;
+  background: rgba(139, 195, 74, 0.03);
+  border-color: rgba(139, 195, 74, 0.2) !important;
+}
+
+.unread-chip {
+  font-weight: 700;
+  font-size: 0.85rem;
+}
+
+/* Timeline Customization */
+.custom-timeline :deep(.v-timeline-item__body) {
+  padding-bottom: 8px !important;
+}
+
+.custom-timeline :deep(.v-timeline-divider__line) {
+  width: 2px !important;
+}
+
+/* Mobile Adaptation */
 @media (max-width: 960px) {
-  .notifications-header-card {
-    padding: 16px;
+  .notifications-title {
+    font-size: 1.75rem;
+    letter-spacing: -1px;
   }
-  
+}
+
+@media (max-width: 600px) {
   .notifications-header {
     flex-direction: column;
     align-items: flex-start;
     gap: 12px;
   }
   
-  .notifications-header-content {
-    width: 100%;
-  }
-  
-  .notifications-title {
-    font-size: 1.25rem;
-  }
-  
-  .notifications-description {
-    font-size: 0.8125rem;
-  }
-  
   .notifications-actions {
     width: 100%;
-    flex-direction: column;
-    align-items: stretch;
-  }
-  
-  .unread-chip {
-    width: 100%;
-    justify-content: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
   }
   
   .mark-all-btn {
-    width: 100%;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .notification-card-inner {
+    padding: 14px 16px;
   }
   
   .notification-header-row {
     flex-direction: column;
     align-items: flex-start;
-    gap: 8px;
+    gap: 4px;
   }
   
   .notification-subject {
-    width: 100%;
-    font-size: 0.8125rem;
-  }
-  
-  .notification-actions {
-    flex-direction: column;
-    width: 100%;
-  }
-  
-  .notification-action-btn {
-    width: 100%;
-    min-width: 100%;
-  }
-  
-  /* Timeline адаптация */
-  .notifications-page :deep(.v-timeline) {
-    padding-left: 0;
-  }
-  
-  .notifications-page :deep(.v-timeline-item__body) {
-    padding-left: 16px;
-  }
-  
-  .notifications-page :deep(.v-timeline-item__opposite) {
-    display: none;
-  }
-}
-
-@media (max-width: 600px) {
-  .notifications-header-card {
-    padding: 12px;
+    font-size: 0.95rem;
   }
   
   .notifications-title {
-    font-size: 1.125rem;
+    font-size: 1.4rem;
+    letter-spacing: -0.8px;
   }
   
   .notifications-description {
-    font-size: 0.75rem;
-  }
-  
-  .notification-subject {
-    font-size: 0.75rem;
-  }
-  
-  .notifications-page :deep(.v-timeline-item__body) {
-    padding-left: 12px;
-  }
-  
-  /* Карточка с деталями проекта */
-  .notifications-page :deep(.v-timeline-item .v-card) {
-    padding: 12px !important;
-  }
-  
-  .notifications-page :deep(.v-timeline-item .v-card .text-subtitle-2) {
-    font-size: 0.75rem !important;
-  }
-  
-  .notifications-page :deep(.v-timeline-item .v-card .text-body-2) {
-    font-size: 0.75rem !important;
+    font-size: 0.875rem;
   }
 }
 
-/* Диалог проекта */
-.project-dialog-card {
-  padding: 24px;
-}
-
-.project-dialog-title {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 24px;
-  gap: 16px;
-}
-
-.project-dialog-title-text {
-  font-size: 1.5rem;
-  font-weight: 700;
-  flex: 1 1 auto;
-  word-break: break-word;
-  line-height: 1.3;
-}
-
-.project-dialog-close-btn {
-  flex-shrink: 0;
-}
-
-.project-dialog-content {
-  word-break: break-word;
-}
-
-.project-cover-image {
-  width: 100%;
-  object-fit: cover;
-}
-
-.project-dialog-actions {
-  padding: 24px;
-  padding-top: 0;
-}
-
-.project-dialog-buttons {
-  display: flex;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-
-.project-dialog-btn {
-  flex: 1 1 auto;
-  min-width: 120px;
-}
-
-/* Мобильная адаптация диалога */
-@media (max-width: 960px) {
-  .project-dialog-card {
-    padding: 16px;
-  }
-  
-  .project-dialog-title {
-    margin-bottom: 16px;
-    flex-wrap: wrap;
-  }
-  
-  .project-dialog-title-text {
-    font-size: 1.25rem;
-    width: 100%;
-  }
-  
-  .project-dialog-actions {
-    padding: 16px;
-    padding-top: 0;
-  }
-  
-  .project-dialog-buttons {
-    width: 100%;
-    flex-direction: column;
-  }
-  
-  .project-dialog-btn {
-    width: 100%;
-    min-width: 100%;
-  }
-}
-
-@media (max-width: 600px) {
-  .project-dialog-card {
-    padding: 12px;
-  }
-  
-  .project-dialog-title {
-    margin-bottom: 12px;
-  }
-  
-  .project-dialog-title-text {
-    font-size: 1.125rem;
-  }
-  
-  .project-dialog-actions {
-    padding: 12px;
-    padding-top: 0;
-  }
-  
-  .project-dialog-content :deep(.text-h6) {
-    font-size: 1rem !important;
-  }
-  
-  .project-dialog-content :deep(.text-body-1) {
-    font-size: 0.875rem !important;
-  }
-  
-  .project-dialog-content :deep(.v-icon) {
-    font-size: 18px !important;
-  }
+/* Transitions */
+.dialog-bottom-transition-enter-active,
+.dialog-bottom-transition-leave-active {
+  transition: transform 0.3s ease-in-out;
 }
 </style>
-

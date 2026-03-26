@@ -1272,7 +1272,7 @@ class UserTasksAPIView(APIView):
     permission_classes = [IsAuthenticated]
     authentication_classes = [CsrfExemptSessionAuthentication]
 
-    def get(self, request: HttpRequest) -> Response:
+    def get(self, request: HttpRequest, task_id: int | None = None) -> Response:
         from api.models import VolunteerProject
 
         # ✅ ИСПРАВЛЕНИЕ НП-1: Добавлен select_related для оптимизации
@@ -1313,7 +1313,26 @@ class UserTasksAPIView(APIView):
             accepted=False
         ).values_list('task_id', flat=True)
 
-        # 1. Обычные задачи из активных проектов (не удалённые, не архивные)
+        # ✅ Автоматически переводим просроченные задачи в архив перед выборкой
+        now = timezone.now()
+        # 1. Задачи просроченные по самой дате (вчера и раньше)
+        Task.objects.filter(
+            status__in=['open', 'in_progress'],
+            deadline_date__lt=now.date(),
+            is_deleted=False
+        ).update(status='archived')
+        
+        # 2. Задачи просроченные СЕГОДНЯ (по времени окончания)
+        tasks_expiring_today = Task.objects.filter(
+            status__in=['open', 'in_progress'],
+            deadline_date=now.date(),
+            is_deleted=False
+        )
+        for t in tasks_expiring_today:
+            if t.is_expired():
+                t.archive_if_expired()
+
+        # 1. Задачи из активных проектов (все статусы, включая завершенные и архивные)
         tasks_qs = Task.objects.filter(  # type: ignore[attr-defined]
             project_id__in=joined_projects,
             is_deleted=False  # Исключаем удаленные задачи
@@ -1340,26 +1359,66 @@ class UserTasksAPIView(APIView):
         # Формируем результат с обработкой имени создателя
         tasks = []
 
+        # Предварительно загружаем фотоотчеты пользователя для текущих задач
+        # Это оптимизация для списка
+        user_photos = {
+            p.task_id: p 
+            for p in Photo.objects.filter(volunteer=request.user, is_deleted=False).select_related('task').order_by('uploaded_at')
+        }
+        
+        # Предварительно загружаем полные объекты назначений
+        user_assignments = {
+            a.task_id: a
+            for a in TaskAssignment.objects.filter(volunteer=request.user)
+        }
+
         def _build_task_row(task) -> dict:  # type: ignore[no-untyped-def]
             is_assigned = task.id in assigned_task_ids  # type: ignore[attr-defined]
             joined_at = all_join_dates.get(task.project_id)  # type: ignore[attr-defined]
             is_required = bool(joined_at and task.created_at >= joined_at)  # type: ignore[attr-defined]
             return {
                 'id': task.id,  # type: ignore[attr-defined]
+                'title': task.text[:100] if task.text else "Без названия", # type: ignore[attr-defined]
                 'text': task.text,
+                'description': task.text, # type: ignore[attr-defined]
                 'project_title': task.project.title,
                 'project_id': task.project_id,  # type: ignore[attr-defined]
+                'location': task.project.address or task.project.city, # type: ignore[attr-defined]
                 'creator_name': task.creator.name if task.creator.name else task.creator.username,
+                'creator_avatar': request.build_absolute_uri(task.creator.avatar.url) if task.creator.avatar and task.creator.avatar.url else None, # type: ignore[attr-defined]
                 'status': task.status,
                 'is_assigned': is_assigned,
                 'assignment_status': is_assigned,  # Для совместимости
                 'is_required': is_required,
                 'rating': assignment_rating_map.get(task.id),  # Оценка организатора (1–5 или null)
+                'reward_points': 10, # type: ignore[attr-defined] # Стандартное значение баллов
                 'deadline_date': task.deadline_date.isoformat() if task.deadline_date else None,
+                'end_date': task.deadline_date.isoformat() if task.deadline_date else None, # type: ignore[attr-defined]
+                'start_date': task.start_date.isoformat() if task.start_date else task.created_at.date().isoformat(), # type: ignore[attr-defined]
                 'start_time': task.start_time.strftime('%H:%M') if task.start_time else None,
                 'end_time': task.end_time.strftime('%H:%M') if task.end_time else None,
-                'created_at': task.created_at.isoformat()
+                'created_at': task.created_at.isoformat(),
+                # Данные для таймлайна
+                'accepted_at': user_assignments.get(task.id).accepted_at.isoformat() if user_assignments.get(task.id) and user_assignments.get(task.id).accepted_at else None,
+                'completed_at': user_assignments.get(task.id).completed_at.isoformat() if user_assignments.get(task.id) and user_assignments.get(task.id).completed_at else None,
+                'photo_uploaded_at': user_photos.get(task.id).uploaded_at.isoformat() if user_photos.get(task.id) else None,
+                'photo_moderated_at': user_photos.get(task.id).moderated_at.isoformat() if user_photos.get(task.id) and user_photos.get(task.id).moderated_at else None,
+                'photo_status': user_photos.get(task.id).status if task.id in user_photos else None,
+                'rejection_reason': user_photos.get(task.id).rejection_reason if task.id in user_photos else None,
+                'has_photo_report': task.id in user_photos
             }
+
+        # Если запрошена конкретная задача
+        if task_id:
+            try:
+                task = Task.objects.select_related('project', 'creator').get(id=task_id, is_deleted=False)
+                # Проверяем, что волонтер имеет доступ к этой задаче
+                if task.project_id not in all_join_dates:
+                    return Response({'error': 'Доступ к этой задаче запрещен'}, status=status.HTTP_403_FORBIDDEN)
+                
+                return Response(_build_task_row(task), status=status.HTTP_200_OK)
+            except Task.DoesNotExist:
+                return Response({'error': 'Задача не найдена'}, status=status.HTTP_404_NOT_FOUND)
 
         for task in tasks_qs:
             tasks.append(_build_task_row(task))

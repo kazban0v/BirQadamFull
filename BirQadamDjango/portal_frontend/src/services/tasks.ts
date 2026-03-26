@@ -73,8 +73,8 @@ export async function dismissTask(taskId: number) {
 }
 
 export async function retryTask(taskId: number) {
-  const { data } = await httpClient.post<{ 
-    message: string; 
+  const { data } = await httpClient.post<{
+    message: string;
     task_status: string;
     task: {
       id: number;
@@ -89,10 +89,21 @@ export async function retryTask(taskId: number) {
 
 export async function fetchTaskDetail(taskId: number, forceRefresh = false): Promise<VolunteerTask | null> {
   try {
-    // Получаем все задачи и находим нужную (используем кеш если возможно)
-    const tasks = await fetchVolunteerTasks(forceRefresh);
-    return tasks.find((task) => task.id === taskId) || null;
+    // Сначала пробуем получить данные напрямую через новый эндпоинт
+    const { data } = await httpClient.get<VolunteerTask>(`/custom-admin/api/v1/tasks/${taskId}/`);
+    return data;
   } catch (error: any) {
+    // Если прямой запрос не удался (например, 404 или старый бэк), пробуем фильтрацию в памяти
+    if (error?.response?.status === 404 || error?.response?.status === 405) {
+      console.warn('Falling back to in-memory filtering for task detail');
+      try {
+        const tasks = await fetchVolunteerTasks(forceRefresh);
+        return tasks.find((task) => task.id === taskId) || null;
+      } catch (innerError) {
+        console.error('Failed to fetch task from list:', innerError);
+      }
+    }
+
     // Если ошибка 429, пытаемся использовать кеш
     if (error?.response?.status === 429 && tasksCache) {
       console.warn('Rate limit exceeded, using cached data for task detail');

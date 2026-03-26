@@ -6,9 +6,7 @@ from .models import (
     User, 
     OrganizerApplication, 
     TrustFactorHistory, 
-    VerificationCode,
-    TelegramLinkCode, 
-    EmailVerificationCode, 
+    VerificationCode, 
     Activity
 )
 
@@ -17,8 +15,6 @@ __all__ = [
     'OrganizerApplication',
     'TrustFactorHistory',
     'VerificationCode',
-    'TelegramLinkCode',
-    'EmailVerificationCode',
     'Activity',
 ]
 

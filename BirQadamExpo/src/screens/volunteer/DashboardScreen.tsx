@@ -44,29 +44,40 @@ export const VolunteerDashboardScreen: React.FC<VolunteerDashboardScreenProps> =
   navigation,
 }) => {
   const screenHeight = Dimensions.get('window').height;
-  
+
   // Используем hooks для данных
   const { loading, refreshing, data, loadDashboard } = useDashboard();
   const { favoriteProjects, toggleFavorite } = useFavorites();
-  
+
   // Объединяем profile данные
   const profile = useMemo(() => ({
     trustFactor: data?.profile.trustFactor || 0,
     averageRating: data?.profile.averageRating || 0,
     userName: data?.profile.userName || 'Пользователь',
   }), [data?.profile]);
-  
-  const stats = useMemo(() => data?.stats || {
-    total_tasks: 0,
-    completed_tasks: 0,
-    total_hours: 0,
-    total_points: 0,
-    upcoming_tasks: 0,
-    active_projects: 0,
-  }, [data?.stats]);
-  
+
+  const stats = useMemo((): DashboardStats => {
+    // Принудительно приводим data к any, чтобы TS перестал искать summary в старом кэше
+    const safeData = data as any;
+    const backendData = safeData?.summary || safeData?.stats || {};
+
+    return {
+      total_tasks: backendData.total_tasks || 0,
+      completed_tasks: backendData.completed_tasks || 0,
+      total_hours: backendData.total_hours || 0,
+      total_points: backendData.achievements_count || 0,
+      upcoming_tasks: backendData.upcoming_tasks || 0,
+      active_projects: backendData.active_projects || 0,
+    };
+  }, [(data as any)?.summary, (data as any)?.stats]);
+
   const projects = useMemo(() => data?.projects || [], [data?.projects]);
   const [filter, setFilter] = useState<'all' | 'social' | 'environmental' | 'cultural'>('all');
+  const activeTasks = useMemo(() => {
+    const safeData = data as any;
+    return safeData?.tasks || safeData?.upcoming_tasks || [];
+  }, [data]);
+  const nearestTask = activeTasks.length > 0 ? activeTasks[0] : null;
   const [showHoursInfo, setShowHoursInfo] = useState(false);
   const [showTrustFactorInfo, setShowTrustFactorInfo] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
@@ -75,20 +86,20 @@ export const VolunteerDashboardScreen: React.FC<VolunteerDashboardScreenProps> =
   const [dateFilter, setDateFilter] = useState<'all' | 'today' | 'week' | 'month'>('all');
   const [sortBy, setSortBy] = useState<'newest' | 'popular' | 'urgent' | 'alphabetical'>('newest');
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
-  
+
   // Модальные окна присоединения/выхода
   const [showJoinModal, setShowJoinModal] = useState(false);
   const [showLeaveModal, setShowLeaveModal] = useState(false);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [isJoining, setIsJoining] = useState(false);
   const [isLeaving, setIsLeaving] = useState(false);
-  
+
   // Tutorial refs для элементов
   const headerRef = useRef<View>(null);
   const trustFactorRef = useRef<View>(null);
   const statsRef = useRef<View>(null);
   const searchRef = useRef<View>(null);
-  
+
   // Шаги туториала
   const tutorialSteps: TutorialStep[] = useMemo(() => [
     {
@@ -138,19 +149,19 @@ export const VolunteerDashboardScreen: React.FC<VolunteerDashboardScreenProps> =
     autoStart: true,
     startDelay: 1500,
   });
-  
+
   // Infinite scroll состояние
   const [displayedProjectsCount, setDisplayedProjectsCount] = useState<number>(10); // Начальное количество
   const [loadingMore, setLoadingMore] = useState(false);
-  
+
   // Вычисляем количество проектов на страницу в зависимости от режима
   const ITEMS_PER_PAGE = viewMode === 'list' ? 5 : 6;
-  
+
   // Сбрасываем счетчик при изменении режима отображения или фильтров
   useEffect(() => {
     setDisplayedProjectsCount(10);
   }, [viewMode, filter, selectedTags, searchQuery, dateFilter, sortBy]);
-  
+
   // Состояние для отслеживания обновлений
   const [refreshUpdates, setRefreshUpdates] = useState<{
     projects: boolean;
@@ -163,11 +174,11 @@ export const VolunteerDashboardScreen: React.FC<VolunteerDashboardScreenProps> =
     trustFactor: false,
     recommendations: false,
   });
-  
+
   // Анимации для toast уведомления
   const toastOpacity = useRef(new Animated.Value(0)).current;
   const toastTranslateY = useRef(new Animated.Value(-50)).current;
-  
+
   // Анимации для обновленных элементов
   const statsCardAnimations = useRef({
     hours: new Animated.Value(1),
@@ -194,7 +205,7 @@ export const VolunteerDashboardScreen: React.FC<VolunteerDashboardScreenProps> =
   // Присоединение к проекту
   const handleJoinProject = useCallback(async () => {
     if (!selectedProject) return;
-    
+
     setIsJoining(true);
     try {
       await volunteerAPI.joinProject(selectedProject.id);
@@ -213,10 +224,10 @@ export const VolunteerDashboardScreen: React.FC<VolunteerDashboardScreenProps> =
   // Выход из проекта
   const handleLeaveProject = useCallback(async () => {
     if (!selectedProject) return;
-    
+
     setIsLeaving(true);
     try {
-      await volunteerAPI.leaveProject(selectedProject.id, '');
+      await volunteerAPI.leaveProject(selectedProject.id, 'Личные причины');
       await loadDashboard(true);
       setShowLeaveModal(false);
       setSelectedProject(null);
@@ -230,11 +241,11 @@ export const VolunteerDashboardScreen: React.FC<VolunteerDashboardScreenProps> =
   }, [selectedProject, loadDashboard]);
 
   // loadDashboard уже из useDashboard hook
-  
+
   // Функция для показа toast уведомления
   const showRefreshToast = (updates: typeof refreshUpdates) => {
     const updateMessages: string[] = [];
-    
+
     if (updates.projects) {
       updateMessages.push('проекты');
     }
@@ -247,13 +258,13 @@ export const VolunteerDashboardScreen: React.FC<VolunteerDashboardScreenProps> =
     if (updates.recommendations) {
       updateMessages.push('рекомендации');
     }
-    
+
     if (updateMessages.length === 0) {
       return; // Нет обновлений
     }
-    
+
     const message = `Обновлено: ${updateMessages.join(', ')}`;
-    
+
     // Анимация появления toast
     Animated.parallel([
       Animated.timing(toastOpacity, {
@@ -267,7 +278,7 @@ export const VolunteerDashboardScreen: React.FC<VolunteerDashboardScreenProps> =
         useNativeDriver: true,
       }),
     ]).start();
-    
+
     // Автоматически скрываем toast через 3 секунды
     setTimeout(() => {
       Animated.parallel([
@@ -320,25 +331,25 @@ export const VolunteerDashboardScreen: React.FC<VolunteerDashboardScreenProps> =
   // Функция для подгрузки дополнительных проектов
   const loadMoreProjects = async () => {
     // filteredProjects уже мемоизирован
-    
+
     // Если уже показаны все проекты, не загружаем больше
     if (displayedProjectsCount >= filteredProjects.length) {
       return;
     }
-    
+
     // Если загрузка уже идет, не запускаем повторно
     if (loadingMore) {
       return;
     }
-    
+
     setLoadingMore(true);
-    
+
     // Имитируем небольшую задержку для плавности
     await new Promise(resolve => setTimeout(resolve, 300));
-    
+
     // Увеличиваем количество отображаемых проектов
     setDisplayedProjectsCount(prev => prev + ITEMS_PER_PAGE);
-    
+
     setLoadingMore(false);
   };
 
@@ -381,7 +392,7 @@ export const VolunteerDashboardScreen: React.FC<VolunteerDashboardScreenProps> =
     // Фильтр по поиску
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(project => 
+      filtered = filtered.filter(project =>
         project.title?.toLowerCase().includes(query) ||
         project.description?.toLowerCase().includes(query) ||
         project.city?.toLowerCase().includes(query)
@@ -394,7 +405,7 @@ export const VolunteerDashboardScreen: React.FC<VolunteerDashboardScreenProps> =
       filtered = filtered.filter(project => {
         if (!project.start_date) return false;
         const projectDate = new Date(project.start_date);
-        
+
         if (dateFilter === 'today') {
           return projectDate.toDateString() === now.toDateString();
         } else if (dateFilter === 'week') {
@@ -558,7 +569,7 @@ export const VolunteerDashboardScreen: React.FC<VolunteerDashboardScreenProps> =
   }, [navigation]);
 
   const toggleTag = useCallback((tag: string) => {
-    setSelectedTags(prev => 
+    setSelectedTags(prev =>
       prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]
     );
   }, []);
@@ -571,10 +582,10 @@ export const VolunteerDashboardScreen: React.FC<VolunteerDashboardScreenProps> =
     setSortBy('newest');
   }, []);
 
-  const activeFiltersCount = useMemo(() => 
-    (filter !== 'all' ? 1 : 0) + 
-    selectedTags.length + 
-    (searchQuery.trim() ? 1 : 0) + 
+  const activeFiltersCount = useMemo(() =>
+    (filter !== 'all' ? 1 : 0) +
+    selectedTags.length +
+    (searchQuery.trim() ? 1 : 0) +
     (dateFilter !== 'all' ? 1 : 0),
     [filter, selectedTags, searchQuery, dateFilter]
   );
@@ -607,8 +618,8 @@ export const VolunteerDashboardScreen: React.FC<VolunteerDashboardScreenProps> =
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         refreshControl={
-          <RefreshControl 
-            refreshing={refreshing} 
+          <RefreshControl
+            refreshing={refreshing}
             onRefresh={onRefresh}
             tintColor="#10B981"
             colors={['#10B981']}
@@ -622,7 +633,7 @@ export const VolunteerDashboardScreen: React.FC<VolunteerDashboardScreenProps> =
           const { layoutMeasurement, contentOffset, contentSize } = nativeEvent;
           const paddingToBottom = 200; // Загружаем заранее, за 200px до конца
           const isCloseToBottom = layoutMeasurement.height + contentOffset.y >= contentSize.height - paddingToBottom;
-          
+
           if (isCloseToBottom) {
             handleEndReached();
           }
@@ -633,6 +644,7 @@ export const VolunteerDashboardScreen: React.FC<VolunteerDashboardScreenProps> =
         <Header
           userName={profile.userName}
           onNotificationPress={() => navigation.navigate('VolunteerNotifications')}
+          hasUnreadNotifications={(data?.unreadNotifications ?? 0) > 0}
           onLayout={(e) => showTutorial && tutorialStep === 0 && handleElementLayout('header', e)}
           innerRef={headerRef}
         />
@@ -641,7 +653,7 @@ export const VolunteerDashboardScreen: React.FC<VolunteerDashboardScreenProps> =
         <TrustFactorCard
           trustFactor={profile.trustFactor}
           averageRating={profile.averageRating}
-          projectsCount={joinedProjectsCount}
+          projectsCount={projects.length}
           onInfoPress={() => setShowTrustFactorInfo(true)}
           onStatsPress={() => navigation.navigate('Профиль')}
           scaleAnimation={statsCardAnimations.trustFactor}
@@ -661,6 +673,50 @@ export const VolunteerDashboardScreen: React.FC<VolunteerDashboardScreenProps> =
           onLayout={(e) => showTutorial && tutorialStep === 2 && handleElementLayout('stats', e)}
           innerRef={statsRef}
         />
+        {/* Ближайшая задача (ПОЯВЛЯЕТСЯ ТОЛЬКО ЕСЛИ ЕСТЬ ЗАДАЧИ) */}
+        {nearestTask && (
+          <View style={styles.nearestTaskContainer}>
+            <View style={styles.nearestTaskHeader}>
+              <View style={styles.nearestTaskTitleRow}>
+                <Ionicons name="calendar-outline" size={18} color="#F59E0B" />
+                <Text style={styles.nearestTaskTitle}>Ближайшая задача</Text>
+              </View>
+              <TouchableOpacity onPress={() => navigation.navigate('Задачи')}>
+                <Text style={styles.nearestTaskViewAll}>Все задачи</Text>
+              </TouchableOpacity>
+            </View>
+
+            <TouchableOpacity
+              key={nearestTask.id}
+              style={styles.nearestTaskCard}
+              onPress={() => navigation.navigate('VolunteerTaskDetail', { taskId: nearestTask.task_id || nearestTask.id })}
+              activeOpacity={0.7}
+            >
+              <View style={styles.nearestTaskInfo}>
+                <Text style={styles.nearestTaskName} numberOfLines={1}>
+                  {nearestTask.text || nearestTask.title || 'Задача без названия'}
+                </Text>
+                <Text style={styles.nearestTaskProjectName} numberOfLines={1}>
+                  {nearestTask.project_title || 'Проект не указан'}
+                </Text>
+
+                <View style={styles.nearestTaskMeta}>
+                  <View style={styles.nearestTaskMetaItem}>
+                    <Ionicons name="time-outline" size={14} color="#6B7280" />
+                    <Text style={styles.nearestTaskMetaText}>
+                      {nearestTask.deadline_date
+                        ? new Date(nearestTask.deadline_date).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' })
+                        : 'Срок не указан'}
+                    </Text>
+                  </View>
+                </View>
+              </View>
+              <View style={styles.nearestTaskIconContainer}>
+                <Ionicons name="chevron-forward" size={20} color="#F59E0B" />
+              </View>
+            </TouchableOpacity>
+          </View>
+        )}
 
         {/* Search Bar */}
         <SearchBar
@@ -710,8 +766,8 @@ export const VolunteerDashboardScreen: React.FC<VolunteerDashboardScreenProps> =
         )}
 
         {/* Filter Pills */}
-        <ScrollView 
-          horizontal 
+        <ScrollView
+          horizontal
           showsHorizontalScrollIndicator={false}
           style={styles.filterScroll}
           contentContainerStyle={styles.filterContainer}
@@ -742,7 +798,7 @@ export const VolunteerDashboardScreen: React.FC<VolunteerDashboardScreenProps> =
               </Text>
             </TouchableOpacity>
           )}
-          
+
           <TouchableOpacity
             style={[styles.filterPill, filter === 'social' && styles.filterPillActive]}
             onPress={() => setFilter('social')}
@@ -751,7 +807,7 @@ export const VolunteerDashboardScreen: React.FC<VolunteerDashboardScreenProps> =
               Социальная помощь
             </Text>
           </TouchableOpacity>
-          
+
           <TouchableOpacity
             style={[styles.filterPill, filter === 'environmental' && styles.filterPillActive]}
             onPress={() => setFilter('environmental')}
@@ -760,7 +816,7 @@ export const VolunteerDashboardScreen: React.FC<VolunteerDashboardScreenProps> =
               Экология
             </Text>
           </TouchableOpacity>
-          
+
           <TouchableOpacity
             style={[styles.filterPill, filter === 'cultural' && styles.filterPillActive]}
             onPress={() => setFilter('cultural')}
@@ -781,9 +837,9 @@ export const VolunteerDashboardScreen: React.FC<VolunteerDashboardScreenProps> =
               </View>
               <Text style={styles.sectionCount}>{favoriteProjects.length}</Text>
             </View>
-            
-            <ScrollView 
-              horizontal 
+
+            <ScrollView
+              horizontal
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={styles.favoriteProjectsScroll}
             >
@@ -794,8 +850,8 @@ export const VolunteerDashboardScreen: React.FC<VolunteerDashboardScreenProps> =
                     onPress={() => navigation.navigate('VolunteerProjectDetail', { projectId: project.id })}
                   >
                     {normalizeImageUrl(project.cover_image_url) ? (
-                      <Image 
-                        source={{ uri: normalizeImageUrl(project.cover_image_url) }} 
+                      <Image
+                        source={{ uri: normalizeImageUrl(project.cover_image_url) }}
                         style={styles.favoriteProjectImage}
                         resizeMode="cover"
                       />
@@ -843,9 +899,9 @@ export const VolunteerDashboardScreen: React.FC<VolunteerDashboardScreenProps> =
             <Text style={styles.sectionSubtitle}>
               Рекомендации на основе ваших интересов
             </Text>
-            
-            <ScrollView 
-              horizontal 
+
+            <ScrollView
+              horizontal
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={styles.recommendedProjectsScroll}
             >
@@ -856,8 +912,8 @@ export const VolunteerDashboardScreen: React.FC<VolunteerDashboardScreenProps> =
                     onPress={() => navigation.navigate('VolunteerProjectDetail', { projectId: project.id })}
                   >
                     {normalizeImageUrl(project.cover_image_url) ? (
-                      <Image 
-                        source={{ uri: normalizeImageUrl(project.cover_image_url) }} 
+                      <Image
+                        source={{ uri: normalizeImageUrl(project.cover_image_url) }}
                         style={styles.recommendedProjectImage}
                         resizeMode="cover"
                       />
@@ -871,17 +927,17 @@ export const VolunteerDashboardScreen: React.FC<VolunteerDashboardScreenProps> =
                         {getVolunteerTypeLabel(project.volunteer_type).toUpperCase()}
                       </Text>
                     </View>
-                    <TouchableOpacity 
+                    <TouchableOpacity
                       style={styles.recommendedProjectFavoriteIcon}
                       onPress={(e) => {
                         e.stopPropagation();
                         toggleFavorite(project.id);
                       }}
                     >
-                      <Ionicons 
-                        name={favoriteProjects.includes(project.id) ? "heart" : "heart-outline"} 
-                        size={16} 
-                        color={favoriteProjects.includes(project.id) ? "#EF4444" : "#FFFFFF"} 
+                      <Ionicons
+                        name={favoriteProjects.includes(project.id) ? "heart" : "heart-outline"}
+                        size={16}
+                        color={favoriteProjects.includes(project.id) ? "#EF4444" : "#FFFFFF"}
                       />
                     </TouchableOpacity>
                     <View style={styles.recommendedProjectInfo}>
@@ -930,7 +986,7 @@ export const VolunteerDashboardScreen: React.FC<VolunteerDashboardScreenProps> =
               Найдено: {filteredProjects.length} {filteredProjects.length === 1 ? 'проект' : filteredProjects.length > 1 && filteredProjects.length < 5 ? 'проекта' : 'проектов'}
             </Text>
           </View>
-          
+
           {viewMode === 'list' ? (
             <>
               {filteredProjects.slice(0, displayedProjectsCount).map((project) => (
@@ -975,17 +1031,17 @@ export const VolunteerDashboardScreen: React.FC<VolunteerDashboardScreenProps> =
           )}
 
           {/* Кнопка "Показать все" только если все проекты загружены и их больше начального количества */}
-          {!loadingMore && 
-           displayedProjectsCount >= filteredProjects.length && 
-           filteredProjects.length > 10 && (
-            <TouchableOpacity
-              style={styles.showAllButton}
-              onPress={() => navigation.navigate('VolunteerProjects')}
-            >
-              <Text style={styles.showAllButtonText}>Все проекты загружены</Text>
-              <Ionicons name="checkmark-circle" size={16} color="#10B981" style={{ marginLeft: 6 }} />
-            </TouchableOpacity>
-          )}
+          {!loadingMore &&
+            displayedProjectsCount >= filteredProjects.length &&
+            filteredProjects.length > 10 && (
+              <TouchableOpacity
+                style={styles.showAllButton}
+                onPress={() => navigation.navigate('VolunteerProjects')}
+              >
+                <Text style={styles.showAllButtonText}>Все проекты загружены</Text>
+                <Ionicons name="checkmark-circle" size={16} color="#10B981" style={{ marginLeft: 6 }} />
+              </TouchableOpacity>
+            )}
         </View>
       </ScrollView>
 
@@ -1052,7 +1108,7 @@ export const VolunteerDashboardScreen: React.FC<VolunteerDashboardScreenProps> =
               style={[styles.filterModalContent, { maxHeight: screenHeight * 0.85 }]}
             >
               <View style={styles.filterModalHandle} />
-              
+
               <View style={styles.filterModalHeader}>
                 <Text style={styles.filterModalTitle}>Фильтры</Text>
                 <TouchableOpacity onPress={() => setShowFilters(false)}>
@@ -1060,7 +1116,7 @@ export const VolunteerDashboardScreen: React.FC<VolunteerDashboardScreenProps> =
                 </TouchableOpacity>
               </View>
 
-              <ScrollView 
+              <ScrollView
                 style={styles.filterModalBody}
                 showsVerticalScrollIndicator={false}
               >
@@ -1082,10 +1138,10 @@ export const VolunteerDashboardScreen: React.FC<VolunteerDashboardScreenProps> =
                         ]}
                         onPress={() => setSortBy(option.value as any)}
                       >
-                        <Ionicons 
-                          name={option.icon as any} 
-                          size={16} 
-                          color={sortBy === option.value ? '#FFFFFF' : '#6B7280'} 
+                        <Ionicons
+                          name={option.icon as any}
+                          size={16}
+                          color={sortBy === option.value ? '#FFFFFF' : '#6B7280'}
                         />
                         <Text
                           style={[
@@ -1237,12 +1293,12 @@ export const VolunteerDashboardScreen: React.FC<VolunteerDashboardScreenProps> =
               </View>
               <Text style={styles.modalTitle}>Что такое "Часы"?</Text>
             </View>
-            
+
             <View style={styles.modalBody}>
               <Text style={styles.modalText}>
                 <Text style={styles.modalTextBold}>Часы</Text> — это общее время вашей волонтерской деятельности.
               </Text>
-              
+
               <View style={styles.modalInfoBox}>
                 <View style={styles.modalInfoRow}>
                   <Ionicons name="calendar-outline" size={20} color="#10B981" />
@@ -1250,14 +1306,14 @@ export const VolunteerDashboardScreen: React.FC<VolunteerDashboardScreenProps> =
                     Время считается с момента вашего первого присоединения к проекту
                   </Text>
                 </View>
-                
+
                 <View style={styles.modalInfoRow}>
                   <Ionicons name="hourglass-outline" size={20} color="#10B981" />
                   <Text style={styles.modalInfoText}>
                     Часы накапливаются пока вы участвуете в активных проектах
                   </Text>
                 </View>
-                
+
                 <View style={styles.modalInfoRow}>
                   <Ionicons name="people-outline" size={20} color="#10B981" />
                   <Text style={styles.modalInfoText}>
@@ -1265,12 +1321,12 @@ export const VolunteerDashboardScreen: React.FC<VolunteerDashboardScreenProps> =
                   </Text>
                 </View>
               </View>
-              
+
               <Text style={styles.modalExample}>
                 <Text style={styles.modalTextBold}>Пример:</Text> Если вы присоединились к первому проекту 10 дней назад, ваши часы = 240 часов (10 дней × 24 часа)
               </Text>
             </View>
-            
+
             <TouchableOpacity
               style={styles.modalButton}
               onPress={() => setShowHoursInfo(false)}
@@ -1295,7 +1351,7 @@ export const VolunteerDashboardScreen: React.FC<VolunteerDashboardScreenProps> =
           <View style={styles.modalOverlay}>
             {/* Ограничиваем высоту окна и обрезаем края, убираем дефолтный паддинг */}
             <View style={[styles.modalContent, { maxHeight: screenHeight * 0.85, padding: 0, overflow: 'hidden' }]}>
-              
+
               {/* Фиксированная шапка (не скроллится) */}
               <View style={[styles.modalHeader, { padding: 20, paddingBottom: 10, marginBottom: 0 }]}>
                 <TouchableOpacity
@@ -1306,7 +1362,7 @@ export const VolunteerDashboardScreen: React.FC<VolunteerDashboardScreenProps> =
                 </TouchableOpacity>
                 <Text style={[styles.modalTitle, { marginTop: 10 }]}>Как работает Trust Factor?</Text>
               </View>
-              
+
               {/* Скроллируемый контент */}
               <ScrollView
                 showsVerticalScrollIndicator={false}
@@ -1317,11 +1373,11 @@ export const VolunteerDashboardScreen: React.FC<VolunteerDashboardScreenProps> =
                   <Text style={styles.tfDescription}>
                     <Text style={styles.modalTextBold}>Trust Factor (TF)</Text> — показатель надёжности волонтёра.
                   </Text>
-                  
+
                   <View style={styles.tfMaxPoints}>
                     <Text style={styles.tfMaxPointsText}>Максимум: 30 баллов.</Text>
                   </View>
-                  
+
                   <View style={styles.tfZeroWarning}>
                     <Text style={styles.tfZeroWarningText}>При TF = 0 нельзя вступать в проекты.</Text>
                   </View>
@@ -1409,7 +1465,7 @@ export const VolunteerDashboardScreen: React.FC<VolunteerDashboardScreenProps> =
                 </View>
                 <Text style={styles.modalTitle}>Присоединиться к проекту?</Text>
               </View>
-              
+
               {selectedProject && (
                 <View style={styles.modalBody}>
                   <View style={styles.joinProjectInfo}>
@@ -1425,9 +1481,9 @@ export const VolunteerDashboardScreen: React.FC<VolunteerDashboardScreenProps> =
                         <View style={styles.joinProjectMetaItem}>
                           <Ionicons name="calendar-outline" size={16} color="#6B7280" />
                           <Text style={styles.joinProjectMetaText}>
-                            {new Date(selectedProject.start_date).toLocaleDateString('ru-RU', { 
-                              day: 'numeric', 
-                              month: 'long' 
+                            {new Date(selectedProject.start_date).toLocaleDateString('ru-RU', {
+                              day: 'numeric',
+                              month: 'long'
                             })}
                           </Text>
                         </View>
@@ -1442,7 +1498,7 @@ export const VolunteerDashboardScreen: React.FC<VolunteerDashboardScreenProps> =
                         Вы получите доступ к задачам проекта и сможете участвовать в волонтерской деятельности.
                       </Text>
                     </View>
-                    
+
                     <View style={styles.modalInfoRow}>
                       <Ionicons name="trophy" size={20} color="#F59E0B" />
                       <Text style={styles.modalInfoText}>
@@ -1452,20 +1508,20 @@ export const VolunteerDashboardScreen: React.FC<VolunteerDashboardScreenProps> =
                   </View>
                 </View>
               )}
-              
+
               <View style={styles.modalButtons}>
                 <TouchableOpacity
                   style={[styles.modalButton, styles.modalButtonSecondary]}
                   onPress={() => setShowJoinModal(false)}
                   disabled={isJoining}
                 >
-                  <Text 
+                  <Text
                     style={styles.modalButtonSecondaryText}
                     numberOfLines={1}
                     adjustsFontSizeToFit
                   >Отмена</Text>
                 </TouchableOpacity>
-                
+
                 <TouchableOpacity
                   style={[styles.modalButton, styles.modalButtonPrimary]}
                   onPress={handleJoinProject}
@@ -1474,7 +1530,7 @@ export const VolunteerDashboardScreen: React.FC<VolunteerDashboardScreenProps> =
                   {isJoining ? (
                     <ActivityIndicator size="small" color="#FFFFFF" />
                   ) : (
-                    <Text 
+                    <Text
                       style={styles.modalButtonText}
                       numberOfLines={1}
                       adjustsFontSizeToFit
@@ -1506,7 +1562,7 @@ export const VolunteerDashboardScreen: React.FC<VolunteerDashboardScreenProps> =
                 </View>
                 <Text style={styles.modalTitle}>Выйти из проекта?</Text>
               </View>
-              
+
               {selectedProject && (
                 <View style={styles.modalBody}>
                   <View style={styles.joinProjectInfo}>
@@ -1517,10 +1573,10 @@ export const VolunteerDashboardScreen: React.FC<VolunteerDashboardScreenProps> =
                     <View style={styles.modalInfoRow}>
                       <Ionicons name="alert-circle" size={20} color="#EF4444" />
                       <Text style={styles.modalInfoText}>
-                        При выходе из проекта вы потеряете доступ к задачам и больше не с��ожете участвовать.
+                        При выходе из проекта вы потеряете доступ к задачам и больше не сможете участвовать.
                       </Text>
                     </View>
-                    
+
                     <View style={styles.modalInfoRow}>
                       <Ionicons name="trending-down" size={20} color="#EF4444" />
                       <Text style={[styles.modalInfoText, styles.modalWarningText]}>
@@ -1534,20 +1590,20 @@ export const VolunteerDashboardScreen: React.FC<VolunteerDashboardScreenProps> =
                   </Text>
                 </View>
               )}
-              
+
               <View style={styles.modalButtons}>
                 <TouchableOpacity
                   style={[styles.modalButton, styles.modalButtonSecondary]}
                   onPress={() => setShowLeaveModal(false)}
                   disabled={isLeaving}
                 >
-                  <Text 
+                  <Text
                     style={styles.modalButtonSecondaryText}
                     numberOfLines={1}
                     adjustsFontSizeToFit
                   >Отмена</Text>
                 </TouchableOpacity>
-                
+
                 <TouchableOpacity
                   style={[styles.modalButton, styles.modalButtonDanger]}
                   onPress={handleLeaveProject}
@@ -1556,7 +1612,7 @@ export const VolunteerDashboardScreen: React.FC<VolunteerDashboardScreenProps> =
                   {isLeaving ? (
                     <ActivityIndicator size="small" color="#FFFFFF" />
                   ) : (
-                    <Text 
+                    <Text
                       style={styles.modalButtonText}
                       numberOfLines={1}
                       adjustsFontSizeToFit
@@ -1589,7 +1645,79 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingBottom: 20,
   },
-  // Стили для Header, TrustFactorCard, StatsGrid, SearchBar перенесены в соответствующие компоненты
+  nearestTaskContainer: {
+    paddingHorizontal: 20,
+    marginTop: 8,
+    marginBottom: 16,
+  },
+  nearestTaskHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  nearestTaskTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  nearestTaskTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1F2937',
+  },
+  nearestTaskViewAll: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#10B981',
+  },
+  nearestTaskCard: {
+    backgroundColor: '#FFFBEB',
+    borderRadius: 16,
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+  },
+  nearestTaskInfo: {
+    flex: 1,
+    paddingRight: 12,
+  },
+  nearestTaskName: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#1F2937',
+    marginBottom: 4,
+  },
+  nearestTaskProjectName: {
+    fontSize: 13,
+    color: '#6B7280',
+    marginBottom: 8,
+  },
+  nearestTaskMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  nearestTaskMetaItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  nearestTaskMetaText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#6B7280',
+  },
+  nearestTaskIconContainer: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#FEF3C7',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   filterScroll: {
     marginTop: 20,
   },
@@ -1733,102 +1861,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#6B7280',
     fontWeight: '500',
-  },
-  projectCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    marginBottom: 16,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  projectImage: {
-    width: '100%',
-    height: 180,
-    backgroundColor: '#E5E7EB',
-  },
-  projectImagePlaceholder: {
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  projectTypeBadge: {
-    position: 'absolute',
-    top: 12,
-    left: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 12,
-  },
-  projectTypeText: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    letterSpacing: 0.5,
-  },
-  favoriteIcon: {
-    position: 'absolute',
-    top: 12,
-    right: 12,
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(0,0,0,0.3)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  projectContent: {
-    padding: 16,
-  },
-  projectTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#1F2937',
-    marginBottom: 12,
-  },
-  projectInfo: {
-    flexDirection: 'row',
-    gap: 16,
-    marginBottom: 12,
-  },
-  projectInfoItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  projectInfoText: {
-    fontSize: 13,
-    color: '#6B7280',
-  },
-  projectFooter: {
-    flexDirection: 'row',
-    gap: 16,
-    marginBottom: 16,
-  },
-  projectStats: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  projectStatsText: {
-    fontSize: 13,
-    color: '#6B7280',
-  },
-  joinButton: {
-    backgroundColor: '#10B981',
-    paddingVertical: 12,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  joinButtonJoined: {
-    backgroundColor: '#E5E7EB',
-  },
-  joinButtonText: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#FFFFFF',
   },
   emptyState: {
     alignItems: 'center',
@@ -2437,86 +2469,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginTop: 8,
     paddingHorizontal: 2,
-  },
-  projectCardGrid: {
-    width: '48%',
-    maxWidth: '48%',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    marginBottom: 12,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  projectImageGrid: {
-    width: '100%',
-    height: 140,
-    backgroundColor: '#E5E7EB',
-  },
-  projectTypeBadgeGrid: {
-    position: 'absolute',
-    top: 8,
-    left: 8,
-    paddingHorizontal: 6,
-    paddingVertical: 3,
-    borderRadius: 6,
-  },
-  projectTypeTextGrid: {
-    fontSize: 9,
-    fontWeight: '700',
-    color: '#FFFFFF',
-  },
-  favoriteIconGrid: {
-    position: 'absolute',
-    top: 8,
-    right: 8,
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: 'rgba(0, 0, 0, 0.3)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  projectContentGrid: {
-    padding: 12,
-  },
-  projectTitleGrid: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#1F2937',
-    marginBottom: 8,
-    lineHeight: 18,
-  },
-  projectInfoGrid: {
-    marginBottom: 8,
-  },
-  projectInfoItemGrid: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  projectInfoTextGrid: {
-    fontSize: 11,
-    color: '#6B7280',
-    marginLeft: 4,
-    flex: 1,
-  },
-  projectFooterGrid: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 4,
-  },
-  projectStatsGrid: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  projectStatsTextGrid: {
-    fontSize: 11,
-    color: '#6B7280',
-    marginLeft: 4,
   },
   // Refresh Toast Styles
   refreshToast: {

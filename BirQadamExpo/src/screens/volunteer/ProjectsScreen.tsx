@@ -197,7 +197,7 @@ export const VolunteerProjectsScreen: React.FC<VolunteerProjectsScreenProps> = (
       if (__DEV__) {
         // Если URL содержит production домен, заменяем на локальный IP
         if (url.includes('cleanup.almau.edu.kz') || url.includes('birqadam.almau.edu.kz')) {
-          return url.replace(/https?:\/\/[^\/]+/, 'http://192.168.0.129:8000');
+          return url.replace(/https?:\/\/[^\/]+/, 'http://192.168.0.13:8000');
         }
         // Если URL начинается с HTTPS, заменяем на HTTP
         if (url.startsWith('https://')) {

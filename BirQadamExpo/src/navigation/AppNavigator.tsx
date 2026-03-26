@@ -22,6 +22,8 @@ import { VolunteerNotificationsScreen } from '../screens/volunteer/Notifications
 import { OrganizerProfileScreen } from '../screens/volunteer/OrganizerProfileScreen';
 import { PermissionsStatusScreen } from '../screens/permissions/PermissionsStatusScreen';
 import { VolunteerMyProjectsScreen } from '../screens/volunteer/MyProjectsScreen';
+import { VolunteerHelpScreen } from '../screens/volunteer/HelpScreen';
+import { PrivacyPolicyScreen } from '../screens/volunteer/PrivacyPolicyScreen';
 
 import { CustomTabBar } from './CustomTabBar';
 import { useAuthStore } from '../store/authStore';
@@ -50,6 +52,8 @@ export type MainStackParamList = {
   OrganizerProfile: { organizerId: number };
   PermissionsStatus: undefined;
   VolunteerMyProjects: undefined;
+  VolunteerHelp: undefined;
+  PrivacyPolicy: undefined;
 };
 
 export type OnboardingStackParamList = {
@@ -121,17 +125,22 @@ const MainStack = () => (
     <Stack.Screen name="PermissionsStatus" component={PermissionsStatusScreen} options={{ presentation: 'modal' }} />
     <Stack.Screen name="VolunteerMyProjects" component={VolunteerMyProjectsScreen} options={{
       headerShown: true,
-      title: '',
+      title: 'Мои проекты',
+      headerShadowVisible: false,
+    }} />
+    <Stack.Screen name="VolunteerHelp" component={VolunteerHelpScreen} options={{
+      headerShown: true,
+      title: 'Центр помощи',
+      headerBackTitle: 'Профиль',
       headerStyle: {
         backgroundColor: '#F9FAFB',
-        shadowColor: 'transparent',
-        elevation: 0,
       },
       headerShadowVisible: false,
-      headerLeftContainerStyle: {
-        paddingLeft: 8,
-      },
-      headerBackButtonDisplayMode: 'minimal',
+    }} />
+    <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicyScreen} options={{
+      headerShown: true,
+      title: 'Конфиденциальность',
+      headerShadowVisible: false,
     }} />
   </Stack.Navigator>
 );

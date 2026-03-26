@@ -42,6 +42,36 @@ class AcceptTaskAPIView(APIView):
                     status=status.HTTP_403_FORBIDDEN
                 )
 
+            # Проверяем, что задача открыта (по дате и времени)
+            now = timezone.now()
+            # Проверяем дату начала
+            if task.start_date:
+                from datetime import datetime, time
+                # Собираем datetime из даты начала и времени начала (если есть)
+                start_dt = datetime.combine(
+                    task.start_date, 
+                    task.start_time if task.start_time else time.min
+                )
+                # Приводим к timezone-aware если нужно, но обычно сравнения дат хватает
+                # Для надежности сравним даты:
+                if task.start_date > now.date():
+                    return Response(
+                        {'error': f'Задача еще не открыта. Откроется {task.start_date}'},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+                elif task.start_date == now.date() and task.start_time and task.start_time > now.time():
+                    return Response(
+                        {'error': f'Задача еще не открыта. Откроется в {task.start_time.strftime("%H:%M")}'},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+
+            # Проверяем дедлайн
+            if task.deadline_date and task.deadline_date < now.date():
+                return Response(
+                    {'error': 'Срок выполнения задачи уже истек'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
             # Проверяем, не взята ли уже задача
             existing_assignment = TaskAssignment.objects.filter(
                 task=task,
@@ -49,17 +79,25 @@ class AcceptTaskAPIView(APIView):
             ).first()
 
             if existing_assignment:
-                return Response(
-                    {'message': 'Вы уже взялись за эту задачу'},
-                    status=status.HTTP_200_OK
+                if existing_assignment.accepted:
+                    return Response(
+                        {'message': 'Вы уже взялись за эту задачу'},
+                        status=status.HTTP_200_OK
+                    )
+                else:
+                    # Если было отклонено/скрыто, но волонтер решил снова взять
+                    existing_assignment.accepted = True
+                    existing_assignment.accepted_at = now
+                    existing_assignment.save()
+                    assignment = existing_assignment
+            else:
+                # Создаем назначение задачи
+                assignment = TaskAssignment.objects.create(
+                    task=task,
+                    volunteer=request.user,
+                    accepted=True,
+                    accepted_at=now
                 )
-
-            # Создаем назначение задачи
-            assignment = TaskAssignment.objects.create(
-                task=task,
-                volunteer=request.user,
-                accepted=True
-            )
 
             # Обновляем статус задачи
             task.status = 'in_progress'

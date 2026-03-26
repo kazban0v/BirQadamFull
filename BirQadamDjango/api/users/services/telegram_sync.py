@@ -102,7 +102,7 @@ def get_link_code_data(code: str) -> Optional[Dict[str, Any]]:
         logger.info(f"Found link code data for code {code}: user_id={data.get('user_id')}, username={data.get('username')}")
         return data
         
-    except TelegramLinkCode.DoesNotExist:
+    except VerificationCode.DoesNotExist:
         logger.warning(f"Link code {code} not found in database")
         return None
     except Exception as e:

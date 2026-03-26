@@ -12,6 +12,8 @@ export interface DashboardData {
   profile: DashboardProfile;
   stats: DashboardStats;
   projects: Project[];
+  tasks: any[];
+  unreadNotifications: number;
 }
 
 export const useDashboard = () => {
@@ -48,10 +50,10 @@ export const useDashboard = () => {
       
       const summary = dashboardData.summary || {};
       const newStats: DashboardStats = {
-        total_tasks: summary.total_tasks_count || 0, // Показываем общее число всех назначенных задач
+        total_tasks: summary.active_tasks || 0, // Показываем число активных задач из бэкенда
         completed_tasks: summary.completed_tasks || 0,
         total_hours: summary.total_hours || 0,
-        total_points: summary.achievements_count || 0, // Отображаем количество достижений (т.к. лейбл "ДОСТИЖЕНИЙ")
+        total_points: summary.achievements_count || 0, // Отображаем количество достижений
         upcoming_tasks: summary.upcoming_tasks || 0,
         active_projects: summary.active_projects || 0,
       };
@@ -71,6 +73,8 @@ export const useDashboard = () => {
         },
         stats: newStats,
         projects: sortedProjects,
+        tasks: dashboardData.tasks || [],
+        unreadNotifications: summary.unread_notifications || 0,
       };
       
       setData(dashboardDataResult);

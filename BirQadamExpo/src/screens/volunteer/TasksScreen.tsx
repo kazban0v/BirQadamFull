@@ -43,7 +43,7 @@ export const VolunteerTasksScreen: React.FC = () => {
         description: item.description || item.text || '',
         project_id: item.project_id,
         project_title: item.project_title,
-        location: item.project_title || 'Локация не указана',
+        location: item.project_city || item.city || 'Локация не указана',
         start_date: item.deadline_date || item.created_at || new Date().toISOString(),
         end_date: item.deadline_date || item.created_at || new Date().toISOString(),
         status: item.status || (item.is_assigned ? 'in_progress' : 'pending'),
@@ -213,7 +213,7 @@ export const VolunteerTasksScreen: React.FC = () => {
     if (!url) return undefined;
     if (__DEV__) {
       if (url.includes('cleanup.almau.edu.kz') || url.includes('birqadam.almau.edu.kz')) {
-        return url.replace(/https?:\/\/[^\/]+/, 'http://192.168.0.129:8000');
+        return url.replace(/https?:\/\/[^\/]+/, 'http://192.168.0.13:8000');
       }
       if (url.startsWith('https://')) {
         return url.replace('https://', 'http://');

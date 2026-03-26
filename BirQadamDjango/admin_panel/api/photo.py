@@ -55,14 +55,14 @@ class SubmitPhotoReportAPIView(APIView):
                 is_deleted=False
             )
 
-            # ВАЖНО: Проверяем, не отправлен ли уже фотоотчёт для этой задачи
-            existing_photos = Photo.objects.filter(
+            # ВАЖНО: Проверяем, не отправлен ли уже активный фотоотчёт для этой задачи (не отклоненный)
+            existing_active_photos = Photo.objects.filter(
                 task=task,
                 volunteer=request.user,
                 is_deleted=False
-            ).exists()
+            ).exclude(status='rejected').exists()
 
-            if existing_photos:
+            if existing_active_photos and task.status != 'revision':
                 return Response(
                     {'error': 'Вы уже отправили фотоотчёт для этой задачи. Повторная отправка невозможна.'},
                     status=status.HTTP_400_BAD_REQUEST
@@ -110,6 +110,11 @@ class SubmitPhotoReportAPIView(APIView):
                 description=f'Вы отправили {len(photos)} фото для задачи "{task.text}"',
                 project=task.project
             )
+
+            # Переводим задачу в статус "На проверке", если она была в работе или на доработке
+            if task.status in ['in_progress', 'revision']:
+                task.status = 'under_review'
+                task.save(update_fields=['status'])
 
             # Отправляем уведомление организатору о новом фотоотчете
             from shared.notifications.utils import notify_organizer_new_photo

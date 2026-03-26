@@ -89,6 +89,7 @@ urlpatterns = [
     path('api/v1/projects/', ProjectsAPIView.as_view(), name='api_v1_projects'),
     path('api/v1/projects/<int:project_id>/join/', JoinProjectAPIView.as_view(), name='api_v1_join_project'),
     path('api/v1/tasks/', UserTasksAPIView.as_view(), name='api_v1_user_tasks'),
+    path('api/v1/tasks/<int:task_id>/', UserTasksAPIView.as_view(), name='api_v1_user_task_detail'),
     path('api/v1/organizer/projects/', OrganizerProjectsAPIView.as_view(), name='api_v1_organizer_projects'),
     path('api/v1/organizer/projects/<int:project_id>/', OrganizerProjectsAPIView.as_view(), name='api_v1_organizer_project_detail'),
     path('api/v1/projects/<int:project_id>/participants/', ProjectParticipantsAPIView.as_view(), name='api_v1_project_participants'),

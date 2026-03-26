@@ -14,6 +14,14 @@ export interface User {
   organization_name?: string;
   inn?: string;
   bin?: string;
+  rating?: number;
+  tasks_completed?: number;
+  total_hours?: number;
+  trust_factor?: number;
+  average_rating?: number;
+  active_projects?: number;
+  total_photos?: number;
+  achievements_count?: number;
 }
 
 // Типы для проектов
@@ -87,16 +95,25 @@ export interface Task {
   has_photo_report?: boolean;
   completed?: boolean;
   can_upload_photo?: boolean;
+  photo_status?: 'pending' | 'approved' | 'rejected' | null;
+  rejection_reason?: string | null;
 }
 
 // Типы для уведомлений
 export interface Notification {
   id: number;
-  title: string;
+  subject: string;
   message: string;
   created_at: string;
-  is_read: boolean;
-  type: 'info' | 'success' | 'warning' | 'error';
+  status: 'pending' | 'sent' | 'opened' | 'clicked' | 'failed';
+  notification_type?: string;
+  activity_id?: number;
+  project_id?: number;
+  project_title?: string;
+  // Backward compatibility
+  title?: string;
+  is_read?: boolean;
+  type?: 'info' | 'success' | 'warning' | 'error';
 }
 
 // Типы для достижений
@@ -150,17 +167,33 @@ export interface AuthResponse {
 
 // Типы для дашборда
 export interface DashboardStats {
+  // Обязательные поля для фронтенда (StatsGrid)
   total_tasks: number;
   completed_tasks: number;
   total_hours: number;
   total_points: number;
   upcoming_tasks: number;
   active_projects: number;
+
+  // Опциональные поля, которые реально приходят с бэка
+  active_tasks?: number;
+  pending_photos?: number;
+  total_photos?: number;
+  unread_notifications?: number;
+  achievements_count?: number;
 }
 
 export interface DashboardData {
   user: User;
-  stats: DashboardStats;
+  summary?: DashboardStats; // Теперь summary официально существует и он опционален
+  stats?: DashboardStats;   // Оставляем stats на случай старого кэша
+  projects: Project[];
   upcoming_tasks: Task[];
   recent_achievements: Achievement[];
+  profile: {
+    trustFactor: number;
+    averageRating: number;
+    userName: string;
+  };
+  unreadNotifications?: number;
 }

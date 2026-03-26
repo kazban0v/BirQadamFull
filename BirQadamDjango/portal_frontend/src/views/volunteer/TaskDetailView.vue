@@ -25,6 +25,7 @@ const STATUS_MAP: Record<string, { text: string; color: string; bg: string }> = 
   completed:    { text: 'Выполнено',    color: '#2e7d32', bg: 'rgba(46,125,50,0.1)'    },
   failed:       { text: 'Отклонено',    color: '#c62828', bg: 'rgba(198,40,40,0.1)'    },
   closed:       { text: 'Закрыто',      color: '#546e7a', bg: 'rgba(84,110,122,0.1)'   },
+  revision:     { text: 'На доработке', color: '#f57c00', bg: 'rgba(255,152,0,0.1)'    },
   archived:     { text: 'В архиве',     color: '#37474f', bg: 'rgba(55,71,79,0.1)'     },
 };
 
@@ -338,8 +339,13 @@ const isActiveTask = computed(() =>
 );
 // Можно завершить — взята, не завершена, фото есть
 const canComplete = computed(() => isActiveTask.value && hasUploadedPhoto.value);
-// Можно загружать фото — взята, не завершена, фото ещё нет
-const canUploadPhoto = computed(() => isActiveTask.value && !hasUploadedPhoto.value);
+// Можно загружать фото — взята, не завершена, фото ещё нет (или последнее фото отклонено)
+const canUploadPhoto = computed(() => {
+  if (!isActiveTask.value) return false;
+  if (!hasUploadedPhoto.value) return true;
+  const latestPhoto = taskPhotos.value[0];
+  return latestPhoto && latestPhoto.status === 'rejected';
+});
 // Фотоотчёт уже загружен и задача активна
 const showPhotoReport = computed(() => isActiveTask.value && hasUploadedPhoto.value);
 // Завершена
@@ -426,8 +432,19 @@ onMounted(() => loadTask());
         </div>
       </div>
 
+      <!-- ═══ Revision warning banner ═══ -->
+      <div v-if="task.status === 'revision'" class="card">
+        <div class="info-banner info-banner--warn">
+          <v-icon icon="mdi-alert-circle-outline" size="20" />
+          <div>
+            <div style="font-weight:800; margin-bottom:2px;">Задача на доработке</div>
+            <div style="font-weight:400; opacity:0.8;">Ваш предыдущий фотоотчёт был отклонён организатором. Пожалуйста, учтите замечания и загрузите новый фотоотчёт.</div>
+          </div>
+        </div>
+      </div>
+
       <!-- ═══ Actions ═══ -->
-      <div v-if="!isArchived" class="card">
+      <div v-if="!isArchived && (canAccept || (isActiveTask && task.status !== 'revision') || isCompleted)" class="card">
         <h2 class="card__sub">Действия с задачей</h2>
 
         <div class="actions">
@@ -444,8 +461,8 @@ onMounted(() => loadTask());
             </button>
           </template>
 
-          <!-- Active task: decline -->
-          <template v-else-if="isActiveTask">
+          <!-- Active task: decline (but not if in revision) -->
+          <template v-else-if="isActiveTask && task.status !== 'revision'">
             <button class="btn btn--red-outline" :disabled="loading" @click="handleDeclineTask">
               <v-icon icon="mdi-close-circle-outline" size="17" />
               Отказаться от задачи

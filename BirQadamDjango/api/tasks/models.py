@@ -19,6 +19,7 @@ class Task(models.Model):
         ('open', 'Открыто'),
         ('in_progress', 'В работе'),
         ('under_review', 'На проверке'),
+        ('revision', 'На доработке'),
         ('completed', 'Выполнено'),
         ('failed', 'Отклонено'),
         ('closed', 'Закрыто'),
@@ -29,6 +30,7 @@ class Task(models.Model):
     text = models.TextField()
     task_image = models.ImageField(upload_to=task_image_upload_path, null=True, blank=True, max_length=255)
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    start_date = models.DateField(null=True, blank=True, db_index=True)
     deadline_date = models.DateField(null=True, blank=True, db_index=True)
     start_time = models.TimeField(null=True, blank=True)
     end_time = models.TimeField(null=True, blank=True)
@@ -49,11 +51,12 @@ class Task(models.Model):
 
         return False
 
-    def close_if_expired(self) -> None:
-        if self.is_expired() and self.status != 'completed':
-            self.status = 'closed'
-            self.save()
-            logger.info(f"Task {self.id} closed due to expiration")  # type: ignore[attr-defined]
+    def archive_if_expired(self) -> None:
+        """Автоматически переводит задачу в архив, если срок истек и она не завершена"""
+        if self.is_expired() and self.status not in ['completed', 'archived', 'failed']:
+            self.status = 'archived'
+            self.save(update_fields=['status'])
+            logger.info(f"Task {self.id} archived due to expiration")  # type: ignore[attr-defined]
 
     def is_closed_and_not_completed(self) -> bool:
         if self.status == 'closed':
@@ -200,14 +203,14 @@ class Photo(models.Model):
             if self.task:
                 assignment = self.task.assignments.filter(volunteer=self.volunteer).first()
                 if assignment:
-                    assignment.completed = False
+                    assignment.completed = False  # Возвращаем на доработку
                     assignment.completed_at = None
                     assignment.feedback = feedback
                     assignment.save()
 
-                self.task.status = 'in_progress'
+                self.task.status = 'revision'  # Переносим на доработку
                 self.task.save()
-                logger.info(f"Task {self.task.id} status changed to 'in_progress' after photo rejection - giving second chance")
+                logger.info(f"Task {self.task.id} set to 'revision' after photo rejection")
                 
                 if self.volunteer:
                     user = User.objects.select_for_update().get(pk=self.volunteer.pk)
@@ -263,6 +266,7 @@ class TaskAssignment(models.Model):
     task = models.ForeignKey(Task, on_delete=models.CASCADE, related_name='assignments')
     volunteer = models.ForeignKey('api.User', on_delete=models.CASCADE, related_name='assignments')
     accepted = models.BooleanField(default=False, db_index=True)
+    accepted_at = models.DateTimeField(null=True, blank=True, db_index=True)
     completed = models.BooleanField(default=False, db_index=True)
     completed_at = models.DateTimeField(null=True, blank=True, db_index=True)
     rating = models.IntegerField(null=True, blank=True, validators=[MinValueValidator(1), MaxValueValidator(5)])

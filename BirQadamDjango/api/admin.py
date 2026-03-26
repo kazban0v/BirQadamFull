@@ -9,7 +9,7 @@ from api.models import (
     UserAchievement, OrganizerApplication, TrustFactorHistory,
     DeviceToken, NotificationTemplate, BulkNotification, NotificationRecipient,
     UserSearchFilter, Event, GeofenceReminder, Chat, Message, ChatMember,
-    PinnedMessage, TypingStatus, VerificationCode, TelegramLinkCode, EmailVerificationCode,
+    PinnedMessage, TypingStatus, VerificationCode,
     SupportTicket
 )
 
@@ -461,18 +461,3 @@ class VerificationCodeAdmin(admin.ModelAdmin):
     list_select_related = ['user']
 
 
-# Старые модели (DEPRECATED - будут удалены)
-# @admin.register(TelegramLinkCode)
-# class TelegramLinkCodeAdmin(admin.ModelAdmin):
-#     list_display = ['id', 'user', 'code', 'is_used', 'created_at', 'expires_at']
-#     list_filter = ['is_used', 'created_at', 'expires_at']
-#     search_fields = ['user__username', 'code']
-#     readonly_fields = ['id', 'created_at']
-
-
-# @admin.register(EmailVerificationCode)
-# class EmailVerificationCodeAdmin(admin.ModelAdmin):
-#     list_display = ['id', 'user', 'email', 'code', 'is_used', 'created_at', 'expires_at']
-#     list_filter = ['is_used', 'created_at', 'expires_at']
-#     search_fields = ['user__username', 'code', 'email']
-#     readonly_fields = ['id', 'created_at']

@@ -13,6 +13,8 @@ from django.utils import timezone
 from api.notifications.models import NotificationRecipient
 from api.tasks.models import Photo, Task, TaskAssignment
 from api.projects.models import VolunteerProject
+from api.achievements.models import UserAchievement
+from api.users.models import Activity
 
 
 def get_volunteer_dashboard_data(user) -> Dict[str, Any]:  # type: ignore[no-any-unimported]
@@ -34,21 +36,23 @@ def get_volunteer_dashboard_data(user) -> Dict[str, Any]:  # type: ignore[no-any
     )
     assignment_map = {assignment.task_id: assignment for assignment in assignment_qs}
 
-    declined_task_ids = [
-        assignment.task_id
-        for assignment in assignment_qs
-        if not assignment.accepted
-    ]
+    # Задачи, которые волонтер еще не принял, должны отображаться, 
+    # чтобы он мог их принять. Исключаем только реально удаленные.
+    declined_task_ids = []
 
-    tasks_qs = (
-        Task.objects.select_related('project')
-        .filter(
-            project_id__in=joined_project_ids,
-            is_deleted=False,
-        )
-        .exclude(id__in=declined_task_ids)
-        .order_by('deadline_date', '-created_at')
-    )
+    # Базовый список всех активных задач пользователя (для счетчика)
+    # Считаем все незавершенные и неархивные задачи
+    all_active_tasks_qs = Task.objects.select_related('project').filter(
+        Q(project_id__in=joined_project_ids) | Q(assignments__volunteer=user),
+        is_deleted=False,
+    ).exclude(status__in=['completed', 'archived', 'failed']).distinct()
+
+    # Список задач именно для блока "Ближайшие задачи" (только не принятые)
+    # Исключаем задачи, где уже есть статус accepted=True для этого пользователя
+    tasks_to_show_qs = all_active_tasks_qs.exclude(
+        assignments__volunteer=user,
+        assignments__accepted=True
+    ).order_by('deadline_date', '-created_at')
 
     photo_exists_subquery = Photo.objects.filter(
         task=OuterRef('pk'),
@@ -62,63 +66,30 @@ def get_volunteer_dashboard_data(user) -> Dict[str, Any]:  # type: ignore[no-any
         is_deleted=False,
     ).order_by('-uploaded_at').values('status')[:1]
 
-    tasks_qs = tasks_qs.annotate(
+    tasks_to_show_qs = tasks_to_show_qs.annotate(
         has_photo_report=Exists(photo_exists_subquery),
         photo_status=Subquery(latest_photo_status_subquery),
     )
 
     photo_map = {}
     for photo in Photo.objects.filter(
-        task__in=tasks_qs,
+        task__in=tasks_to_show_qs,
         volunteer=user,
         is_deleted=False,
     ).order_by('-uploaded_at'):
         photo_map.setdefault(photo.task_id, []).append(photo)
 
-    tasks_data = []
-    for task in tasks_qs[:10]:
-        assignment = assignment_map.get(task.id)
-        accepted = bool(assignment and assignment.accepted)
-        completed = bool(assignment and assignment.completed)
-        has_photo_report = bool(photo_map.get(task.id))
-        # Исправление: проверяем, что список не пустой перед доступом к элементу
-        photo_status = None
-        if has_photo_report and photo_map.get(task.id):
-            photo_list = photo_map[task.id]
-            if photo_list and len(photo_list) > 0:
-                photo_status = photo_list[0].status
-        if photo_status is None:
-            photo_status = getattr(task, 'photo_status', None)
-        can_upload_photo = accepted and not has_photo_report
-
-        tasks_data.append(
-            {
-                'task_id': task.id,
-                'text': task.text,
-                'status': task.status,
-                'deadline_date': task.deadline_date,
-                'start_time': task.start_time,
-                'end_time': task.end_time,
-                'project_id': task.project_id,
-                'project_title': task.project.title,
-                'project_city': task.project.city,
-                'project_status': task.project.status,
-                'accepted': accepted,
-                'completed': completed,
-                'is_expired': task.is_expired(),
-                'has_photo_report': has_photo_report,
-                'photo_status': photo_status,
-                'can_upload_photo': can_upload_photo,
-            }
-        )
+    # Удаляем ручную сборку списка словарей tasks_data
+    # tasks_data = []
 
     completed_assignments_count = sum(1 for assignment in assignment_qs if assignment.completed)
 
     upcoming_assignments_count = Task.objects.filter(
-        id__in=[item['task_id'] for item in tasks_data],
+        project_id__in=joined_project_ids,
+        is_deleted=False,
         deadline_date__isnull=False,
         deadline_date__lte=upcoming_threshold.date(),
-    ).count()
+    ).exclude(id__in=declined_task_ids).count()
 
     volunteer_projects_qs = (
         VolunteerProject.objects.select_related('project', 'project__creator')
@@ -146,41 +117,44 @@ def get_volunteer_dashboard_data(user) -> Dict[str, Any]:  # type: ignore[no-any
     )
     notifications = list(notifications_qs[:8])
 
-    unread_notifications = notifications_qs.filter(
-        status__in=['pending', 'sent'],
-    ).count()
+    unread_notifications = (
+        notifications_qs.filter(status__in=['pending', 'sent']).count() +
+        Activity.objects.filter(user=user, is_read=False).count()
+    )
 
-    # Расчет общего времени участия в проектах (в часах)
-    # Считаем время с момента первого присоединения к любому активному проекту
-    # Это общее время волонтерской деятельности пользователя
+    achievements_count = UserAchievement.objects.filter(user=user).count()
+
     total_hours = 0
-    first_join_date = None
+    first_project = VolunteerProject.objects.filter(
+        volunteer=user,
+        is_active=True,
+        joined_at__isnull=False
+    ).order_by('joined_at').first()
     
-    # Находим самую раннюю дату присоединения к активному проекту
-    for vp in volunteer_projects_qs:
-        if vp.joined_at:
-            if first_join_date is None or vp.joined_at < first_join_date:
-                first_join_date = vp.joined_at
-    
-    # Если есть активные проекты, считаем время с первой даты присоединения
-    if first_join_date:
-        time_diff = now - first_join_date
-        total_hours = time_diff.total_seconds() / 3600
+    if first_project and first_project.joined_at:
+        import datetime
+        if isinstance(first_project.joined_at, datetime.datetime):
+            time_diff = now - first_project.joined_at
+            total_hours = time_diff.total_seconds() / 3600
+        else:
+            time_diff = now.date() - first_project.joined_at
+            total_hours = time_diff.total_seconds() / 3600
 
     summary = {
-        'active_tasks': tasks_qs.count(),
+        'active_tasks': all_active_tasks_qs.count(),
         'completed_tasks': completed_assignments_count,
         'upcoming_tasks': upcoming_assignments_count,
         'active_projects': projects_total,
         'pending_photos': pending_photo_reports,
         'total_photos': photo_reports_qs.count(),
         'unread_notifications': unread_notifications,
-        'total_hours': round(total_hours, 1),  # Округляем до 1 знака после запятой
+        'achievements_count': achievements_count,
+        'total_hours': round(total_hours, 1),
     }
 
     return {
         'summary': summary,
-        'tasks': tasks_data,
+        'tasks': tasks_to_show_qs[:10],  # Только не принятые задачи
         'projects': volunteer_projects,
         'photos': photo_reports,
         'notifications': notifications,

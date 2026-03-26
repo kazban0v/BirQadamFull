@@ -45,6 +45,7 @@ export const TrustFactorCard: React.FC<TrustFactorCardProps> = React.memo(({
               <Text style={styles.trustFactorText}>
                 <Text>Trust Factor: </Text>
                 <Text style={styles.trustFactorNumber}>{trustFactor}</Text>
+                <Text style={styles.trustFactorMax}> / 30</Text>
               </Text>
               <TouchableOpacity
                 onPress={onInfoPress}
@@ -53,6 +54,11 @@ export const TrustFactorCard: React.FC<TrustFactorCardProps> = React.memo(({
               >
                 <Ionicons name="information-circle-outline" size={18} color="#FFFFFF" />
               </TouchableOpacity>
+            </View>
+
+            {/* Добавленный прогресс-бар */}
+            <View style={styles.progressBarContainer}>
+              <View style={[styles.progressBarFill, { width: `${Math.min((trustFactor / 30) * 100, 100)}%` }]} />
             </View>
           </View>
           <TouchableOpacity
@@ -63,7 +69,7 @@ export const TrustFactorCard: React.FC<TrustFactorCardProps> = React.memo(({
             <Ionicons name="chevron-forward" size={14} color="#FFFFFF" />
           </TouchableOpacity>
         </View>
-        
+
         <View style={styles.trustFactorBottom}>
           <View style={styles.ratingContainer}>
             <Text style={styles.ratingNumber}>{averageRating > 0 ? averageRating.toFixed(1) : '—'}</Text>
@@ -83,8 +89,8 @@ export const TrustFactorCard: React.FC<TrustFactorCardProps> = React.memo(({
           </View>
           <View style={styles.projectsBadge}>
             <Ionicons name="folder-open-outline" size={14} color="#FFFFFF" />
-            <Text style={styles.projectsBadgeText}>
-              <Text>Проектов: </Text>
+            <Text style={styles.projectsBadgeText} numberOfLines={1} adjustsFontSizeToFit>
+              <Text>Все проекты: </Text>
               <Text style={styles.projectsBadgeNumber}>{projectsCount}</Text>
             </Text>
           </View>
@@ -146,6 +152,25 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
   },
+  // Новые стили:
+  trustFactorMax: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.7)',
+    fontWeight: '500',
+  },
+  progressBarContainer: {
+    height: 6,
+    backgroundColor: 'rgba(255,255,255,0.2)', // Полупрозрачный фон
+    borderRadius: 3,
+    marginTop: 8,
+    width: '100%',
+    overflow: 'hidden',
+  },
+  progressBarFill: {
+    height: '100%',
+    backgroundColor: '#FFFFFF', // Белая полоса прогресса
+    borderRadius: 3,
+  },
   infoIconButton: {
     marginLeft: 4,
   },
@@ -197,15 +222,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: 'rgba(255,255,255,0.2)',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingHorizontal: 10, // Чуть уменьшили отступы (было 12)
+    paddingVertical: 6,    // Чуть уменьшили (было 8)
     borderRadius: 14,
-    gap: 6,
+    gap: 4,                // Чуть уменьшили расстояние до иконки (было 6)
+    flexShrink: 1,         // ВАЖНО: Разрешаем плашке сжиматься, если не хватает места
+    marginLeft: 10,        // Даем отступ от звезд рейтинга
   },
   projectsBadgeText: {
-    fontSize: 12,
+    fontSize: 11,          // Сделали шрифт капельку меньше (было 12)
     color: '#FFFFFF',
     fontWeight: '600',
+    flexShrink: 1,         // Разрешаем тексту сжиматься
   },
   projectsBadgeNumber: {
     fontSize: 14,
