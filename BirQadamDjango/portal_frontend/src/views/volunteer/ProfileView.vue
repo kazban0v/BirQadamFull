@@ -206,7 +206,7 @@ onMounted(() => Promise.all([loadProfile(), loadStats(), loadActivity(), loadTel
     <div class="qs">
       <div class="qs__item">
         <span class="qs__val">{{ statsLoading ? '—' : (stats?.rating ?? '—') }}</span>
-        <span class="qs__lbl">рейтинг</span>
+        <span class="qs__lbl">Общая оценка</span>
       </div>
       <div class="qs__sep"/>
       <div class="qs__item">
@@ -221,7 +221,7 @@ onMounted(() => Promise.all([loadProfile(), loadStats(), loadActivity(), loadTel
       <div class="qs__sep"/>
       <div class="qs__item">
         <span class="qs__val">{{ profile.average_rating.toFixed(1) }}</span>
-        <span class="qs__lbl">средний рейтинг</span>
+        <span class="qs__lbl">Средняя оценка</span>
       </div>
     </div>
 
@@ -378,7 +378,7 @@ onMounted(() => Promise.all([loadProfile(), loadStats(), loadActivity(), loadTel
               </div>
               <!-- Info -->
               <div class="lv__info">
-                <div class="lv__row"><span>Рейтинг</span><b>{{ stats.rating }}</b></div>
+                <div class="lv__row"><span>Общая оценка</span><b>{{ stats.rating }}</b></div>
                 <div class="lv__row"><span>До {{ stats.level + 1 }} ур.</span><b>{{ stats.next_level_rating }}</b></div>
                 <div class="lv__row"><span>Прогресс</span><b>{{ levelPct }}%</b></div>
               </div>
@@ -431,7 +431,7 @@ onMounted(() => Promise.all([loadProfile(), loadStats(), loadActivity(), loadTel
               <v-icon v-for="i in 5" :key="i" size="15" :color="i <= Math.round(profile.average_rating) ? '#e8b84b' : 'rgba(0,0,0,0.1)'">mdi-star</v-icon>
             </div>
             <span class="avg-rat__val">{{ profile.average_rating.toFixed(2) }}</span>
-            <span class="avg-rat__lbl">средний рейтинг</span>
+            <span class="avg-rat__lbl">Средняя оценка</span>
           </div>
 
           <button class="btn-link" type="button" @click="openTrustFactorHistory">
@@ -530,7 +530,7 @@ onMounted(() => Promise.all([loadProfile(), loadStats(), loadActivity(), loadTel
           <template v-else-if="trustFactorHistory">
             <div class="tfh-summary">
               <div class="tfh-stat"><span class="tfh-stat__val">{{ trustFactorHistory.current_trust_factor }}</span><span class="tfh-stat__lbl">Trust Factor</span></div>
-              <div class="tfh-stat"><span class="tfh-stat__val">{{ trustFactorHistory.current_average_rating.toFixed(2) }}</span><span class="tfh-stat__lbl">Средний рейтинг</span></div>
+              <div class="tfh-stat"><span class="tfh-stat__val">{{ trustFactorHistory.current_average_rating.toFixed(2) }}</span><span class="tfh-stat__lbl">Средняя оценка</span></div>
             </div>
             <div v-if="!trustFactorHistory.history.length" class="state-empty" style="min-height:100px">
               <v-icon size="36" color="rgba(0,0,0,0.13)">mdi-history</v-icon><p>История пуста</p>

@@ -144,7 +144,7 @@ export const useOrganizerStore = defineStore('organizer', () => {
     force?: boolean;
   }) {
     console.log('[ORGANIZER STORE] loadPhotoReports called:', { options, isOrganizer: isOrganizer.value, isApproved: isApproved.value });
-    
+
     if (!isOrganizer.value) {
       console.log('[ORGANIZER STORE] User is not an organizer, skipping');
       return;

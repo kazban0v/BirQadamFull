@@ -798,7 +798,7 @@ async function handleTaskAction(action: 'accept' | 'decline' | 'complete', task:
           <v-icon icon="mdi-star-circle" size="28" />
           </div>
           <div class="stat-card__body">
-            <div class="stat-card__label">Рейтинг</div>
+            <div class="stat-card__label">Общая оценка</div>
             <div v-if="statsLoading" class="stat-card__loader">
             <v-progress-circular indeterminate color="white" size="24" width="3" />
             </div>

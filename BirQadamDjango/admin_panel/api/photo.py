@@ -521,79 +521,16 @@ class RatePhotoReportAPIView(APIView):
                         # Получаем пользователя из БД с блокировкой
                         volunteer = User.objects.select_for_update().get(pk=photo.volunteer.pk)
                         
-                        logger.info(f"[RATING] Updating volunteer {volunteer.username} stats for rating {rating_value}")
-                        logger.info(f"[RATING] Before update: TF={volunteer.trust_factor}, Avg rating={volunteer.average_rating}")
+                        logger.info(f"[RATING] Applying consolidate reward for volunteer {volunteer.username} for rating {rating_value}")
                         
-                        # ШАГ 1: Обновляем средний рейтинг (пересчитываем на основе всех оценок + новая оценка)
-                        # Передаем новую оценку явно, чтобы она точно была учтена
-                        volunteer.update_average_rating(new_rating=rating_value)
+                        # Вызываем новый консолидированный метод начисления наград
+                        reward_results = volunteer.apply_photo_rating_reward(rating_value, photo.id)
                         
-                        # ШАГ 2: Обновляем TrustFactor и счетчики в зависимости от оценки
-                        tf_change = 0
-                        reason = ''
+                        # Сохраняем обновленные значения для ответа
+                        updated_trust_factor = reward_results['new_tf']
+                        updated_average_rating = reward_results['new_avg_rating']
                         
-                        if rating_value == 5:
-                            tf_change = 2
-                            reason = 'photo_rating_5'
-                            volunteer.consecutive_5star_photos += 1
-                            volunteer.consecutive_completed_tasks += 1
-                        elif rating_value == 4:
-                            tf_change = 1
-                            reason = 'photo_rating_4'
-                            volunteer.consecutive_5star_photos = 0
-                            volunteer.consecutive_completed_tasks += 1
-                        elif rating_value == 3:
-                            tf_change = 0
-                            reason = 'photo_rating_3'
-                            volunteer.consecutive_5star_photos = 0
-                            volunteer.consecutive_completed_tasks += 1
-                        elif rating_value in [1, 2]:
-                            tf_change = -1
-                            reason = 'photo_rating_1_2'
-                            volunteer.consecutive_5star_photos = 0
-                            volunteer.consecutive_completed_tasks = 0
-                        
-                        # Обновляем TrustFactor
-                        if tf_change != 0:
-                            volunteer._change_trust_factor(tf_change, reason, 'photo', photo.id)
-                        
-                        # ШАГ 3: Обновляем дату последнего выполненного задания
-                        volunteer.last_task_completion_date = timezone.now()
-                        
-                        # ШАГ 4: Проверяем и применяем бонусы
-                        # Бонус за 5 заданий подряд
-                        if volunteer.consecutive_completed_tasks >= 5:
-                            volunteer._change_trust_factor(1, 'bonus_consecutive_tasks', 'bonus', 0)
-                            volunteer.consecutive_completed_tasks = 0
-                            logger.info(f"[RATING] Bonus applied: 5 consecutive tasks")
-                        
-                        # Бонус за 3 фотоотчета подряд на 5 звезд
-                        if volunteer.consecutive_5star_photos >= 3:
-                            volunteer._change_trust_factor(1, 'bonus_consecutive_photos', 'bonus', 0)
-                            volunteer.consecutive_5star_photos = 0
-                            logger.info(f"[RATING] Bonus applied: 3 consecutive 5-star photos")
-                        
-                        # ШАГ 5: Сохраняем все изменения счетчиков
-                        volunteer.save(update_fields=[
-                            'consecutive_completed_tasks',
-                            'consecutive_5star_photos',
-                            'last_task_completion_date'
-                        ])
-                        
-                        # ШАГ 6: Сохраняем старый рейтинг для совместимости (используется для достижений)
-                        old_rating = volunteer.rating
-                        volunteer.rating = max(0, min(750, volunteer.rating + rating_value))
-                        if volunteer.rating > old_rating:
-                            volunteer.check_and_unlock_achievements()
-                        volunteer.save(update_fields=['rating'])
-                        
-                        # Обновляем объект для финального логирования
-                        volunteer.refresh_from_db()
-                        logger.info(f"[RATING] FINAL: Photo {photo.id} rated {rating_value} stars. Volunteer {volunteer.username} TF: {volunteer.trust_factor}, Avg rating: {volunteer.average_rating}")
-                        
-                        # ВАЖНО: Сохраняем обновленные значения для ответа
-                        updated_trust_factor = volunteer.trust_factor
-                        updated_average_rating = volunteer.average_rating
+                        logger.info(f"[RATING] Photo {photo.id} rewarded successfully. New TF: {updated_trust_factor}, New Avg: {updated_average_rating}")
                     else:
                         updated_trust_factor = None
                         updated_average_rating = None

@@ -153,6 +153,91 @@ class User(AbstractUser):
             related_object_id or 0
         )
 
+    def apply_photo_rating_reward(self, rating: int, photo_id: int) -> dict[str, Any]:
+        """
+        Применить награду за оценку фотоотчета (рейтинг, TrustFactor, бонусы).
+        Централизованная логика, перенесенная из API вью.
+        """
+        from django.utils import timezone
+        
+        results = {
+            'old_tf': self.trust_factor,
+            'old_avg_rating': self.average_rating,
+            'tf_change': 0,
+            'bonuses': []
+        }
+        
+        # 1. Обновляем средний рейтинг
+        self.update_average_rating(new_rating=rating)
+        
+        # 2. Определяем изменение TrustFactor и счетчиков серий
+        tf_change = 0
+        reason = ''
+        
+        if rating == 5:
+            tf_change = 2
+            reason = 'photo_rating_5'
+            self.consecutive_5star_photos += 1
+            self.consecutive_completed_tasks += 1
+        elif rating == 4:
+            tf_change = 1
+            reason = 'photo_rating_4'
+            self.consecutive_5star_photos = 0
+            self.consecutive_completed_tasks += 1
+        elif rating == 3:
+            tf_change = 0
+            reason = 'photo_rating_3'
+            self.consecutive_5star_photos = 0
+            self.consecutive_completed_tasks += 1
+        elif rating in [1, 2]:
+            tf_change = -1
+            reason = 'photo_rating_1_2'
+            self.consecutive_5star_photos = 0
+            self.consecutive_completed_tasks = 0
+            
+        # 3. Применяем изменение TrustFactor
+        if tf_change != 0:
+            self._change_trust_factor(tf_change, reason, 'photo', photo_id)
+            results['tf_change'] = tf_change
+            
+        # 4. Обновляем дату последнего выполненного задания
+        self.last_task_completion_date = timezone.now()
+        
+        # 5. Проверяем и применяем бонусы
+        # Бонус за 5 заданий подряд
+        if self.consecutive_completed_tasks >= 5:
+            self._change_trust_factor(1, 'bonus_consecutive_tasks', 'bonus', 0)
+            self.consecutive_completed_tasks = 0
+            results['bonuses'].append('consecutive_tasks_5')
+            logger.info(f"User {self.username} got bonus for 5 consecutive tasks")
+            
+        # Бонус за 3 фотоотчета подряд на 5 звезд
+        if self.consecutive_5star_photos >= 3:
+            self._change_trust_factor(1, 'bonus_consecutive_photos', 'bonus', 0)
+            self.consecutive_5star_photos = 0
+            results['bonuses'].append('consecutive_5star_3')
+            logger.info(f"User {self.username} got bonus for 3 consecutive 5-star photos")
+            
+        # 6. Обновляем основной рейтинг (используется для достижений)
+        old_rating = self.rating
+        self.rating = max(0, min(750, self.rating + rating))
+        
+        # 7. Сохраняем все изменения счетчиков и рейтинга одной операцией
+        self.save(update_fields=[
+            'rating',
+            'consecutive_completed_tasks',
+            'consecutive_5star_photos',
+            'last_task_completion_date'
+        ])
+        
+        # 8. Проверяем достижения
+        if self.rating > old_rating:
+            self.check_and_unlock_achievements()
+            
+        results['new_tf'] = self.trust_factor
+        results['new_avg_rating'] = self.average_rating
+        return results
+
     def update_average_rating(self, new_rating: int | None = None) -> None:
         """Обновить средний рейтинг на основе всех оценок фотоотчетов"""
         # Lazy import для Photo
@@ -229,9 +314,13 @@ class User(AbstractUser):
             from api.utils.utils import normalize_phone
             self.phone_number = normalize_phone(self.phone_number)
         
-        if self.role == 'organizer' and self.is_approved:
+        # Автоматическое управление флагом is_organizer на основе роли и статуса
+        if self.role == 'organizer' and self.organizer_status == 'approved':
             self.is_organizer = True
         else:
+            # Если роль не организатор или статус не одобрен, снимаем флаг
+            # Это предотвращает ситуацию, когда волонтер с ролью organizer (в ожидании) 
+            # получает права доступа при обычном сохранении профиля.
             self.is_organizer = False
 
         should_check_achievements = False
