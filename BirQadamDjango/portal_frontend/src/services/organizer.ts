@@ -45,6 +45,15 @@ export interface CreateProjectPayload {
   cover_image?: File | null;
 }
 
+export interface OrganizerTaskPhoto {
+  id: number;
+  url: string | null;
+  volunteer_name: string;
+  comment: string | null;
+  status: string;
+  uploaded_at: string;
+}
+
 export interface OrganizerTask {
   id: number;
   text: string;
@@ -53,6 +62,8 @@ export interface OrganizerTask {
   deadline_date?: string | null;
   start_time?: string | null;
   end_time?: string | null;
+  can_edit?: boolean;
+  photos?: OrganizerTaskPhoto[];
 }
 
 export interface CreateTaskPayload {
@@ -263,6 +274,14 @@ export async function deleteTask(projectId: number, taskId: number) {
 
 export async function createProjectTask(projectId: number, payload: CreateTaskPayload): Promise<OrganizerTask> {
   const { data } = await httpClient.post<OrganizerTask>(`/custom-admin/api/projects/${projectId}/tasks/`, payload);
+  return data;
+}
+
+export async function updateProjectTask(projectId: number, taskId: number, payload: CreateTaskPayload): Promise<OrganizerTask> {
+  const { data } = await httpClient.patch<OrganizerTask>(
+    `/custom-admin/api/projects/${projectId}/tasks/`, 
+    { ...payload, task_id: taskId }
+  );
   return data;
 }
 

@@ -1,6 +1,6 @@
 from django.shortcuts import render, get_object_or_404
 import json
-from django.db.models import Count, Avg, Q
+from django.db.models import Count, Avg, Q, Prefetch
 from django.db import IntegrityError  # ✅ ИСПРАВЛЕНИЕ: Для обработки race condition
 from django.http import JsonResponse, HttpResponse, HttpResponseRedirect, HttpRequest
 from typing import Any
@@ -1909,30 +1909,47 @@ class ProjectTasksAPIView(APIView):
                 )
             
             # Получаем все задачи проекта (не удаленные)
-            tasks = Task.objects.filter(  # type: ignore[attr-defined]
+            tasks_qs = Task.objects.filter(  # type: ignore[attr-defined]
                 project_id=project_id,
                 is_deleted=False
-            ).values(
-                'id',
-                'text',
-                'status',
-                'created_at',
-                'deadline_date',
-                'start_time',
-                'end_time',
+            ).annotate(
+                assignment_count=Count('assignments', filter=Q(assignments__accepted=True))
+            ).prefetch_related(
+                Prefetch(
+                    'task_photos',
+                    queryset=Photo.objects.filter(is_deleted=False).select_related('volunteer'),
+                    to_attr='prefetched_photos'
+                )
             ).order_by('-created_at')
 
             normalized_tasks = []
-            for task in tasks:
+            for task in tasks_qs:
+                # Задача может быть отредактирована только создателем, если никто еще не "зашел" (не принял задачу)
+                can_edit = is_creator and task.assignment_count == 0 and task.status == 'open'
+                
+                # Photos
+                photos_data = []
+                for p in getattr(task, 'prefetched_photos', []):
+                    photos_data.append({
+                        'id': p.id,
+                        'url': p.image.url if p.image else None,
+                        'volunteer_name': p.volunteer.name or p.volunteer.username if p.volunteer else 'Unknown',
+                        'comment': p.volunteer_comment,
+                        'status': p.status,
+                        'uploaded_at': p.uploaded_at.isoformat() if p.uploaded_at else None,
+                    })
+
                 normalized_tasks.append(
                     {
-                        'id': task['id'],
-                        'text': task['text'],
-                        'status': task['status'],
-                        'created_at': task['created_at'].isoformat() if task['created_at'] else None,
-                        'deadline_date': task['deadline_date'].isoformat() if task['deadline_date'] else None,
-                        'start_time': task['start_time'].strftime('%H:%M') if task['start_time'] else None,
-                        'end_time': task['end_time'].strftime('%H:%M') if task['end_time'] else None,
+                        'id': task.id,
+                        'text': task.text,
+                        'status': task.status,
+                        'created_at': task.created_at.isoformat() if task.created_at else None,
+                        'deadline_date': task.deadline_date.isoformat() if task.deadline_date else None,
+                        'start_time': task.start_time.strftime('%H:%M') if task.start_time else None,
+                        'end_time': task.end_time.strftime('%H:%M') if task.end_time else None,
+                        'can_edit': can_edit,
+                        'photos': photos_data,
                     }
                 )
 
@@ -2179,6 +2196,98 @@ class ProjectTasksAPIView(APIView):
         except Project.DoesNotExist:
             return Response({'error': 'Project not found or you are not the creator'}, status=status.HTTP_404_NOT_FOUND)
         except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def patch(self, request: Any, project_id: int) -> Response:
+        """Редактирование существующей задачи (только если нет активных волонтеров)"""
+        try:
+            # Проверяем, что проект существует и пользователь - его создатель
+            project = Project.objects.get(id=project_id, creator=request.user, deleted_at__isnull=True)  # type: ignore[attr-defined]
+            
+            data = request.data
+            task_id = data.get('task_id')
+            
+            if not task_id:
+                return Response({'error': 'task_id is required'}, status=status.HTTP_400_BAD_REQUEST)
+                
+            # Ищем задачу и аннотируем её количеством принятых назначений
+            task = Task.objects.filter(
+                id=task_id, 
+                project=project, 
+                is_deleted=False
+            ).annotate(
+                assignment_count=Count('assignments', filter=Q(assignments__accepted=True))
+            ).first()
+            
+            if not task:
+                return Response({'error': 'Задача не найдена'}, status=status.HTTP_404_NOT_FOUND)
+            
+            # Проверяем возможность редактирования
+            if task.assignment_count > 0 or task.status != 'open':
+                return Response(
+                    {'error': 'Редактирование запрещено: задача уже принята волонтером или не в статусе "Открыта"'}, 
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Обновляем поля
+            text = data.get('text')
+            deadline_date = data.get('deadline_date')
+            start_time = data.get('start_time')
+            end_time = data.get('end_time')
+            
+            from django.utils.dateparse import parse_date, parse_time, parse_datetime
+            from datetime import date as _date, time as _time
+
+            def _normalize_date(value: Any) -> _date | None:
+                if value in (None, '', False): return None
+                if isinstance(value, _date): return value
+                if isinstance(value, str):
+                    candidate = parse_date(value)
+                    if candidate: return candidate
+                    dt = parse_datetime(value)
+                    if dt: return dt.date()
+                return None
+
+            def _normalize_time(value: Any) -> _time | None:
+                if value in (None, '', False): return None
+                if isinstance(value, _time): return value
+                if isinstance(value, str):
+                    candidate = parse_time(value)
+                    if candidate: return candidate
+                    dt = parse_datetime(value)
+                    if dt: return dt.time()
+                return None
+
+            if text:
+                task.text = text
+            
+            if 'deadline_date' in data:
+                task.deadline_date = _normalize_date(deadline_date)
+            
+            if 'start_time' in data:
+                task.start_time = _normalize_time(start_time)
+                
+            if 'end_time' in data:
+                task.end_time = _normalize_time(end_time)
+                
+            task.save()
+            
+            logger.info(f"Task {task.id} updated by organizer {request.user}")
+            
+            return Response({
+                'id': task.id,
+                'text': task.text,
+                'status': task.status,
+                'created_at': task.created_at.isoformat(),
+                'deadline_date': str(task.deadline_date) if task.deadline_date else None,
+                'start_time': task.start_time.strftime('%H:%M') if task.start_time else None,
+                'end_time': task.end_time.strftime('%H:%M') if task.end_time else None,
+            }, status=status.HTTP_200_OK)
+            
+        except Project.DoesNotExist:
+            return Response({'error': 'Project not found or you are not the creator'}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            logger.error(f"Error updating task: {e}", exc_info=True)
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 

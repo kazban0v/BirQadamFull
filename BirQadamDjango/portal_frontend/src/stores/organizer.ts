@@ -13,6 +13,7 @@ import {
   fetchProjectParticipants,
   updateOrganizerProject,
   deleteOrganizerProject,
+  updateProjectTask,
   type CreateProjectPayload,
   type CreateTaskPayload,
   type OrganizerProject,
@@ -133,6 +134,12 @@ export const useOrganizerStore = defineStore('organizer', () => {
   async function createTask(projectId: number, payload: CreateTaskPayload) {
     if (!isOrganizer.value) throw new Error('Недостаточно прав');
     await createProjectTask(projectId, payload);
+    await loadTasks(projectId, true);
+  }
+
+  async function updateTask(projectId: number, taskId: number, payload: CreateTaskPayload) {
+    if (!isOrganizer.value) throw new Error('Недостаточно прав');
+    await updateProjectTask(projectId, taskId, payload);
     await loadTasks(projectId, true);
   }
 
@@ -377,6 +384,7 @@ export const useOrganizerStore = defineStore('organizer', () => {
     removeProject,
     loadTasks,
     createTask,
+    updateTask,
     loadPhotoReports,
     refreshPhotoReports,
     ensurePhotoDetail,

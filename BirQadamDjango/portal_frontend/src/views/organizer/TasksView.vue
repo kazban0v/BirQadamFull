@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from 'vue';
-import { useRoute } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import type { VForm } from 'vuetify/components';
 
 import { useAuthStore } from '@/stores/auth';
@@ -10,6 +10,7 @@ import { deleteTask } from '@/services/organizer';
 const authStore = useAuthStore();
 const organizerStore = useOrganizerStore();
 const route = useRoute();
+const router = useRouter();
 
 const isOrganizer = computed(() => organizerStore.isOrganizer);
 const isApproved = computed(() => organizerStore.isApproved);
@@ -34,7 +35,54 @@ const taskError = computed(() => selectedProjectId.value ? organizerStore.taskEr
 
 const taskFormRef = ref<VForm | null>(null);
 const createTaskDialog = ref(false);
+const isEditing = ref(false);
+const currentEditingTaskId = ref<number | null>(null);
 const createTaskLoading = ref(false);
+const viewTaskDialog = ref(false);
+const selectedTaskForView = ref<any>(null);
+
+const approveDialog = reactive({
+  open: false, photoIds: [] as number[],
+  rating: 5, feedback: '', error: '',
+});
+const rejectDialog = reactive({
+  open: false, photoIds: [] as number[],
+  feedback: '', error: '',
+});
+const rejectFormRef = ref<VForm | null>(null);
+
+const groupedPhotos = computed(() => {
+  if (!selectedTaskForView.value?.photos) return [];
+  const groups: Record<string, any> = {};
+  selectedTaskForView.value.photos.forEach((p: any) => {
+    const name = p.volunteer_name || 'Волонтёр';
+    if (!groups[name]) {
+      groups[name] = { 
+        name, 
+        photos: [] as any[], 
+        pending: false, 
+        hasApproved: false,
+        hasRejected: false,
+        pendingIds: [] as number[],
+        allIds: [] as number[],
+        latestDate: p.uploaded_at
+      };
+    }
+    groups[name].photos.push(p);
+    groups[name].allIds.push(p.id);
+    if (p.status === 'pending') {
+      groups[name].pending = true;
+      groups[name].pendingIds.push(p.id);
+    }
+    if (p.status === 'approved') groups[name].hasApproved = true;
+    if (p.status === 'rejected') groups[name].hasRejected = true;
+    if (new Date(p.uploaded_at) > new Date(groups[name].latestDate)) {
+      groups[name].latestDate = p.uploaded_at;
+    }
+  });
+  return Object.values(groups);
+});
+
 const snackbar = reactive({ show: false, color: 'success', message: '' });
 
 const taskFormState = reactive({
@@ -102,10 +150,22 @@ watch(selectedProjectId, async (newProject) => {
 });
 
 const openCreateTaskDialog = () => {
+  isEditing.value = false;
+  currentEditingTaskId.value = null;
   taskFormState.text = '';
   taskFormState.deadline_date = null;
   taskFormState.start_time = null;
   taskFormState.end_time = null;
+  createTaskDialog.value = true;
+};
+
+const openEditTaskDialog = (task: any) => {
+  isEditing.value = true;
+  currentEditingTaskId.value = task.id;
+  taskFormState.text = task.text;
+  taskFormState.deadline_date = task.deadline_date ? task.deadline_date.split('T')[0] : null;
+  taskFormState.start_time = task.start_time;
+  taskFormState.end_time = task.end_time;
   createTaskDialog.value = true;
 };
 
@@ -117,18 +177,26 @@ const submitCreateTask = async () => {
   if (!valid) return;
   createTaskLoading.value = true;
   try {
-    await organizerStore.createTask(selectedProjectId.value, {
+    const payload = {
       text: taskFormState.text,
       deadline_date: taskFormState.deadline_date || undefined,
       start_time: taskFormState.start_time || undefined,
       end_time: taskFormState.end_time || undefined,
-    });
-    snackbar.message = 'Задача создана, волонтёры уведомлены.';
+    };
+
+    if (isEditing.value && currentEditingTaskId.value) {
+      await organizerStore.updateTask(selectedProjectId.value, currentEditingTaskId.value, payload);
+      snackbar.message = 'Задача успешно обновлена.';
+    } else {
+      await organizerStore.createTask(selectedProjectId.value, payload);
+      snackbar.message = 'Задача создана, волонтёры уведомлены.';
+    }
+
     snackbar.color = 'success';
     snackbar.show = true;
     closeCreateTaskDialog();
   } catch (error: any) {
-    snackbar.message = error?.response?.data?.error || error?.message || 'Не удалось создать задачу.';
+    snackbar.message = error?.response?.data?.error || error?.message || 'Не удалось сохранить задачу.';
     snackbar.color = 'error';
     snackbar.show = true;
   } finally {
@@ -161,6 +229,129 @@ async function confirmDeleteTask() {
     deletingTask.value = false;
   }
 }
+
+const openViewTaskDialog = (task: any) => {
+  selectedTaskForView.value = task;
+  viewTaskDialog.value = true;
+};
+
+const getPhotoStatusConfig = (status: string) => {
+  const map: Record<string, { color: string; label: string }> = {
+    pending:  { color: '#ff9800', label: 'На проверке' },
+    approved: { color: '#2e7d32', label: 'Одобрено' },
+    rejected: { color: '#c62828', label: 'Отклонено' },
+  };
+  return map[status] || { color: '#757575', label: status };
+};
+
+const getFullImageUrl = (url: string | null | undefined): string | null => {
+  if (!url) return null;
+  if (url.startsWith('http')) return url;
+  const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+  return `${baseUrl.replace(/\/$/, '')}${url.startsWith('/') ? '' : '/'}${url}`;
+};
+
+function openApproveDialog(photoIds: number[]) {
+  approveDialog.open = true;
+  approveDialog.photoIds = photoIds;
+  approveDialog.rating = 5;
+  approveDialog.feedback = '';
+  approveDialog.error = '';
+}
+
+async function submitApprove(skip = false) {
+  if (!approveDialog.photoIds.length) return;
+  approveDialog.error = '';
+  if (!skip) {
+    if (!approveDialog.rating) { approveDialog.error = 'Выберите оценку от 1 до 5.'; return; }
+    if (approveDialog.rating <= 3 && !approveDialog.feedback.trim()) {
+      approveDialog.error = 'Для оценки 1–3 звезды добавьте комментарий.'; return;
+    }
+  }
+  try {
+    // Approve first photo with full rating/feedback
+    const firstId = approveDialog.photoIds[0];
+    await organizerStore.approvePhotoReport(firstId, {
+      skip,
+      rating: skip ? undefined : approveDialog.rating,
+      feedback: approveDialog.feedback.trim() || undefined,
+    });
+
+    // Approve remaining photos in group as "skip" to avoid duplicate rating
+    if (approveDialog.photoIds.length > 1) {
+      const restIds = approveDialog.photoIds.slice(1);
+      for (const id of restIds) {
+        await organizerStore.approvePhotoReport(id, { skip: true });
+      }
+    }
+
+    approveDialog.open = false;
+    snackbar.message = skip ? 'Отчёт одобрен без оценки.' : 'Отчёт одобрен.';
+    snackbar.color = skip ? 'primary' : 'success';
+    snackbar.show = true;
+    
+    // Refresh tasks to update photos in view
+    if (selectedProjectId.value) {
+      await organizerStore.loadTasks(selectedProjectId.value, true);
+      if (selectedTaskForView.value) {
+        selectedTaskForView.value = currentTasks.value.find(t => t.id === selectedTaskForView.value.id) || null;
+      }
+    }
+  } catch (error: any) {
+    approveDialog.error = error?.response?.data?.error || error?.message || 'Не удалось одобрить отчёт.';
+  }
+}
+
+function openRejectDialog(photoIds: number[]) {
+  rejectDialog.open = true;
+  rejectDialog.photoIds = photoIds;
+  rejectDialog.feedback = '';
+  rejectDialog.error = '';
+}
+
+async function submitReject() {
+  if (!rejectDialog.photoIds.length) return;
+  rejectDialog.error = '';
+  const { valid } = (await rejectFormRef.value?.validate()) ?? { valid: false };
+  if (!valid) return;
+  try {
+    // Reject all photos in the group
+    for (const id of rejectDialog.photoIds) {
+      await organizerStore.rejectPhotoReport(id, rejectDialog.feedback.trim());
+    }
+    
+    rejectDialog.open = false;
+    snackbar.message = 'Отчёт отклонён, волонтёр уведомлён.';
+    snackbar.color = 'info';
+    snackbar.show = true;
+
+    // Refresh tasks
+    if (selectedProjectId.value) {
+      await organizerStore.loadTasks(selectedProjectId.value, true);
+      if (selectedTaskForView.value) {
+        selectedTaskForView.value = currentTasks.value.find(t => t.id === selectedTaskForView.value.id) || null;
+      }
+    }
+  } catch (error: any) {
+    rejectDialog.error = error?.response?.data?.error || error?.message || 'Не удалось отклонить отчёт.';
+  }
+}
+
+const photoActionLoading = (photoId: number) => organizerStore.photoActionLoading[photoId] ?? false;
+// For grouped loading state
+const groupActionLoading = (photoIds: number[]) => photoIds.some(id => organizerStore.photoActionLoading[id]);
+
+const canSubmitApproval = computed(() => {
+  if (!approveDialog.photoIds.length) return false;
+  if (approveDialog.rating >= 1 && approveDialog.rating <= 5) {
+    if (approveDialog.rating <= 3 && !approveDialog.feedback.trim()) return false;
+    return true;
+  }
+  return false;
+});
+function goBack() {
+  router.push({ name: 'organizer-projects' });
+}
 </script>
 
 <template>
@@ -168,9 +359,20 @@ async function confirmDeleteTask() {
 
     <!-- ─── Page Header ─── -->
     <div class="page-header">
-      <div>
-        <h1 class="page-title">Задачи</h1>
-        <p class="page-subtitle">Создавайте задания и управляйте сроками волонтёров</p>
+      <div class="d-flex align-center">
+        <v-btn
+          icon="mdi-arrow-left"
+          variant="tonal"
+          size="small"
+          rounded="lg"
+          color="primary"
+          class="mr-4 back-btn"
+          @click="goBack"
+        />
+        <div>
+          <h1 class="page-title">Задачи</h1>
+          <p class="page-subtitle">Создавайте задания и управляйте сроками волонтёров</p>
+        </div>
       </div>
       <button
         v-if="isOrganizer && isApproved && selectedProjectId"
@@ -282,10 +484,27 @@ async function confirmDeleteTask() {
                 </div>
               </div>
 
-              <!-- Delete button -->
-              <button class="task-item__delete" @click="openDeleteTaskDialog(selectedProjectId!, task.id, task.text)">
-                <v-icon icon="mdi-trash-can-outline" size="16" />
-              </button>
+              <!-- Actions -->
+              <div class="task-item__actions">
+                <button
+                  class="task-item__view"
+                  title="Просмотреть задачу"
+                  @click="openViewTaskDialog(task)"
+                >
+                  <v-icon icon="mdi-eye-outline" size="16" />
+                </button>
+                <button
+                  v-if="task.can_edit"
+                  class="task-item__edit"
+                  title="Редактировать задачу"
+                  @click="openEditTaskDialog(task)"
+                >
+                  <v-icon icon="mdi-pencil-outline" size="16" />
+                </button>
+                <button class="task-item__delete" @click="openDeleteTaskDialog(selectedProjectId!, task.id, task.text)">
+                  <v-icon icon="mdi-trash-can-outline" size="16" />
+                </button>
+              </div>
             </div>
           </div>
 
@@ -391,12 +610,14 @@ async function confirmDeleteTask() {
     <v-dialog v-model="createTaskDialog" max-width="580">
       <div class="task-modal">
         <div class="task-modal__header">
-          <div class="task-modal__header-icon">
-            <v-icon icon="mdi-clipboard-plus-outline" size="22" color="white" />
+          <div class="task-modal__header-icon" :class="{ 'task-modal__header-icon--edit': isEditing }">
+            <v-icon :icon="isEditing ? 'mdi-pencil-outline' : 'mdi-clipboard-plus-outline'" size="22" color="white" />
           </div>
           <div>
-            <div class="task-modal__title">Новая задача</div>
-            <div class="task-modal__subtitle">Будет отправлена всем волонтёрам проекта</div>
+            <div class="task-modal__title">{{ isEditing ? 'Редактировать задачу' : 'Новая задача' }}</div>
+            <div class="task-modal__subtitle">
+              {{ isEditing ? 'Изменения увидят все участники проекта' : 'Будет отправлена всем волонтёрам проекта' }}
+            </div>
           </div>
           <button class="task-modal__close" @click="closeCreateTaskDialog">
             <v-icon icon="mdi-close" size="20" />
@@ -487,8 +708,8 @@ async function confirmDeleteTask() {
           <button class="task-modal__cancel" @click="closeCreateTaskDialog">Отмена</button>
           <button class="task-modal__submit" :disabled="createTaskLoading" @click="submitCreateTask">
             <v-icon v-if="createTaskLoading" icon="mdi-loading" size="18" class="spin" />
-            <v-icon v-else icon="mdi-send-outline" size="18" />
-            Создать и уведомить
+            <v-icon v-else icon="mdi-check" size="18" />
+            {{ isEditing ? 'Сохранить изменения' : 'Создать и уведомить' }}
           </button>
         </div>
       </div>
@@ -510,6 +731,239 @@ async function confirmDeleteTask() {
             <v-icon v-else icon="mdi-trash-can-outline" size="16" />
             Удалить
           </button>
+        </div>
+      </div>
+    </v-dialog>
+
+    <!-- ─── View Task Dialog ─── -->
+    <v-dialog v-model="viewTaskDialog" max-width="700">
+      <div v-if="selectedTaskForView" class="task-details-modal">
+        <div class="task-details-modal__header">
+          <div class="task-details-modal__title-section">
+            <h2 class="task-details-modal__title">Детали задачи</h2>
+            <div class="task-details-modal__status">
+              <span class="task-status-badge" :style="{ color: taskStatusConfig(selectedTaskForView.status).color, background: taskStatusConfig(selectedTaskForView.status).color + '18' }">
+                {{ taskStatusConfig(selectedTaskForView.status).label }}
+              </span>
+            </div>
+          </div>
+          <button class="task-modal__close" @click="viewTaskDialog = false">
+            <v-icon icon="mdi-close" size="20" />
+          </button>
+        </div>
+
+        <div class="task-details-modal__body">
+          <!-- Text section -->
+          <div class="detail-section">
+            <div class="detail-section__label">Описание</div>
+            <div class="detail-section__content detail-section__content--text">
+              {{ selectedTaskForView.text }}
+            </div>
+          </div>
+
+          <!-- Meta section -->
+          <div class="detail-section">
+            <div class="detail-section__label">Информация</div>
+            <div class="detail-meta-grid">
+              <div class="detail-meta-item">
+                <v-icon icon="mdi-calendar-outline" size="18" />
+                <div>
+                  <div class="detail-meta-item__label">Срок выполнения</div>
+                  <div class="detail-meta-item__value">
+                    {{ selectedTaskForView.deadline_date ? formatDeadline(selectedTaskForView.deadline_date) : 'Без срока' }}
+                  </div>
+                </div>
+              </div>
+              <div v-if="selectedTaskForView.start_time" class="detail-meta-item">
+                <v-icon icon="mdi-clock-outline" size="18" />
+                <div>
+                  <div class="detail-meta-item__label">Время</div>
+                  <div class="detail-meta-item__value">
+                    {{ selectedTaskForView.start_time }} — {{ selectedTaskForView.end_time || '' }}
+                  </div>
+                </div>
+              </div>
+              <div class="detail-meta-item">
+                <v-icon icon="mdi-calendar-plus" size="18" />
+                <div>
+                  <div class="detail-meta-item__label">Дата создания</div>
+                  <div class="detail-meta-item__value">
+                    {{ selectedTaskForView.created_at ? new Intl.DateTimeFormat('ru-RU').format(new Date(selectedTaskForView.created_at)) : '—' }}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Photos section -->
+          <div class="detail-section">
+            <div class="detail-section__label">Фотоотчёты ({{ selectedTaskForView.photos?.length || 0 }})</div>
+            <div v-if="groupedPhotos.length > 0" class="report-groups">
+              <div v-for="group in groupedPhotos" :key="group.name" class="report-group">
+                <div class="report-group__header">
+                  <div class="volunteer-block">
+                    <div class="volunteer-block__avatar">
+                      {{ group.name.slice(0, 2).toUpperCase() }}
+                    </div>
+                    <div class="volunteer-block__info">
+                      <div class="volunteer-block__name">{{ group.name }}</div>
+                      <div class="volunteer-block__date">
+                        Последнее обновление: {{ new Intl.DateTimeFormat('ru-RU', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }).format(new Date(group.latestDate)) }}
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div v-if="group.pending" class="report-group__moderation">
+                    <v-btn
+                      color="success"
+                      variant="flat"
+                      rounded="lg"
+                      class="px-4"
+                      prepend-icon="mdi-check"
+                      :loading="groupActionLoading(group.pendingIds)"
+                      @click="openApproveDialog(group.pendingIds)"
+                    >
+                      Одобрить отчёт
+                    </v-btn>
+                    <v-btn
+                      color="error"
+                      variant="tonal"
+                      rounded="lg"
+                      class="px-4"
+                      prepend-icon="mdi-close"
+                      :loading="groupActionLoading(group.pendingIds)"
+                      @click="openRejectDialog(group.pendingIds)"
+                    >
+                      Отклонить
+                    </v-btn>
+                  </div>
+                  <div v-else class="report-group__status-badge">
+                    <v-icon :icon="group.hasRejected ? 'mdi-close-circle-outline' : 'mdi-check-circle-outline'" 
+                            :color="group.hasRejected ? 'error' : 'success'" size="20" />
+                    <span :style="{ color: group.hasRejected ? '#e53935' : '#2e7d32' }">
+                      {{ group.hasRejected ? 'Отчёт отклонён' : 'Отчёт одобрен' }}
+                    </span>
+                  </div>
+                </div>
+
+                <!-- Multi-image gallery -->
+                <div class="photo-gallery">
+                  <v-carousel
+                    v-if="group.photos.length > 0"
+                    height="400"
+                    hide-delimiter-background
+                    show-arrows="hover"
+                    rounded="xl"
+                  >
+                    <v-carousel-item
+                      v-for="(photo, i) in group.photos"
+                      :key="photo.id"
+                      cover
+                    >
+                      <v-img :src="getFullImageUrl(photo.url) || ''" height="400" cover>
+                        <div class="photo-caption" v-if="photo.comment">
+                          <v-icon icon="mdi-message-text-outline" size="14" class="mr-1" />
+                          {{ photo.comment }}
+                        </div>
+                        <div class="photo-index">{{ i + 1 }} / {{ group.photos.length }}</div>
+                        <div class="photo-status-corner" :style="{ background: getPhotoStatusConfig(photo.status).color }">
+                          {{ getPhotoStatusConfig(photo.status).label }}
+                        </div>
+                      </v-img>
+                    </v-carousel-item>
+                  </v-carousel>
+                </div>
+              </div>
+            </div>
+            <div v-else class="photos-empty">
+              <v-icon icon="mdi-image-off-outline" size="32" color="rgba(0,0,0,0.15)" />
+              <p>Пока нет загруженных фотоотчётов</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </v-dialog>
+
+    <!-- ─── Approve Dialog ─── -->
+    <v-dialog v-model="approveDialog.open" max-width="400">
+      <div class="action-modal">
+        <div class="action-modal__header action-modal__header--approve">
+          <div class="action-modal__icon">
+            <v-icon icon="mdi-check-circle-outline" size="24" color="white" />
+          </div>
+          <div class="action-modal__title">Оценить фотоотчёт</div>
+        </div>
+        <div class="action-modal__body">
+          <p class="action-modal__desc">Выберите оценку. Для 1–3 звёзд добавьте комментарий.</p>
+          <div class="rating-row">
+            <v-rating v-model="approveDialog.rating" length="5" color="amber-darken-1" active-color="amber-darken-1" size="32" />
+          </div>
+          <v-textarea
+            v-model="approveDialog.feedback"
+            label="Комментарий"
+            variant="outlined"
+            density="comfortable"
+            rows="3"
+            auto-grow
+            counter="400"
+            maxlength="400"
+            hint="Обязателен для оценки 1–3 ★"
+          />
+          <v-alert v-if="approveDialog.error" type="error" variant="tonal" density="compact" rounded="lg" class="mt-3">
+            {{ approveDialog.error }}
+          </v-alert>
+        </div>
+        <div class="action-modal__footer">
+          <button class="action-modal__btn action-modal__btn--primary action-modal__btn--green"
+            :disabled="!canSubmitApproval || (approveDialog.photoId ? photoActionLoading(approveDialog.photoId) : false)"
+            @click="submitApprove(false)">
+            <v-icon icon="mdi-check" size="18" />
+            Одобрить отчёт целиком
+          </button>
+          <button class="action-modal__btn action-modal__btn--secondary"
+            :disabled="groupActionLoading(approveDialog.photoIds)"
+            @click="submitApprove(true)">
+            Одобрить без оценки
+          </button>
+          <button class="action-modal__btn action-modal__btn--cancel" @click="approveDialog.open = false">Отмена</button>
+        </div>
+      </div>
+    </v-dialog>
+
+    <!-- ─── Reject Dialog ─── -->
+    <v-dialog v-model="rejectDialog.open" max-width="400">
+      <div class="action-modal">
+        <div class="action-modal__header action-modal__header--reject">
+          <div class="action-modal__icon">
+            <v-icon icon="mdi-close-circle-outline" size="24" color="white" />
+          </div>
+          <div class="action-modal__title">Отклонить отчёт</div>
+        </div>
+        <div class="action-modal__body">
+          <p class="action-modal__desc">Все фотографии волонтера в этом задании будут отклонены. Укажите причину:</p>
+          <v-form ref="rejectFormRef">
+            <v-textarea
+              v-model="rejectDialog.feedback"
+              label="Причина отклонения"
+              variant="outlined"
+              density="comfortable"
+              rows="3"
+              auto-grow
+              :rules="[(v: string) => !!v?.trim() || 'Обязательно']"
+            />
+          </v-form>
+          <v-alert v-if="rejectDialog.error" type="error" variant="tonal" density="compact" rounded="lg" class="mt-3">
+            {{ rejectDialog.error }}
+          </v-alert>
+        </div>
+        <div class="action-modal__footer">
+          <button class="action-modal__btn action-modal__btn--primary action-modal__btn--red"
+            :disabled="groupActionLoading(rejectDialog.photoIds)"
+            @click="submitReject">
+            <v-icon icon="mdi-close" size="18" />
+            Отклонить весь отчёт
+          </button>
+          <button class="action-modal__btn action-modal__btn--cancel" @click="rejectDialog.open = false">Отмена</button>
         </div>
       </div>
     </v-dialog>
@@ -758,25 +1212,51 @@ async function confirmDeleteTask() {
   font-weight: 700;
 }
 
-/* Delete button */
+/* Actions */
+.task-item__actions {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  opacity: 0;
+  transition: opacity 0.15s;
+  margin-top: 2px;
+}
+
+.task-item:hover .task-item__actions { opacity: 1; }
+
+.task-item__view,
+.task-item__edit,
 .task-item__delete {
   width: 30px;
   height: 30px;
   border-radius: 8px;
-  border: 1px solid rgba(198, 40, 40, 0.15);
-  background: rgba(198, 40, 40, 0.06);
-  color: #c62828;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  opacity: 0;
-  transition: background 0.15s, opacity 0.15s;
-  margin-top: 2px;
+  transition: background 0.15s;
 }
 
-.task-item:hover .task-item__delete { opacity: 1; }
+.task-item__view {
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  background: rgba(0, 0, 0, 0.04);
+  color: rgba(0, 0, 0, 0.5);
+}
+.task-item__view:hover { background: rgba(0, 0, 0, 0.08); color: #1a1a1a; }
+
+.task-item__edit {
+  border: 1px solid rgba(21, 101, 192, 0.15);
+  background: rgba(21, 101, 192, 0.06);
+  color: #1565c0;
+}
+.task-item__edit:hover { background: rgba(21, 101, 192, 0.12); }
+
+.task-item__delete {
+  border: 1px solid rgba(198, 40, 40, 0.15);
+  background: rgba(198, 40, 40, 0.06);
+  color: #c62828;
+}
 .task-item__delete:hover { background: rgba(198, 40, 40, 0.12); }
 
 /* ─── Empty states ─── */
@@ -920,11 +1400,17 @@ async function confirmDeleteTask() {
   width: 44px;
   height: 44px;
   border-radius: 12px;
-  background: rgba(255, 255, 255, 0.2);
+  background: #8bc34a;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  box-shadow: 0 4px 12px rgba(139, 195, 74, 0.3);
+}
+
+.task-modal__header-icon--edit {
+  background: #1565c0;
+  box-shadow: 0 4px 12px rgba(21, 101, 192, 0.3);
 }
 
 .task-modal__title {
@@ -1104,4 +1590,360 @@ async function confirmDeleteTask() {
 .delete-modal__confirm:hover:not(:disabled) { opacity: 0.88; }
 
 :deep(.v-picker-title) { display: none; }
+/* ─── Task Details Modal ─── */
+.task-details-modal {
+  background: #fff;
+  border-radius: 24px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.task-details-modal__header {
+  padding: 24px 28px;
+  background: linear-gradient(135deg, #f0faf0, #fafff5);
+  border-bottom: 1px solid rgba(139, 195, 74, 0.12);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.task-details-modal__title {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: #1a1a1a;
+  margin: 0;
+}
+
+.task-details-modal__title-section {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.task-details-modal__body {
+  padding: 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+  max-height: 70vh;
+  overflow-y: auto;
+}
+
+.detail-section__label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: rgba(0, 0, 0, 0.35);
+  margin-bottom: 12px;
+}
+
+.detail-section__content--text {
+  font-size: 1.05rem;
+  line-height: 1.6;
+  color: #333;
+  padding: 18px 24px;
+  background: #f8fbf7;
+  border-radius: 16px;
+  border-left: 4px solid #8bc34a;
+}
+
+.detail-meta-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+}
+
+.detail-meta-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: #fff;
+  border: 1px solid rgba(0,0,0,0.06);
+  border-radius: 12px;
+}
+
+.detail-meta-item :deep(.v-icon) {
+  color: #8bc34a;
+  opacity: 0.8;
+}
+
+.detail-meta-item__label {
+  font-size: 0.72rem;
+  color: rgba(0, 0, 0, 0.4);
+}
+
+.detail-meta-item__value {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #1a1a1a;
+}
+
+/* Photos */
+.photos-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.photo-item {
+  display: flex;
+  gap: 16px;
+  padding: 12px;
+  background: #fff;
+  border: 1px solid rgba(0,0,0,0.06);
+  border-radius: 16px;
+  transition: transform 0.2s;
+}
+
+.photo-item:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+
+.photo-item__image-wrap {
+  width: 120px;
+  height: 120px;
+  border-radius: 12px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.photo-item__info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.photo-item__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.photo-item__volunteer {
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: #1a1a1a;
+}
+
+.photo-item__status {
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.photo-item__comment {
+  font-size: 0.9rem;
+  color: #555;
+  line-height: 1.4;
+  padding: 8px 12px;
+  background: rgba(0,0,0,0.02);
+  border-radius: 10px;
+}
+
+.report-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.report-group {
+  background: #fff;
+  border: 1px solid rgba(0,0,0,0.06);
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.03);
+}
+
+.report-group__header {
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #fcfcfc;
+  border-bottom: 1px solid rgba(0,0,0,0.05);
+}
+
+.volunteer-block {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.volunteer-block__avatar {
+  width: 40px;
+  height: 40px;
+  background: linear-gradient(135deg, #8bc34a, #afb42b);
+  border-radius: 12px;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 0.85rem;
+}
+
+.volunteer-block__name {
+  font-weight: 700;
+  color: #333;
+  font-size: 0.95rem;
+}
+
+.volunteer-block__date {
+  font-size: 0.75rem;
+  color: rgba(0,0,0,0.4);
+  margin-top: 2px;
+}
+
+.report-group__moderation {
+  display: flex;
+  gap: 10px;
+}
+
+.report-group__status-badge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+  font-size: 0.85rem;
+  padding: 6px 14px;
+  background: rgba(0,0,0,0.03);
+  border-radius: 50px;
+}
+
+.photo-gallery {
+  position: relative;
+}
+
+.photo-caption {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: linear-gradient(to top, rgba(0,0,0,0.7), transparent);
+  padding: 30px 20px 15px;
+  color: #fff;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.photo-index {
+  position: absolute;
+  top: 15px;
+  left: 15px;
+  background: rgba(0,0,0,0.4);
+  backdrop-filter: blur(4px);
+  color: #fff;
+  padding: 4px 10px;
+  border-radius: 50px;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.photo-status-corner {
+  position: absolute;
+  top: 0;
+  right: 0;
+  padding: 6px 12px;
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 700;
+  border-bottom-left-radius: 12px;
+}
+
+.photos-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  background: #fafafa;
+  border-radius: 16px;
+  border: 2px dashed rgba(0,0,0,0.05);
+  color: rgba(0,0,0,0.4);
+  gap: 12px;
+  text-align: center;
+}
+
+/* ─── Action Modals (Approve/Reject) ─── */
+.action-modal {
+  background: #fff;
+  border-radius: 20px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.action-modal__header {
+  padding: 20px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.action-modal__header--approve { background: linear-gradient(135deg, #2e7d32, #43a047); }
+.action-modal__header--reject { background: linear-gradient(135deg, #c62828, #e53935); }
+
+.action-modal__icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.action-modal__title {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: #fff;
+}
+
+.action-modal__body {
+  padding: 24px;
+}
+
+.action-modal__desc {
+  font-size: 0.9rem;
+  color: rgba(0,0,0,0.55);
+  margin-bottom: 20px;
+  line-height: 1.4;
+}
+
+.rating-row {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 24px;
+}
+
+.action-modal__footer {
+  padding: 0 24px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.action-modal__btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px;
+  border-radius: 12px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  transition: opacity 0.15s, transform 0.1s;
+}
+
+.action-modal__btn:active { transform: scale(0.98); }
+.action-modal__btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.action-modal__btn--primary { color: #fff; border: none; }
+.action-modal__btn--green { background: linear-gradient(135deg, #2e7d32, #43a047); }
+.action-modal__btn--red { background: linear-gradient(135deg, #c62828, #e53935); }
+.action-modal__btn--secondary { background: #f5f5f5; color: #333; border: 1px solid #eee; }
+.action-modal__btn--cancel { background: transparent; color: #777; border: 1px solid #ddd; }
 </style>

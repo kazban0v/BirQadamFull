@@ -23,13 +23,16 @@ const projectsError = computed(() => organizerStore.projectError);
 const createDialog = ref(false);
 const editDialog = ref(false);
 const deleteDialog = ref(false);
+const viewProjectDialog = ref(false);
+const showParticipants = ref(false);
+
 const projectToEdit = ref<OrganizerProject | null>(null);
 const projectToDelete = ref<OrganizerProject | null>(null);
+const selectedProjectForView = ref<OrganizerProject | null>(null);
 const createFormRef = ref<VForm | null>(null);
 const editFormRef = ref<VForm | null>(null);
 const createLoading = ref(false);
 const editLoading = ref(false);
-const deleteLoading = ref(false);
 const geolocationLoading = ref(false);
 const geolocationSupported = typeof window !== 'undefined' && 'geolocation' in navigator;
 const snackbar = reactive({
@@ -544,6 +547,34 @@ const datePickerHandler = (stateObj: any, field: string, isActive: any) => (valu
   }
   isActive.value = false;
 };
+
+const participants = computed(() => {
+  if (!selectedProjectForView.value) return [];
+  return organizerStore.participantsByProject[selectedProjectForView.value.id] || [];
+});
+
+const loadingParticipants = computed(() => {
+  if (!selectedProjectForView.value) return false;
+  return !!organizerStore.participantsLoading[selectedProjectForView.value.id];
+});
+
+const participantsError = computed(() => {
+  if (!selectedProjectForView.value) return null;
+  return organizerStore.participantsError[selectedProjectForView.value.id];
+});
+
+const openViewDialog = (project: OrganizerProject) => {
+  selectedProjectForView.value = project;
+  showParticipants.value = false;
+  viewProjectDialog.value = true;
+  organizerStore.loadParticipants(project.id);
+};
+
+const closeViewDialog = () => {
+  viewProjectDialog.value = false;
+  selectedProjectForView.value = null;
+  showParticipants.value = false;
+};
 </script>
 
 <template>
@@ -553,7 +584,7 @@ const datePickerHandler = (stateObj: any, field: string, isActive: any) => (valu
     <div class="page-header">
       <div class="page-header__content">
         <div class="page-header__text">
-          <h1 class="page-title">Проекты</h1>
+          <h1 class="page-title">Проекты и задачи</h1>
           <p class="page-subtitle">{{ organizationName }} · управление волонтёрскими инициативами</p>
         </div>
         <v-btn
@@ -722,46 +753,40 @@ const datePickerHandler = (stateObj: any, field: string, isActive: any) => (valu
                   variant="flat"
                   size="small"
                   rounded="pill"
-                  class="text-none font-weight-semibold"
+                  class="tasks-nav-btn text-none"
+                  append-icon="mdi-arrow-right"
                   @click="goToTasks(project.id)"
                 >
                   Задачи
-                  <v-icon icon="mdi-arrow-right" end size="16" />
                 </v-btn>
-                <v-btn
-                  v-if="project.latitude != null && project.longitude != null"
-                  variant="tonal"
-                  size="small"
-                  rounded="pill"
-                  class="text-none"
-                  color="secondary"
-                  :href="`https://maps.google.com/?q=${project.latitude},${project.longitude}`"
-                  target="_blank"
-                >
-                  <v-icon icon="mdi-map-outline" size="16" />
-                </v-btn>
-                <v-spacer />
-                <v-btn
-                  variant="text"
-                  size="small"
-                  icon
-                  :disabled="(project.volunteer_count || 0) > 0"
-                  @click="openEditDialog(project)"
-                >
-                  <v-tooltip v-if="(project.volunteer_count || 0) > 0" activator="parent" location="top">
-                    Нельзя редактировать: есть участники
-                  </v-tooltip>
-                  <v-icon icon="mdi-pencil-outline" size="18" />
-                </v-btn>
-                <v-btn
-                  variant="text"
-                  size="small"
-                  icon
-                  color="error"
-                  @click="openDeleteDialog(project)"
-                >
-                  <v-icon icon="mdi-trash-can-outline" size="18" />
-                </v-btn>
+
+                <div class="action-icons">
+                  <v-btn
+                    icon="mdi-eye-outline"
+                    variant="tonal"
+                    size="small"
+                    color="secondary"
+                    class="action-icon action-icon--view"
+                    @click="openViewDialog(project)"
+                  />
+                  <v-btn
+                    icon="mdi-pencil-outline"
+                    variant="text"
+                    size="small"
+                    color="grey-darken-1"
+                    class="action-icon"
+                    :disabled="(project.volunteer_count || 0) > 0"
+                    @click="openEditDialog(project)"
+                  />
+                  <v-btn
+                    icon="mdi-trash-can-outline"
+                    variant="text"
+                    size="small"
+                    color="error"
+                    class="action-icon"
+                    @click="openDeleteDialog(project)"
+                  />
+                </div>
               </div>
             </div>
           </div>
@@ -772,7 +797,7 @@ const datePickerHandler = (stateObj: any, field: string, isActive: any) => (valu
           <div class="empty-state__illustration">
             <v-icon icon="mdi-folder-open-outline" size="56" />
           </div>
-          <h3 class="empty-state__title">Нет проектов</h3>
+          <h3 class="empty-state__title">Нет проектов и задач</h3>
           <p class="empty-state__text">Создайте первый проект — он появится здесь и в Telegram-боте после модерации.</p>
           <v-btn
             v-if="isApproved"
@@ -812,6 +837,229 @@ const datePickerHandler = (stateObj: any, field: string, isActive: any) => (valu
         </div>
       </div>
     </div>
+
+    <!-- ───────────── VIEW PROJECT DETAIL MODAL ───────────── -->
+    <v-dialog v-model="viewProjectDialog" max-width="800" scrollable>
+      <div v-if="selectedProjectForView" class="project-detail">
+        <!-- Close button at the top right -->
+        <button class="project-detail__close-fab" @click="closeViewDialog">
+          <v-icon icon="mdi-close" color="white" />
+        </button>
+
+        <!-- Cover Image Section -->
+        <div class="project-detail__cover">
+          <v-img
+            v-if="selectedProjectForView.cover_image_url"
+            :src="getFullImageUrl(selectedProjectForView.cover_image_url)"
+            height="180"
+            cover
+            class="project-detail__img"
+          >
+            <template #placeholder>
+              <div class="project-detail__placeholder">
+                <v-icon icon="mdi-image-outline" size="64" color="rgba(255,255,255,0.3)" />
+              </div>
+            </template>
+            <!-- Gradient Overlay -->
+            <div class="project-detail__overlay">
+              <div class="project-detail__badges">
+                <div class="project-detail__status" :style="{ background: statusConfig(selectedProjectForView.status).color + 'cc' }">
+                  <v-icon :icon="statusConfig(selectedProjectForView.status).icon" size="14" class="mr-1" />
+                  {{ statusConfig(selectedProjectForView.status).label }}
+                </div>
+                <div class="project-detail__type-badge">
+                  <v-icon :icon="volunteerTypeIcon(selectedProjectForView.volunteer_type)" size="14" class="mr-1" />
+                  {{ volunteerTypeLabel(selectedProjectForView.volunteer_type) }}
+                </div>
+              </div>
+            </div>
+          </v-img>
+          
+          <!-- Fallback when no image -->
+          <div v-if="!selectedProjectForView.cover_image_url" class="project-detail__placeholder" style="height: 180px;">
+             <v-icon :icon="volunteerTypeIcon(selectedProjectForView.volunteer_type)" size="48" color="white" />
+             <div class="project-detail__overlay">
+              <div class="project-detail__badges">
+                <div class="project-detail__status" :style="{ background: statusConfig(selectedProjectForView.status).color + 'cc' }">
+                  <v-icon :icon="statusConfig(selectedProjectForView.status).icon" size="14" class="mr-1" />
+                  {{ statusConfig(selectedProjectForView.status).label }}
+                </div>
+                <div class="project-detail__type-badge">
+                   {{ volunteerTypeLabel(selectedProjectForView.volunteer_type) }}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <v-card-text class="project-detail__body pa-0">
+          <div class="project-detail__content pa-6">
+            <h2 class="project-detail__title">{{ selectedProjectForView.title }}</h2>
+            
+            <!-- Tags (if any) -->
+            <div v-if="selectedProjectForView.tags?.length" class="project-detail__tags mt-4">
+              <span v-for="tag in selectedProjectForView.tags" :key="tag" class="detail-tag">#{{ tag }}</span>
+            </div>
+
+            <!-- Main description -->
+            <div class="detail-section mt-8">
+              <div class="detail-section__header">
+                <v-icon icon="mdi-text-box-outline" class="mr-2" color="primary" />
+                О проекте
+              </div>
+              <p class="detail-section__text">{{ selectedProjectForView.description }}</p>
+            </div>
+
+            <!-- Stats Bar -->
+            <div class="detail-stats-bar mt-8">
+              <div class="detail-stat">
+                <div class="detail-stat__value">{{ selectedProjectForView.volunteer_count || 0 }}</div>
+                <div class="detail-stat__label">волонтёров</div>
+              </div>
+              <div class="detail-stat">
+                <div class="detail-stat__value">{{ selectedProjectForView.task_count || 0 }}</div>
+                <div class="detail-stat__label">задач</div>
+              </div>
+              <div class="detail-stat">
+                <div class="detail-stat__value">{{ selectedProjectForView.city }}</div>
+                <div class="detail-stat__label">локация</div>
+              </div>
+            </div>
+
+            <v-divider class="my-8" opacity="0.05" />
+
+            <!-- Information Grid -->
+            <div class="detail-grid">
+              <div class="detail-info-card">
+                <div class="detail-info-card__icon"><v-icon icon="mdi-calendar-range" /></div>
+                <div>
+                  <div class="detail-info-card__label">Период</div>
+                  <div class="detail-info-card__value">
+                    {{ formatDate(selectedProjectForView.start_date) }} — {{ formatDate(selectedProjectForView.end_date) }}
+                  </div>
+                </div>
+              </div>
+              <div class="detail-info-card">
+                <div class="detail-info-card__icon"><v-icon icon="mdi-map-marker-outline" /></div>
+                <div>
+                  <div class="detail-info-card__label">Адрес</div>
+                  <div class="detail-info-card__value">
+                    {{ selectedProjectForView.address || 'Адрес не указан' }}
+                  </div>
+                </div>
+              </div>
+              <div class="detail-info-card">
+                <div class="detail-info-card__icon"><v-icon icon="mdi-account-star-outline" /></div>
+                <div>
+                  <div class="detail-info-card__label">Организатор</div>
+                  <div class="detail-info-card__value">{{ organizationName }}</div>
+                </div>
+              </div>
+              <div class="detail-info-card">
+                <div class="detail-info-card__icon"><v-icon icon="mdi-nature-people" /></div>
+                <div>
+                  <div class="detail-info-card__label">Направление</div>
+                  <div class="detail-info-card__value">{{ volunteerTypeLabel(selectedProjectForView.volunteer_type) }}</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Contact Section -->
+            <div class="detail-section mt-10">
+              <div class="detail-section__header">
+                <v-icon icon="mdi-card-account-phone-outline" class="mr-2" color="primary" />
+                Контакты для волонтёров
+              </div>
+              <div class="contact-chips mt-4">
+                <div v-if="selectedProjectForView.contact_person" class="contact-chip">
+                  <v-icon icon="mdi-account-outline" size="16" />
+                  {{ selectedProjectForView.contact_person }}
+                </div>
+                <div v-if="selectedProjectForView.contact_phone" class="contact-chip">
+                  <v-icon icon="mdi-phone-outline" size="16" />
+                  {{ selectedProjectForView.contact_phone }}
+                </div>
+                <div v-if="selectedProjectForView.contact_telegram" class="contact-chip">
+                  <v-icon icon="mdi-send-outline" size="16" />
+                  @{{ selectedProjectForView.contact_telegram.replace(/^@/, '') }}
+                </div>
+              </div>
+            </div>
+
+            <v-divider class="my-10" opacity="0.05" />
+
+            <!-- Volunteers List Section -->
+            <div class="volunteers-section">
+              <div class="d-flex align-center justify-between mb-4">
+                <div class="detail-section__header ma-0">
+                  <v-icon icon="mdi-account-group-outline" class="mr-2" color="primary" />
+                  Принятые волонтеры ({{ participants.length }})
+                </div>
+                <v-btn
+                  variant="text"
+                  color="primary"
+                  rounded="lg"
+                  class="text-none font-weight-bold"
+                  :append-icon="showParticipants ? 'mdi-chevron-up' : 'mdi-chevron-down'"
+                  @click="showParticipants = !showParticipants"
+                >
+                  {{ showParticipants ? 'Скрыть список' : 'Показать участников' }}
+                </v-btn>
+              </div>
+
+              <v-expand-transition>
+                <div v-if="showParticipants" class="volunteers-list-container">
+                  <!-- Loading state -->
+                  <div v-if="loadingParticipants" class="pa-8 d-flex justify-center">
+                    <v-progress-circular indeterminate color="primary" />
+                  </div>
+                  
+                  <!-- Error state -->
+                  <v-alert v-else-if="participantsError" type="error" variant="tonal" class="ma-4">
+                    {{ participantsError }}
+                  </v-alert>
+
+                  <!-- Empty state -->
+                  <div v-else-if="participants.length === 0" class="volunteers-empty pa-10 text-center">
+                    <v-icon icon="mdi-account-question-outline" size="48" color="rgba(0,0,0,0.1)" />
+                    <p class="mt-4 text-grey">В этом проекте пока нет участников</p>
+                  </div>
+
+                  <!-- Participants Grid -->
+                  <div v-else class="volunteers-grid pa-2">
+                    <div v-for="user in participants" :key="user.id" class="volunteer-mini-card">
+                      <div class="volunteer-mini-card__avatar">
+                        {{ user.name.slice(0, 1).toUpperCase() }}
+                      </div>
+                      <div class="volunteer-mini-card__info">
+                        <div class="volunteer-mini-card__name">{{ user.name }}</div>
+                        <div class="volunteer-mini-card__stats">
+                          <v-icon icon="mdi-star" size="12" color="amber" class="mr-1" />{{ user.rating }}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </v-expand-transition>
+            </div>
+          </div>
+        </v-card-text>
+
+        <div class="project-detail__footer pa-6">
+          <v-btn
+            color="primary"
+            block
+            rounded="xl"
+            size="large"
+            elevation="0"
+            class="text-none font-weight-bold"
+            @click="closeViewDialog"
+          >
+            Закрыть просмотр
+          </v-btn>
+        </div>
+      </div>
+    </v-dialog>
 
     <!-- ───────────── CREATE DIALOG ───────────── -->
     <v-dialog v-model="createDialog" max-width="680" scrollable>
@@ -1742,4 +1990,293 @@ const datePickerHandler = (stateObj: any, field: string, isActive: any) => (valu
   height: 100%;
   border: 0;
 }
-</style>
+/* ─── Project Detail Premium View ─── */
+.project-detail {
+  background: #fff;
+  border-radius: 32px !important;
+  overflow: hidden;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  max-height: 90vh;
+}
+
+.project-detail__close-fab {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  z-index: 10;
+  width: 40px;
+  height: 40px;
+  background: rgba(0,0,0,0.3);
+  backdrop-filter: blur(8px);
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  border: none;
+  cursor: pointer;
+}
+
+.project-detail__close-fab:hover {
+  background: rgba(0,0,0,0.5);
+  transform: rotate(90deg);
+}
+
+.project-detail__cover {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.project-detail__img {
+  background: #f0f0f0;
+}
+
+.project-detail__placeholder {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #8bc34a, #558b2f);
+  position: relative;
+}
+
+.project-detail__overlay {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 24px;
+  background: linear-gradient(to top, rgba(0,0,0,0.5), transparent);
+}
+
+.project-detail__badges {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.project-detail__status, .project-detail__type-badge {
+  padding: 6px 16px;
+  border-radius: 50px;
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.project-detail__type-badge {
+  background: rgba(255,255,255,0.2);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255,255,255,0.1);
+}
+
+.project-detail__body {
+  overflow-y: auto;
+}
+
+.project-detail__title {
+  font-size: 1.75rem;
+  font-weight: 900;
+  color: #1a1a1a;
+  line-height: 1.1;
+  letter-spacing: -0.5px;
+}
+
+.detail-tag {
+  color: #8bc34a;
+  font-weight: 800;
+  margin-right: 14px;
+  font-size: 0.9rem;
+  text-transform: lowercase;
+}
+
+.detail-section {
+  position: relative;
+}
+
+.detail-section__header {
+  font-size: 1.15rem;
+  font-weight: 800;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  color: #1a1a1a;
+}
+
+.detail-section__text {
+  font-size: 1.05rem;
+  line-height: 1.7;
+  color: #4a4a4a;
+  white-space: pre-line;
+}
+
+.detail-stats-bar {
+  display: flex;
+  gap: 16px;
+}
+
+.detail-stat {
+  flex: 1;
+  background: #f8faf8;
+  padding: 12px;
+  border-radius: 18px;
+  text-align: center;
+  border: 1px solid rgba(139, 195, 74, 0.1);
+  transition: transform 0.2s;
+}
+
+.detail-stat:hover { transform: translateY(-2px); }
+
+.detail-stat__value {
+  font-size: 1.25rem;
+  font-weight: 900;
+  color: #2e7d32;
+  line-height: 1;
+}
+
+.detail-stat__label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #888;
+  text-transform: uppercase;
+  margin-top: 6px;
+  letter-spacing: 0.5px;
+}
+
+.detail-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+.detail-info-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 4px;
+}
+
+.detail-info-card__icon {
+  width: 40px;
+  height: 40px;
+  background: #f0faf0;
+  color: #8bc34a;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.detail-info-card__label {
+  font-size: 0.8rem;
+  color: #888;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.detail-info-card__value {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #333;
+  line-height: 1.3;
+}
+
+.contact-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.contact-chip {
+  padding: 10px 18px;
+  background: #f5f5f5;
+  border-radius: 14px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #333;
+  border: 1px solid rgba(0,0,0,0.03);
+}
+
+.volunteers-list-container {
+  background: #fcfcfc;
+  border: 1px solid rgba(0,0,0,0.05);
+  border-radius: 28px;
+  overflow: hidden;
+}
+
+.volunteers-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.volunteer-mini-card {
+  padding: 14px;
+  background: #fff;
+  border-radius: 20px;
+  border: 1px solid rgba(0,0,0,0.03);
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.volunteer-mini-card:hover { 
+  transform: scale(1.02); 
+  box-shadow: 0 8px 24px rgba(0,0,0,0.06); 
+  border-color: rgba(139, 195, 74, 0.2);
+}
+
+.volunteer-mini-card__avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #aed581, #7cb342);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 900;
+  font-size: 0.9rem;
+  box-shadow: 0 4px 10px rgba(124, 179, 66, 0.3);
+}
+
+.volunteer-mini-card__name {
+  font-size: 1rem;
+  font-weight: 800;
+  color: #1a1a1a;
+  line-height: 1.2;
+}
+
+.volunteer-mini-card__stats {
+  font-size: 0.75rem;
+  color: #777;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  margin-top: 4px;
+}
+
+.project-detail__footer {
+  background: #fff;
+  border-top: 1px solid rgba(0,0,0,0.05);
+  flex-shrink: 0;
+}
+
+@media (max-width: 600px) {
+  .detail-grid, .volunteers-grid { grid-template-columns: 1fr; }
+  .project-detail__title { font-size: 1.75rem; }
+  .detail-stats-bar { flex-direction: column; }
+  .project-detail { max-height: 100vh; border-radius: 0 !important; }
+}
+</style>

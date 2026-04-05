@@ -180,8 +180,7 @@ const menuItems = computed(() => {
     const photoCount = organizerStore.photoCounters?.pending || 0;
     return [
       { title: 'Главная', icon: 'mdi-view-dashboard-outline', to: '/organizer/dashboard', badge: null },
-      { title: 'Задачи', icon: 'mdi-clipboard-check-outline', to: '/organizer/tasks', badge: null },
-      { title: 'Проекты', icon: 'mdi-briefcase-outline', to: '/organizer/projects', badge: organizerStore.projects.length || null },
+      { title: 'Проекты и задачи', icon: 'mdi-briefcase-outline', to: '/organizer/projects', badge: organizerStore.projects.length || null },
       { title: 'Команда', icon: 'mdi-account-multiple-outline', to: '/organizer/volunteers', badge: null },
       { title: 'Фотоотчёты', icon: 'mdi-image-multiple-outline', to: '/organizer/photo-moderation', badge: photoCount > 0 ? photoCount : null },
       { title: 'Аналитика', icon: 'mdi-chart-line', to: '/organizer/analytics', badge: null },
