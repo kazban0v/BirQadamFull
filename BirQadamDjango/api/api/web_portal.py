@@ -2377,12 +2377,14 @@ class VolunteerTasksAPIView(APIView):
     permission_classes = [IsAuthenticated]
     def get(self, request):
         user = request.user
-        # Получаем задачи только из проектов, в которых состоит волонтер
-        joined_project_ids = VolunteerProject.objects.filter(
-            volunteer=user, is_active=True
-        ).values_list('project_id', flat=True)
         
-        tasks = Task.objects.filter(project_id__in=joined_project_ids, is_deleted=False).order_by('deadline_date')
+        # Получаем задачи только те, на которые волонтер назначен и принял их
+        tasks = Task.objects.filter(
+            assignments__volunteer=user,
+            assignments__accepted=True,
+            is_deleted=False
+        ).distinct().order_by('deadline_date')
+        
         serializer = VolunteerTaskSummarySerializer(tasks, many=True, context={'request': request})
         return Response({'tasks': serializer.data})
 
