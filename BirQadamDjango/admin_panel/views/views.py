@@ -1306,8 +1306,8 @@ class UserTasksAPIView(APIView):
         assigned_task_ids = set(a['task_id'] for a in accepted_assignments)
         # Словарь task_id -> rating (оценка организатора)
         assignment_rating_map: dict = {a['task_id']: a['rating'] for a in accepted_assignments}
-
-        # Получаем ID заданий, которые волонтер отклонил (accepted=False)
+# Получаем ID заданий, которые волонтер отклонил (accepted=False)
+        
         declined_task_ids = TaskAssignment.objects.filter(  # type: ignore[attr-defined]
             volunteer=request.user,
             accepted=False
