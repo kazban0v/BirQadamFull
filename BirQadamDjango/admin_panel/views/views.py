@@ -1332,8 +1332,9 @@ class UserTasksAPIView(APIView):
             if t.is_expired():
                 t.archive_if_expired()
 
-        # 1. Задачи из активных проектов (все статусы, включая завершенные и архивные)
+        # 1. Задачи из активных проектов (только открытые ИЛИ назначенные текущему пользователю)
         tasks_qs = Task.objects.filter(  # type: ignore[attr-defined]
+            Q(status='open') | Q(id__in=assigned_task_ids),
             project_id__in=joined_projects,
             is_deleted=False  # Исключаем удаленные задачи
         ).exclude(
@@ -1341,11 +1342,9 @@ class UserTasksAPIView(APIView):
         ).select_related('project', 'creator').order_by('-created_at')
 
         # 2. Задачи из закрытых/удалённых проектов (is_active=False):
-        #    - незавершённые → status='archived'
-        #    - завершённые   → status='completed' (остаются видимыми как завершённые)
-        #    Исключаем задачи, скрытые волонтёром через «dismiss» (accepted=False).
-        #    trust factor не затрагивается.
+        #    Только те, которые были назначены текущему пользователю.
         archived_tasks_qs = Task.objects.filter(  # type: ignore[attr-defined]
+            id__in=assigned_task_ids,
             project_id__in=list(archived_project_join_dates.keys()),
             status__in=['archived', 'completed'],
             is_deleted=False
