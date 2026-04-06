@@ -463,7 +463,7 @@ onMounted(() => loadTask());
 
           <!-- Active task: decline (but not if in revision) -->
           <template v-else-if="isActiveTask && task.status !== 'revision'">
-            <button class="btn btn--red-outline" :disabled="loading" @click="handleDeclineTask">
+            <button v-if="!hasUploadedPhoto" class="btn btn--red-outline" :disabled="loading" @click="handleDeclineTask">
               <v-icon icon="mdi-close-circle-outline" size="17" />
               Отказаться от задачи
             </button>

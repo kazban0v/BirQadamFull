@@ -172,14 +172,29 @@ const openEditTaskDialog = (task: any) => {
 const closeCreateTaskDialog = () => { createTaskDialog.value = false; };
 
 const submitCreateTask = async () => {
-  if (!selectedProjectId.value) return;
+  if (!selectedProjectId.value || !selectedProject.value) return;
   const { valid } = (await taskFormRef.value?.validate()) ?? { valid: false };
   if (!valid) return;
+
+  // Validate deadline against project end date
+  if (taskFormState.deadline_date && selectedProject.value.end_date) {
+    const taskDl = new Date(taskFormState.deadline_date);
+    const projDl = new Date(selectedProject.value.end_date);
+    if (taskDl > projDl) {
+      snackbar.message = 'Дату нельзя ставить позже окончания проекта.';
+      snackbar.color = 'error';
+      snackbar.show = true;
+      return;
+    }
+  }
+
   createTaskLoading.value = true;
   try {
+    const defaultDl = selectedProject.value.end_date ? selectedProject.value.end_date.split('T')[0] : undefined;
+    
     const payload = {
       text: taskFormState.text,
-      deadline_date: taskFormState.deadline_date || undefined,
+      deadline_date: taskFormState.deadline_date || defaultDl,
       start_time: taskFormState.start_time || undefined,
       end_time: taskFormState.end_time || undefined,
     };
@@ -470,6 +485,10 @@ function goBack() {
                     <v-icon icon="mdi-calendar-outline" size="13" />
                     {{ formatDeadline(task.deadline_date) }}
                   </span>
+                  <span v-else-if="selectedProject?.end_date" class="task-meta-chip">
+                    <v-icon icon="mdi-calendar-alert" size="13" color="orange" />
+                    {{ formatDeadline(selectedProject.end_date) }}
+                  </span>
                   <span v-else class="task-meta-chip task-meta-chip--muted">
                     <v-icon icon="mdi-calendar-remove-outline" size="13" />
                     Без срока
@@ -663,6 +682,8 @@ function goBack() {
                           locale="ru"
                           :first-day-of-week="1"
                           color="primary"
+                          :min="new Date().toISOString().split('T')[0]"
+                          :max="selectedProject?.end_date"
                           @update:model-value="(v: any) => {
                             if (v instanceof Date) {
                               const y = v.getFullYear();
@@ -770,7 +791,9 @@ function goBack() {
                 <div>
                   <div class="detail-meta-item__label">Срок выполнения</div>
                   <div class="detail-meta-item__value">
-                    {{ selectedTaskForView.deadline_date ? formatDeadline(selectedTaskForView.deadline_date) : 'Без срока' }}
+                    {{ selectedTaskForView.deadline_date 
+                         ? formatDeadline(selectedTaskForView.deadline_date) 
+                         : (selectedProject?.end_date ? formatDeadline(selectedProject.end_date) : 'Без срока') }}
                   </div>
                 </div>
               </div>

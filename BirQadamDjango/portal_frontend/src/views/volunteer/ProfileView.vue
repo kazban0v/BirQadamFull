@@ -40,6 +40,7 @@ const trustFactorHistory = ref<TrustFactorHistoryResponse | null>(null);
 const trustFactorHistoryDialog = ref(false);
 const trustFactorHistoryLoading = ref(false);
 const trustFactorInfoDialog = ref(false);
+const ratingInfoDialog = ref(false);
 
 const telegramSync = ref<{
   is_linked: boolean; telegram_id: string | null;
@@ -204,9 +205,12 @@ onMounted(() => Promise.all([loadProfile(), loadStats(), loadActivity(), loadTel
          STATS ROW
     ═══════════════════════════════ -->
     <div class="qs">
-      <div class="qs__item">
+      <div class="qs__item" @click="ratingInfoDialog = true" style="cursor: pointer;">
         <span class="qs__val">{{ statsLoading ? '—' : (stats?.rating ?? '—') }}</span>
-        <span class="qs__lbl">Общая оценка</span>
+        <div class="qs__lbl-wrap">
+          <span class="qs__lbl">Общая оценка</span>
+          <v-icon size="11" color="rgba(0,0,0,0.25)" class="ms-1">mdi-information-outline</v-icon>
+        </div>
       </div>
       <div class="qs__sep"/>
       <div class="qs__item">
@@ -219,9 +223,12 @@ onMounted(() => Promise.all([loadProfile(), loadStats(), loadActivity(), loadTel
         <span class="qs__lbl">trust factor</span>
       </div>
       <div class="qs__sep"/>
-      <div class="qs__item">
+      <div class="qs__item" @click="ratingInfoDialog = true" style="cursor: pointer;">
         <span class="qs__val">{{ profile.average_rating.toFixed(1) }}</span>
-        <span class="qs__lbl">Средняя оценка</span>
+        <div class="qs__lbl-wrap">
+          <span class="qs__lbl">Средняя оценка</span>
+          <v-icon size="11" color="rgba(0,0,0,0.25)" class="ms-1">mdi-information-outline</v-icon>
+        </div>
       </div>
     </div>
 
@@ -555,6 +562,44 @@ onMounted(() => Promise.all([loadProfile(), loadStats(), loadActivity(), loadTel
       </v-card>
     </v-dialog>
 
+    <!-- Rating Info -->
+    <v-dialog v-model="ratingInfoDialog" max-width="540" scrollable>
+      <v-card class="dlg" rounded="xl">
+        <div class="dlg__head">
+          <div class="card__ico"><v-icon size="18" color="#3d7a1a">mdi-calculator</v-icon></div>
+          <h2 class="dlg__title">Система оценок</h2>
+          <button class="dlg__close" type="button" @click="ratingInfoDialog = false"><v-icon size="17">mdi-close</v-icon></button>
+        </div>
+        <v-card-text style="max-height:62vh;overflow-y:auto;padding:18px 22px">
+          <p class="dlg__desc">На платформе <b>BirQadam</b> используются два типа оценок, которые помогают отслеживать ваш вклад и качество работы.</p>
+
+          <div class="tfi-section">
+            <div class="tfi-section__head"><v-icon size="15" color="#3d7a1a">mdi-chart-line</v-icon> Общая оценка (Рейтинг)</div>
+            <p class="dlg__text mt-2"><b>Общая оценка</b> — это накопительный показатель вашего опыта. Она влияет на ваш <b>уровень</b>.</p>
+            <div class="tfi-row"><span>Завершение задачи</span><b class="tfi-row__up">+балл задачи</b></div>
+            <div class="tfi-row"><span>Одобрение фотоотчёта</span><b class="tfi-row__up">+от 1 до 5</b></div>
+            <div class="tfi-tip mt-2">
+              <v-icon size="12" color="#3d7a1a">mdi-information-outline</v-icon>
+              Чем сложнее задача и выше оценка от организатора, тем больше баллов вы получаете.
+            </div>
+          </div>
+
+          <div class="tfi-section mt-4">
+            <div class="tfi-section__head"><v-icon size="15" color="#e8b84b">mdi-star</v-icon> Средняя оценка</div>
+            <p class="dlg__text mt-2"><b>Средняя оценка</b> — это показатель качества вашей работы по мнению организаторов проектов.</p>
+            <div class="calc-box mt-3">
+              <div class="calc-label">Формула расчета:</div>
+              <div class="calc-formula">Сумма всех звёзд / Количество оценок</div>
+            </div>
+            <p class="dlg__text mt-3">Каждая ваша задача оценивается организатором по 5-балльной шкале. Чем выше средняя оценка, тем больше доверия к вам со стороны новых организаторов.</p>
+          </div>
+        </v-card-text>
+        <div class="dlg__foot">
+          <button class="btn btn--primary" type="button" @click="ratingInfoDialog = false">Понятно</button>
+        </div>
+      </v-card>
+    </v-dialog>
+
     <!-- TF Info -->
     <v-dialog v-model="trustFactorInfoDialog" max-width="540" scrollable>
       <v-card class="dlg" rounded="xl">
@@ -623,6 +668,12 @@ onMounted(() => Promise.all([loadProfile(), loadStats(), loadActivity(), loadTel
   flex-direction: column;
   gap: 16px;
   font-family: 'DM Sans','Segoe UI',sans-serif;
+}
+
+.qs__lbl-wrap {
+  display: flex;
+  align-items: center;
+  margin-top: 2px;
 }
 
 /* ═══════════════════════════════════════
@@ -1176,11 +1227,44 @@ onMounted(() => Promise.all([loadProfile(), loadStats(), loadActivity(), loadTel
 .tfi-row__dn { font-size: .87rem; font-weight: 900; color: #dc2626; }
 
 .tfi-tip {
-  display: flex; align-items: flex-start; gap: 6px;
-  font-size: .76rem; color: var(--g);
-  padding: 9px 11px;
-  background: var(--gp); border-radius: 10px;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  background: var(--gp);
+  color: var(--g);
+  padding: 10px 14px;
+  border-radius: 12px;
+  font-size: .8rem;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.dlg__text {
+  font-size: .88rem;
+  color: var(--ink);
   line-height: 1.5;
+}
+
+.calc-box {
+  background: #f8faf7;
+  border: 1px dashed rgba(0,0,0,.1);
+  border-radius: 10px;
+  padding: 12px;
+}
+
+.calc-label {
+  font-size: .72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--ink2);
+  margin-bottom: 6px;
+}
+
+.calc-formula {
+  font-size: .94rem;
+  font-weight: 700;
+  color: var(--g);
+  font-family: 'DM Mono', monospace;
 }
 
 /* TF History */

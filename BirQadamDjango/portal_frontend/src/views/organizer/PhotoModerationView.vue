@@ -783,11 +783,6 @@ watch(() => detailDialog.open, (open) => { if (!open) detailDialog.slide = 0; })
             <v-icon icon="mdi-check" size="18" />
             Одобрить с оценкой
           </button>
-          <button class="action-modal__btn action-modal__btn--secondary"
-            :disabled="approveDialog.photoId ? photoActionLoading(approveDialog.photoId) : false"
-            @click="submitApprove(true)">
-            Одобрить без оценки
-          </button>
           <button class="action-modal__btn action-modal__btn--cancel" @click="approveDialog.open = false">Отмена</button>
         </div>
       </div>

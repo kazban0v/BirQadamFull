@@ -7,7 +7,7 @@ import { useDashboardStore } from '@/stores/dashboard';
 import { useOrganizerStore } from '@/stores/organizer';
 import { getProjectChat, getChatMessages, type ChatMessage } from '@/services/chat';
 import { fetchVolunteerProjects } from '@/services/projects';
-import AIChatWidget from '@/components/AIChatWidget.vue';
+// import AIChatWidget from '@/components/AIChatWidget.vue';
 
 const authStore = useAuthStore();
 const dashboardStore = useDashboardStore();
@@ -180,9 +180,9 @@ const menuItems = computed(() => {
     const photoCount = organizerStore.photoCounters?.pending || 0;
     return [
       { title: 'Главная', icon: 'mdi-view-dashboard-outline', to: '/organizer/dashboard', badge: null },
-      { title: 'Проекты и задачи', icon: 'mdi-briefcase-outline', to: '/organizer/projects', badge: organizerStore.projects.length || null },
+      { title: 'Проекты и задачи', icon: 'mdi-briefcase-outline', to: '/organizer/projects', badge: null },
       { title: 'Команда', icon: 'mdi-account-multiple-outline', to: '/organizer/volunteers', badge: null },
-      { title: 'Фотоотчёты', icon: 'mdi-image-multiple-outline', to: '/organizer/photo-moderation', badge: photoCount > 0 ? photoCount : null },
+      { title: 'Фотоотчёты', icon: 'mdi-image-multiple-outline', to: '/organizer/photo-moderation', badge: null },
       { title: 'Аналитика', icon: 'mdi-chart-line', to: '/organizer/analytics', badge: null },
       { title: 'Профиль', icon: 'mdi-account-circle-outline', to: '/organizer/profile', badge: null },
     ];
@@ -200,10 +200,10 @@ const menuItems = computed(() => {
   const computedUnreadNotifications = Math.max(0, baseUnread - getReadActivityCount());
   return [
     { title: 'Главная', icon: 'mdi-view-dashboard-outline', to: '/volunteer/dashboard', badge: null },
-    { title: 'Проекты', icon: 'mdi-map-search-outline', to: '/volunteer/projects', badge: activeProjects > 0 ? activeProjects : null },
-    { title: 'Задачи', icon: 'mdi-clipboard-check-outline', to: '/volunteer/tasks', badge: activeTasks > 0 ? activeTasks : null },
+    { title: 'Проекты', icon: 'mdi-map-search-outline', to: '/volunteer/projects', badge: null },
+    { title: 'Задачи', icon: 'mdi-clipboard-check-outline', to: '/volunteer/tasks', badge: null },
     { title: 'Уведомления', icon: 'mdi-bell-outline', to: '/volunteer/notifications', badge: computedUnreadNotifications > 0 ? computedUnreadNotifications : null },
-    { title: 'Фотоотчёты', icon: 'mdi-camera-outline', to: '/volunteer/photo-reports', badge: summary?.pending_photos ? summary.pending_photos : null },
+    { title: 'Фотоотчёты', icon: 'mdi-camera-outline', to: '/volunteer/photo-reports', badge: null },
     { title: 'Достижения', icon: 'mdi-trophy-outline', to: '/volunteer/achievements', badge: null },
     { title: 'Мой профиль', icon: 'mdi-account-circle-outline', to: '/volunteer/profile', badge: null },
   ];
@@ -422,8 +422,8 @@ const handleLogout = async () => {
       </template>
     </v-snackbar>
 
-    <!-- AI Chat Widget -->
-    <AIChatWidget />
+    <!-- AI Chat Widget (Hidden) -->
+    <!-- <AIChatWidget /> -->
   </v-app>
 </template>
 

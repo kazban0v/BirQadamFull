@@ -83,16 +83,6 @@ function statusCfg(status: string) {
   return STATUS_MAP[status] ?? { text: status, color: '#546e7a', bg: 'rgba(84,110,122,0.1)' };
 }
 
-// ─── Filter tabs ──────────────────────────────────────────────────
-const FILTER_TABS = [
-  { key: 'all',          label: 'Все' },
-  { key: 'open',         label: 'Открытые' },
-  { key: 'in_progress',  label: 'В работе' },
-  { key: 'under_review', label: 'На проверке' },
-  { key: 'revision',     label: 'На доработке' },
-  { key: 'completed',    label: 'Завершённые' },
-  { key: 'archived',     label: 'В архиве' },
-] as const;
 
 // ─── Summary ──────────────────────────────────────────────────────
 const summary = computed(() => {
@@ -214,68 +204,43 @@ onMounted(loadTasks);
 
     <!-- ─── Summary ─── -->
     <div class="summary-grid">
-      <div class="stat-card stat-card--green" @click="filter = 'all'" style="cursor: pointer;">
+      <div class="stat-card stat-card--green" :class="{ 'stat-card--active': filter === 'all' }" @click="filter = 'all'" style="cursor: pointer;">
         <div class="stat-card__ico"><v-icon icon="mdi-clipboard-list" size="22" /></div>
         <div class="stat-card__val">{{ summary.total }}</div>
         <div class="stat-card__lbl">Всего задач</div>
       </div>
-      <div class="stat-card stat-card--blue" @click="filter = 'open'" style="cursor: pointer;">
+      <div class="stat-card stat-card--blue" :class="{ 'stat-card--active': filter === 'open' }" @click="filter = 'open'" style="cursor: pointer;">
         <div class="stat-card__ico"><v-icon icon="mdi-folder-open-outline" size="22" /></div>
         <div class="stat-card__val">{{ summary.open }}</div>
         <div class="stat-card__lbl">Открытые</div>
       </div>
-      <div class="stat-card stat-card--orange" @click="filter = 'in_progress'" style="cursor: pointer;">
+      <div class="stat-card stat-card--orange" :class="{ 'stat-card--active': filter === 'in_progress' }" @click="filter = 'in_progress'" style="cursor: pointer;">
         <div class="stat-card__ico"><v-icon icon="mdi-progress-clock" size="22" /></div>
         <div class="stat-card__val">{{ summary.in_progress }}</div>
         <div class="stat-card__lbl">В работе</div>
       </div>
-      <div class="stat-card stat-card--purple" @click="filter = 'under_review'" style="cursor: pointer;">
+      <div class="stat-card stat-card--purple" :class="{ 'stat-card--active': filter === 'under_review' }" @click="filter = 'under_review'" style="cursor: pointer;">
         <div class="stat-card__ico"><v-icon icon="mdi-magnify-scan" size="22" /></div>
         <div class="stat-card__val">{{ summary.under_review }}</div>
         <div class="stat-card__lbl">На проверке</div>
       </div>
-      <div class="stat-card stat-card--amber" @click="filter = 'revision'" style="cursor: pointer;">
+      <div class="stat-card stat-card--amber" :class="{ 'stat-card--active': filter === 'revision' }" @click="filter = 'revision'" style="cursor: pointer;">
         <div class="stat-card__ico"><v-icon icon="mdi-alert-circle-outline" size="22" /></div>
         <div class="stat-card__val">{{ summary.revision }}</div>
         <div class="stat-card__lbl">На доработке</div>
       </div>
-      <div class="stat-card stat-card--teal" @click="filter = 'completed'" style="cursor: pointer;">
+      <div class="stat-card stat-card--teal" :class="{ 'stat-card--active': filter === 'completed' }" @click="filter = 'completed'" style="cursor: pointer;">
         <div class="stat-card__ico"><v-icon icon="mdi-check-circle-outline" size="22" /></div>
         <div class="stat-card__val">{{ summary.completed }}</div>
         <div class="stat-card__lbl">Завершено</div>
       </div>
-      <div class="stat-card stat-card--grey" @click="filter = 'archived'" style="cursor: pointer;">
+      <div class="stat-card stat-card--grey" :class="{ 'stat-card--active': filter === 'archived' }" @click="filter = 'archived'" style="cursor: pointer;">
         <div class="stat-card__ico"><v-icon icon="mdi-archive-outline" size="22" /></div>
         <div class="stat-card__val">{{ summary.archived }}</div>
         <div class="stat-card__lbl">В архиве</div>
       </div>
     </div>
 
-    <!-- ─── Filter bar ─── -->
-    <div class="filter-bar">
-      <button
-        v-for="tab in FILTER_TABS"
-        :key="tab.key"
-        class="filter-tab"
-        :class="{ 'filter-tab--active': filter === tab.key }"
-        @click="filter = tab.key"
-      >
-        {{ tab.label }}
-        <span
-          v-if="tab.key !== 'all'"
-          class="filter-tab__count"
-        >
-          {{
-            tab.key === 'open'         ? summary.open :
-            tab.key === 'in_progress'  ? summary.in_progress :
-            tab.key === 'under_review' ? summary.under_review :
-            tab.key === 'revision'     ? summary.revision :
-            tab.key === 'archived'     ? summary.archived :
-            summary.completed
-          }}
-        </span>
-      </button>
-    </div>
 
     <!-- ─── Loading skeletons ─── -->
     <div v-if="loading" class="cards-grid">
@@ -471,6 +436,20 @@ onMounted(loadTasks);
 .stat-card--amber  .stat-card__ico { background: rgba(255,152,0,0.12);  color: #f57c00; }
 .stat-card--grey   .stat-card__ico { background: rgba(55,71,79,0.12);   color: #37474f; }
 
+/* Active state */
+.stat-card--active {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+  border-width: 1.5px;
+}
+.stat-card--green.stat-card--active  { border-color: #558b2f; background: rgba(139,195,74,0.04); }
+.stat-card--blue.stat-card--active   { border-color: #1565c0; background: rgba(21,101,192,0.04); }
+.stat-card--orange.stat-card--active { border-color: #e65100; background: rgba(230,81,0,0.04);   }
+.stat-card--purple.stat-card--active { border-color: #6a1b9a; background: rgba(106,27,154,0.04); }
+.stat-card--teal.stat-card--active   { border-color: #00695c; background: rgba(0,105,92,0.04);   }
+.stat-card--amber.stat-card--active  { border-color: #f57c00; background: rgba(255,152,0,0.04);  }
+.stat-card--grey.stat-card--active   { border-color: #37474f; background: rgba(55,71,79,0.04);   }
+
 .stat-card__val {
   font-size: 1.75rem;
   font-weight: 800;
@@ -513,45 +492,6 @@ onMounted(loadTasks);
   color: #558b2f !important;
 }
 
-/* ─── Filter bar ─── */
-.filter-bar {
-  display: flex;
-  gap: 5px;
-  background: #fff;
-  border: 1px solid rgba(0, 0, 0, 0.07);
-  border-radius: 14px;
-  padding: 5px;
-}
-
-.filter-tab {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  padding: 9px 10px;
-  border-radius: 9px;
-  border: none;
-  background: transparent;
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: rgba(0, 0, 0, 0.45);
-  cursor: pointer;
-  transition: color 0.15s, background 0.15s;
-  white-space: nowrap;
-}
-.filter-tab:hover { background: rgba(139,195,74,0.06); color: #558b2f; }
-.filter-tab--active { background: rgba(139,195,74,0.14); color: #3a7422; font-weight: 700; }
-
-.filter-tab__count {
-  padding: 1px 7px;
-  border-radius: 100px;
-  background: rgba(0, 0, 0, 0.07);
-  font-size: 0.72rem;
-  font-weight: 800;
-  color: rgba(0, 0, 0, 0.4);
-}
-.filter-tab--active .filter-tab__count { background: rgba(139,195,74,0.2); color: #558b2f; }
 
 /* ─── Cards grid ─── */
 .cards-grid {
