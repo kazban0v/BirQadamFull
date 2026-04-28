@@ -9,7 +9,7 @@
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#10B981"
+      "backgroundColor": "#F8F4DF"
     },
     "ios": {
       "supportsTablet": true,
@@ -17,10 +17,8 @@
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#10B981",
-        "foregroundImage": "./assets/android-icon-foreground.png",
-        "backgroundImage": "./assets/android-icon-background.png",
-        "monochromeImage": "./assets/android-icon-monochrome.png"
+        "backgroundColor": "#F8F4DF",
+        "foregroundImage": "./assets/android-icon-foreground.png"
       },
       "predictiveBackGestureEnabled": false,
       "package": "com.birqadam.app"

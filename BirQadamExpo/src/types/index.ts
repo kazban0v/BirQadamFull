@@ -16,6 +16,7 @@ export interface User {
   bin?: string;
   rating?: number;
   tasks_completed?: number;
+  active_tasks?: number;
   total_hours?: number;
   trust_factor?: number;
   average_rating?: number;
@@ -78,10 +79,12 @@ export interface Task {
   location: string;
   start_date: string;
   end_date: string;
-  status: 'pending' | 'open' | 'in_progress' | 'completed' | 'cancelled' | 'under_review' | 'archived' | 'rejected' | 'active' | 'failed' | 'closed';
+  status: 'pending' | 'open' | 'in_progress' | 'completed' | 'cancelled' | 'under_review' | 'archived' | 'rejected' | 'active' | 'failed' | 'closed' | 'revision' | 'expired';
   assigned_users_count?: number;
   reward_points?: number;
   image?: string;
+  task_image_url?: string | null;
+  project_cover_image_url?: string | null;
   start_time?: string;
   end_time?: string;
   creator_name?: string;
@@ -94,6 +97,7 @@ export interface Task {
   rating?: number;
   has_photo_report?: boolean;
   completed?: boolean;
+  is_expired?: boolean;
   can_upload_photo?: boolean;
   photo_status?: 'pending' | 'approved' | 'rejected' | null;
   rejection_reason?: string | null;
@@ -126,14 +130,87 @@ export interface Achievement {
   is_earned: boolean;
 }
 
+export interface VolunteerAchievement {
+  id: number;
+  name: string;
+  description: string;
+  icon: string;
+  required_rating: number;
+  xp: number;
+  unlocked: boolean;
+  unlocked_at: string | null;
+}
+
+export interface VolunteerStats {
+  rating: number;
+  level: number;
+  previous_level_rating: number;
+  next_level_rating: number;
+  progress: number;
+  unlocked_achievements: number;
+  total_achievements: number;
+  achievements: VolunteerAchievement[];
+}
+
+export interface VolunteerActivity {
+  months: string[];
+  series: Record<string, number[]>;
+  totals: Record<string, number>;
+}
+
 // Типы для фотоотчётов
 export interface PhotoReport {
   id: number;
   task_id: number;
+  project_id?: number;
+  project_title?: string;
+  task_text?: string;
   image: string;
+  image_url?: string;
   status: 'pending' | 'approved' | 'rejected';
-  created_at: string;
+  uploaded_at?: string;
+  moderated_at?: string | null;
+  created_at?: string;
+  rating?: number | null;
+  volunteer_comment?: string;
+  organizer_comment?: string;
   rejection_reason?: string;
+}
+
+export interface CalendarEventParticipant {
+  id: number;
+  name: string;
+  avatar?: string;
+}
+
+export interface CalendarEvent {
+  id: string;
+  source_type: 'project' | 'task' | 'event';
+  source_id: number;
+  type: string;
+  title: string;
+  subtitle?: string | null;
+  description?: string | null;
+  date: string;
+  end_date?: string | null;
+  start_time?: string | null;
+  end_time?: string | null;
+  is_all_day: boolean;
+  location?: string | null;
+  status?: string | null;
+  image?: string | null;
+  project_id?: number | null;
+  project_title?: string | null;
+  project_type?: string | null;
+  project_city?: string | null;
+  project_address?: string | null;
+  project_latitude?: number | null;
+  project_longitude?: number | null;
+  project_gis2_url?: string | null;
+  task_id?: number | null;
+  organizer_name?: string | null;
+  participants_count: number;
+  participants_preview: CalendarEventParticipant[];
 }
 
 // Типы для авторизации

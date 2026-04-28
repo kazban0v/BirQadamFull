@@ -1,8 +1,8 @@
 import { create } from 'zustand';
-import * as SecureStore from 'expo-secure-store';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { authAPI } from '../services/api';
+import { authAPI, volunteerAPI } from '../services/api';
 import type { User, LoginCredentials, VolunteerRegistrationData, OrganizerRegistrationData, AuthResponse } from '../types';
+import { authStorage } from '../utils/authStorage';
 
 interface AuthState {
   user: User | null;
@@ -43,7 +43,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       const response = await authAPI.login(credentials.identifier, credentials.password);
       const data: AuthResponse = response.data;
       
-      await SecureStore.setItemAsync(USER_KEY, JSON.stringify(data.user));
+      await authStorage.setItem(USER_KEY, JSON.stringify(data.user));
       // Сохраняем JWT токен для API-запросов
       if (data.access_token) {
         await AsyncStorage.setItem('auth_token', data.access_token);
@@ -122,7 +122,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       
       console.log('[AUTH] Email verified, response:', data);
       
-      await SecureStore.setItemAsync(USER_KEY, JSON.stringify(data.user));
+      await authStorage.setItem(USER_KEY, JSON.stringify(data.user));
       // Сохраняем JWT токен для API-запросов
       if (data.access_token) {
         await AsyncStorage.setItem('auth_token', data.access_token);
@@ -207,7 +207,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     } catch (error) {
       console.error('Logout error:', error);
     } finally {
-      await SecureStore.deleteItemAsync(USER_KEY);
+      await authStorage.removeItem(USER_KEY);
       await AsyncStorage.multiRemove(['auth_token', 'refresh_token', 'sessionid']);
       set({
         user: null,
@@ -221,26 +221,72 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   loadUser: async () => {
     try {
-      const userData = await SecureStore.getItemAsync(USER_KEY);
-      if (userData) {
+      const [authToken, sessionId] = await Promise.all([
+        AsyncStorage.getItem('auth_token'),
+        AsyncStorage.getItem('sessionid'),
+      ]);
+      const userData = await authStorage.getItem(USER_KEY);
+
+      // Do not restore an authenticated session from a stale user object alone.
+      // The app stores the user profile separately from auth credentials, so after
+      // environment switches or token cleanup we can end up with a "logged in" UI
+      // but no real credentials for the API.
+      if (userData && (authToken || sessionId)) {
         const user: User = JSON.parse(userData);
         set({
           user,
           isAuthenticated: true,
         });
+        return;
       }
+
+      if (userData) {
+        await authStorage.removeItem(USER_KEY);
+      }
+
+      set({
+        user: null,
+        isAuthenticated: false,
+      });
     } catch (error) {
       console.error('Load user error:', error);
     }
   },
 
   updateProfile: async (data: any) => {
-    // TODO: Реализовать обновление профиля через API
-    const currentState = get();
-    if (currentState.user) {
-      const updatedUser = { ...currentState.user, ...data };
-      await SecureStore.setItemAsync(USER_KEY, JSON.stringify(updatedUser));
-      set({ user: updatedUser });
+    set({ isLoading: true, error: null });
+    try {
+      const currentState = get();
+      const response = await volunteerAPI.updateProfile(data);
+      const profileData = response.data || {};
+      const currentUser = currentState.user;
+
+      const updatedUser = currentUser
+        ? {
+            ...currentUser,
+            ...profileData,
+            full_name:
+              profileData.full_name ||
+              profileData.name ||
+              currentUser.full_name,
+          }
+        : profileData;
+
+      await authStorage.setItem(USER_KEY, JSON.stringify(updatedUser));
+      set({
+        user: updatedUser,
+        isLoading: false,
+      });
+    } catch (error: any) {
+      const errorMessage =
+        error.response?.data?.detail ||
+        error.response?.data?.avatar?.[0] ||
+        error.response?.data?.name?.[0] ||
+        error.response?.data?.phone_number?.[0] ||
+        error.response?.data?.email?.[0] ||
+        'Ошибка обновления профиля';
+      set({ isLoading: false, error: errorMessage });
+      throw new Error(errorMessage);
     }
   },
 

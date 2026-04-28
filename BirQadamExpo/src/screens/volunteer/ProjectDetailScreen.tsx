@@ -16,13 +16,15 @@ import {
   TextInput,
   KeyboardAvoidingView,
   Platform,
-  Dimensions,
+  useWindowDimensions,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { volunteerAPI } from '../../services/api';
 import type { Project } from '../../types';
+import { normalizeImageUrl } from '../../utils/network';
+import { appColors } from '../../theme';
 
 interface RouteParams {
   projectId: number;
@@ -41,7 +43,8 @@ export const VolunteerProjectDetailScreen = ({
 }: ProjectDetailScreenProps) => {
   const { projectId } = route.params;
   const insets = useSafeAreaInsets();
-  const screenHeight = Dimensions.get('window').height;
+  const { width: screenWidth, height: screenHeight } = useWindowDimensions();
+  const isCompactProjectModal = screenWidth <= 390;
   const [project, setProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);
   const [joining, setJoining] = useState(false);
@@ -78,20 +81,6 @@ export const VolunteerProjectDetailScreen = ({
   const [isButtonPressed, setIsButtonPressed] = useState(false);
 
   // Функция для нормализации URL изображений
-  const normalizeImageUrl = (url: string | undefined | null): string | undefined => {
-    if (!url) return undefined;
-    
-    if (__DEV__) {
-      if (url.includes('cleanup.almau.edu.kz') || url.includes('birqadam.almau.edu.kz')) {
-        return url.replace(/https?:\/\/[^\/]+/, 'http://192.168.0.13:8000');
-      }
-      if (url.startsWith('https://')) {
-        return url.replace('https://', 'http://');
-      }
-    }
-    
-    return url;
-  };
 
   const loadProjectDetail = async (isRefresh = false) => {
     if (!isRefresh) {
@@ -103,7 +92,7 @@ export const VolunteerProjectDetailScreen = ({
       setProject(projectData);
       
       if (__DEV__) {
-        console.log('📊 Project loaded:', {
+        console.log('Project loaded:', {
           id: projectData.id,
           title: projectData.title,
           joined: projectData.joined,
@@ -116,7 +105,7 @@ export const VolunteerProjectDetailScreen = ({
           setTrustFactor(profileResponse.data.trust_factor);
         }
       } catch (error) {
-        console.error('❌ Error loading trust factor:', error);
+        console.error('Error loading trust factor:', error);
       }
       
       if (!isRefresh) {
@@ -134,7 +123,7 @@ export const VolunteerProjectDetailScreen = ({
         ]).start();
       }
     } catch (error: any) {
-      console.error('❌ Error loading project detail:', error);
+      console.error('Error loading project detail:', error);
       const errorMessage = error?.response?.data?.detail || 'Не удалось загрузить детали проекта';
       if (!isRefresh) {
         Alert.alert('Ошибка', errorMessage);
@@ -184,17 +173,20 @@ export const VolunteerProjectDetailScreen = ({
     loadProjectDetail();
   }, [projectId]);
 
-  useEffect(() => {
-    if (project?.cover_image_url) {
-      setImageLoading(true);
-    }
-  }, [project?.cover_image_url]);
 
   const handleJoin = async () => {
     if (!project) return;
 
     if (project.joined) {
       Alert.alert('Информация', 'Вы уже участвуете в этом проекте');
+      return;
+    }
+
+    if (trustFactor !== null && trustFactor <= 0) {
+      Alert.alert(
+        'Недостаточно Trust Factor',
+        'Ваш Trust Factor: 0/30. Пока он равен 0, присоединиться к проекту нельзя.'
+      );
       return;
     }
 
@@ -239,7 +231,7 @@ export const VolunteerProjectDetailScreen = ({
       // Перезагружаем данные проекта для получения актуальной информации
       await loadProjectDetail(true);
     } catch (error: any) {
-      console.error('❌ Error joining project:', error);
+      console.error('Error joining project:', error);
       const errorMessage = error?.response?.data?.error || error?.response?.data?.detail || 'Не удалось присоединиться к проекту';
       
       if (error?.response?.status === 403 || error?.response?.status === 400) {
@@ -302,7 +294,7 @@ export const VolunteerProjectDetailScreen = ({
       
       await loadProjectDetail();
     } catch (error: any) {
-      console.error('❌ Error leaving project:', error);
+      console.error('Error leaving project:', error);
       const errorMessage = error?.response?.data?.error || error?.response?.data?.detail || 'Не удалось покинуть проект';
       Alert.alert('Ошибка', errorMessage);
     } finally {
@@ -438,13 +430,13 @@ export const VolunteerProjectDetailScreen = ({
   const getVolunteerTypeColor = (type: string): string => {
     switch (type) {
       case 'social':
-        return '#3B82F6';
+        return appColors.primary;
       case 'environmental':
-        return '#10B981';
+        return appColors.primary;
       case 'cultural':
         return '#8B5CF6';
       default:
-        return '#6B7280';
+        return appColors.textMuted;
     }
   };
 
@@ -462,7 +454,7 @@ export const VolunteerProjectDetailScreen = ({
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#10B981" />
+        <ActivityIndicator size="large" color={appColors.primary} />
       </View>
     );
   }
@@ -470,7 +462,7 @@ export const VolunteerProjectDetailScreen = ({
   if (!project) {
     return (
       <View style={styles.errorContainer}>
-        <Ionicons name="alert-circle-outline" size={64} color="#9CA3AF" />
+        <Ionicons name="alert-circle-outline" size={64} color={appColors.textSoft} />
         <Text style={styles.errorText}>Проект не найден</Text>
         <TouchableOpacity
           style={styles.backButton}
@@ -498,7 +490,7 @@ export const VolunteerProjectDetailScreen = ({
             refreshing={refreshing}
             onRefresh={onRefresh}
             tintColor="#10B981"
-            colors={['#10B981']}
+            colors={[appColors.primary]}
           />
         }
       >
@@ -509,10 +501,10 @@ export const VolunteerProjectDetailScreen = ({
               {imageLoading && (
                 <View style={[styles.projectImage, styles.imagePlaceholder]}>
                   <LinearGradient
-                    colors={['#ECFDF5', '#D1FAE5', '#A7F3D0']}
+                    colors={[appColors.primarySurface, appColors.primarySurfaceStrong, '#047857']}
                     style={StyleSheet.absoluteFill}
                   />
-                  <ActivityIndicator size="large" color="#10B981" />
+                  <ActivityIndicator size="large" color={appColors.primary} />
                 </View>
               )}
               <Image 
@@ -522,7 +514,7 @@ export const VolunteerProjectDetailScreen = ({
                 onLoadStart={() => setImageLoading(true)}
                 onLoadEnd={() => setImageLoading(false)}
                 onError={(error) => {
-                  console.error('❌ Error loading project image:', error);
+                  console.error('Error loading project image:', error);
                   setImageLoading(false);
                 }}
               />
@@ -530,22 +522,22 @@ export const VolunteerProjectDetailScreen = ({
           ) : (
             <View style={[styles.projectImage, styles.imagePlaceholder]}>
               <LinearGradient
-                colors={['#ECFDF5', '#D1FAE5', '#A7F3D0']}
+                colors={[appColors.primarySurface, appColors.primarySurfaceStrong, '#047857']}
                 style={StyleSheet.absoluteFill}
               />
-              <Ionicons name="image-outline" size={64} color="#9CA3AF" />
+              <Ionicons name="image-outline" size={64} color={appColors.textSoft} />
             </View>
           )}
           
           <TouchableOpacity
-            style={styles.backButtonOverlay}
+            style={[styles.backButtonOverlay, { top: Math.max(50, insets.top + 10) }]}
             onPress={() => navigation.goBack()}
           >
-            <Ionicons name="arrow-back" size={24} color="#1F2937" />
+            <Ionicons name="arrow-back" size={24} color={appColors.text} />
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.shareButton} onPress={shareProject}>
-            <Ionicons name="share-outline" size={24} color="#1F2937" />
+          <TouchableOpacity style={[styles.shareButton, { top: Math.max(50, insets.top + 10) }]} onPress={shareProject}>
+            <Ionicons name="share-outline" size={24} color={appColors.text} />
           </TouchableOpacity>
         </View>
 
@@ -567,7 +559,7 @@ export const VolunteerProjectDetailScreen = ({
 
           <TouchableOpacity style={styles.infoRow} onPress={openMap}>
             <View style={styles.infoIcon}>
-              <Ionicons name="location-outline" size={18} color="#10B981" />
+              <Ionicons name="location-outline" size={18} color={appColors.primary} />
             </View>
             <View style={styles.infoContent}>
               <Text style={styles.infoLabel}>{project.city || 'Локация'}</Text>
@@ -582,7 +574,7 @@ export const VolunteerProjectDetailScreen = ({
 
           <View style={[styles.infoRow, styles.infoRowCenter]}>
             <View style={styles.infoIcon}>
-              <Ionicons name="calendar-outline" size={18} color="#10B981" />
+              <Ionicons name="calendar-outline" size={18} color={appColors.primary} />
             </View>
             <View style={styles.infoContent}>
               <Text style={styles.infoLabel}>
@@ -593,7 +585,7 @@ export const VolunteerProjectDetailScreen = ({
 
           <TouchableOpacity style={styles.organizerRow} onPress={openOrganizerProfile}>
             <View style={styles.organizerAvatar}>
-              <Ionicons name="business-outline" size={20} color="#10B981" />
+              <Ionicons name="business-outline" size={20} color={appColors.primary} />
             </View>
             <View style={styles.organizerContent}>
               <Text style={styles.organizerName}>
@@ -650,7 +642,7 @@ export const VolunteerProjectDetailScreen = ({
                           />
                         ) : (
                           <View style={styles.avatarPlaceholder}>
-                            <Ionicons name="person" size={14} color="#6B7280" />
+                            <Ionicons name="person" size={14} color={appColors.textMuted} />
                           </View>
                         )}
                       </View>
@@ -673,7 +665,7 @@ export const VolunteerProjectDetailScreen = ({
                     onPress={() => setShowAllParticipants(true)}
                   >
                     <Text style={styles.showAllLinkText}>Показать всех участников</Text>
-                    <Ionicons name="chevron-forward" size={16} color="#10B981" />
+                    <Ionicons name="chevron-forward" size={16} color={appColors.primary} />
                   </TouchableOpacity>
                 )}
               </>
@@ -688,28 +680,28 @@ export const VolunteerProjectDetailScreen = ({
               {project.contact_phone && (
                 <TouchableOpacity style={styles.contactButton} onPress={callPhone}>
                   <View style={styles.contactIcon}>
-                    <Ionicons name="call-outline" size={20} color="#10B981" />
+                    <Ionicons name="call-outline" size={20} color={appColors.primary} />
                   </View>
                 </TouchableOpacity>
               )}
               {project.contact_email && (
                 <TouchableOpacity style={styles.contactButton} onPress={sendEmail}>
                   <View style={styles.contactIcon}>
-                    <Ionicons name="mail-outline" size={20} color="#10B981" />
+                    <Ionicons name="mail-outline" size={20} color={appColors.primary} />
                   </View>
                 </TouchableOpacity>
               )}
               {project.contact_telegram && (
                 <TouchableOpacity style={styles.contactButton} onPress={openTelegram}>
                   <View style={styles.contactIcon}>
-                    <Ionicons name="send-outline" size={20} color="#10B981" />
+                    <Ionicons name="send-outline" size={20} color={appColors.primary} />
                   </View>
                 </TouchableOpacity>
               )}
               {project.info_url && (
                 <TouchableOpacity style={styles.contactButton} onPress={openWebsite}>
                   <View style={styles.contactIcon}>
-                    <Ionicons name="globe-outline" size={20} color="#10B981" />
+                    <Ionicons name="globe-outline" size={20} color={appColors.primary} />
                   </View>
                 </TouchableOpacity>
               )}
@@ -735,7 +727,7 @@ export const VolunteerProjectDetailScreen = ({
                 onPress={() => setShowAllParticipants(false)}
                 style={styles.modalCloseButton}
               >
-                <Ionicons name="close" size={24} color="#1F2937" />
+                <Ionicons name="close" size={24} color={appColors.textMuted} />
               </TouchableOpacity>
             </View>
             <ScrollView 
@@ -754,7 +746,7 @@ export const VolunteerProjectDetailScreen = ({
                         />
                       ) : (
                         <View style={styles.participantAvatarPlaceholder}>
-                          <Ionicons name="person" size={20} color="#6B7280" />
+                          <Ionicons name="person" size={20} color={appColors.textMuted} />
                         </View>
                       )}
                     </View>
@@ -793,10 +785,23 @@ export const VolunteerProjectDetailScreen = ({
               showsVerticalScrollIndicator={false}
               keyboardShouldPersistTaps="handled"
             >
-              <View style={[styles.warningModalContent, { maxHeight: '80%' }]}>
-                <View style={styles.warningIconContainer}>
+              <View
+                style={[
+                  styles.warningModalContent,
+                  isCompactProjectModal && styles.warningModalContentCompact,
+                  { maxHeight: screenHeight * (isCompactProjectModal ? 0.88 : 0.82) },
+                ]}
+              >
+                <TouchableOpacity
+                  onPress={() => setShowLeaveWarning(false)}
+                  style={styles.warningModalCloseButton}
+                >
+                  <Ionicons name="close" size={22} color={appColors.textMuted} />
+                </TouchableOpacity>
+
+                <View style={[styles.warningIconContainer, isCompactProjectModal && styles.warningIconContainerCompact]}>
                   <View style={styles.warningIconCircle}>
-                    <Ionicons name="warning" size={40} color="#EF4444" />
+                    <Ionicons name="warning" size={40} color={appColors.danger} />
                   </View>
                 </View>
                 
@@ -807,7 +812,7 @@ export const VolunteerProjectDetailScreen = ({
                 
                 <View style={styles.warningInfoBox}>
                   <View style={styles.warningInfoRow}>
-                    <Ionicons name="alert-circle" size={20} color="#EF4444" />
+                    <Ionicons name="alert-circle" size={20} color={appColors.danger} />
                     <Text style={styles.warningInfoText}>
                       При выходе ваш Trust Factor уменьшится на 5 баллов
                     </Text>
@@ -823,7 +828,7 @@ export const VolunteerProjectDetailScreen = ({
                       <Text style={styles.tfValue} numberOfLines={1} adjustsFontSizeToFit>{currentTF}</Text>
                     </View>
                     
-                    <Ionicons name="arrow-forward" size={18} color="#9CA3AF" />
+                    <Ionicons name="arrow-forward" size={18} color={appColors.textSoft} />
                     
                     <View style={styles.tfBox}>
                       <Text 
@@ -894,7 +899,7 @@ export const VolunteerProjectDetailScreen = ({
               <View style={[styles.confirmModalContent, { maxHeight: '80%' }]}>
                 <View style={styles.confirmIconContainer}>
                   <View style={styles.confirmIconCircle}>
-                    <Ionicons name="people" size={48} color="#10B981" />
+                    <Ionicons name="people" size={48} color={appColors.primary} />
                   </View>
                 </View>
                 
@@ -905,19 +910,19 @@ export const VolunteerProjectDetailScreen = ({
                 
                 <View style={styles.confirmInfoBox}>
                   <View style={styles.confirmInfoRow}>
-                    <Ionicons name="checkmark-circle" size={20} color="#10B981" />
+                    <Ionicons name="checkmark-circle" size={20} color={appColors.primary} />
                     <Text style={styles.confirmInfoText}>
                       Вы сможете участвовать в задачах проекта
                     </Text>
                   </View>
                   <View style={styles.confirmInfoRow}>
-                    <Ionicons name="trophy" size={20} color="#F59E0B" />
+                    <Ionicons name="trophy" size={20} color={appColors.warning} />
                     <Text style={styles.confirmInfoText}>
                       Зарабатывайте баллы за выполнение задач
                     </Text>
                   </View>
                   <View style={styles.confirmInfoRow}>
-                    <Ionicons name="people" size={20} color="#3B82F6" />
+                    <Ionicons name="people" size={20} color={appColors.primary} />
                     <Text style={styles.confirmInfoText}>
                       Общайтесь с другими волонтёрами
                     </Text>
@@ -945,10 +950,10 @@ export const VolunteerProjectDetailScreen = ({
                     disabled={joining}
                   >
                     {joining ? (
-                      <ActivityIndicator size="small" color="#FFFFFF" />
+                      <ActivityIndicator size="small" color={appColors.white} />
                     ) : (
                       <>
-                        <Ionicons name="checkmark-circle" size={18} color="#FFFFFF" />
+                        <Ionicons name="checkmark-circle" size={18} color={appColors.white} />
                         <Text 
                           style={styles.confirmButtonJoinText}
                           numberOfLines={1}
@@ -1002,7 +1007,7 @@ export const VolunteerProjectDetailScreen = ({
                   }}
                   style={styles.modalCloseButton}
                 >
-                  <Ionicons name="close" size={24} color="#1F2937" />
+                  <Ionicons name="close" size={24} color={appColors.textMuted} />
                 </TouchableOpacity>
               </View>
               
@@ -1018,7 +1023,7 @@ export const VolunteerProjectDetailScreen = ({
                 <TextInput
                   style={styles.leaveReasonInput}
                   placeholder="Например: изменились планы, нет времени, личные обстоятельства..."
-                  placeholderTextColor="#9CA3AF"
+                  placeholderTextColor={appColors.textSoft}
                   value={leaveReason}
                   onChangeText={setLeaveReason}
                   multiline
@@ -1057,7 +1062,7 @@ export const VolunteerProjectDetailScreen = ({
                     disabled={!leaveReason.trim() || leaving}
                   >
                     {leaving ? (
-                      <ActivityIndicator size="small" color="#FFFFFF" />
+                      <ActivityIndicator size="small" color={appColors.white} />
                     ) : (
                       <Text 
                         style={styles.leaveModalButtonConfirmText}
@@ -1083,7 +1088,7 @@ export const VolunteerProjectDetailScreen = ({
             activeOpacity={0.8}
           >
             {leaving ? (
-              <ActivityIndicator size="small" color="#EF4444" />
+              <ActivityIndicator size="small" color={appColors.danger} />
             ) : (
               <Text style={styles.leaveButtonText}>Покинуть проект</Text>
             )}
@@ -1108,7 +1113,7 @@ export const VolunteerProjectDetailScreen = ({
               activeOpacity={0.8}
             >
               {joining ? (
-                <ActivityIndicator size="small" color="#FFFFFF" />
+                <ActivityIndicator size="small" color={appColors.white} />
               ) : (
                 <Text style={styles.joinButtonText}>Присоединиться к проекту</Text>
               )}
@@ -1137,7 +1142,7 @@ export const VolunteerProjectDetailScreen = ({
               <View style={[styles.successModalContent, { maxHeight: '80%' }]}>
                 <View style={styles.successIconContainer}>
                   <View style={styles.successIconCircle}>
-                    <Ionicons name="checkmark-circle" size={64} color="#10B981" />
+                    <Ionicons name="checkmark-circle" size={64} color={appColors.primary} />
                   </View>
                 </View>
                 
@@ -1151,13 +1156,13 @@ export const VolunteerProjectDetailScreen = ({
                 
                 <View style={styles.successInfoBox}>
                   <View style={styles.successInfoRow}>
-                    <Ionicons name="people" size={20} color="#10B981" />
+                    <Ionicons name="people" size={20} color={appColors.primary} />
                     <Text style={styles.successInfoText}>
                       Теперь вы можете участвовать в задачах проекта
                     </Text>
                   </View>
                   <View style={styles.successInfoRow}>
-                    <Ionicons name="trophy" size={20} color="#F59E0B" />
+                    <Ionicons name="trophy" size={20} color={appColors.warning} />
                     <Text style={styles.successInfoText}>
                       Выполняйте задачи и зарабатывайте баллы
                     </Text>
@@ -1199,7 +1204,7 @@ export const VolunteerProjectDetailScreen = ({
               <View style={[styles.successModalContent, { maxHeight: '80%' }]}>
                 <View style={styles.leaveSuccessIconContainer}>
                   <View style={styles.leaveSuccessIconCircle}>
-                    <Ionicons name="exit-outline" size={64} color="#EF4444" />
+                    <Ionicons name="exit-outline" size={64} color={appColors.danger} />
                   </View>
                 </View>
                 
@@ -1211,7 +1216,7 @@ export const VolunteerProjectDetailScreen = ({
                 {leaveSuccessData?.penaltyApplied && leaveSuccessData?.trustFactor !== undefined && (
                   <View style={styles.penaltyInfoBox}>
                     <View style={styles.penaltyHeader}>
-                      <Ionicons name="alert-circle" size={24} color="#EF4444" />
+                      <Ionicons name="alert-circle" size={24} color={appColors.danger} />
                       <Text style={styles.penaltyTitle}>Применён штраф</Text>
                     </View>
                     
@@ -1225,7 +1230,7 @@ export const VolunteerProjectDetailScreen = ({
                         <Text style={styles.tfChangeValue}>{leaveSuccessData.trustFactor + 5}</Text>
                       </View>
                       
-                      <Ionicons name="arrow-forward" size={16} color="#9CA3AF" />
+                      <Ionicons name="arrow-forward" size={16} color={appColors.textSoft} />
                       
                       <View style={styles.tfChangeBox}>
                         <Text 
@@ -1268,37 +1273,37 @@ export const VolunteerProjectDetailScreen = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: appColors.surface,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: appColors.surface,
   },
   errorContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: appColors.surface,
     padding: 24,
   },
   errorText: {
     fontSize: 16,
-    color: '#9CA3AF',
+    color: appColors.textSoft,
     marginTop: 16,
     marginBottom: 24,
   },
   backButton: {
     paddingHorizontal: 24,
     paddingVertical: 12,
-    backgroundColor: '#10B981',
+    backgroundColor: appColors.primary,
     borderRadius: 12,
   },
   backButtonText: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: appColors.white,
   },
   scrollView: {
     flex: 1,
@@ -1315,7 +1320,7 @@ const styles = StyleSheet.create({
   projectImage: {
     width: '100%',
     height: '100%',
-    backgroundColor: '#E5E7EB',
+    backgroundColor: appColors.surfaceMuted,
   },
   imageHidden: {
     opacity: 0,
@@ -1337,7 +1342,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: appColors.surface,
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000',
@@ -1353,7 +1358,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: appColors.surface,
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000',
@@ -1375,13 +1380,13 @@ const styles = StyleSheet.create({
   categoryText: {
     fontSize: 11,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: appColors.white,
     letterSpacing: 0.5,
   },
   title: {
     fontSize: 24,
     fontWeight: '800',
-    color: '#1F2937',
+    color: appColors.text,
     marginBottom: 20,
     lineHeight: 32,
   },
@@ -1390,7 +1395,7 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
+    borderColor: appColors.border,
   },
   infoRowCenter: {
     alignItems: 'center',
@@ -1399,7 +1404,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 12,
-    backgroundColor: '#ECFDF5',
+    backgroundColor: appColors.primarySurface,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
@@ -1410,36 +1415,36 @@ const styles = StyleSheet.create({
   infoLabel: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#1F2937',
+    color: appColors.text,
     marginBottom: 2,
   },
   infoValue: {
     fontSize: 13,
-    color: '#6B7280',
+    color: appColors.textMuted,
   },
   mapButton: {
     paddingHorizontal: 12,
     paddingVertical: 6,
-    backgroundColor: '#ECFDF5',
+    backgroundColor: appColors.primarySurface,
     borderRadius: 12,
   },
   mapButtonText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#10B981',
+    color: appColors.primary,
   },
   organizerRow: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
+    borderColor: appColors.border,
   },
   organizerAvatar: {
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: '#ECFDF5',
+    backgroundColor: appColors.primarySurface,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
@@ -1450,23 +1455,23 @@ const styles = StyleSheet.create({
   organizerName: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#1F2937',
+    color: appColors.text,
     marginBottom: 4,
   },
   organizerOrganization: {
     fontSize: 13,
-    color: '#10B981',
+    color: appColors.primary,
     fontWeight: '500',
   },
   organizerType: {
     fontSize: 13,
-    color: '#6B7280',
+    color: appColors.textMuted,
     fontWeight: '400',
   },
   organizerMoreButton: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#10B981',
+    color: appColors.primary,
   },
   section: {
     marginTop: 24,
@@ -1480,16 +1485,16 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#1F2937',
+    color: appColors.text,
   },
   participantsCount: {
     fontSize: 14,
-    color: '#6B7280',
+    color: appColors.textMuted,
     fontWeight: '500',
   },
   description: {
     fontSize: 14,
-    color: '#6B7280',
+    color: appColors.textMuted,
     lineHeight: 22,
   },
   tagsContainer: {
@@ -1499,7 +1504,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   tag: {
-    backgroundColor: '#F3F4F6',
+    backgroundColor: appColors.surfaceSoft,
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 14,
@@ -1507,7 +1512,7 @@ const styles = StyleSheet.create({
   tagText: {
     fontSize: 12,
     fontWeight: '500',
-    color: '#6B7280',
+    color: appColors.textMuted,
   },
   participantsRow: {
     flexDirection: 'row',
@@ -1520,7 +1525,7 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: '#E5E7EB',
+    backgroundColor: appColors.surfaceMuted,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
@@ -1536,19 +1541,19 @@ const styles = StyleSheet.create({
     height: '100%',
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#E5E7EB',
+    backgroundColor: appColors.surfaceMuted,
   },
   showAllButton: {
     marginLeft: 12,
     paddingHorizontal: 12,
     paddingVertical: 6,
-    backgroundColor: '#ECFDF5',
+    backgroundColor: appColors.primarySurface,
     borderRadius: 12,
   },
   showAllButtonText: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#10B981',
+    color: appColors.primary,
   },
   showAllLink: {
     flexDirection: 'row',
@@ -1559,12 +1564,12 @@ const styles = StyleSheet.create({
   showAllLinkText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#10B981',
+    color: appColors.primary,
     marginRight: 4,
   },
   noParticipants: {
     fontSize: 13,
-    color: '#9CA3AF',
+    color: appColors.textSoft,
   },
   modalOverlay: {
     flex: 1,
@@ -1572,7 +1577,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   modalContent: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: appColors.surface,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     maxHeight: '90%',
@@ -1584,15 +1589,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 20,
     borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
+    borderColor: appColors.border,
   },
   modalTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#1F2937',
+    color: appColors.text,
   },
   modalCloseButton: {
-    padding: 4,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: appColors.surfaceSoft,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   modalScrollView: {
     maxHeight: '60%',
@@ -1602,13 +1612,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
+    borderColor: appColors.border,
   },
   participantAvatar: {
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: '#E5E7EB',
+    backgroundColor: appColors.surfaceMuted,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
@@ -1623,7 +1633,7 @@ const styles = StyleSheet.create({
     height: '100%',
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#E5E7EB',
+    backgroundColor: appColors.surfaceMuted,
   },
   participantInfo: {
     flex: 1,
@@ -1631,16 +1641,16 @@ const styles = StyleSheet.create({
   participantName: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#1F2937',
+    color: appColors.text,
     marginBottom: 4,
   },
   participantDate: {
     fontSize: 13,
-    color: '#6B7280',
+    color: appColors.textMuted,
   },
   noParticipantsModal: {
     fontSize: 14,
-    color: '#9CA3AF',
+    color: appColors.textSoft,
     textAlign: 'center',
     padding: 40,
   },
@@ -1654,7 +1664,7 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 16,
-    backgroundColor: '#ECFDF5',
+    backgroundColor: appColors.primarySurface,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -1668,9 +1678,9 @@ const styles = StyleSheet.create({
     right: 0,
     padding: 20,
     paddingBottom: 30,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: appColors.surface,
     borderTopWidth: 1,
-    borderTopColor: '#F3F4F6',
+    borderColor: appColors.border,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -2 },
     shadowOpacity: 0.05,
@@ -1678,11 +1688,11 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   joinButton: {
-    backgroundColor: '#10B981',
+    backgroundColor: appColors.primary,
     paddingVertical: 16,
     borderRadius: 16,
     alignItems: 'center',
-    shadowColor: '#10B981',
+    shadowColor: appColors.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
@@ -1694,22 +1704,22 @@ const styles = StyleSheet.create({
   joinButtonText: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: appColors.white,
   },
   leaveButton: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: appColors.surface,
     paddingVertical: 16,
     borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,
-    borderColor: '#EF4444',
+    borderColor: appColors.danger,
     width: '100%',
   },
   leaveButtonText: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#EF4444',
+    color: appColors.danger,
   },
   // Warning Modal Styles
   modalKeyboardView: {
@@ -1729,7 +1739,7 @@ const styles = StyleSheet.create({
     paddingVertical: 20,
   },
   warningModalContent: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: appColors.surface,
     borderRadius: 24,
     padding: 20,
     width: '94%',
@@ -1740,40 +1750,75 @@ const styles = StyleSheet.create({
     shadowRadius: 16,
     elevation: 10,
   },
+  warningModalContentCompact: {
+    width: '100%',
+    maxWidth: 380,
+    padding: 16,
+    borderRadius: 22,
+  },
+  warningModalCloseButton: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: appColors.surfaceSoft,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 2,
+  },
   warningIconContainer: {
     alignItems: 'center',
     marginBottom: 20,
+  },
+  warningIconContainerCompact: {
+    marginBottom: 14,
+    marginTop: 8,
   },
   warningIconCircle: {
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: '#FEF2F2',
+    backgroundColor: appColors.dangerSurface,
     justifyContent: 'center',
     alignItems: 'center',
   },
   warningTitle: {
     fontSize: 22,
     fontWeight: '800',
-    color: '#1F2937',
+    color: appColors.text,
     textAlign: 'center',
     marginBottom: 8,
   },
+  warningTitleCompact: {
+    fontSize: 19,
+    lineHeight: 26,
+    paddingHorizontal: 28,
+  },
   warningSubtitle: {
     fontSize: 14,
-    color: '#6B7280',
+    color: appColors.textMuted,
     textAlign: 'center',
     marginBottom: 24,
     fontStyle: 'italic',
   },
+  warningSubtitleCompact: {
+    fontSize: 13,
+    marginBottom: 18,
+  },
   warningInfoBox: {
-    backgroundColor: '#FEF2F2',
+    backgroundColor: appColors.dangerSurface,
     borderRadius: 16,
     padding: 16,
     marginBottom: 24,
     borderWidth: 1,
-    borderColor: '#FEE2E2',
+    borderColor: '#7F1D1D',
     width: '100%',
+  },
+  warningInfoBoxCompact: {
+    padding: 14,
+    marginBottom: 18,
   },
   warningInfoRow: {
     flexDirection: 'row',
@@ -1788,6 +1833,11 @@ const styles = StyleSheet.create({
     marginLeft: 12,
     lineHeight: 20,
   },
+  warningInfoTextCompact: {
+    fontSize: 13,
+    marginLeft: 10,
+    lineHeight: 18,
+  },
   tfChangeContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1797,7 +1847,7 @@ const styles = StyleSheet.create({
   },
   tfBox: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: appColors.surface,
     borderRadius: 12,
     padding: 8,
     alignItems: 'center',
@@ -1806,7 +1856,7 @@ const styles = StyleSheet.create({
   tfLabel: {
     fontSize: 10,
     fontWeight: '700',
-    color: '#6B7280',
+    color: appColors.textMuted,
     marginBottom: 4,
     textTransform: 'uppercase',
     letterSpacing: 0.2,
@@ -1815,19 +1865,19 @@ const styles = StyleSheet.create({
   tfValue: {
     fontSize: 22,
     fontWeight: '800',
-    color: '#10B981',
+    color: appColors.primary,
   },
   tfValueDanger: {
-    color: '#EF4444',
+    color: appColors.danger,
   },
   dangerNotice: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: appColors.surface,
     borderRadius: 12,
     padding: 12,
     borderWidth: 1,
-    borderColor: '#FCA5A5',
+    borderColor: '#7F1D1D',
   },
   dangerNoticeText: {
     flex: 1,
@@ -1836,6 +1886,10 @@ const styles = StyleSheet.create({
     color: '#DC2626',
     marginLeft: 8,
     lineHeight: 18,
+  },
+  dangerNoticeTextCompact: {
+    fontSize: 12,
+    lineHeight: 17,
   },
   warningButtons: {
     flexDirection: 'row',
@@ -1849,20 +1903,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   warningButtonCancel: {
-    backgroundColor: '#F3F4F6',
+    backgroundColor: appColors.surfaceSoft,
   },
   warningButtonCancelText: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#6B7280',
+    color: appColors.textMuted,
   },
   warningButtonContinue: {
-    backgroundColor: '#EF4444',
+    backgroundColor: appColors.danger,
   },
   warningButtonContinueText: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: appColors.white,
     paddingHorizontal: 4,
   },
   // Join Confirmation Modal Styles
@@ -1880,7 +1934,7 @@ const styles = StyleSheet.create({
     paddingVertical: 20,
   },
   confirmModalContent: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: appColors.surface,
     borderRadius: 24,
     padding: 20,
     width: '94%',
@@ -1900,28 +1954,28 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: '#ECFDF5',
+    backgroundColor: appColors.primarySurface,
     justifyContent: 'center',
     alignItems: 'center',
   },
   confirmTitle: {
     fontSize: Platform.OS === 'ios' ? 22 : 20,
     fontWeight: '800',
-    color: '#1F2937',
+    color: appColors.text,
     textAlign: 'center',
     marginBottom: 8,
   },
   confirmProjectName: {
     fontSize: Platform.OS === 'ios' ? 15 : 14,
     fontWeight: '600',
-    color: '#10B981',
+    color: appColors.primary,
     textAlign: 'center',
     marginBottom: 20,
     fontStyle: 'italic',
     paddingHorizontal: 8,
   },
   confirmInfoBox: {
-    backgroundColor: '#F9FAFB',
+    backgroundColor: appColors.background,
     borderRadius: 16,
     padding: 16,
     marginBottom: 24,
@@ -1935,7 +1989,7 @@ const styles = StyleSheet.create({
   confirmInfoText: {
     flex: 1,
     fontSize: 14,
-    color: '#6B7280',
+    color: appColors.textMuted,
     marginLeft: 12,
     lineHeight: 20,
   },
@@ -1952,22 +2006,22 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   confirmButtonCancel: {
-    backgroundColor: '#F3F4F6',
+    backgroundColor: appColors.surfaceSoft,
   },
   confirmButtonCancelText: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#6B7280',
+    color: appColors.textMuted,
   },
   confirmButtonJoin: {
-    backgroundColor: '#10B981',
+    backgroundColor: appColors.primary,
     flexDirection: 'row',
     gap: 6,
   },
   confirmButtonJoinText: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: appColors.white,
     flexShrink: 1,
   },
   // Leave Reason Modal Styles
@@ -1975,7 +2029,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   leaveReasonModalContent: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: appColors.surface,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     width: '100%',
@@ -1984,7 +2038,7 @@ const styles = StyleSheet.create({
   modalHandle: {
     width: 40,
     height: 4,
-    backgroundColor: '#E5E7EB',
+    backgroundColor: appColors.surfaceMuted,
     borderRadius: 2,
     alignSelf: 'center',
     marginTop: 12,
@@ -1997,24 +2051,24 @@ const styles = StyleSheet.create({
   leaveModalLabel: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#1F2937',
+    color: appColors.text,
     marginBottom: 12,
     marginTop: 8,
   },
   leaveReasonInput: {
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: appColors.border,
     borderRadius: 16,
     padding: 16,
     fontSize: 15,
-    color: '#1F2937',
-    backgroundColor: '#F9FAFB',
+    color: appColors.text,
+    backgroundColor: appColors.background,
     minHeight: 140,
     marginBottom: 8,
   },
   charCounter: {
     fontSize: 12,
-    color: '#9CA3AF',
+    color: appColors.textSoft,
     textAlign: 'right',
     marginBottom: 20,
   },
@@ -2030,20 +2084,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   leaveModalButtonCancel: {
-    backgroundColor: '#F3F4F6',
+    backgroundColor: appColors.surfaceSoft,
   },
   leaveModalButtonCancelText: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#6B7280',
+    color: appColors.textMuted,
   },
   leaveModalButtonConfirm: {
-    backgroundColor: '#EF4444',
+    backgroundColor: appColors.danger,
   },
   leaveModalButtonConfirmText: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: appColors.white,
   },
   buttonDisabled: {
     opacity: 0.5,
@@ -2063,7 +2117,7 @@ const styles = StyleSheet.create({
     paddingVertical: 20,
   },
   successModalContent: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: appColors.surface,
     borderRadius: 24,
     padding: 32,
     width: '90%',
@@ -2082,7 +2136,7 @@ const styles = StyleSheet.create({
     width: 100,
     height: 100,
     borderRadius: 50,
-    backgroundColor: '#ECFDF5',
+    backgroundColor: appColors.primarySurface,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -2093,20 +2147,20 @@ const styles = StyleSheet.create({
     width: 100,
     height: 100,
     borderRadius: 50,
-    backgroundColor: '#FEF2F2',
+    backgroundColor: appColors.dangerSurface,
     justifyContent: 'center',
     alignItems: 'center',
   },
   successTitle: {
     fontSize: Platform.OS === 'ios' ? 24 : 22,
     fontWeight: '800',
-    color: '#1F2937',
+    color: appColors.text,
     textAlign: 'center',
     marginBottom: 12,
   },
   successMessage: {
     fontSize: Platform.OS === 'ios' ? 16 : 15,
-    color: '#6B7280',
+    color: appColors.textMuted,
     textAlign: 'center',
     marginBottom: 8,
     lineHeight: 24,
@@ -2115,14 +2169,14 @@ const styles = StyleSheet.create({
   successProjectName: {
     fontSize: Platform.OS === 'ios' ? 15 : 14,
     fontWeight: '600',
-    color: '#10B981',
+    color: appColors.primary,
     textAlign: 'center',
     marginBottom: 24,
     fontStyle: 'italic',
     paddingHorizontal: 8,
   },
   successInfoBox: {
-    backgroundColor: '#F9FAFB',
+    backgroundColor: appColors.background,
     borderRadius: 16,
     padding: 16,
     width: '100%',
@@ -2137,18 +2191,18 @@ const styles = StyleSheet.create({
   successInfoText: {
     flex: 1,
     fontSize: 14,
-    color: '#6B7280',
+    color: appColors.textMuted,
     marginLeft: 12,
     lineHeight: 20,
   },
   successButton: {
-    backgroundColor: '#10B981',
+    backgroundColor: appColors.primary,
     paddingVertical: 16,
     paddingHorizontal: 48,
     borderRadius: 16,
     width: '100%',
     alignItems: 'center',
-    shadowColor: '#10B981',
+    shadowColor: appColors.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
@@ -2157,16 +2211,16 @@ const styles = StyleSheet.create({
   successButtonText: {
     fontSize: 17,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: appColors.white,
   },
   leaveSuccessButton: {
-    backgroundColor: '#EF4444',
+    backgroundColor: appColors.danger,
     paddingVertical: 16,
     paddingHorizontal: 48,
     borderRadius: 16,
     width: '100%',
     alignItems: 'center',
-    shadowColor: '#EF4444',
+    shadowColor: appColors.danger,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
@@ -2175,16 +2229,16 @@ const styles = StyleSheet.create({
   leaveSuccessButtonText: {
     fontSize: 17,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: appColors.white,
   },
   penaltyInfoBox: {
-    backgroundColor: '#FEF2F2',
+    backgroundColor: appColors.dangerSurface,
     borderRadius: 16,
     padding: 16,
     width: '100%',
     marginBottom: 24,
     borderWidth: 1,
-    borderColor: '#FEE2E2',
+    borderColor: '#7F1D1D',
   },
   penaltyHeader: {
     flexDirection: 'row',
@@ -2207,7 +2261,7 @@ const styles = StyleSheet.create({
   },
   tfChangeBox: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: appColors.surface,
     borderRadius: 12,
     padding: 8,
     alignItems: 'center',
@@ -2216,7 +2270,7 @@ const styles = StyleSheet.create({
   tfChangeLabel: {
     fontSize: 11,
     fontWeight: '600',
-    color: '#6B7280',
+    color: appColors.textMuted,
     marginBottom: 4,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
@@ -2224,13 +2278,13 @@ const styles = StyleSheet.create({
   tfChangeValue: {
     fontSize: 22,
     fontWeight: '800',
-    color: '#10B981',
+    color: appColors.primary,
   },
   tfChangeValueDanger: {
-    color: '#EF4444',
+    color: appColors.danger,
   },
   penaltyNote: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: appColors.surface,
     borderRadius: 8,
     padding: 8,
     alignItems: 'center',

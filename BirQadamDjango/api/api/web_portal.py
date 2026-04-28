@@ -1,17 +1,20 @@
 from __future__ import annotations
 
 import logging
+from datetime import datetime, timedelta
 
 from django.conf import settings
 from django.contrib.auth import get_user_model, login, logout
+from django.db.models import Q
 from django.urls import path
 from django.utils import timezone
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
 from asgiref.sync import async_to_sync
 from rest_framework import status
+from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.permissions import AllowAny, IsAuthenticated
-from rest_framework.parsers import FormParser, MultiPartParser
+from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from api.projects.models import VolunteerProject
@@ -38,7 +41,13 @@ from api.users.services.registration import (
 )
 from api.users.services.dashboard import get_volunteer_dashboard_data
 from api.projects.services.catalog import get_projects_catalog
-from api.users.services.profile import get_volunteer_stats, get_volunteer_activity
+from api.projects.services.lifecycle import (
+    archive_finished_project_tasks,
+    cleanup_archived_project_chats,
+    get_active_volunteer_project_ids,
+)
+from api.users.services.profile import get_volunteer_stats
+from api.services.web_portal_profile import get_volunteer_activity
 from api.users.services.telegram_sync import (
     generate_link_code,
     get_user_link_code,
@@ -60,6 +69,47 @@ from .authentication import CsrfExemptSessionAuthentication
 logger = logging.getLogger(__name__)
 app_name = 'web_portal'
 User = get_user_model()
+
+
+def _build_auth_tokens_for_user(user):
+    refresh = RefreshToken.for_user(user)
+    return {
+        'access_token': str(refresh.access_token),
+        'refresh_token': str(refresh),
+    }
+
+
+def _active_project_chat_filter(today=None):
+    current_day = today or timezone.localdate()
+    return (
+        Q(chat_type='project') &
+        Q(project__isnull=False) &
+        Q(project__is_deleted=False) &
+        Q(project__status='approved') &
+        (Q(project__end_date__isnull=True) | Q(project__end_date__gte=current_day))
+    )
+
+
+def _get_volunteer_chat_for_user(user, chat_id):
+    today = timezone.localdate()
+    cleanup_archived_project_chats(today=today)
+    return get_object_or_404(
+        Chat.objects.select_related('project'),
+        Q(chat_type__in=['direct', 'group']) | _active_project_chat_filter(today),
+        id=chat_id,
+        participants=user,
+        is_active=True,
+    )
+
+
+def _build_chat_message_preview(message):
+    if message.text:
+        return message.text
+    if getattr(message, 'image', None):
+        return 'Фото'
+    if getattr(message, 'file', None):
+        return 'Файл'
+    return 'Вложение'
 
 
 def _resolve_user(identifier: str) -> User | None:
@@ -204,6 +254,7 @@ class EmailVerificationAPIView(APIView):
             
             is_organizer = getattr(user, 'role', None) == 'organizer' or getattr(user, 'is_organizer', False)
             dashboard_url = '/organizer/dashboard' if is_organizer else '/volunteer/dashboard'
+            tokens = _build_auth_tokens_for_user(user)
             
             return Response(
                 {
@@ -220,6 +271,7 @@ class EmailVerificationAPIView(APIView):
                         'organizer_status': getattr(user, 'organizer_status', None),
                         'is_active': user.is_active,
                     },
+                    **tokens,
                     'dashboard_url': dashboard_url,
                 },
                 status=status.HTTP_200_OK,
@@ -608,10 +660,12 @@ class VolunteerLoginAPIView(APIView):
         is_organizer = (getattr(user, 'role', None) == 'organizer' or getattr(user, 'is_organizer', False)) and \
                        getattr(user, 'organizer_status', None) == 'approved'
         dashboard_url = '/organizer/dashboard' if is_organizer else '/volunteer/dashboard'
+        tokens = _build_auth_tokens_for_user(user)
         return Response(
             {
                 'message': 'Вход выполнен успешно.',
                 'user': VolunteerProfileSerializer(user).data,
+                **tokens,
                 'dashboard_url': dashboard_url,
             },
             status=status.HTTP_200_OK,
@@ -656,6 +710,7 @@ class VolunteerMeAPIView(APIView):
 class VolunteerProfileAPIView(APIView):
     permission_classes = [IsAuthenticated]
     authentication_classes = (CsrfExemptSessionAuthentication,)
+    parser_classes = (JSONParser, MultiPartParser, FormParser)
 
     def get(self, request, *args, **kwargs):
         serializer = VolunteerProfileSerializer(request.user)
@@ -848,6 +903,25 @@ class VolunteerTaskPhotoReportAPIView(APIView):
             return Response({'detail': 'Задача не найдена или не назначена вам.'}, status=status.HTTP_404_NOT_FOUND)
 
         # Проверяем, есть ли уже активный фотоотчет (не отклоненный)
+        accepted_assignment = task.assignments.filter(volunteer=request.user, accepted=True).exists()
+        if not accepted_assignment:
+            return Response(
+                {'detail': 'Сначала примите задачу, чтобы загрузить фотоотчёт.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if task.is_expired():
+            return Response(
+                {'detail': 'Срок задачи уже истёк. Загрузка фотоотчёта недоступна.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if task.status not in ['in_progress', 'revision']:
+            return Response(
+                {'detail': 'Сейчас для этой задачи нельзя загрузить фотоотчёт.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         existing_active_photos = Photo.objects.filter(
             task=task,
             volunteer=request.user,
@@ -1295,6 +1369,16 @@ class VolunteerProjectJoinAPIView(APIView):
         except Project.DoesNotExist:
             return Response({'detail': 'Проект не найден или недоступен.'}, status=status.HTTP_404_NOT_FOUND)
 
+        current_trust_factor = getattr(request.user, 'trust_factor', 0)
+        if not request.user.can_join_projects():  # type: ignore[attr-defined]
+            return Response(
+                {
+                    'detail': 'При Trust Factor 0 присоединиться к проекту нельзя.',
+                    'trust_factor': current_trust_factor,
+                },
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
         birqadam_project, created = VolunteerProject.objects.get_or_create(
             volunteer=request.user,
             project=project,
@@ -1639,12 +1723,10 @@ class VolunteerActivityAPIView(APIView):
     authentication_classes = (CsrfExemptSessionAuthentication,)
 
     def get(self, request, *args, **kwargs):
-        try:
-            months = int(request.query_params.get('months', 6))
-        except ValueError:
-            return Response({'detail': 'Параметр months должен быть числом.'}, status=status.HTTP_400_BAD_REQUEST)
+        start_date = request.query_params.get('start_date')
+        end_date = request.query_params.get('end_date')
 
-        activity = get_volunteer_activity(request.user, months=months)
+        activity = get_volunteer_activity(request.user, start_date_str=start_date, end_date_str=end_date)
         serializer = VolunteerActivitySeriesSerializer(activity)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
@@ -2377,14 +2459,22 @@ class VolunteerTasksAPIView(APIView):
     permission_classes = [IsAuthenticated]
     def get(self, request):
         user = request.user
-        
-        # Получаем задачи только те, на которые волонтер назначен и принял их
+        today = timezone.localdate()
+        archive_finished_project_tasks(today=today)
+        active_project_ids = get_active_volunteer_project_ids(user, today=today)
+
+        # Показываем и доступные задачи из активных проектов, и уже связанные с
+        # волонтёром задачи, чтобы "Ближайшая задача" и раздел "Мои задачи"
+        # использовали совместимую выборку.
         tasks = Task.objects.filter(
-            assignments__volunteer=user,
-            assignments__accepted=True,
+            Q(project_id__in=active_project_ids) | Q(assignments__volunteer=user),
             is_deleted=False
-        ).distinct().order_by('deadline_date')
-        
+        ).exclude(
+            Q(project_id__in=active_project_ids)
+            & Q(status__in=['completed', 'archived', 'failed', 'closed'])
+            & ~Q(assignments__volunteer=user)
+        ).distinct().order_by('deadline_date', '-created_at')
+
         serializer = VolunteerTaskSummarySerializer(tasks, many=True, context={'request': request})
         return Response({'tasks': serializer.data})
 
@@ -2437,6 +2527,221 @@ class VolunteerTaskArchiveAPIView(APIView):
         return Response({'error': 'Можно архивировать только завершенные или закрытые задачи'}, status=400)
 
 
+@method_decorator(csrf_exempt, name='dispatch')
+class VolunteerCalendarAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+    authentication_classes = (CsrfExemptSessionAuthentication,)
+
+    def _get_full_image_url(self, request, image_field):
+        if not image_field:
+            return None
+
+        try:
+            image_url = image_field.url
+        except Exception:
+            return None
+
+        if not image_url:
+            return None
+
+        try:
+            return request.build_absolute_uri(image_url)
+        except Exception:
+            return image_url
+
+    def _serialize_participant(self, request, volunteer):
+        return {
+            'id': volunteer.id,
+            'name': volunteer.name or volunteer.username,
+            'avatar': self._get_full_image_url(request, getattr(volunteer, 'avatar', None)),
+        }
+
+    def _parse_month_bounds(self, month_value):
+        if not month_value:
+            month_start = timezone.localdate().replace(day=1)
+        else:
+            month_start = datetime.strptime(month_value, '%Y-%m').date().replace(day=1)
+
+        next_month = (month_start.replace(day=28) + timedelta(days=4)).replace(day=1)
+        month_end = next_month - timedelta(days=1)
+        return month_start, month_end
+
+    def get(self, request, *args, **kwargs):
+        try:
+            month_start, month_end = self._parse_month_bounds(request.query_params.get('month'))
+        except ValueError:
+            return Response(
+                {'detail': 'РџР°СЂР°РјРµС‚СЂ month РґРѕР»Р¶РµРЅ Р±С‹С‚СЊ РІ С„РѕСЂРјР°С‚Рµ YYYY-MM.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        month_key = month_start.strftime('%Y-%m')
+
+        joined_project_ids = get_active_volunteer_project_ids(
+            request.user,
+            today=timezone.localdate(),
+        )
+
+        if not joined_project_ids:
+            return Response({'month': month_key, 'events': []}, status=status.HTTP_200_OK)
+
+        projects = list(
+            Project.objects.filter(
+                id__in=joined_project_ids,
+                is_deleted=False,
+                status='approved',
+            )
+            .select_related('creator')
+            .prefetch_related('volunteer_projects__volunteer')
+        )
+
+        tasks = list(
+            Task.objects.filter(
+                project_id__in=joined_project_ids,
+                is_deleted=False,
+                status='open',
+            )
+            .filter(
+                Q(deadline_date__range=(month_start, month_end))
+                | Q(deadline_date__isnull=True, start_date__range=(month_start, month_end))
+            )
+            .select_related('project', 'project__creator', 'creator')
+            .prefetch_related('assignments__volunteer')
+        )
+
+        events = []
+
+        for project in projects:
+            active_memberships = [
+                membership
+                for membership in project.volunteer_projects.all()
+                if membership.is_active
+            ]
+            participants_preview = [
+                self._serialize_participant(request, membership.volunteer)
+                for membership in active_memberships[:4]
+            ]
+            participants_count = len(active_memberships)
+            project_location = project.address or project.city
+            project_image = self._get_full_image_url(request, getattr(project, 'cover_image', None))
+            organizer_name = project.creator.name or project.creator.username
+
+            if project.start_date and month_start <= project.start_date <= month_end:
+                events.append({
+                    'id': f'project-{project.id}-start-{project.start_date.isoformat()}',
+                    'source_type': 'project',
+                    'source_id': project.id,
+                    'type': 'project_start',
+                    'title': project.title,
+                    'subtitle': project.city or project.get_volunteer_type_display(),
+                    'description': project.description,
+                    'date': project.start_date.isoformat(),
+                    'end_date': project.end_date.isoformat() if project.end_date else None,
+                    'start_time': None,
+                    'end_time': None,
+                    'is_all_day': True,
+                    'location': project_location,
+                    'status': None,
+                    'image': project_image,
+                    'project_id': project.id,
+                    'project_title': project.title,
+                    'project_type': project.volunteer_type,
+                    'project_city': project.city,
+                    'project_address': project.address,
+                    'project_latitude': project.latitude,
+                    'project_longitude': project.longitude,
+                    'project_gis2_url': project.gis2_url,
+                    'task_id': None,
+                    'organizer_name': organizer_name,
+                    'participants_count': participants_count,
+                    'participants_preview': participants_preview,
+                })
+
+            if project.end_date and month_start <= project.end_date <= month_end:
+                events.append({
+                    'id': f'project-{project.id}-end-{project.end_date.isoformat()}',
+                    'source_type': 'project',
+                    'source_id': project.id,
+                    'type': 'project_end',
+                    'title': project.title,
+                    'subtitle': project.city or project.get_volunteer_type_display(),
+                    'description': project.description,
+                    'date': project.end_date.isoformat(),
+                    'end_date': project.end_date.isoformat(),
+                    'start_time': None,
+                    'end_time': None,
+                    'is_all_day': True,
+                    'location': project_location,
+                    'status': None,
+                    'image': project_image,
+                    'project_id': project.id,
+                    'project_title': project.title,
+                    'project_type': project.volunteer_type,
+                    'project_city': project.city,
+                    'project_address': project.address,
+                    'project_latitude': project.latitude,
+                    'project_longitude': project.longitude,
+                    'project_gis2_url': project.gis2_url,
+                    'task_id': None,
+                    'organizer_name': organizer_name,
+                    'participants_count': participants_count,
+                    'participants_preview': participants_preview,
+                })
+
+        for task in tasks:
+            task_date = task.deadline_date or task.start_date
+            if not task_date:
+                continue
+
+            accepted_assignments = [
+                assignment
+                for assignment in task.assignments.all()
+                if assignment.accepted
+            ]
+            task_participants_preview = [
+                self._serialize_participant(request, assignment.volunteer)
+                for assignment in accepted_assignments[:4]
+            ]
+            task_image = (
+                self._get_full_image_url(request, getattr(task, 'task_image', None))
+                or self._get_full_image_url(request, getattr(task.project, 'cover_image', None))
+            )
+
+            events.append({
+                'id': f'task-{task.id}-{task_date.isoformat()}',
+                'source_type': 'task',
+                'source_id': task.id,
+                'type': 'task_deadline',
+                'title': task.text,
+                'subtitle': task.project.city or task.project.title,
+                'description': task.text,
+                'date': task_date.isoformat(),
+                'end_date': task.deadline_date.isoformat() if task.deadline_date else None,
+                'start_time': task.start_time.isoformat() if task.start_time else None,
+                'end_time': task.end_time.isoformat() if task.end_time else None,
+                'is_all_day': not bool(task.start_time or task.end_time),
+                'location': task.project.address or task.project.city,
+                'status': task.status,
+                'image': task_image,
+                'project_id': task.project_id,
+                'project_title': task.project.title,
+                'project_type': task.project.volunteer_type,
+                'project_city': task.project.city,
+                'project_address': task.project.address,
+                'project_latitude': task.project.latitude,
+                'project_longitude': task.project.longitude,
+                'project_gis2_url': task.project.gis2_url,
+                'task_id': task.id,
+                'organizer_name': task.project.creator.name or task.project.creator.username,
+                'participants_count': len(accepted_assignments),
+                'participants_preview': task_participants_preview,
+            })
+
+        events.sort(key=lambda item: (item['date'], item['start_time'] or '00:00', item['title']))
+
+        return Response({'month': month_key, 'events': events}, status=status.HTTP_200_OK)
+
+
 urlpatterns = [
     path('register/volunteer/', VolunteerRegistrationAPIView.as_view(), name='register_volunteer'),
     path('register/organizer/', OrganizerRegistrationAPIView.as_view(), name='register_organizer'),
@@ -2449,13 +2754,13 @@ urlpatterns = [
     path('organizer/projects/', OrganizerProjectsAPIView.as_view(), name='organizer_projects'),
     path('organizer/projects/<int:project_id>/', OrganizerProjectsAPIView.as_view(), name='organizer_project_detail'),
     path('volunteer/dashboard/', VolunteerDashboardAPIView.as_view(), name='volunteer_dashboard'),
+    path('volunteer/calendar/', VolunteerCalendarAPIView.as_view(), name='volunteer_calendar'),
     path('volunteer/tasks/<int:task_id>/photo-reports/', VolunteerTaskPhotoReportAPIView.as_view(), name='volunteer_task_photo_reports'),
     path('volunteer/photo-reports/', VolunteerPhotoReportsAPIView.as_view(), name='volunteer_photo_reports'),
     path('volunteer/tasks/<int:task_id>/accept/', VolunteerTaskAcceptAPIView.as_view(), name='volunteer_task_accept'),
     path('volunteer/tasks/<int:task_id>/decline/', VolunteerTaskDeclineAPIView.as_view(), name='volunteer_task_decline'),
     path('volunteer/tasks/<int:task_id>/retry/', VolunteerTaskRetryAPIView.as_view(), name='volunteer_task_retry'),
     path('volunteer/tasks/<int:task_id>/complete/', VolunteerTaskCompleteAPIView.as_view(), name='volunteer_task_complete'),
-    path('volunteer/tasks/<int:task_id>/retry/', VolunteerTaskRetryAPIView.as_view(), name='volunteer_task_retry'),
     path('volunteer/projects/', VolunteerProjectsAPIView.as_view(), name='volunteer_projects'),
     path('volunteer/projects/<int:project_id>/', VolunteerProjectDetailAPIView.as_view(), name='volunteer_project_detail'),
     path('volunteer/projects/<int:project_id>/join/', VolunteerProjectJoinAPIView.as_view(), name='volunteer_project_join'),
@@ -2466,17 +2771,198 @@ urlpatterns = [
     path('volunteer/stats/', VolunteerStatsAPIView.as_view(), name='volunteer_stats'),
     path('volunteer/activity/', VolunteerActivityAPIView.as_view(), name='volunteer_activity'),
     path('telegram/sync/', TelegramSyncAPIView.as_view(), name='telegram_sync'),
-    path('verify-email/', EmailVerificationAPIView.as_view(), name='verify_email'),
-    path('resend-verification-code/', ResendVerificationCodeAPIView.as_view(), name='resend_verification_code'),
-    path('cancel-registration/', CancelRegistrationAPIView.as_view(), name='cancel_registration'),
-    path('password-reset/request/', PasswordResetRequestAPIView.as_view(), name='password_reset_request'),
-    path('password-reset/confirm/', PasswordResetConfirmAPIView.as_view(), name='password_reset_confirm'),
-    path('change-password/', ChangePasswordAPIView.as_view(), name='change_password'),
     path('ai/ask/', AIAssistantAPIView.as_view(), name='ai_assistant'),
     path('volunteer/tasks/', VolunteerTasksAPIView.as_view(), name='volunteer_tasks_list'),
     path('volunteer/tasks/<int:task_id>/', VolunteerTaskDetailAPIView.as_view(), name='volunteer_task_detail'),
-    path('volunteer/tasks/<int:task_id>/accept/', VolunteerTaskAcceptAPIView.as_view(), name='volunteer_task_accept'),
-    path('volunteer/tasks/<int:task_id>/decline/', VolunteerTaskDeclineAPIView.as_view(), name='volunteer_task_decline'),
-    path('volunteer/tasks/<int:task_id>/archive/', VolunteerTaskArchiveAPIView.as_view(), name='volunteer_task_archive'),   
+    path('volunteer/tasks/<int:task_id>/archive/', VolunteerTaskArchiveAPIView.as_view(), name='volunteer_task_archive'),
 ]
 
+# --- Chat API Views ---
+
+# --- Chat API Views ---
+from api.chat.models import Chat, Message
+
+@method_decorator(csrf_exempt, name='dispatch')
+class VolunteerChatsListAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+    authentication_classes = (CsrfExemptSessionAuthentication,)
+
+    def get(self, request, *args, **kwargs):
+        today = timezone.localdate()
+        cleanup_archived_project_chats(today=today)
+        chats = Chat.objects.filter(
+            Q(chat_type__in=['direct', 'group']) | _active_project_chat_filter(today),
+            participants=request.user,
+            is_active=True
+        ).select_related('project').prefetch_related('participants', 'messages')
+        
+        chat_list = []
+        for chat in chats:
+            # Get last message
+            last_message = chat.messages.filter(is_deleted=False).order_by('-created_at').first()
+            last_message_data = None
+            if last_message:
+                last_message_data = {
+                    'text': last_message.text or 'Вложение',
+                    'sender_name': last_message.sender.name or last_message.sender.username,
+                    'is_read': last_message.is_read,
+                    'created_at': last_message.created_at.isoformat()
+                }
+                last_message_data['text'] = _build_chat_message_preview(last_message)
+
+            # Unread count
+            unread_count = chat.get_unread_count(request.user)
+
+            # Title and Avatar logic
+            title = chat.name
+            avatar = None
+            if chat.chat_type == 'project' and chat.project:
+                title = f"{chat.project.title}"
+                avatar = self.get_project_avatar(request, chat.project)
+            elif chat.chat_type == 'direct':
+                # Find the other user
+                other_user = chat.participants.exclude(id=request.user.id).first()
+                if other_user:
+                    title = other_user.name or other_user.username
+                    avatar = self.get_user_avatar(request, other_user)
+            
+            chat_list.append({
+                'id': chat.id,
+                'title': title,
+                'avatar': avatar,
+                'chat_type': chat.chat_type,
+                'project_id': chat.project_id if chat.chat_type == 'project' else None,
+                'unread_count': unread_count,
+                'last_message': last_message_data,
+                'updated_at': chat.updated_at.isoformat()
+            })
+            
+        # Sort by latest activity
+        chat_list.sort(key=lambda x: x['last_message']['created_at'] if x['last_message'] else x['updated_at'], reverse=True)
+        return Response({'chats': chat_list}, status=status.HTTP_200_OK)
+
+    def get_project_avatar(self, request, project):
+        if hasattr(project, 'cover_image') and project.cover_image:
+            return request.build_absolute_uri(project.cover_image.url)
+        return None
+
+    def get_user_avatar(self, request, user):
+        if hasattr(user, 'avatar') and user.avatar:
+            return request.build_absolute_uri(user.avatar.url)
+        return None
+
+@method_decorator(csrf_exempt, name='dispatch')
+class VolunteerChatMessagesAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+    authentication_classes = (CsrfExemptSessionAuthentication,)
+
+    def get(self, request, chat_id, *args, **kwargs):
+        chat = _get_volunteer_chat_for_user(request.user, chat_id)
+        
+        limit = int(request.query_params.get('limit', 50))
+        offset = int(request.query_params.get('offset', 0))
+        
+        messages_qs = chat.messages.filter(is_deleted=False).select_related('sender').order_by('-created_at')[offset:offset + limit]
+        
+        # Also mark these fetched messages as read if unread
+        unread_messages = [msg for msg in messages_qs if not msg.is_read and msg.sender != request.user]
+        if unread_messages:
+            for msg in unread_messages:
+                msg.is_read = True
+                msg.read_at = timezone.now()
+            Message.objects.bulk_update(unread_messages, ['is_read', 'read_at'])
+
+        messages = []
+        for msg in reversed(list(messages_qs)):
+            image_url = request.build_absolute_uri(msg.image.url) if msg.image else None
+            messages.append({
+                'id': msg.id,
+                'text': msg.text,
+                'sender_id': msg.sender.id,
+                'sender_name': msg.sender.name or msg.sender.username,
+                'avatar': request.build_absolute_uri(msg.sender.avatar.url) if getattr(msg.sender, 'avatar', None) else None,
+                'message_type': 'photo' if image_url else msg.message_type,
+                'image_url': image_url,
+                'photo_url': image_url,
+                'file_url': request.build_absolute_uri(msg.file.url) if msg.file else None,
+                'is_read': msg.is_read,
+                'created_at': msg.created_at.isoformat(),
+            })
+            
+        return Response({'messages': messages, 'count': len(messages)}, status=status.HTTP_200_OK)
+
+@method_decorator(csrf_exempt, name='dispatch')
+class VolunteerSendMessageAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+    authentication_classes = (CsrfExemptSessionAuthentication,)
+    parser_classes = (JSONParser, MultiPartParser, FormParser)
+
+    def post(self, request, chat_id, *args, **kwargs):
+        chat = _get_volunteer_chat_for_user(request.user, chat_id)
+        
+        text = request.data.get('text', '').strip()
+        image = request.FILES.get('image')
+        file = request.FILES.get('file')
+        
+        if not text and not image and not file:
+            return Response({'error': 'Сообщение не может быть пустым'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        msg_type = 'text'
+        if image:
+            msg_type = 'image'
+        elif file:
+            msg_type = 'file'
+            
+        message = Message.objects.create(
+            chat=chat,
+            sender=request.user,
+            text=text,
+            message_type=msg_type,
+            image=image,
+            file=file,
+            is_delivered=True,
+            delivered_at=timezone.now(),
+        )
+        
+        chat.updated_at = timezone.now()
+        chat.save(update_fields=['updated_at'])
+
+        image_url = request.build_absolute_uri(message.image.url) if message.image else None
+        
+        return Response({
+            'id': message.id,
+            'text': message.text,
+            'sender_id': message.sender.id,
+            'sender_name': message.sender.name or message.sender.username,
+            'avatar': request.build_absolute_uri(message.sender.avatar.url) if getattr(message.sender, 'avatar', None) else None,
+            'message_type': 'photo' if image_url else message.message_type,
+            'image_url': image_url,
+            'photo_url': image_url,
+            'file_url': request.build_absolute_uri(message.file.url) if message.file else None,
+            'created_at': message.created_at.isoformat(),
+        }, status=status.HTTP_201_CREATED)
+
+@method_decorator(csrf_exempt, name='dispatch')
+class VolunteerMarkMessagesReadAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+    authentication_classes = (CsrfExemptSessionAuthentication,)
+
+    def post(self, request, chat_id, *args, **kwargs):
+        chat = _get_volunteer_chat_for_user(request.user, chat_id)
+        
+        updated = chat.messages.filter(
+            is_read=False,
+            is_deleted=False
+        ).exclude(sender=request.user).update(
+            is_read=True,
+            read_at=timezone.now()
+        )
+        
+        return Response({'message': 'Сообщения отмечены как прочитанные', 'updated_count': updated}, status=status.HTTP_200_OK)
+
+urlpatterns += [
+    path('volunteer/chats/', VolunteerChatsListAPIView.as_view(), name='volunteer_chats_list'),
+    path('volunteer/chats/<int:chat_id>/messages/', VolunteerChatMessagesAPIView.as_view(), name='volunteer_chat_messages'),
+    path('volunteer/chats/<int:chat_id>/send/', VolunteerSendMessageAPIView.as_view(), name='volunteer_send_message'),
+    path('volunteer/chats/<int:chat_id>/read/', VolunteerMarkMessagesReadAPIView.as_view(), name='volunteer_mark_messages_read'),
+]

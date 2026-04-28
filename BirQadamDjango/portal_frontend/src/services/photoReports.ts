@@ -14,10 +14,7 @@ export async function uploadPhotoReport(taskId: number, files: File | File[], co
   
   const { data } = await httpClient.post<{ message: string; photos: VolunteerPhotoSummary[] }>(
     `/api/web/volunteer/tasks/${taskId}/photo-reports/`,
-    formData,
-    {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    },
+    formData
   );
   return data;
 }
@@ -60,10 +57,7 @@ export async function deletePhotoReport(taskId: number) {
       formData.append('action', 'withdraw');
       const { data } = await httpClient.post<{ message: string }>(
         `/api/web/volunteer/tasks/${taskId}/photo-reports/`,
-        formData,
-        {
-          headers: { 'Content-Type': 'multipart/form-data' },
-        },
+        formData
       );
       return data;
     }
@@ -73,10 +67,7 @@ export async function deletePhotoReport(taskId: number) {
       formData.append('action', 'withdraw');
       const { data } = await httpClient.post<{ message: string }>(
         `/api/web/volunteer/tasks/${taskId}/photo-reports/`,
-        formData,
-        {
-          headers: { 'Content-Type': 'multipart/form-data' },
-        },
+        formData
       );
       return data;
     } catch (postError: any) {

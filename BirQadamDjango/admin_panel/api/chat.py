@@ -5,15 +5,56 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework import status
+from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from django.http import HttpRequest
 from django.utils import timezone
 from typing import Any
 import logging
 
 from api.models import Chat, Message, Project, VolunteerProject
+from api.projects.services.lifecycle import cleanup_archived_project_chats, is_project_active
 from admin_panel.views.views import CsrfExemptSessionAuthentication
 
 logger = logging.getLogger(__name__)
+
+
+def _build_media_url(request: HttpRequest, media_field: Any) -> str | None:
+    if not media_field:
+        return None
+
+    try:
+        return request.build_absolute_uri(media_field.url)
+    except Exception:
+        return getattr(media_field, 'url', None)
+
+
+def _serialize_chat_message(request: HttpRequest, chat: Chat, message: Message) -> dict[str, Any]:
+    image_url = _build_media_url(request, message.image)
+    file_url = _build_media_url(request, message.file)
+
+    return {
+        'id': message.id,
+        'text': message.text,
+        'sender_id': message.sender.id,
+        'sender_name': message.sender.name or message.sender.username,
+        'sender_is_organizer': message.sender == chat.project.creator if chat.project else False,
+        'message_type': 'photo' if image_url else message.message_type,
+        'image_url': image_url,
+        'photo_url': image_url,
+        'file_url': file_url,
+        'is_read': message.is_read,
+        'created_at': message.created_at.isoformat(),
+    }
+
+
+def _ensure_project_chat_is_active(project: Project | None, today) -> Response | None:
+    if project and not is_project_active(project, today=today):
+        return Response(
+            {'error': 'Чат доступен только для активных проектов'},
+            status=status.HTTP_410_GONE,
+        )
+
+    return None
 
 
 class ProjectChatAPIView(APIView):
@@ -25,7 +66,12 @@ class ProjectChatAPIView(APIView):
         """Получить чат проекта"""
         try:
             # Проверяем, что проект существует
-            project = Project.objects.get(id=project_id, deleted_at__isnull=True)
+            today = timezone.localdate()
+            cleanup_archived_project_chats(today=today)
+            project = Project.objects.get(id=project_id, is_deleted=False)
+            inactive_chat_response = _ensure_project_chat_is_active(project, today=today)
+            if inactive_chat_response is not None:
+                return inactive_chat_response
             
             # Проверяем доступ: пользователь должен быть либо организатором проекта, либо волонтером
             is_organizer = project.creator == request.user
@@ -121,10 +167,15 @@ class ChatMessagesAPIView(APIView):
     def get(self, request: HttpRequest, chat_id: int) -> Response:
         """Получить сообщения чата"""
         try:
+            today = timezone.localdate()
+            cleanup_archived_project_chats(today=today)
             chat = Chat.objects.select_related('project').get(
                 id=chat_id,
                 is_active=True
             )
+            inactive_chat_response = _ensure_project_chat_is_active(chat.project, today=today)
+            if inactive_chat_response is not None:
+                return inactive_chat_response
             
             # Проверяем доступ
             if request.user not in chat.participants.all():
@@ -141,21 +192,8 @@ class ChatMessagesAPIView(APIView):
                 is_deleted=False
             ).select_related('sender').order_by('-created_at')[offset:offset + limit]
             
-            messages = []
-            for msg in reversed(messages_qs):  # Переворачиваем для правильного порядка
-                messages.append({
-                    'id': msg.id,
-                    'text': msg.text,
-                    'sender_id': msg.sender.id,
-                    'sender_name': msg.sender.name or msg.sender.username,
-                    'sender_is_organizer': msg.sender == chat.project.creator if chat.project else False,
-                    'message_type': msg.message_type,
-                    'image_url': msg.image.url if msg.image else None,
-                    'file_url': msg.file.url if msg.file else None,
-                    'is_read': msg.is_read,
-                    'created_at': msg.created_at.isoformat(),
-                })
-            
+            messages = [_serialize_chat_message(request, chat, msg) for msg in reversed(messages_qs)]
+
             return Response({
                 'messages': messages,
                 'count': len(messages),
@@ -179,13 +217,20 @@ class SendMessageAPIView(APIView):
     permission_classes = [IsAuthenticated]
     authentication_classes = [CsrfExemptSessionAuthentication]
 
+    parser_classes = (JSONParser, MultiPartParser, FormParser)
+
     def post(self, request: HttpRequest, chat_id: int) -> Response:
         """Отправить сообщение"""
         try:
+            today = timezone.localdate()
+            cleanup_archived_project_chats(today=today)
             chat = Chat.objects.select_related('project').get(
                 id=chat_id,
                 is_active=True
             )
+            inactive_chat_response = _ensure_project_chat_is_active(chat.project, today=today)
+            if inactive_chat_response is not None:
+                return inactive_chat_response
             
             # Проверяем доступ
             if request.user not in chat.participants.all():
@@ -195,18 +240,29 @@ class SendMessageAPIView(APIView):
                 )
             
             text = request.data.get('text', '').strip()
-            if not text:
+            image = request.FILES.get('image')
+            file = request.FILES.get('file')
+
+            if not text and not image and not file:
                 return Response(
                     {'error': 'Текст сообщения не может быть пустым'},
                     status=status.HTTP_400_BAD_REQUEST
                 )
             
             # Создаем сообщение
+            message_type = 'text'
+            if image:
+                message_type = 'image'
+            elif file:
+                message_type = 'file'
+
             message = Message.objects.create(
                 chat=chat,
                 sender=request.user,
                 text=text,
-                message_type='text',
+                message_type=message_type,
+                image=image,
+                file=file,
                 is_delivered=True,
                 delivered_at=timezone.now(),
             )
@@ -215,15 +271,7 @@ class SendMessageAPIView(APIView):
             chat.updated_at = timezone.now()
             chat.save(update_fields=['updated_at'])
             
-            return Response({
-                'id': message.id,
-                'text': message.text,
-                'sender_id': message.sender.id,
-                'sender_name': message.sender.name or message.sender.username,
-                'sender_is_organizer': message.sender == chat.project.creator if chat.project else False,
-                'message_type': message.message_type,
-                'created_at': message.created_at.isoformat(),
-            }, status=status.HTTP_201_CREATED)
+            return Response(_serialize_chat_message(request, chat, message), status=status.HTTP_201_CREATED)
             
         except Chat.DoesNotExist:
             return Response(
@@ -246,10 +294,15 @@ class MarkMessagesReadAPIView(APIView):
     def post(self, request: HttpRequest, chat_id: int) -> Response:
         """Отметить все сообщения в чате как прочитанные"""
         try:
-            chat = Chat.objects.get(
+            today = timezone.localdate()
+            cleanup_archived_project_chats(today=today)
+            chat = Chat.objects.select_related('project').get(
                 id=chat_id,
                 is_active=True
             )
+            inactive_chat_response = _ensure_project_chat_is_active(chat.project, today=today)
+            if inactive_chat_response is not None:
+                return inactive_chat_response
             
             # Проверяем доступ
             if request.user not in chat.participants.all():

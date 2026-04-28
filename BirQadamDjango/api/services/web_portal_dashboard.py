@@ -10,6 +10,8 @@ from api.notifications.models import NotificationRecipient
 from api.tasks.models import Photo, Task, TaskAssignment
 from api.projects.models import VolunteerProject
 
+ACTIVE_TASK_STATUSES = ('open', 'in_progress', 'under_review', 'revision')
+
 
 def get_volunteer_dashboard_data(user) -> Dict[str, Any]:  # type: ignore[no-any-unimported]
     now = timezone.now()
@@ -41,6 +43,7 @@ def get_volunteer_dashboard_data(user) -> Dict[str, Any]:  # type: ignore[no-any
         .filter(
             project_id__in=joined_project_ids,
             is_deleted=False,
+            status__in=ACTIVE_TASK_STATUSES,
         )
         .exclude(id__in=declined_task_ids)
         .order_by('deadline_date', '-created_at')
@@ -85,7 +88,13 @@ def get_volunteer_dashboard_data(user) -> Dict[str, Any]:  # type: ignore[no-any
                 photo_status = photo_list[0].status
         if photo_status is None:
             photo_status = getattr(task, 'photo_status', None)
-        can_upload_photo = accepted and not has_photo_report
+        can_retry_photo = photo_status == 'rejected' or task.status == 'revision'
+        can_upload_photo = (
+            accepted
+            and not task.is_expired()
+            and task.status not in ['completed', 'under_review', 'archived', 'failed', 'closed']
+            and (not has_photo_report or can_retry_photo)
+        )
 
         tasks_data.append(
             {

@@ -38,6 +38,8 @@ def get_projects_catalog(user, request=None) -> Dict[str, Any]:  # type: ignore[
     joined_projects = VolunteerProject.objects.filter(
         volunteer=user,
         is_active=True,
+        project__is_deleted=False,
+        project__status='approved',
     )
 
     joined_project_ids = joined_projects.values_list('project_id', flat=True)
@@ -58,15 +60,19 @@ def get_projects_catalog(user, request=None) -> Dict[str, Any]:  # type: ignore[
     
     # Для волонтеров: скрываем проекты с истекшей датой окончания
     if not is_organizer:
+        joined_projects = joined_projects.filter(
+            Q(project__end_date__isnull=True) | Q(project__end_date__gte=today)
+        )
         projects_qs = projects_qs.filter(
             Q(end_date__isnull=True) | Q(end_date__gte=today)
         )
     
     projects_qs = projects_qs.annotate(
-        tasks_count=Count('tasks', filter=Q(tasks__is_deleted=False)),
+        tasks_count=Count('tasks', filter=Q(tasks__is_deleted=False), distinct=True),
         active_members=Count(
             'volunteer_projects',
             filter=Q(volunteer_projects__is_active=True),
+            distinct=True,
         ),
         joined=Exists(
             VolunteerProject.objects.filter(

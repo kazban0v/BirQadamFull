@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -9,12 +9,20 @@ import {
   ActivityIndicator,
   Alert,
   Image,
+  Platform,
+  useWindowDimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { SafeAreaView } from 'react-native-safe-area-context';
+
 import { volunteerAPI } from '../../services/api';
+import { useTaskSyncStore } from '../../store/taskSyncStore';
 import type { Task } from '../../types';
+import { normalizeImageUrl } from '../../utils/network';
+import { syncVolunteerLocalNotifications } from '../../utils/volunteerNotifications';
+import { appColors } from '../../theme';
 
 type RootStackParamList = {
   VolunteerTaskDetail: { taskId: number };
@@ -22,62 +30,206 @@ type RootStackParamList = {
 };
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
+type TaskFilter = 'all' | 'open' | 'in_progress' | 'under_review' | 'revision' | 'completed' | 'archived';
+
+const ACTIVE_EXCLUDED_STATUSES = new Set([
+  'completed',
+  'under_review',
+  'failed',
+  'closed',
+  'archived',
+  'revision',
+  'expired',
+]);
+
+const parseTaskDeadline = (dateValue?: string, endTime?: string) => {
+  if (!dateValue) {
+    return null;
+  }
+
+  const [year, month, day] = dateValue.split('-').map((part) => Number(part));
+  if (!year || !month || !day) {
+    return null;
+  }
+
+  const [hours, minutes, seconds] = (endTime || '23:59:59').split(':').map((part) => Number(part));
+  return new Date(
+    year,
+    month - 1,
+    day,
+    Number.isFinite(hours) ? hours : 23,
+    Number.isFinite(minutes) ? minutes : 59,
+    Number.isFinite(seconds) ? seconds : 59,
+    999
+  );
+};
+
+const isTaskExpired = (task: Pick<Task, 'status' | 'end_date' | 'end_time' | 'is_expired'>): boolean => {
+  if (task.status === 'expired' || task.is_expired) {
+    return true;
+  }
+
+  const deadline = parseTaskDeadline(task.end_date, task.end_time);
+  return Boolean(deadline && Date.now() > deadline.getTime());
+};
+
+const FILTER_TABS: Array<{ key: TaskFilter; label: string; variant?: 'review' | 'revision' | 'archive' }> = [
+  { key: 'all', label: 'Всего задач' },
+  { key: 'open', label: 'Открытые' },
+  { key: 'in_progress', label: 'В работе' },
+  { key: 'under_review', label: 'На проверке', variant: 'review' },
+  { key: 'revision', label: 'На доработке', variant: 'revision' },
+  { key: 'completed', label: 'Завершено' },
+  { key: 'archived', label: 'В архиве', variant: 'archive' },
+];
+
+const isOpenTask = (task: Task): boolean =>
+  (task.status === 'pending' || task.status === 'open') && !task.accepted;
+
+const isInProgressTask = (task: Task): boolean =>
+  task.status === 'in_progress' ||
+  task.status === 'active' ||
+  Boolean(task.accepted && !ACTIVE_EXCLUDED_STATUSES.has(task.status) && !isTaskExpired(task));
+
+const matchesFilter = (task: Task, filter: TaskFilter): boolean => {
+  switch (filter) {
+    case 'all':
+      return ['open', 'pending', 'in_progress', 'active', 'under_review', 'revision'].includes(task.status);
+    case 'open':
+      return isOpenTask(task);
+    case 'in_progress':
+      return isInProgressTask(task);
+    case 'under_review':
+      return task.status === 'under_review';
+    case 'revision':
+      return task.status === 'revision';
+    case 'completed':
+      return task.status === 'completed';
+    case 'archived':
+      return task.status === 'archived';
+    default:
+      return true;
+  }
+};
+
+const getFilterCount = (tasks: Task[], filter: TaskFilter): number =>
+  tasks.filter((task) => matchesFilter(task, filter)).length;
 
 export const VolunteerTasksScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
+  const { width } = useWindowDimensions();
+  const isCompact = width < 390;
+  const isNarrow = width < 360;
+  const lastTaskMutation = useTaskSyncStore((state) => state.lastMutation);
+  const publishTaskMutation = useTaskSyncStore((state) => state.publishTaskMutation);
+  const hasLoadedTasksRef = useRef(false);
 
   const [tasks, setTasks] = useState<Task[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState<'assigned' | 'in_progress' | 'under_review' | 'completed' | 'archived' | 'rejected'>('assigned');
+  const [filter, setFilter] = useState<TaskFilter>('all');
 
-  const loadTasks = useCallback(async () => {
-    setLoading(true);
+  const handleGoToMain = useCallback(() => {
+    (navigation as any).navigate('HomeTab');
+  }, [navigation]);
+
+  const loadTasks = useCallback(async (showLoader: boolean = true) => {
+    if (showLoader) {
+      setLoading(true);
+    }
     try {
-      const response = await volunteerAPI.getTasks();
-      const tasksData = Array.isArray(response.data) ? response.data : (response.data.tasks || []);
+      const [response, projectsResponse] = await Promise.all([
+        volunteerAPI.getTasks(),
+        volunteerAPI.getProjects(),
+      ]);
+      const tasksData = Array.isArray(response.data) ? response.data : response.data.tasks || [];
+      const projectsData = Array.isArray(projectsResponse.data)
+        ? projectsResponse.data
+        : projectsResponse.data.projects || [];
 
       const transformedTasks: Task[] = tasksData.map((item: any) => ({
         id: item.id,
-        title: item.text || item.title || 'Без названия',
+        title: item.title || item.text || 'Без названия',
         description: item.description || item.text || '',
         project_id: item.project_id,
         project_title: item.project_title,
-        location: item.project_city || item.city || 'Локация не указана',
-        start_date: item.deadline_date || item.created_at || new Date().toISOString(),
-        end_date: item.deadline_date || item.created_at || new Date().toISOString(),
-        status: item.status || (item.is_assigned ? 'in_progress' : 'pending'),
-        assigned_users_count: item.is_assigned ? 1 : 0,
+        location: item.location || item.project_city || item.city || 'Локация не указана',
+        start_date: item.start_date || item.deadline_date || item.created_at || new Date().toISOString(),
+        end_date: item.end_date || item.deadline_date || item.created_at || new Date().toISOString(),
+        status: item.status || 'open',
+        assigned_users_count: item.accepted ? 1 : 0,
+        reward_points: item.reward_points,
+        image: item.image || item.task_image || item.task_image_url,
         start_time: item.start_time,
         end_time: item.end_time,
-        reward_points: item.reward_points,
-        image: item.image,
+        creator_name: item.creator_name,
+        creator_avatar: item.creator_avatar,
+        accepted: Boolean(item.accepted || item.is_assigned || item.assignment_status),
+        accepted_at: item.accepted_at,
+        photo_uploaded_at: item.photo_uploaded_at,
+        photo_moderated_at: item.photo_moderated_at,
+        created_at: item.created_at,
+        rating: item.rating,
+        has_photo_report: Boolean(item.has_photo_report),
+        completed: Boolean(item.completed || item.status === 'completed'),
+        is_expired: Boolean(item.is_expired),
+        can_upload_photo: Boolean(item.can_upload_photo || (item.is_assigned && item.status !== 'completed' && item.status !== 'archived')),
+        photo_status: item.photo_status ?? null,
+        rejection_reason: item.rejection_reason ?? null,
       }));
 
       setTasks(transformedTasks);
+
+      if (Platform.OS !== 'web') {
+        void syncVolunteerLocalNotifications(transformedTasks, projectsData);
+      }
     } catch (error: any) {
-      console.error('❌ Error loading tasks:', error);
+      console.error('Error loading tasks:', error);
       Alert.alert('Ошибка', 'Не удалось загрузить задачи');
-      setTasks([]);
+      if (showLoader) {
+        setTasks([]);
+      }
     } finally {
-      setLoading(false);
+      if (showLoader) {
+        setLoading(false);
+      }
     }
   }, []);
 
+  useFocusEffect(
+    useCallback(() => {
+      loadTasks(!hasLoadedTasksRef.current);
+      hasLoadedTasksRef.current = true;
+    }, [loadTasks])
+  );
+
   useEffect(() => {
-    loadTasks();
-  }, [loadTasks]);
+    if (!lastTaskMutation) {
+      return;
+    }
+
+    setTasks((current) =>
+      current.map((task) =>
+        task.id === lastTaskMutation.taskId
+          ? {
+              ...task,
+              ...lastTaskMutation.changes,
+            }
+          : task
+      )
+    );
+  }, [lastTaskMutation]);
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await loadTasks();
+    await loadTasks(false);
     setRefreshing(false);
   };
 
   const handleAcceptTask = async (taskId: number) => {
     Alert.alert(
       'Принять задачу?',
-      'Вы уверены, что хотите принять эту задачу?',
+      'Вы уверены, что хотите взять эту задачу?',
       [
         { text: 'Отмена', style: 'cancel' },
         {
@@ -85,10 +237,23 @@ export const VolunteerTasksScreen: React.FC = () => {
           onPress: async () => {
             try {
               await volunteerAPI.acceptTask(taskId);
+              publishTaskMutation({
+                taskId,
+                reason: 'accepted',
+                changes: {
+                  status: 'in_progress',
+                  accepted: true,
+                  accepted_at: new Date().toISOString(),
+                  can_upload_photo: true,
+                },
+              });
               Alert.alert('Успешно', 'Задача принята в работу');
-              await loadTasks();
+              await loadTasks(false);
             } catch (error: any) {
-              const errorMsg = error?.response?.data?.detail || error?.response?.data?.error || 'Не удалось принять задачу';
+              const errorMsg =
+                error?.response?.data?.detail ||
+                error?.response?.data?.error ||
+                'Не удалось принять задачу';
               Alert.alert('Ошибка', errorMsg);
             }
           },
@@ -109,10 +274,22 @@ export const VolunteerTasksScreen: React.FC = () => {
           onPress: async () => {
             try {
               await volunteerAPI.declineTask(taskId);
+              publishTaskMutation({
+                taskId,
+                reason: 'declined',
+                changes: {
+                  status: 'archived',
+                  accepted: false,
+                  can_upload_photo: false,
+                },
+              });
               Alert.alert('Задача отклонена');
-              await loadTasks();
+              await loadTasks(false);
             } catch (error: any) {
-              const errorMsg = error?.response?.data?.detail || error?.response?.data?.error || 'Не удалось отклонить задачу';
+              const errorMsg =
+                error?.response?.data?.detail ||
+                error?.response?.data?.error ||
+                'Не удалось отклонить задачу';
               Alert.alert('Ошибка', errorMsg);
             }
           },
@@ -120,7 +297,6 @@ export const VolunteerTasksScreen: React.FC = () => {
       ]
     );
   };
-
 
   const handleArchiveTask = async (taskId: number) => {
     Alert.alert(
@@ -129,14 +305,25 @@ export const VolunteerTasksScreen: React.FC = () => {
       [
         { text: 'Отмена', style: 'cancel' },
         {
-          text: 'Архивировать',
+          text: 'В архив',
           onPress: async () => {
             try {
               await volunteerAPI.archiveTask(taskId);
+              publishTaskMutation({
+                taskId,
+                reason: 'archived',
+                changes: {
+                  status: 'archived',
+                  can_upload_photo: false,
+                },
+              });
               Alert.alert('Успешно', 'Задача перенесена в архив');
-              await loadTasks();
+              await loadTasks(false);
             } catch (error: any) {
-              const errorMsg = error?.response?.data?.detail || error?.response?.data?.error || 'Не удалось архивировать задачу';
+              const errorMsg =
+                error?.response?.data?.detail ||
+                error?.response?.data?.error ||
+                'Не удалось архивировать задачу';
               Alert.alert('Ошибка', errorMsg);
             }
           },
@@ -145,7 +332,12 @@ export const VolunteerTasksScreen: React.FC = () => {
     );
   };
 
-  const formatDateTimeRange = (startStr: string, endStr: string, startTimeStr?: string, endTimeStr?: string) => {
+  const formatDateTimeRange = (
+    startStr: string,
+    endStr: string,
+    startTimeStr?: string,
+    endTimeStr?: string
+  ) => {
     const start = new Date(startStr);
     const end = new Date(endStr);
     const now = new Date();
@@ -154,13 +346,11 @@ export const VolunteerTasksScreen: React.FC = () => {
     const midnightNow = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
     const diffDays = Math.round((midnightStart - midnightNow) / (1000 * 60 * 60 * 24));
 
-    const formatDate = (date: Date) => {
-      return date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' }).replace('.', '');
-    };
+    const formatDate = (date: Date) =>
+      date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' }).replace('.', '');
 
     const formatTime = (date: Date, explicitTime?: string) => {
       if (explicitTime) {
-        // explicitTime is "HH:mm:ss" or "HH:mm"
         const parts = explicitTime.split(':');
         if (parts.length >= 2) {
           return `${parts[0]}:${parts[1]}`;
@@ -169,33 +359,55 @@ export const VolunteerTasksScreen: React.FC = () => {
       return date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
     };
 
-    let dateTextStr = formatDate(start);
-    if (diffDays === 0) dateTextStr = 'Сегодня';
-    else if (diffDays === 1) dateTextStr = 'Завтра';
-    else if (diffDays === -1) dateTextStr = 'Вчера';
+    let dateText = formatDate(start);
+    if (diffDays === 0) {
+      dateText = 'Сегодня';
+    } else if (diffDays === 1) {
+      dateText = 'Завтра';
+    } else if (diffDays === -1) {
+      dateText = 'Вчера';
+    }
 
     const isSameDay = start.toDateString() === end.toDateString();
 
     if (isSameDay) {
       return {
-        dateText: dateTextStr,
-        timeText: `${formatTime(start, startTimeStr)} - ${formatTime(end, endTimeStr)}`
+        dateText,
+        timeText: `${formatTime(start, startTimeStr)} - ${formatTime(end, endTimeStr)}`,
       };
     }
+
     return {
       dateText: `${formatDate(start)} - ${formatDate(end)}`,
-      timeText: `${formatTime(start, startTimeStr)} - ${formatTime(end, endTimeStr)}`
+      timeText: `${formatTime(start, startTimeStr)} - ${formatTime(end, endTimeStr)}`,
     };
   };
 
-  const getDeadlineText = (endDate: string, status: string | undefined) => {
-    // Priority statuses based on backend labels
-    if (status === 'under_review') return { text: 'На проверке', color: '#6B7280', bgColor: '#F3F4F6' };
-    if (status === 'in_progress' || status === 'active') return { text: 'В работе', color: '#3B82F6', bgColor: '#EFF6FF' };
-    if (status === 'completed') return { text: 'Завершено', color: '#10B981', bgColor: '#ECFDF5' };
-    if (status === 'archived') return { text: 'В архиве', color: '#6B7280', bgColor: '#F3F4F6' };
-    if (status === 'failed' || status === 'rejected') return { text: 'Отклонено', color: '#EF4444', bgColor: '#FEE2E2' };
-    if (status === 'closed') return { text: 'Закрыто', color: '#4B5563', bgColor: '#E5E7EB' };
+  const getDeadlineText = (endDate: string, status: Task['status']) => {
+    if (status === 'under_review') {
+      return { text: 'На проверке', color: appColors.textMuted, bgColor: appColors.surfaceMuted };
+    }
+    if (status === 'revision') {
+      return { text: 'На доработке', color: '#D97706', bgColor: appColors.warningSurface };
+    }
+    if (status === 'in_progress' || status === 'active') {
+      return { text: 'В работе', color: appColors.primary, bgColor: appColors.surfaceMuted };
+    }
+    if (status === 'completed') {
+      return { text: 'Завершено', color: appColors.primary, bgColor: appColors.primarySurface };
+    }
+    if (status === 'archived') {
+      return { text: 'В архиве', color: appColors.textMuted, bgColor: appColors.surfaceMuted };
+    }
+    if (status === 'failed' || status === 'rejected') {
+      return { text: 'Отклонено', color: appColors.danger, bgColor: '#4C1D24' };
+    }
+    if (status === 'closed') {
+      return { text: 'Закрыто', color: appColors.textMuted, bgColor: appColors.surfaceMuted };
+    }
+    if (status === 'expired') {
+      return { text: 'Просрочено', color: appColors.danger, bgColor: '#FEE2E2' };
+    }
 
     const end = new Date(endDate);
     const now = new Date();
@@ -203,158 +415,155 @@ export const VolunteerTasksScreen: React.FC = () => {
     const midnightNow = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
     const diffDays = Math.round((midnightEnd - midnightNow) / (1000 * 60 * 60 * 24));
 
-    if (diffDays < 0) return { text: 'Просрочено', color: '#EF4444', bgColor: '#FEE2E2' };
-
-    // Default label for open tasks (even if it's today/tomorrow, we show "Открыто")
-    return { text: 'Открыто', color: '#10B981', bgColor: '#D1FAE5' };
-  };
-
-  const normalizeImageUrl = (url: string | undefined | null): string | undefined => {
-    if (!url) return undefined;
-    if (__DEV__) {
-      if (url.includes('cleanup.almau.edu.kz') || url.includes('birqadam.almau.edu.kz')) {
-        return url.replace(/https?:\/\/[^\/]+/, 'http://192.168.0.13:8000');
-      }
-      if (url.startsWith('https://')) {
-        return url.replace('https://', 'http://');
-      }
+    if (diffDays < 0) {
+      return { text: 'Просрочено', color: appColors.danger, bgColor: '#4C1D24' };
     }
-    return url;
+
+    return { text: 'Открыто', color: appColors.primary, bgColor: appColors.primarySurfaceStrong };
   };
 
-  const filteredTasks = tasks.filter((task) => {
-    if (filter === 'assigned') return true; // "Мои задачи" shows all tasks
-    if (filter === 'in_progress') return task.status === 'in_progress' || task.status === 'active';
-    if (filter === 'under_review') return task.status === 'under_review';
-    if (filter === 'completed') return task.status === 'completed';
-    if (filter === 'archived') return task.status === 'archived';
-    if (filter === 'rejected') return task.status === 'cancelled' || task.status === 'rejected' || task.status === 'failed';
-    return true;
-  });
-
-  const getFilterCount = (filterName: string) => {
-    if (filterName === 'assigned') return tasks.length; // Count all tasks for "Мои задачи"
-    if (filterName === 'in_progress') return tasks.filter(t => t.status === 'in_progress' || t.status === 'active').length;
-    if (filterName === 'under_review') return tasks.filter(t => t.status === 'under_review').length;
-    if (filterName === 'completed') return tasks.filter(t => t.status === 'completed').length;
-    if (filterName === 'archived') return tasks.filter(t => t.status === 'archived').length;
-    return 0;
-  };
+  const filteredTasks = tasks.filter((task) => matchesFilter(task, filter));
 
   const TaskCard = ({ task }: { task: Task }) => {
+    const isExpiredTaskCard = isTaskExpired(task);
     const deadline = getDeadlineText(task.end_date, task.status);
     const imageUrl = normalizeImageUrl(task.image);
-    const { dateText, timeText } = formatDateTimeRange(task.start_date, task.end_date, task.start_time, task.end_time);
+    const { dateText, timeText } = formatDateTimeRange(
+      task.start_date,
+      task.end_date,
+      task.start_time,
+      task.end_time
+    );
 
     return (
       <TouchableOpacity
-        style={styles.taskCard}
+        style={[styles.taskCard, isCompact && styles.taskCardCompact]}
         onPress={() => navigation.navigate('VolunteerTaskDetail', { taskId: task.id })}
         activeOpacity={0.7}
       >
-        {/* Top Info Row */}
-        <View style={styles.cardTopRow}>
-          {/* Image */}
-          <View style={styles.taskImageContainer}>
+        <View style={[styles.cardTopRow, isNarrow && styles.cardTopRowCompact]}>
+          <View style={[styles.taskImageContainer, isNarrow && styles.taskImageContainerCompact]}>
             {imageUrl ? (
               <Image source={{ uri: imageUrl }} style={styles.taskImage} resizeMode="cover" />
             ) : (
               <View style={styles.taskImagePlaceholder}>
-                <Ionicons name="image-outline" size={32} color="#9CA3AF" />
+                <Ionicons name="image-outline" size={32} color={appColors.textSoft} />
               </View>
             )}
           </View>
 
-          {/* Texts */}
-          <View style={styles.taskContentRight}>
-            <View style={styles.taskHeader}>
-              <Text style={styles.projectName} numberOfLines={1}>
+          <View style={[styles.taskContentRight, isNarrow && styles.taskContentRightCompact]}>
+            <View style={[styles.taskHeader, isCompact && styles.taskHeaderCompact]}>
+              <Text
+                style={[styles.projectName, isCompact && styles.projectNameCompact]}
+                numberOfLines={isCompact ? 2 : 1}
+              >
                 {task.project_title || 'Локальная задача'}
               </Text>
-              {/* Status Badge */}
-              <View style={[styles.statusBadge, { backgroundColor: deadline.bgColor }]}>
-                <Text style={[styles.statusBadgeText, { color: deadline.color }]}>
-                  {deadline.text.toUpperCase()}
-                </Text>
+              <View
+                style={[
+                  styles.statusBadge,
+                  isCompact && styles.statusBadgeCompact,
+                  { backgroundColor: deadline.bgColor },
+                ]}
+              >
+                <Text style={[styles.statusBadgeText, { color: deadline.color }]}>{deadline.text}</Text>
               </View>
             </View>
 
-            <Text style={styles.taskTitle} numberOfLines={2}>{task.title}</Text>
+            <Text style={[styles.taskTitle, isCompact && styles.taskTitleCompact]} numberOfLines={2}>
+              {task.title}
+            </Text>
 
             <View style={styles.deadlineColumn}>
               <View style={styles.deadlineRow}>
-                <Ionicons name="calendar-outline" size={14} color={deadline.color === '#EF4444' ? '#EF4444' : '#10B981'} />
-                <Text style={[styles.deadlineText, { color: deadline.color === '#EF4444' ? '#EF4444' : '#10B981' }]}>
-                  {dateText}
-                </Text>
+                <Ionicons name="calendar-outline" size={14} color={appColors.textMuted} />
+                <Text style={[styles.deadlineText, { color: appColors.textSecondary }]}>{dateText}</Text>
               </View>
               <View style={styles.deadlineRow}>
-                <Ionicons name="time-outline" size={14} color={deadline.color === '#EF4444' ? '#EF4444' : '#10B981'} />
-                <Text style={[styles.deadlineText, { color: deadline.color === '#EF4444' ? '#EF4444' : '#10B981' }]}>
-                  {timeText}
+                <Ionicons name="time-outline" size={14} color={appColors.textMuted} />
+                <Text style={[styles.deadlineText, { color: appColors.textMuted }]}>{timeText}</Text>
+              </View>
+              <View style={styles.deadlineRow}>
+                <Ionicons name="location-outline" size={14} color={appColors.textMuted} />
+                <Text style={[styles.deadlineText, { color: appColors.textMuted }]} numberOfLines={1}>
+                  {task.location}
                 </Text>
               </View>
             </View>
           </View>
         </View>
 
-        {/* Bottom Actions Row */}
-        <View style={styles.taskActions}>
-          {(task.status === 'pending' || !task.project_title) && (
+        <View style={[styles.taskActions, isNarrow && styles.taskActionsCompact]}>
+          {isOpenTask(task) && (
             <>
               <TouchableOpacity
-                style={styles.acceptButton}
-                onPress={(e) => { e.stopPropagation(); handleAcceptTask(task.id); }}
+                style={[styles.acceptButton, isNarrow && styles.actionButtonCompact]}
+                onPress={(e) => {
+                  e.stopPropagation();
+                  handleAcceptTask(task.id);
+                }}
               >
-                <Text style={styles.acceptButtonText}>Принять</Text>
+                <Text style={[styles.acceptButtonText, isCompact && styles.actionButtonTextCompact]}>Принять</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={styles.declineButton}
-                onPress={(e) => { e.stopPropagation(); handleDeclineTask(task.id); }}
+                style={[styles.declineButton, isNarrow && styles.actionButtonCompact]}
+                onPress={(e) => {
+                  e.stopPropagation();
+                  handleDeclineTask(task.id);
+                }}
               >
-                <Text style={styles.declineButtonText}>Отклонить</Text>
+                <Text style={[styles.declineButtonText, isCompact && styles.actionButtonTextCompact]}>Отклонить</Text>
               </TouchableOpacity>
             </>
           )}
 
-          {(task.status === 'active' || task.status === 'in_progress') && (
+          {!isExpiredTaskCard && task.can_upload_photo && (isInProgressTask(task) || task.status === 'revision') && (
             <TouchableOpacity
-              style={styles.completeButton}
-              onPress={(e) => { e.stopPropagation(); navigation.navigate('SubmitPhotoReport', { taskId: task.id }); }}
+              style={[styles.completeButton, isNarrow && styles.actionButtonCompact]}
+              onPress={(e) => {
+                e.stopPropagation();
+                navigation.navigate('SubmitPhotoReport', { taskId: task.id });
+              }}
             >
-              <Ionicons name="camera-reverse-outline" size={20} color="#FFFFFF" />
-              <Text style={styles.completeButtonText}>Загрузить фотоотчет</Text>
+              <Ionicons name="camera-reverse-outline" size={20} color={appColors.white} />
+              <Text style={[styles.completeButtonText, isCompact && styles.actionButtonTextCompact]}>
+                Загрузить фотоотчет
+              </Text>
             </TouchableOpacity>
           )}
 
           {task.status === 'completed' && (
             <TouchableOpacity
-              style={styles.archiveButton}
-              onPress={(e) => { e.stopPropagation(); handleArchiveTask(task.id); }}
+              style={[styles.archiveButton, isNarrow && styles.actionButtonCompact]}
+              onPress={(e) => {
+                e.stopPropagation();
+                handleArchiveTask(task.id);
+              }}
             >
-              <Ionicons name="archive-outline" size={18} color="#6B7280" />
-              <Text style={styles.archiveButtonText}>В архив</Text>
+              <Ionicons name="archive-outline" size={18} color={appColors.textMuted} />
+              <Text style={[styles.archiveButtonText, isCompact && styles.actionButtonTextCompact]}>В архив</Text>
             </TouchableOpacity>
           )}
 
           {task.status === 'completed' && (
-            <View style={styles.completedBadge}>
-              <Ionicons name="checkmark-done-circle" size={20} color="#10B981" />
-              <Text style={styles.completedText}>Завершено</Text>
+            <View style={[styles.completedBadge, isNarrow && styles.actionButtonCompact]}>
+              <Ionicons name="checkmark-done-circle" size={20} color={appColors.primary} />
+              <Text style={[styles.completedText, isCompact && styles.actionButtonTextCompact]}>Завершено</Text>
             </View>
           )}
 
           {task.status === 'under_review' && (
-            <View style={styles.underReviewBadge}>
+            <View style={[styles.underReviewBadge, isNarrow && styles.actionButtonCompact]}>
               <Ionicons name="eye-outline" size={20} color="#7C3AED" />
-              <Text style={styles.underReviewText}>Отчет на проверке</Text>
+              <Text style={[styles.underReviewText, isCompact && styles.actionButtonTextCompact]}>Отчет на проверке</Text>
             </View>
           )}
 
           {task.status === 'archived' && (
-            <View style={styles.archivedBadge}>
-              <Ionicons name="archive-outline" size={20} color="#6B7280" />
-              <Text style={styles.archivedText}>Перенесено в архив</Text>
+            <View style={[styles.archivedBadge, isNarrow && styles.actionButtonCompact]}>
+              <Ionicons name="archive-outline" size={20} color={appColors.textMuted} />
+              <Text style={[styles.archivedText, isCompact && styles.actionButtonTextCompact]}>Перенесено в архив</Text>
             </View>
           )}
         </View>
@@ -364,201 +573,330 @@ export const VolunteerTasksScreen: React.FC = () => {
 
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#10B981" />
-      </View>
+      <SafeAreaView style={styles.safeArea} edges={['top']}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={appColors.primary} />
+        </View>
+      </SafeAreaView>
     );
   }
 
+  const emptyDescription =
+    filter === 'all'
+      ? 'Задачи появятся в проектах, к которым вы присоединились. Сейчас можно открыть проекты и выбрать подходящую активность.'
+      : 'Нет задач с выбранным статусом. Попробуйте переключиться на другой фильтр.';
+
   return (
-    <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <View style={{ width: 28 }} />
-        <Text style={styles.headerTitle}>Мои задачи</Text>
-        <TouchableOpacity onPress={() => Alert.alert('Уведомления', 'В разработке')}>
-          <Ionicons name="notifications-outline" size={24} color="#1F2937" />
+    <SafeAreaView style={styles.safeArea} edges={['top']}>
+      <View style={styles.container}>
+      <View style={[styles.header, isCompact && styles.headerCompact]}>
+        <TouchableOpacity style={styles.backHomeButton} onPress={handleGoToMain} activeOpacity={0.8}>
+          <Ionicons name="chevron-back" size={18} color={appColors.primary} />
+          <Text style={[styles.backHomeButtonText, isCompact && styles.backHomeButtonTextCompact]}>Главная</Text>
+        </TouchableOpacity>
+        <Text style={[styles.headerTitle, isCompact && styles.headerTitleCompact]}>Мои задачи</Text>
+        <TouchableOpacity style={styles.headerActionButton} onPress={() => Alert.alert('Уведомления', 'Раздел находится в разработке.')}>
+          <Ionicons name="notifications-outline" size={24} color="#F8FAFC" />
         </TouchableOpacity>
       </View>
 
-      {/* Filter Tabs */}
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
         style={styles.filterScroll}
-        contentContainerStyle={styles.filterContainer}
+        contentContainerStyle={[styles.filterContainer, isCompact && styles.filterContainerCompact]}
       >
-        <TouchableOpacity
-          style={[styles.filterTab, filter === 'assigned' && styles.filterTabActive]}
-          onPress={() => setFilter('assigned')}
-        >
-          <Text style={[styles.filterTabText, filter === 'assigned' && styles.filterTabTextActive]}>
-            Мои задачи
-          </Text>
-          <View style={[styles.filterCount, filter === 'assigned' && styles.filterCountActive]}>
-            <Text style={[styles.filterCountText, filter === 'assigned' && styles.filterCountTextActive]}>
-              {getFilterCount('assigned')}
-            </Text>
-          </View>
-        </TouchableOpacity>
+        {FILTER_TABS.map((tab) => {
+          const isActive = filter === tab.key;
+          const tabStyles =
+            tab.variant === 'review'
+              ? [styles.filterTab, isActive && styles.filterTabActiveReview]
+              : tab.variant === 'revision'
+                ? [styles.filterTab, isActive && styles.filterTabActiveRevision]
+                : tab.variant === 'archive'
+                  ? [styles.filterTab, isActive && styles.filterTabActiveArchive]
+                  : [styles.filterTab, isActive && styles.filterTabActive];
 
-        <TouchableOpacity
-          style={[styles.filterTab, filter === 'in_progress' && styles.filterTabActive]}
-          onPress={() => setFilter('in_progress')}
-        >
-          <Text style={[styles.filterTabText, filter === 'in_progress' && styles.filterTabTextActive]}>
-            В работе
-          </Text>
-          <View style={[styles.filterCount, filter === 'in_progress' && styles.filterCountActive]}>
-            <Text style={[styles.filterCountText, filter === 'in_progress' && styles.filterCountTextActive]}>
-              {getFilterCount('in_progress')}
-            </Text>
-          </View>
-        </TouchableOpacity>
+          const tabTextStyles =
+            tab.variant === 'review'
+              ? [styles.filterTabText, isActive && styles.filterTabTextReview]
+              : tab.variant === 'revision'
+                ? [styles.filterTabText, isActive && styles.filterTabTextRevision]
+                : tab.variant === 'archive'
+                  ? [styles.filterTabText, isActive && styles.filterTabTextArchive]
+                  : [styles.filterTabText, isActive && styles.filterTabTextActive];
 
-        <TouchableOpacity
-          style={[styles.filterTab, filter === 'under_review' && styles.filterTabActiveReview]}
-          onPress={() => setFilter('under_review')}
-        >
-          <Text style={[styles.filterTabText, filter === 'under_review' && styles.filterTabTextReview]}>
-            На проверке
-          </Text>
-          <View style={[styles.filterCount, filter === 'under_review' && styles.filterCountReview]}>
-            <Text style={[styles.filterCountText, filter === 'under_review' && styles.filterCountTextActive]}>
-              {getFilterCount('under_review')}
-            </Text>
-          </View>
-        </TouchableOpacity>
+          const countStyles =
+            tab.variant === 'review'
+              ? [styles.filterCount, isActive && styles.filterCountReview]
+              : tab.variant === 'revision'
+                ? [styles.filterCount, isActive && styles.filterCountRevision]
+                : tab.variant === 'archive'
+                  ? [styles.filterCount, isActive && styles.filterCountArchive]
+                  : [styles.filterCount, isActive && styles.filterCountActive];
 
-        <TouchableOpacity
-          style={[styles.filterTab, filter === 'completed' && styles.filterTabActive]}
-          onPress={() => setFilter('completed')}
-        >
-          <Text style={[styles.filterTabText, filter === 'completed' && styles.filterTabTextActive]}>
-            Завершено
-          </Text>
-          <View style={[styles.filterCount, filter === 'completed' && styles.filterCountActive]}>
-            <Text style={[styles.filterCountText, filter === 'completed' && styles.filterCountTextActive]}>
-              {getFilterCount('completed')}
-            </Text>
-          </View>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.filterTab, filter === 'archived' && styles.filterTabActiveArchive]}
-          onPress={() => setFilter('archived')}
-        >
-          <Text style={[styles.filterTabText, filter === 'archived' && styles.filterTabTextArchive]}>
-            В архиве
-          </Text>
-          <View style={[styles.filterCount, filter === 'archived' && styles.filterCountArchive]}>
-            <Text style={[styles.filterCountText, filter === 'archived' && styles.filterCountTextActive]}>
-              {getFilterCount('archived')}
-            </Text>
-          </View>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.filterTab, filter === 'rejected' && styles.filterTabActiveRejected]}
-          onPress={() => setFilter('rejected')}
-        >
-          <Text style={[styles.filterTabText, filter === 'rejected' && styles.filterTabTextRejected]}>
-            Отклонённые
-          </Text>
-        </TouchableOpacity>
+          return (
+            <TouchableOpacity
+              key={tab.key}
+              style={[tabStyles, isCompact && styles.filterTabCompact]}
+              onPress={() => setFilter(tab.key)}
+            >
+              <Text style={[tabTextStyles, isCompact && styles.filterTabTextCompact]}>
+                {tab.key === 'all' ? 'Активные' : tab.label}
+              </Text>
+              <View style={countStyles}>
+                <Text style={[styles.filterCountText, isActive && styles.filterCountTextActive]}>
+                  {getFilterCount(tasks, tab.key)}
+                </Text>
+              </View>
+            </TouchableOpacity>
+          );
+        })}
       </ScrollView>
 
-      {/* Tasks List */}
       <ScrollView
         style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }
+        contentContainerStyle={[styles.scrollContent, isCompact && styles.scrollContentCompact]}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
         {filteredTasks.length > 0 ? (
           filteredTasks.map((task) => <TaskCard key={task.id} task={task} />)
         ) : (
-          <View style={styles.emptyState}>
+          <View style={[styles.emptyState, isCompact && styles.emptyStateCompact]}>
             <View style={styles.emptyIllustration}>
-              <Ionicons name="clipboard-outline" size={80} color="#10B981" />
+              <Ionicons name="clipboard-outline" size={80} color={appColors.primary} />
             </View>
             <Text style={styles.emptyTitle}>Задач пока нет</Text>
-            <Text style={styles.emptyText}>
-              Ваш список задач пуст. Присоединяйтесь к проектам, чтобы получать задачи и начинать влиять на мир!
-            </Text>
+            <Text style={styles.emptyText}>{emptyDescription}</Text>
             <TouchableOpacity
               style={styles.browseButton}
-              onPress={() => Alert.alert('Переход', 'К списку проектов')}
+              onPress={() => Alert.alert('Переход', 'Откройте раздел проектов в приложении.')}
             >
-              <Ionicons name="compass-outline" size={20} color="#FFFFFF" />
-              <Text style={styles.browseButtonText}>Смотреть проекты</Text>
+              <Ionicons name="compass-outline" size={20} color={appColors.white} />
+              <Text style={styles.browseButtonText}>Открыть проекты</Text>
             </TouchableOpacity>
           </View>
         )}
       </ScrollView>
-    </View>
+      </View>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F9FAFB' },
-  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F9FAFB' },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 16, paddingBottom: 16, backgroundColor: '#FFFFFF' },
-  headerTitle: { fontSize: 20, fontWeight: '700', color: '#1F2937' },
-  filterScroll: { maxHeight: 56, backgroundColor: '#FFFFFF', borderBottomWidth: 1, borderBottomColor: '#F3F4F6' },
+  safeArea: { flex: 1, backgroundColor: appColors.background },
+  container: { flex: 1, backgroundColor: appColors.background },
+  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: appColors.background },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 16,
+    backgroundColor: appColors.surface,
+  },
+  headerCompact: {
+    paddingHorizontal: 16,
+    paddingBottom: 12,
+  },
+  backHomeButton: {
+    minWidth: 92,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  backHomeButtonText: {
+    marginLeft: 4,
+    fontSize: 15,
+    fontWeight: '700',
+    color: appColors.primary,
+  },
+  backHomeButtonTextCompact: {
+    fontSize: 14,
+  },
+  headerActionButton: {
+    width: 40,
+    alignItems: 'flex-end',
+  },
+  headerTitle: {
+    flex: 1,
+    fontSize: 20,
+    fontWeight: '700',
+    color: appColors.text,
+    textAlign: 'center',
+  },
+  headerTitleCompact: { fontSize: 18 },
+  filterScroll: {
+    maxHeight: 56,
+    backgroundColor: appColors.surface,
+    borderBottomWidth: 1,
+    borderColor: appColors.border,
+  },
   filterContainer: { flexDirection: 'row', paddingHorizontal: 20, gap: 8 },
+  filterContainerCompact: { paddingHorizontal: 16 },
   filterTab: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, gap: 8 },
-  filterTabActive: { borderBottomWidth: 2, borderBottomColor: '#10B981' },
-  filterTabText: { fontSize: 14, fontWeight: '600', color: '#9CA3AF' },
-  filterTabTextActive: { color: '#10B981' },
-  filterCount: { backgroundColor: '#F3F4F6', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10 },
-  filterCountActive: { backgroundColor: '#10B981' },
-  filterCountText: { fontSize: 12, fontWeight: '600', color: '#9CA3AF' },
-  filterCountTextActive: { color: '#FFFFFF' },
+  filterTabCompact: { paddingHorizontal: 12, gap: 6 },
+  filterTabActive: { borderBottomWidth: 2, borderBottomColor: appColors.primary },
+  filterTabText: { fontSize: 14, fontWeight: '600', color: appColors.textSoft },
+  filterTabTextCompact: { fontSize: 13 },
+  filterTabTextActive: { color: appColors.primary },
+  filterCount: { backgroundColor: appColors.surfaceSoft, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10 },
+  filterCountActive: { backgroundColor: appColors.primary },
+  filterCountText: { fontSize: 12, fontWeight: '600', color: appColors.textSoft },
+  filterCountTextActive: { color: appColors.white },
   scrollView: { flex: 1 },
   scrollContent: { padding: 16, gap: 16 },
-  taskCard: { backgroundColor: '#FFFFFF', padding: 16, borderRadius: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 3, marginBottom: 4 },
+  scrollContentCompact: { paddingHorizontal: 12, paddingBottom: 20 },
+  taskCard: {
+    backgroundColor: appColors.surface,
+    padding: 16,
+    borderRadius: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 3,
+    marginBottom: 4,
+  },
+  taskCardCompact: { padding: 14 },
   cardTopRow: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 16 },
-  taskImageContainer: { width: 84, height: 84, borderRadius: 12, backgroundColor: '#F3F4F6', overflow: 'hidden' },
+  cardTopRowCompact: { flexDirection: 'column' },
+  taskImageContainer: { width: 84, height: 84, borderRadius: 12, backgroundColor: appColors.surfaceSoft, overflow: 'hidden' },
+  taskImageContainerCompact: { width: '100%', height: 160, marginBottom: 14 },
   taskImage: { width: '100%', height: '100%' },
   taskImagePlaceholder: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   taskContentRight: { flex: 1, marginLeft: 16, justifyContent: 'center' },
+  taskContentRightCompact: { width: '100%', marginLeft: 0 },
   taskHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
-  projectName: { flex: 1, fontSize: 13, fontWeight: '700', color: '#10B981', textTransform: 'uppercase', letterSpacing: 0.5, marginRight: 8 },
+  taskHeaderCompact: { flexDirection: 'column', alignItems: 'flex-start', gap: 8 },
+  projectName: {
+    flex: 1,
+    fontSize: 13,
+    fontWeight: '700',
+    color: appColors.primary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginRight: 8,
+  },
+  projectNameCompact: { width: '100%', marginRight: 0 },
   statusBadge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
+  statusBadgeCompact: { alignSelf: 'flex-start' },
   statusBadgeText: { fontSize: 10, fontWeight: '800' },
-  taskTitle: { fontSize: 17, fontWeight: '700', color: '#111827', marginBottom: 8, lineHeight: 22 },
+  taskTitle: { fontSize: 17, fontWeight: '700', color: appColors.text, marginBottom: 8, lineHeight: 22 },
+  taskTitleCompact: { fontSize: 16, lineHeight: 21 },
   deadlineColumn: { gap: 4, marginTop: 2 },
   deadlineRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   deadlineText: { fontSize: 13, fontWeight: '500' },
   taskActions: { flexDirection: 'row', gap: 12 },
-  acceptButton: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#10B981', paddingVertical: 12, borderRadius: 10 },
-  acceptButtonText: { fontSize: 15, fontWeight: '700', color: '#FFFFFF' },
-  declineButton: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFFFFF', borderWidth: 1.5, borderColor: '#EF4444', paddingVertical: 10.5, borderRadius: 10 },
-  declineButtonText: { fontSize: 15, fontWeight: '700', color: '#EF4444' },
-  completeButton: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#10B981', paddingVertical: 12, borderRadius: 10, gap: 6 },
-  completeButtonText: { fontSize: 15, fontWeight: '700', color: '#FFFFFF' },
-  archiveButton: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#F3F4F6', paddingVertical: 12, borderRadius: 10, gap: 8, borderWidth: 1, borderColor: '#E5E7EB' },
-  archiveButtonText: { fontSize: 15, fontWeight: '700', color: '#6B7280' },
-  completedBadge: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#ECFDF5', paddingVertical: 12, borderRadius: 10, gap: 6 },
-  completedText: { fontSize: 15, fontWeight: '700', color: '#10B981' },
-  underReviewBadge: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#F5F3FF', paddingVertical: 12, borderRadius: 10, gap: 6 },
+  taskActionsCompact: { flexDirection: 'column' },
+  actionButtonCompact: { flex: 0, width: '100%' },
+  actionButtonTextCompact: { fontSize: 14, flexShrink: 1, textAlign: 'center' },
+  acceptButton: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: appColors.primary,
+    paddingVertical: 12,
+    borderRadius: 10,
+  },
+  acceptButtonText: { fontSize: 15, fontWeight: '700', color: appColors.white },
+  declineButton: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: appColors.surface,
+    borderWidth: 1.5,
+    borderColor: appColors.danger,
+    paddingVertical: 10.5,
+    borderRadius: 10,
+  },
+  declineButtonText: { fontSize: 15, fontWeight: '700', color: appColors.danger },
+  completeButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: appColors.primary,
+    paddingVertical: 12,
+    borderRadius: 10,
+    gap: 6,
+  },
+  completeButtonText: { fontSize: 15, fontWeight: '700', color: appColors.white },
+  archiveButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: appColors.surfaceSoft,
+    paddingVertical: 12,
+    borderRadius: 10,
+    gap: 8,
+    borderWidth: 1,
+    borderColor: appColors.border,
+  },
+  archiveButtonText: { fontSize: 15, fontWeight: '700', color: appColors.textMuted },
+  completedBadge: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: appColors.primarySurface,
+    paddingVertical: 12,
+    borderRadius: 10,
+    gap: 6,
+  },
+  completedText: { fontSize: 15, fontWeight: '700', color: appColors.primary },
+  underReviewBadge: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#F5F3FF',
+    paddingVertical: 12,
+    borderRadius: 10,
+    gap: 6,
+  },
   underReviewText: { fontSize: 15, fontWeight: '700', color: '#7C3AED' },
-  archivedBadge: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#F3F4F6', paddingVertical: 12, borderRadius: 10, gap: 6 },
-  archivedText: { fontSize: 15, fontWeight: '700', color: '#6B7280' },
+  archivedBadge: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: appColors.surfaceSoft,
+    paddingVertical: 12,
+    borderRadius: 10,
+    gap: 6,
+  },
+  archivedText: { fontSize: 15, fontWeight: '700', color: appColors.textMuted },
   filterTabActiveReview: { borderBottomWidth: 2, borderBottomColor: '#7C3AED' },
   filterTabTextReview: { color: '#7C3AED' },
   filterCountReview: { backgroundColor: '#7C3AED' },
-  filterTabActiveArchive: { borderBottomWidth: 2, borderBottomColor: '#6B7280' },
-  filterTabTextArchive: { color: '#6B7280' },
-  filterCountArchive: { backgroundColor: '#6B7280' },
-  filterTabActiveRejected: { borderBottomWidth: 2, borderBottomColor: '#EF4444' },
-  filterTabTextRejected: { color: '#EF4444' },
+  filterTabActiveRevision: { borderBottomWidth: 2, borderBottomColor: '#D97706' },
+  filterTabTextRevision: { color: '#D97706' },
+  filterCountRevision: { backgroundColor: '#D97706' },
+  filterTabActiveArchive: { borderBottomWidth: 2, borderBottomColor: appColors.textMuted },
+  filterTabTextArchive: { color: appColors.textMuted },
+  filterCountArchive: { backgroundColor: appColors.textMuted },
   emptyState: { alignItems: 'center', paddingVertical: 80, paddingHorizontal: 32 },
-  emptyIllustration: { width: 120, height: 120, borderRadius: 60, backgroundColor: '#ECFDF5', justifyContent: 'center', alignItems: 'center', marginBottom: 24 },
-  emptyTitle: { fontSize: 20, fontWeight: '700', color: '#1F2937', marginBottom: 8 },
-  emptyText: { fontSize: 14, color: '#6B7280', textAlign: 'center', lineHeight: 22, marginBottom: 24 },
-  browseButton: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#10B981', paddingHorizontal: 24, paddingVertical: 14, borderRadius: 12, gap: 8 },
-  browseButtonText: { fontSize: 16, fontWeight: '700', color: '#FFFFFF' },
+  emptyStateCompact: { paddingHorizontal: 20, paddingVertical: 56 },
+  emptyIllustration: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: appColors.primarySurface,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  emptyTitle: { fontSize: 20, fontWeight: '700', color: appColors.text, marginBottom: 8 },
+  emptyText: { fontSize: 14, color: appColors.textMuted, textAlign: 'center', lineHeight: 22, marginBottom: 24 },
+  browseButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: appColors.primary,
+    paddingHorizontal: 24,
+    paddingVertical: 14,
+    borderRadius: 12,
+    gap: 8,
+  },
+  browseButtonText: { fontSize: 16, fontWeight: '700', color: appColors.white },
 });

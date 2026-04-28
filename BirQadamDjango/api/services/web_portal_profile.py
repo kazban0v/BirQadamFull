@@ -82,110 +82,101 @@ def get_volunteer_stats(user) -> Dict[str, Any]:  # type: ignore[no-any-unimport
     return result
 
 
-def _generate_month_sequence(months: int) -> List[Tuple[int, int]]:
+from datetime import timedelta
+
+def get_volunteer_activity(user, start_date_str: str = None, end_date_str: str = None) -> Dict[str, Any]:  # type: ignore[no-any-unimported]
     now = timezone.now()
-    year = now.year
-    month = now.month
-    sequence: List[Tuple[int, int]] = []
-    for _ in range(months):
-        sequence.append((year, month))
-        month -= 1
-        if month == 0:
-            month = 12
-            year -= 1
-    sequence.reverse()
-    return sequence
+    
+    if start_date_str:
+        start_dt = datetime.strptime(start_date_str, "%Y-%m-%d").replace(tzinfo=timezone.get_current_timezone())
+    else:
+        start_dt = now - timedelta(days=180) # Default to 6 months
+        start_dt = start_dt.replace(hour=0, minute=0, second=0, microsecond=0)
+        
+    if end_date_str:
+        end_dt = datetime.strptime(end_date_str, "%Y-%m-%d").replace(tzinfo=timezone.get_current_timezone())
+        end_dt = end_dt.replace(hour=23, minute=59, second=59)
+    else:
+        end_dt = now
 
+    days_diff = (end_dt - start_dt).days
+    group_by = 'day' if days_diff <= 31 else 'month'
 
-def get_volunteer_activity(user, months: int = 6) -> Dict[str, Any]:  # type: ignore[no-any-unimported]
-    months = max(1, min(months, 12))
-    month_sequence = _generate_month_sequence(months)
+    logger.info(f"Getting activity for user {user.username}, start={start_dt}, end={end_dt}, groupBy={group_by}")
 
-    start_year, start_month = month_sequence[0]
-    start_date = datetime(year=start_year, month=start_month, day=1, tzinfo=timezone.get_current_timezone())
-
-    logger.info(f"Getting activity for user {user.username}, months={months}, start_date={start_date}")
+    labels = []
+    index_map = {}
+    
+    if group_by == 'day':
+        current = start_dt
+        idx = 0
+        while current.date() <= end_dt.date():
+            label = current.strftime("%Y-%m-%d")
+            labels.append(label)
+            index_map[(current.year, current.month, current.day)] = idx
+            idx += 1
+            current += timedelta(days=1)
+    else:
+        current = start_dt.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        end_cap = end_dt.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        idx = 0
+        while current <= end_cap:
+            label = current.strftime("%Y-%m")
+            labels.append(label)
+            index_map[(current.year, current.month)] = idx
+            idx += 1
+            next_month = current.month + 1
+            next_year = current.year
+            if next_month > 12:
+                next_month = 1
+                next_year += 1
+            current = current.replace(year=next_year, month=next_month)
 
     data = {
-        'months': [f"{year}-{month:02d}" for year, month in month_sequence],
-        'task_assigned': [0] * len(month_sequence),
-        'task_completed': [0] * len(month_sequence),
-        'photo_uploaded': [0] * len(month_sequence),
-        'project_joined': [0] * len(month_sequence),
+        'months': labels,
+        'task_assigned': [0] * len(labels),
+        'task_completed': [0] * len(labels),
+        'photo_uploaded': [0] * len(labels),
+        'project_joined': [0] * len(labels),
     }
 
-    index_map = { (year, month): idx for idx, (year, month) in enumerate(month_sequence) }
+    def fill_data(qs, date_field, dest_list):
+        if group_by == 'day':
+            values = [f'{date_field}__year', f'{date_field}__month', f'{date_field}__day']
+        else:
+            values = [f'{date_field}__year', f'{date_field}__month']
+            
+        qs = qs.values(*values).annotate(total=Count('id'))
+        
+        for row in qs:
+            if group_by == 'day':
+                key = (row[f'{date_field}__year'], row[f'{date_field}__month'], row[f'{date_field}__day'])
+            else:
+                key = (row[f'{date_field}__year'], row[f'{date_field}__month'])
+                
+            idx = index_map.get(key)
+            if idx is not None:
+                data[dest_list][idx] = row['total']
 
-    # Задач взято (TaskAssignment с accepted=True)
-    # Используем дату создания задачи как приблизительную дату принятия
-    # (так как TaskAssignment не имеет created_at)
-    task_assigned_qs = (
-        TaskAssignment.objects.filter(
-            volunteer=user,
-            accepted=True,
-            task__created_at__gte=start_date,
-        )
-        .select_related('task')
-        .values('task__created_at__year', 'task__created_at__month')
-        .annotate(total=Count('id'))
+    fill_data(
+        TaskAssignment.objects.filter(volunteer=user, accepted=True, task__created_at__gte=start_dt, task__created_at__lte=end_dt),
+        'task__created_at', 'task_assigned'
     )
-
-    for row in task_assigned_qs:
-        key = (row['task__created_at__year'], row['task__created_at__month'])
-        idx = index_map.get(key)
-        if idx is not None:
-            data['task_assigned'][idx] = row['total']
-
-    # Задач выполнено (TaskAssignment с completed=True и completed_at)
-    task_completed_qs = (
-        TaskAssignment.objects.filter(
-            volunteer=user,
-            completed=True,
-            completed_at__isnull=False,
-            completed_at__gte=start_date,
-        )
-        .values('completed_at__year', 'completed_at__month')
-        .annotate(total=Count('id'))
+    
+    fill_data(
+        TaskAssignment.objects.filter(volunteer=user, completed=True, completed_at__isnull=False, completed_at__gte=start_dt, completed_at__lte=end_dt),
+        'completed_at', 'task_completed'
     )
-
-    for row in task_completed_qs:
-        key = (row['completed_at__year'], row['completed_at__month'])
-        idx = index_map.get(key)
-        if idx is not None:
-            data['task_completed'][idx] = row['total']
-
-    # Фотоотчётов (Photo)
-    photo_uploaded_qs = (
-        Photo.objects.filter(
-            volunteer=user,
-            is_deleted=False,
-            uploaded_at__gte=start_date,
-        )
-        .values('uploaded_at__year', 'uploaded_at__month')
-        .annotate(total=Count('id'))
+    
+    fill_data(
+        Photo.objects.filter(volunteer=user, is_deleted=False, uploaded_at__gte=start_dt, uploaded_at__lte=end_dt),
+        'uploaded_at', 'photo_uploaded'
     )
-
-    for row in photo_uploaded_qs:
-        key = (row['uploaded_at__year'], row['uploaded_at__month'])
-        idx = index_map.get(key)
-        if idx is not None:
-            data['photo_uploaded'][idx] = row['total']
-
-    # Новые проекты (VolunteerProject использует joined_at, а не created_at)
-    project_joined_qs = (
-        VolunteerProject.objects.filter(
-            volunteer=user,
-            joined_at__gte=start_date,
-        )
-        .values('joined_at__year', 'joined_at__month')
-        .annotate(total=Count('id'))
+    
+    fill_data(
+        VolunteerProject.objects.filter(volunteer=user, joined_at__gte=start_dt, joined_at__lte=end_dt),
+        'joined_at', 'project_joined'
     )
-
-    for row in project_joined_qs:
-        key = (row['joined_at__year'], row['joined_at__month'])
-        idx = index_map.get(key)
-        if idx is not None:
-            data['project_joined'][idx] = row['total']
 
     totals = {
         'task_assigned': sum(data['task_assigned']),
@@ -193,8 +184,10 @@ def get_volunteer_activity(user, months: int = 6) -> Dict[str, Any]:  # type: ig
         'photo_uploaded': sum(data['photo_uploaded']),
         'project_joined': sum(data['project_joined']),
     }
-
-    logger.info(f"Activity totals for {user.username}: {totals}")
+    
+    # We output "total_rating" roughly as task_completed*10 + photo_uploaded*5 just for UI convenience if needed
+    totals['total_rating'] = user.rating or sum(data['task_completed']) * 10
+    totals['completed_tasks'] = totals['task_completed']
 
     return {
         'months': data['months'],

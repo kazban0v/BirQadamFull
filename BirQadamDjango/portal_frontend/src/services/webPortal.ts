@@ -99,11 +99,7 @@ export async function updateOrganizerProfile(
     formData.append('portfolio_photo', profile.portfolio_photo);
   }
   
-  const { data } = await httpClient.patch(`${WEB_ENDPOINT}/organizer/profile/`, formData, {
-    headers: {
-      'Content-Type': 'multipart/form-data',
-    },
-  });
+  const { data } = await httpClient.patch(`${WEB_ENDPOINT}/organizer/profile/`, formData);
   return data;
 }
 

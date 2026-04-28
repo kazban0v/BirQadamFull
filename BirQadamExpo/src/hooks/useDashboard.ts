@@ -1,6 +1,8 @@
 import { useState, useCallback } from 'react';
+import { Platform } from 'react-native';
 import { volunteerAPI } from '../services/api';
-import type { Project, DashboardStats } from '../types';
+import type { Project, DashboardStats, Task } from '../types';
+import { syncVolunteerLocalNotifications } from '../utils/volunteerNotifications';
 
 export interface DashboardProfile {
   trustFactor: number;
@@ -12,7 +14,7 @@ export interface DashboardData {
   profile: DashboardProfile;
   stats: DashboardStats;
   projects: Project[];
-  tasks: any[];
+  tasks: Task[];
   unreadNotifications: number;
 }
 
@@ -44,16 +46,43 @@ export const useDashboard = () => {
       const profileData = profileResponse.data;
       const projectsData = projectsResponse.data.projects || [];
       
-      const tf = profileData.trust_factor || 0;
-      const avgRating = profileData.average_rating || 0;
+      const tf = profileData.trust_factor ?? 0;
+      const avgRating = profileData.average_rating ?? 0;
       const name = profileData.name || profileData.full_name || 'Пользователь';
       
       const summary = dashboardData.summary || {};
+      if (__DEV__) {
+        console.log('📊 [Dashboard] summary from API:', JSON.stringify(summary));
+      }
+      const normalizedTasks: Task[] = Array.isArray(dashboardData.tasks)
+        ? dashboardData.tasks.map((item: any) => ({
+            id: item.task_id || item.id,
+            title: item.title || item.text || 'Задача',
+            description: item.description || item.text || '',
+            project_id: item.project_id,
+            project_title: item.project_title,
+            location: item.location || item.project_city || item.city || 'Локация не указана',
+            start_date: item.start_date || item.deadline_date || item.created_at || new Date().toISOString(),
+            end_date: item.end_date || item.deadline_date || item.created_at || new Date().toISOString(),
+            status: item.status || 'open',
+            start_time: item.start_time,
+            end_time: item.end_time,
+            accepted: Boolean(item.accepted),
+            completed: Boolean(item.completed),
+            is_expired: Boolean(item.is_expired),
+            has_photo_report: Boolean(item.has_photo_report),
+            can_upload_photo: Boolean(item.can_upload_photo),
+            photo_status: item.photo_status ?? null,
+            image: item.image || item.task_image_url || item.project_cover_image_url || null,
+          }))
+        : [];
+
       const newStats: DashboardStats = {
         total_tasks: summary.active_tasks || 0, // Показываем число активных задач из бэкенда
         completed_tasks: summary.completed_tasks || 0,
         total_hours: summary.total_hours || 0,
-        total_points: summary.achievements_count || 0, // Отображаем количество достижений
+        total_points: summary.achievements_count || 0, // Отображаем количество достижений (на всякий случай)
+        achievements_count: summary.achievements_count || 0, // Добавлено явно для StatsGrid
         upcoming_tasks: summary.upcoming_tasks || 0,
         active_projects: summary.active_projects || 0,
       };
@@ -73,9 +102,13 @@ export const useDashboard = () => {
         },
         stats: newStats,
         projects: sortedProjects,
-        tasks: dashboardData.tasks || [],
+        tasks: normalizedTasks,
         unreadNotifications: summary.unread_notifications || 0,
       };
+
+      if (Platform.OS !== 'web') {
+        void syncVolunteerLocalNotifications(dashboardDataResult.tasks, sortedProjects);
+      }
       
       setData(dashboardDataResult);
       setError(null);
@@ -102,4 +135,3 @@ export const useDashboard = () => {
     loadDashboard,
   };
 };
-

@@ -1,33 +1,99 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
+  Alert,
+  Modal,
   RefreshControl,
+  SafeAreaView,
+  ScrollView,
   StatusBar,
+  StyleSheet,
+  Switch,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { SafeAreaView } from 'react-native-safe-area-context';
+
 import { volunteerAPI } from '../../services/api';
-import type { Notification } from '../../types';
+import { appColors } from '../../theme';
+import type { Notification, Project, Task } from '../../types';
+import {
+  DEFAULT_NOTIFICATION_PREFERENCES,
+  getVolunteerNotificationPreferences,
+  setVolunteerNotificationPreferences,
+  syncVolunteerLocalNotifications,
+  type VolunteerNotificationPreferences,
+} from '../../utils/volunteerNotifications';
 
 interface VolunteerNotificationsScreenProps {
   navigation: any;
 }
 
-/**
- * Strips emoji characters from the string.
- */
-function stripEmojis(str: string | undefined | null): string {
-  if (!str) return '';
-  return str.replace(/([\u2700-\u27BF]|[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u2011-\u26FF]|\uD83E[\uDD10-\uDDFF])/g, '').trim();
+type NotificationPreferenceKey = keyof VolunteerNotificationPreferences;
+
+const PREFERENCE_ITEMS: Array<{
+  key: NotificationPreferenceKey;
+  title: string;
+  description: string;
+  icon: keyof typeof Ionicons.glyphMap;
+  implemented: boolean;
+}> = [
+  {
+    key: 'tasks',
+    title: 'Задачи',
+    description: 'Напоминания о старте и активных задачах.',
+    icon: 'clipboard-outline',
+    implemented: true,
+  },
+  {
+    key: 'deadlines',
+    title: 'Дедлайны',
+    description: 'Напоминания о приближении сроков.',
+    icon: 'time-outline',
+    implemented: true,
+  },
+  {
+    key: 'photoReports',
+    title: 'Фотоотчеты',
+    description: 'Напоминания загрузить фото результата.',
+    icon: 'camera-outline',
+    implemented: true,
+  },
+  {
+    key: 'chats',
+    title: 'Чаты',
+    description: 'Сохранится уже сейчас, полноценно заработает после подключения push.',
+    icon: 'chatbubble-ellipses-outline',
+    implemented: false,
+  },
+  {
+    key: 'projects',
+    title: 'Проекты',
+    description: 'Старт и завершение проектов, где вы участвуете.',
+    icon: 'folder-open-outline',
+    implemented: true,
+  },
+];
+
+function stripEmojis(value: string | undefined | null): string {
+  if (!value) {
+    return '';
+  }
+
+  return value
+    .replace(
+      /([\u2700-\u27BF]|[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u2011-\u26FF]|\uD83E[\uDD10-\uDDFF])/g,
+      ''
+    )
+    .trim();
 }
 
 function formatDate(value: string): string {
   const date = new Date(value);
-  if (isNaN(date.getTime())) return value;
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
   return new Intl.DateTimeFormat('ru-RU', {
     day: 'numeric',
     month: 'long',
@@ -36,8 +102,51 @@ function formatDate(value: string): string {
   }).format(date);
 }
 
-function isUnread(n: Notification): boolean {
-  return n.status === 'pending' || n.status === 'sent';
+function isUnread(notification: Notification): boolean {
+  return notification.status === 'pending' || notification.status === 'sent';
+}
+
+function normalizeProjectsPayload(payload: any): Project[] {
+  if (Array.isArray(payload)) {
+    return payload;
+  }
+
+  return Array.isArray(payload?.projects) ? payload.projects : [];
+}
+
+function normalizeTasksPayload(payload: any): Task[] {
+  const tasksData = Array.isArray(payload) ? payload : payload?.tasks || [];
+
+  return tasksData.map((item: any) => ({
+    id: item.id,
+    title: item.title || item.text || 'Без названия',
+    description: item.description || item.text || '',
+    project_id: item.project_id,
+    project_title: item.project_title,
+    location: item.location || item.project_city || item.city || 'Локация не указана',
+    start_date: item.start_date || item.deadline_date || item.created_at || new Date().toISOString(),
+    end_date: item.end_date || item.deadline_date || item.created_at || new Date().toISOString(),
+    status: item.status || 'open',
+    assigned_users_count: item.accepted ? 1 : 0,
+    reward_points: item.reward_points,
+    image: item.image || item.task_image || item.task_image_url,
+    start_time: item.start_time,
+    end_time: item.end_time,
+    creator_name: item.creator_name,
+    creator_avatar: item.creator_avatar,
+    accepted: Boolean(item.accepted),
+    accepted_at: item.accepted_at,
+    photo_uploaded_at: item.photo_uploaded_at,
+    photo_moderated_at: item.photo_moderated_at,
+    created_at: item.created_at,
+    rating: item.rating,
+    has_photo_report: Boolean(item.has_photo_report),
+    completed: Boolean(item.completed),
+    is_expired: Boolean(item.is_expired),
+    can_upload_photo: Boolean(item.can_upload_photo),
+    photo_status: item.photo_status ?? null,
+    rejection_reason: item.rejection_reason ?? null,
+  }));
 }
 
 export const VolunteerNotificationsScreen: React.FC<VolunteerNotificationsScreenProps> = ({
@@ -46,6 +155,11 @@ export const VolunteerNotificationsScreen: React.FC<VolunteerNotificationsScreen
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const [filter, setFilter] = useState<'all' | 'unread'>('all');
+  const [preferences, setPreferences] = useState<VolunteerNotificationPreferences>(
+    DEFAULT_NOTIFICATION_PREFERENCES
+  );
+  const [isSavingPreferences, setIsSavingPreferences] = useState(false);
+  const [isSettingsVisible, setIsSettingsVisible] = useState(false);
 
   const loadNotifications = useCallback(async () => {
     try {
@@ -53,14 +167,13 @@ export const VolunteerNotificationsScreen: React.FC<VolunteerNotificationsScreen
       const data = response.data?.notifications || response.data || [];
       const list = Array.isArray(data) ? data : [];
 
-      // Filter out any emojis from subjects and messages
-      const cleaned = list.map(n => ({
-        ...n,
-        subject: stripEmojis(n.subject || n.title),
-        message: stripEmojis(n.message)
-      }));
-
-      setNotifications(cleaned);
+      setNotifications(
+        list.map((item) => ({
+          ...item,
+          subject: stripEmojis(item.subject || item.title),
+          message: stripEmojis(item.message),
+        }))
+      );
     } catch (error) {
       console.error('Error loading notifications:', error);
     }
@@ -70,18 +183,74 @@ export const VolunteerNotificationsScreen: React.FC<VolunteerNotificationsScreen
     loadNotifications();
   }, [loadNotifications]);
 
+  useEffect(() => {
+    const loadPreferences = async () => {
+      try {
+        const savedPreferences = await getVolunteerNotificationPreferences();
+        setPreferences(savedPreferences);
+      } catch (error) {
+        console.error('Error loading notification preferences:', error);
+      }
+    };
+
+    loadPreferences();
+  }, []);
+
   const onRefresh = async () => {
     setRefreshing(true);
     await loadNotifications();
     setRefreshing(false);
   };
 
+  const unreadCount = useMemo(() => notifications.filter(isUnread).length, [notifications]);
+
+  const filteredNotifications = useMemo(
+    () => notifications.filter((notification) => (filter === 'all' ? true : isUnread(notification))),
+    [filter, notifications]
+  );
+
+  const handlePreferenceToggle = useCallback(
+    async (key: NotificationPreferenceKey, value: boolean) => {
+      const nextPreferences = { ...preferences, [key]: value };
+      setPreferences(nextPreferences);
+      setIsSavingPreferences(true);
+
+      try {
+        await setVolunteerNotificationPreferences(nextPreferences);
+
+        const selectedPreference = PREFERENCE_ITEMS.find((item) => item.key === key);
+        if (selectedPreference?.implemented) {
+          const [tasksResponse, projectsResponse] = await Promise.all([
+            volunteerAPI.getTasks(),
+            volunteerAPI.getProjects(),
+          ]);
+
+          await syncVolunteerLocalNotifications(
+            normalizeTasksPayload(tasksResponse.data),
+            normalizeProjectsPayload(projectsResponse.data)
+          );
+        } else {
+          Alert.alert(
+            'Сохранено',
+            'Переключатель для чатов уже сохранен. Он начнет реально влиять на уведомления после подключения push для сообщений.'
+          );
+        }
+      } catch (error) {
+        setPreferences(preferences);
+        Alert.alert('Ошибка', 'Не удалось сохранить настройки уведомлений.');
+      } finally {
+        setIsSavingPreferences(false);
+      }
+    },
+    [preferences]
+  );
+
   const handleNotificationPress = async (notification: Notification) => {
     if (isUnread(notification)) {
       try {
         await volunteerAPI.markNotificationRead(notification.id, notification.activity_id);
         setNotifications((prev) =>
-          prev.map((n) => (n.id === notification.id ? { ...n, status: 'opened' as const } : n))
+          prev.map((item) => (item.id === notification.id ? { ...item, status: 'opened' as const } : item))
         );
       } catch (error: any) {
         if (error?.response?.status !== 404) {
@@ -89,103 +258,49 @@ export const VolunteerNotificationsScreen: React.FC<VolunteerNotificationsScreen
         }
       }
     }
-
-    // Navigation disabled by user request
-    // if (notification.activity_id) {
-    //   navigation.navigate('VolunteerTaskDetail', { taskId: notification.activity_id });
-    // } else if (notification.project_id) {
-    //   navigation.navigate('VolunteerProjectDetail', { projectId: notification.project_id });
-    // }
   };
 
   const markAllAsRead = async () => {
-    if (unreadCount === 0) return;
+    if (unreadCount === 0) {
+      return;
+    }
+
     try {
       await volunteerAPI.markAllNotificationsRead();
-      // Optimistically clear unread status
-      setNotifications((prev) =>
-        prev.map((n) => ({ ...n, status: 'opened' as const }))
-      );
-      // Wait a bit and refresh to stay in sync with server counts
+      setNotifications((prev) => prev.map((item) => ({ ...item, status: 'opened' as const })));
       setTimeout(loadNotifications, 500);
     } catch (error) {
       console.error('Error marking all as read:', error);
     }
   };
 
-  const getStatusColor = (n: Notification): string => {
-    const type = n.notification_type || '';
-    if (type === 'task_assigned') return '#1e40af';
+  const getStatusColor = (notification: Notification) => {
+    const type = notification.notification_type || '';
+    if (type === 'task_assigned') return appColors.primary;
     if (type === 'project_update') return '#558b2f';
-    if (type === 'joined_project') return '#10B981';
-    if (isUnread(n)) return '#558b2f';
-    return '#6B7280';
+    if (type === 'joined_project') return appColors.primary;
+    if (isUnread(notification)) return '#558b2f';
+    return appColors.textMuted;
   };
 
-  const getIconName = (n: Notification): keyof typeof Ionicons.glyphMap => {
-    const t = n.notification_type || '';
-    const m = (n.message || '').toLowerCase();
-    const s = (n.subject || '').toLowerCase();
+  const getIconName = (notification: Notification): keyof typeof Ionicons.glyphMap => {
+    const type = notification.notification_type || '';
+    const message = (notification.message || '').toLowerCase();
+    const subject = (notification.subject || '').toLowerCase();
 
-    if (t === 'task_assigned' || s.includes('задачу')) return 'clipboard-outline';
-    if (t === 'project_update' || s.includes('проект')) return 'business-outline';
-    if (m.includes('покинули') || s.includes('покинули')) return 'exit-outline';
-    if (m.includes('присоединились') || s.includes('присоединились')) return 'person-add-outline';
-    if (m.includes('создано') || s.includes('новое')) return 'add-circle-outline';
+    if (type === 'task_assigned' || subject.includes('задач')) return 'clipboard-outline';
+    if (type === 'project_update' || subject.includes('проект')) return 'business-outline';
+    if (message.includes('покинули') || subject.includes('покинули')) return 'exit-outline';
+    if (message.includes('присоединились') || subject.includes('присоединились')) return 'person-add-outline';
+    if (message.includes('создано') || subject.includes('новое')) return 'add-circle-outline';
 
     return 'notifications-outline';
   };
 
-  const filteredNotifications = notifications.filter((n) => {
-    if (filter === 'all') return true;
-    return isUnread(n);
-  });
-
-  const unreadCount = notifications.filter(isUnread).length;
-
-  const NotificationItem = ({ item }: { item: Notification }) => {
-    const unread = isUnread(item);
-    const color = getStatusColor(item);
-
-    return (
-      <TouchableOpacity
-        style={[styles.card, unread && styles.cardUnread]}
-        onPress={() => handleNotificationPress(item)}
-        activeOpacity={0.7}
-      >
-        {unread && <View style={styles.unreadBar} />}
-
-        <View style={[styles.iconContainer, { backgroundColor: color + '15' }]}>
-          <Ionicons name={getIconName(item)} size={22} color={color} />
-        </View>
-
-        <View style={styles.cardContent}>
-          <Text style={styles.cardSubject} numberOfLines={2}>
-            {item.subject || 'Уведомление'}
-          </Text>
-          <Text style={styles.cardMessage} numberOfLines={3}>
-            {item.message}
-          </Text>
-          <View style={styles.cardFooter}>
-            {item.project_title && (
-              <Text style={styles.projectText} numberOfLines={1}>
-                {stripEmojis(item.project_title)}
-              </Text>
-            )}
-            <Text style={styles.cardTime}>{formatDate(item.created_at)}</Text>
-          </View>
-        </View>
-
-        {unread && <View style={styles.unreadDot} />}
-      </TouchableOpacity>
-    );
-  };
-
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
+    <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="dark-content" backgroundColor="#f4f7f2" />
 
-      {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
           <TouchableOpacity
@@ -197,28 +312,30 @@ export const VolunteerNotificationsScreen: React.FC<VolunteerNotificationsScreen
           </TouchableOpacity>
           <View>
             <Text style={styles.headerTitle}>Уведомления</Text>
-            {unreadCount > 0 && (
-              <Text style={styles.headerSub}>{unreadCount} новых</Text>
-            )}
+            {unreadCount > 0 ? <Text style={styles.headerSub}>{unreadCount} новых</Text> : null}
           </View>
         </View>
-        {unreadCount > 0 && (
-          <TouchableOpacity onPress={markAllAsRead} style={styles.markAllBtn}>
-            <Ionicons name="checkmark-done" size={20} color="#558b2f" />
+
+        <View style={styles.headerActions}>
+          <TouchableOpacity onPress={() => setIsSettingsVisible(true)} style={styles.headerIconBtn}>
+            <Ionicons name="settings-outline" size={20} color="#558b2f" />
           </TouchableOpacity>
-        )}
+          {unreadCount > 0 ? (
+            <TouchableOpacity onPress={markAllAsRead} style={styles.headerIconBtn}>
+              <Ionicons name="checkmark-done" size={20} color="#558b2f" />
+            </TouchableOpacity>
+          ) : null}
+        </View>
       </View>
 
-      {/* Filter Tabs */}
       <View style={styles.filterRow}>
         <TouchableOpacity
           style={[styles.filterBtn, filter === 'all' && styles.filterBtnActive]}
           onPress={() => setFilter('all')}
         >
-          <Text style={[styles.filterBtnText, filter === 'all' && styles.filterBtnTextActive]}>
-            Все
-          </Text>
+          <Text style={[styles.filterBtnText, filter === 'all' && styles.filterBtnTextActive]}>Все</Text>
         </TouchableOpacity>
+
         <TouchableOpacity
           style={[styles.filterBtn, filter === 'unread' && styles.filterBtnActive]}
           onPress={() => setFilter('unread')}
@@ -226,27 +343,31 @@ export const VolunteerNotificationsScreen: React.FC<VolunteerNotificationsScreen
           <Text style={[styles.filterBtnText, filter === 'unread' && styles.filterBtnTextActive]}>
             Непрочитанные
           </Text>
-          {unreadCount > 0 && (
-            <View style={[styles.filterBadge, filter === 'unread' ? styles.filterBadgeActive : styles.filterBadgeInactive]}>
-              <Text style={[styles.filterBadgeText, filter === 'unread' ? styles.filterBadgeTextActive : styles.filterBadgeTextInactive]}>
+          {unreadCount > 0 ? (
+            <View
+              style={[
+                styles.filterBadge,
+                filter === 'unread' ? styles.filterBadgeActive : styles.filterBadgeInactive,
+              ]}
+            >
+              <Text
+                style={[
+                  styles.filterBadgeText,
+                  filter === 'unread' ? styles.filterBadgeTextActive : styles.filterBadgeTextInactive,
+                ]}
+              >
                 {unreadCount}
               </Text>
             </View>
-          )}
+          ) : null}
         </TouchableOpacity>
       </View>
 
-      {/* List */}
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
         refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor="#558b2f"
-            colors={['#558b2f']}
-          />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#558b2f" colors={['#558b2f']} />
         }
         showsVerticalScrollIndicator={false}
       >
@@ -263,11 +384,95 @@ export const VolunteerNotificationsScreen: React.FC<VolunteerNotificationsScreen
             </Text>
           </View>
         ) : (
-          filteredNotifications.map((item) => (
-            <NotificationItem key={item.id} item={item} />
-          ))
+          filteredNotifications.map((item) => {
+            const unread = isUnread(item);
+            const color = getStatusColor(item);
+
+            return (
+              <TouchableOpacity
+                key={item.id}
+                style={[styles.card, unread && styles.cardUnread]}
+                onPress={() => handleNotificationPress(item)}
+                activeOpacity={0.8}
+              >
+                {unread ? <View style={styles.unreadBar} /> : null}
+
+                <View style={[styles.iconContainer, { backgroundColor: `${color}15` }]}>
+                  <Ionicons name={getIconName(item)} size={22} color={color} />
+                </View>
+
+                <View style={styles.cardContent}>
+                  <Text style={styles.cardSubject} numberOfLines={2}>
+                    {item.subject || 'Уведомление'}
+                  </Text>
+                  <Text style={styles.cardMessage} numberOfLines={3}>
+                    {item.message}
+                  </Text>
+                  <View style={styles.cardFooter}>
+                    {item.project_title ? (
+                      <Text style={styles.projectText} numberOfLines={1}>
+                        {stripEmojis(item.project_title)}
+                      </Text>
+                    ) : (
+                      <View />
+                    )}
+                    <Text style={styles.cardTime}>{formatDate(item.created_at)}</Text>
+                  </View>
+                </View>
+
+                {unread ? <View style={styles.unreadDot} /> : null}
+              </TouchableOpacity>
+            );
+          })
         )}
       </ScrollView>
+
+      <Modal visible={isSettingsVisible} transparent={true} animationType="fade" onRequestClose={() => setIsSettingsVisible(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <View style={styles.modalHeader}>
+              <View style={styles.modalTitleWrap}>
+                <View style={styles.modalIconWrap}>
+                  <Ionicons name="settings-outline" size={20} color={appColors.primary} />
+                </View>
+                <View style={styles.modalTitleTextWrap}>
+                  <Text style={styles.modalTitle}>Настройки уведомлений</Text>
+                  <Text style={styles.modalSubtitle}>Выберите, какие уведомления вы хотите получать.</Text>
+                </View>
+              </View>
+
+              <TouchableOpacity style={styles.modalCloseBtn} onPress={() => setIsSettingsVisible(false)}>
+                <Ionicons name="close" size={22} color={appColors.textMuted} />
+              </TouchableOpacity>
+            </View>
+
+            {PREFERENCE_ITEMS.map((item, index) => (
+              <View
+                key={item.key}
+                style={[styles.settingsRow, index === PREFERENCE_ITEMS.length - 1 && styles.settingsRowLast]}
+              >
+                <View style={styles.settingsRowLeft}>
+                  <View style={styles.settingsRowIcon}>
+                    <Ionicons name={item.icon} size={18} color={appColors.primary} />
+                  </View>
+                  <View style={styles.settingsRowText}>
+                    <Text style={styles.settingsRowTitle}>{item.title}</Text>
+                    <Text style={styles.settingsRowDescription}>{item.description}</Text>
+                  </View>
+                </View>
+
+                <Switch
+                  value={preferences[item.key]}
+                  onValueChange={(value) => void handlePreferenceToggle(item.key, value)}
+                  disabled={isSavingPreferences}
+                  trackColor={{ false: appColors.borderSoft, true: appColors.primary }}
+                  thumbColor={appColors.white}
+                />
+              </View>
+            ))}
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -305,11 +510,16 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginTop: -2,
   },
-  markAllBtn: {
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  headerIconBtn: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#fff',
+    backgroundColor: appColors.surface,
     alignItems: 'center',
     justifyContent: 'center',
     elevation: 2,
@@ -318,8 +528,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 2,
   },
-
-  /* Filter */
   filterRow: {
     flexDirection: 'row',
     paddingHorizontal: 16,
@@ -356,7 +564,7 @@ const styles = StyleSheet.create({
     marginLeft: 4,
   },
   filterBadgeActive: {
-    backgroundColor: '#fff',
+    backgroundColor: appColors.surface,
   },
   filterBadgeInactive: {
     backgroundColor: '#558b2f',
@@ -371,8 +579,6 @@ const styles = StyleSheet.create({
   filterBadgeTextInactive: {
     color: '#fff',
   },
-
-  /* List */
   scroll: {
     flex: 1,
   },
@@ -380,12 +586,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingBottom: 24,
   },
-
-  /* Card */
   card: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    backgroundColor: '#fff',
+    backgroundColor: appColors.surface,
     borderRadius: 16,
     padding: 14,
     marginBottom: 10,
@@ -457,8 +661,6 @@ const styles = StyleSheet.create({
     marginLeft: 6,
     marginTop: 4,
   },
-
-  /* Empty State */
   emptyState: {
     alignItems: 'center',
     justifyContent: 'center',
@@ -485,5 +687,107 @@ const styles = StyleSheet.create({
     color: '#6b7280',
     textAlign: 'center',
     lineHeight: 20,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(15, 23, 42, 0.38)',
+    justifyContent: 'flex-start',
+    paddingTop: 90,
+    paddingHorizontal: 16,
+  },
+  modalCard: {
+    backgroundColor: appColors.surface,
+    borderRadius: 24,
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.12,
+    shadowRadius: 18,
+    elevation: 8,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    marginBottom: 6,
+  },
+  modalTitleWrap: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    flex: 1,
+    paddingRight: 12,
+  },
+  modalIconWrap: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    backgroundColor: appColors.primarySurface,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 10,
+  },
+  modalTitleTextWrap: {
+    flex: 1,
+  },
+  modalTitle: {
+    fontSize: 17,
+    fontWeight: '800',
+    color: '#1b2a1b',
+    marginBottom: 3,
+  },
+  modalSubtitle: {
+    fontSize: 13,
+    lineHeight: 18,
+    color: '#6b7280',
+  },
+  modalCloseBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: appColors.surfaceSoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  settingsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+    borderTopWidth: 1,
+    borderTopColor: appColors.borderSoft,
+  },
+  settingsRowLast: {
+    paddingBottom: 8,
+  },
+  settingsRowLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    paddingRight: 12,
+  },
+  settingsRowIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: 10,
+    backgroundColor: appColors.primarySurface,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 10,
+  },
+  settingsRowText: {
+    flex: 1,
+  },
+  settingsRowTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#1b2a1b',
+    marginBottom: 2,
+  },
+  settingsRowDescription: {
+    fontSize: 12,
+    lineHeight: 17,
+    color: '#6b7280',
   },
 });

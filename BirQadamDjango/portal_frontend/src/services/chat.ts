@@ -25,6 +25,7 @@ export interface ChatMessage {
   sender_is_organizer: boolean;
   message_type: string;
   image_url?: string | null;
+  photo_url?: string | null;
   file_url?: string | null;
   is_read: boolean;
   created_at: string;
@@ -33,6 +34,17 @@ export interface ChatMessage {
 export interface ChatMessagesResponse {
   messages: ChatMessage[];
   count: number;
+}
+
+function normalizeChatMessage(message: ChatMessage): ChatMessage {
+  const resolvedPhotoUrl = message.photo_url ?? message.image_url ?? null;
+
+  return {
+    ...message,
+    text: message.text ?? '',
+    image_url: resolvedPhotoUrl,
+    photo_url: resolvedPhotoUrl,
+  };
 }
 
 /**
@@ -50,7 +62,10 @@ export async function getChatMessages(chatId: number, limit = 50, offset = 0): P
   const { data } = await httpClient.get<ChatMessagesResponse>(`/custom-admin/api/v1/chats/${chatId}/messages/`, {
     params: { limit, offset },
   });
-  return data;
+  return {
+    ...data,
+    messages: data.messages.map(normalizeChatMessage),
+  };
 }
 
 /**
@@ -60,7 +75,7 @@ export async function sendMessage(chatId: number, text: string): Promise<ChatMes
   const { data } = await httpClient.post<ChatMessage>(`/custom-admin/api/v1/chats/${chatId}/send/`, {
     text,
   });
-  return data;
+  return normalizeChatMessage(data);
 }
 
 /**

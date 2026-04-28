@@ -1,4 +1,4 @@
-import React, { useState, useLayoutEffect, useCallback } from 'react';
+import React, { useEffect, useState, useLayoutEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -12,8 +12,11 @@ import {
   LayoutAnimation,
   UIManager,
   Platform,
+  Animated,
+  Easing,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { appColors } from '../../theme';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -21,24 +24,309 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
 import { useRoute, RouteProp, useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { volunteerAPI } from '../../services/api';
+import { useTaskSyncStore } from '../../store/taskSyncStore';
 import type { Task } from '../../types';
+import { normalizeImageUrl, VOLUNTEER_FALLBACK_IMAGE_URL } from '../../utils/network';
 
 type RootStackParamList = {
   VolunteerTaskDetail: { taskId: number };
+  PhotoReportDetail: { taskId: number };
   SubmitPhotoReport: { taskId: number };
+  ChatDetail: { chatId: number; chatTitle: string; chatType: string };
 };
 
 type RouteProps = RouteProp<RootStackParamList, 'VolunteerTaskDetail'>;
+
+// ─── Premium Timeline Components ─────────────────────────────────────────────
+
+const TIMELINE_NODES = 5;
+
+/** Dot with double-ring pulse + glow shadow for a premium look */
+const PremiumDot: React.FC<{
+  color: string;
+  /** Continuously pulsing ring (e.g. the current active step) */
+  isLive: boolean;
+  /** Glowing solid ring shown once for completed steps */
+  isCompleted: boolean;
+  children: React.ReactNode;
+}> = ({ color, isLive, isCompleted, children }) => {
+  // Outer ring — slow, dreamy fade
+  const ring1Scale = React.useRef(new Animated.Value(1)).current;
+  const ring1Opacity = React.useRef(new Animated.Value(0.45)).current;
+  // Inner ring — faster, snappier
+  const ring2Scale = React.useRef(new Animated.Value(1)).current;
+  const ring2Opacity = React.useRef(new Animated.Value(0.25)).current;
+
+  React.useEffect(() => {
+    if (!isLive) return;
+
+    const outerLoop = Animated.loop(
+      Animated.parallel([
+        Animated.sequence([
+          Animated.timing(ring1Scale, { toValue: 2.6, duration: 1600, easing: Easing.out(Easing.ease), useNativeDriver: true }),
+          Animated.timing(ring1Scale, { toValue: 1, duration: 0, useNativeDriver: true }),
+        ]),
+        Animated.sequence([
+          Animated.timing(ring1Opacity, { toValue: 0, duration: 1600, easing: Easing.out(Easing.ease), useNativeDriver: true }),
+          Animated.timing(ring1Opacity, { toValue: 0.45, duration: 0, useNativeDriver: true }),
+        ]),
+      ])
+    );
+
+    const innerLoop = Animated.loop(
+      Animated.parallel([
+        Animated.sequence([
+          Animated.timing(ring2Scale, { toValue: 1.75, duration: 900, easing: Easing.out(Easing.ease), useNativeDriver: true }),
+          Animated.timing(ring2Scale, { toValue: 1, duration: 0, useNativeDriver: true }),
+        ]),
+        Animated.sequence([
+          Animated.timing(ring2Opacity, { toValue: 0, duration: 900, easing: Easing.out(Easing.ease), useNativeDriver: true }),
+          Animated.timing(ring2Opacity, { toValue: 0.25, duration: 0, useNativeDriver: true }),
+        ]),
+      ])
+    );
+
+    // Stagger the two rings so they feel independent
+    outerLoop.start();
+    setTimeout(() => innerLoop.start(), 500);
+
+    return () => {
+      outerLoop.stop();
+      innerLoop.stop();
+    };
+  }, [isLive]);
+
+  const dotSize = 26;
+  const dotRadius = dotSize / 2;
+
+  return (
+    <View style={{ width: dotSize, height: dotSize, alignItems: 'center', justifyContent: 'center' }}>
+      {/* Outer glow ring */}
+      {(isLive || isCompleted) && (
+        <Animated.View
+          style={{
+            position: 'absolute',
+            width: dotSize,
+            height: dotSize,
+            borderRadius: dotRadius,
+            backgroundColor: color,
+            transform: [{ scale: isLive ? ring1Scale : 1 }],
+            opacity: isLive ? ring1Opacity : 0.18,
+          }}
+        />
+      )}
+      {/* Inner ring */}
+      {isLive && (
+        <Animated.View
+          style={{
+            position: 'absolute',
+            width: dotSize,
+            height: dotSize,
+            borderRadius: dotRadius,
+            backgroundColor: color,
+            transform: [{ scale: ring2Scale }],
+            opacity: ring2Opacity,
+          }}
+        />
+      )}
+      {/* Core dot with shadow glow */}
+      <View
+        style={{
+          width: dotSize,
+          height: dotSize,
+          borderRadius: dotRadius,
+          backgroundColor: color,
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 3,
+          // iOS glow
+          shadowColor: color,
+          shadowOffset: { width: 0, height: 0 },
+          shadowOpacity: isCompleted || isLive ? 0.75 : 0,
+          shadowRadius: isCompleted || isLive ? 8 : 0,
+          // Android elevation
+          elevation: isCompleted || isLive ? 6 : 0,
+        }}
+      >
+        {/* Subtle inner highlight (top-left gloss) */}
+        <View
+          style={{
+            position: 'absolute',
+            top: 4,
+            left: 5,
+            width: 8,
+            height: 5,
+            borderRadius: 3,
+            backgroundColor: 'rgba(255,255,255,0.35)',
+          }}
+        />
+        {children}
+      </View>
+    </View>
+  );
+};
+
+/** Animated line that draws itself from top to bottom + travelling shimmer */
+const AnimatedLine: React.FC<{
+  color: string;
+  isActive: boolean;
+  drawProgress: Animated.Value;
+}> = ({ color, isActive, drawProgress }) => {
+  const shimmerY = React.useRef(new Animated.Value(-50)).current;
+
+  React.useEffect(() => {
+    if (!isActive) return;
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(shimmerY, {
+          toValue: 60,
+          duration: 1800,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+        Animated.timing(shimmerY, { toValue: -50, duration: 0, useNativeDriver: true }),
+        Animated.delay(600),
+      ])
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [isActive]);
+
+  const scaleY = drawProgress.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, 1],
+    extrapolate: 'clamp',
+  });
+
+  return (
+    <Animated.View
+      style={[
+        premiumLineStyle,
+        {
+          backgroundColor: color,
+          transform: [{ scaleY }, { translateY: -999 }, { translateY: 999 }], // origin top
+        },
+      ]}
+    >
+      {isActive && (
+        <Animated.View
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            height: 18,
+            borderRadius: 2,
+            backgroundColor: 'rgba(255,255,255,0.5)',
+            transform: [{ translateY: shimmerY }],
+          }}
+        />
+      )}
+    </Animated.View>
+  );
+};
+
+// Shared style objects referenced before StyleSheet.create
+const timelineDotStyle = {
+  width: 26,
+  height: 26,
+  borderRadius: 13,
+  justifyContent: 'center' as const,
+  alignItems: 'center' as const,
+  zIndex: 2,
+};
+const premiumLineStyle = {
+  width: 2,
+  flex: 1,
+  marginTop: -2,
+  marginBottom: -2,
+  zIndex: 1,
+  overflow: 'hidden' as const,
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 export const VolunteerTaskDetailScreen: React.FC = () => {
   const route = useRoute<RouteProps>();
   const navigation = useNavigation<any>();
   const { taskId } = route.params;
+  const lastTaskMutation = useTaskSyncStore((state) => state.lastMutation);
+  const publishTaskMutation = useTaskSyncStore((state) => state.publishTaskMutation);
 
   const [task, setTask] = useState<Task | null>(null);
   const [loading, setLoading] = useState(true);
+  const [heroImageIndex, setHeroImageIndex] = useState(0);
 
-  const fetchTaskDetail = async () => {
+  // ── Premium timeline entrance animations ─────────────────────────────────
+  const nodeAnims = React.useRef(
+    Array.from({ length: TIMELINE_NODES }, () => ({
+      opacity: new Animated.Value(0),
+      translateY: new Animated.Value(22),
+      scale: new Animated.Value(0.88),
+      dotScale: new Animated.Value(0),
+      lineProgress: new Animated.Value(0),
+    }))
+  ).current;
+
+  useEffect(() => {
+    if (!task) return;
+
+    nodeAnims.forEach((a) => {
+      a.opacity.setValue(0);
+      a.translateY.setValue(22);
+      a.scale.setValue(0.88);
+      a.dotScale.setValue(0);
+      a.lineProgress.setValue(0);
+    });
+
+    // Staggered float-up entrance — deliberate, luxurious pace
+    Animated.stagger(
+      150,
+      nodeAnims.map((a) =>
+        Animated.parallel([
+          Animated.timing(a.opacity, {
+            toValue: 1,
+            duration: 520,
+            easing: Easing.out(Easing.ease),
+            useNativeDriver: true,
+          }),
+          Animated.timing(a.translateY, {
+            toValue: 0,
+            duration: 560,
+            easing: Easing.bezier(0.25, 0.46, 0.45, 0.94),
+            useNativeDriver: true,
+          }),
+          Animated.timing(a.scale, {
+            toValue: 1,
+            duration: 560,
+            easing: Easing.bezier(0.25, 0.46, 0.45, 0.94),
+            useNativeDriver: true,
+          }),
+          // Dot springs in with overshoot
+          Animated.spring(a.dotScale, {
+            toValue: 1,
+            tension: 100,
+            friction: 7,
+            useNativeDriver: true,
+          }),
+        ])
+      )
+    ).start();
+
+    // Lines draw themselves after their dot appears
+    nodeAnims.forEach((a, i) => {
+      Animated.timing(a.lineProgress, {
+        toValue: 1,
+        duration: 500,
+        delay: i * 150 + 280,
+        easing: Easing.out(Easing.ease),
+        useNativeDriver: true,
+      }).start();
+    });
+  }, [task]);
+  // ─────────────────────────────────────────────────────────────────────────
+
+  const fetchTaskDetail = useCallback(async () => {
     try {
       const response = await volunteerAPI.getTaskDetail(taskId);
       LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
@@ -49,13 +337,32 @@ export const VolunteerTaskDetailScreen: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [taskId]);
 
   useFocusEffect(
     useCallback(() => {
       fetchTaskDetail();
-    }, [taskId])
+    }, [fetchTaskDetail])
   );
+
+  useEffect(() => {
+    if (!lastTaskMutation || lastTaskMutation.taskId !== taskId) {
+      return;
+    }
+
+    setTask((current) =>
+      current
+        ? {
+            ...current,
+            ...lastTaskMutation.changes,
+          }
+        : current
+    );
+  }, [lastTaskMutation, taskId]);
+
+  useEffect(() => {
+    setHeroImageIndex(0);
+  }, [task?.image, task?.task_image_url, task?.project_cover_image_url]);
 
   useLayoutEffect(() => {
     navigation.setOptions({ headerShown: false });
@@ -64,6 +371,19 @@ export const VolunteerTaskDetailScreen: React.FC = () => {
   const handleAcceptTask = async () => {
     try {
       await volunteerAPI.acceptTask(taskId);
+      const acceptedAt = new Date().toISOString();
+      const acceptedChanges: Partial<Task> = {
+        status: 'in_progress',
+        accepted: true,
+        accepted_at: acceptedAt,
+        can_upload_photo: true,
+      };
+      setTask((current) => (current ? { ...current, ...acceptedChanges } : current));
+      publishTaskMutation({
+        taskId,
+        reason: 'accepted',
+        changes: acceptedChanges,
+      });
       Alert.alert('Успешно', 'Задача принята в работу');
       fetchTaskDetail();
     } catch (error: any) {
@@ -75,6 +395,15 @@ export const VolunteerTaskDetailScreen: React.FC = () => {
   const handleDeclineTask = async () => {
     try {
       await volunteerAPI.declineTask(taskId);
+      publishTaskMutation({
+        taskId,
+        reason: 'declined',
+        changes: {
+          status: 'archived',
+          accepted: false,
+          can_upload_photo: false,
+        },
+      });
       Alert.alert('Успех', 'Задача отклонена');
       navigation.goBack();
     } catch (error: any) {
@@ -83,23 +412,43 @@ export const VolunteerTaskDetailScreen: React.FC = () => {
     }
   };
 
-  const normalizeImageUrl = (url: string | undefined | null): string | undefined => {
-    if (!url) return undefined;
-    if (__DEV__) {
-      if (url.includes('cleanup.almau.edu.kz') || url.includes('birqadam.almau.edu.kz')) {
-        return url.replace(/https?:\/\/[^\/]+/, 'http://192.168.0.13:8000');
-      }
-      if (url.startsWith('https://')) {
-        return url.replace('https://', 'http://');
-      }
+  const handleOpenReportDetails = () => {
+    navigation.navigate('PhotoReportDetail', { taskId });
+  };
+
+  const handleOpenTaskChat = async () => {
+    if (!task) {
+      return;
     }
-    return url;
+
+    try {
+      const response = await volunteerAPI.getChats();
+      const chats = response.data?.chats || [];
+      const projectChat = chats.find(
+        (chat: { id: number; title?: string; chat_type?: string; project_id?: number | null }) =>
+          chat.chat_type === 'project' && chat.project_id === task.project_id
+      );
+
+      if (!projectChat) {
+        Alert.alert('Чат недоступен', 'Для этой задачи активный чат проекта пока не найден.');
+        return;
+      }
+
+      navigation.navigate('ChatDetail', {
+        chatId: projectChat.id,
+        chatTitle: projectChat.title || task.project_title || 'Чат проекта',
+        chatType: projectChat.chat_type || 'project',
+      });
+    } catch (error) {
+      console.error('Error opening task chat:', error);
+      Alert.alert('Ошибка', 'Не удалось открыть чат проекта. Попробуйте ещё раз.');
+    }
   };
 
   if (loading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator size="large" color="#10B981" />
+        <ActivityIndicator size="large" color={appColors.primary} />
       </View>
     );
   }
@@ -107,7 +456,7 @@ export const VolunteerTaskDetailScreen: React.FC = () => {
   if (!task) {
     return (
       <View style={styles.center}>
-        <Ionicons name="alert-circle-outline" size={60} color="#9CA3AF" />
+        <Ionicons name="alert-circle-outline" size={60} color={appColors.textSoft} />
         <Text style={styles.errorText}>Задача не найдена</Text>
         <TouchableOpacity style={styles.goBackButton} onPress={() => navigation.goBack()}>
           <Text style={styles.goBackButtonText}>Вернуться назад</Text>
@@ -116,7 +465,26 @@ export const VolunteerTaskDetailScreen: React.FC = () => {
     );
   }
 
-  const imageUrl = normalizeImageUrl(task.image);
+  const heroImageCandidates = Array.from(
+    new Set(
+      [
+        normalizeImageUrl(task.image),
+        normalizeImageUrl(task.task_image_url),
+        normalizeImageUrl(task.project_cover_image_url),
+        VOLUNTEER_FALLBACK_IMAGE_URL,
+      ].filter((value): value is string => Boolean(value))
+    )
+  );
+  const imageUrl = heroImageCandidates[heroImageIndex];
+  const handleHeroImageError = () => {
+    setHeroImageIndex((currentIndex) => {
+      if (currentIndex >= heroImageCandidates.length - 1) {
+        return heroImageCandidates.length;
+      }
+
+      return currentIndex + 1;
+    });
+  };
   
   // Strict time logic
   const now = new Date();
@@ -135,9 +503,25 @@ export const VolunteerTaskDetailScreen: React.FC = () => {
 
   const isNotOpenedYet = startDate && now < startDate;
   const isExpired = endDate && now > endDate;
-  
-  const isPending = (task.status === 'pending' || task.status === 'open' || !task.status) && !isExpired && !isNotOpenedYet;
-  const inProgress = task.status === 'in_progress' || task.status === 'active';
+  const taskStatus = task.status || 'open';
+  const hasUploadedPhoto = Boolean(task.has_photo_report);
+  const isPending = (taskStatus === 'pending' || taskStatus === 'open') && !task.accepted && !isExpired && !isNotOpenedYet;
+  const isUnderReviewTask = taskStatus === 'under_review';
+  const isRevisionTask = taskStatus === 'revision' || task.photo_status === 'rejected';
+  const isCompletedTask = taskStatus === 'completed';
+  const isArchivedTask = taskStatus === 'archived';
+  const isDeclinedTask =
+    taskStatus === 'archived' &&
+    !task.accepted &&
+    !hasUploadedPhoto &&
+    !isCompletedTask &&
+    !isRevisionTask;
+  const canUploadPhoto =
+    Boolean(task.can_upload_photo || taskStatus === 'revision' || (task.accepted && !hasUploadedPhoto && taskStatus === 'in_progress')) &&
+    !isArchivedTask &&
+    !isNotOpenedYet &&
+    !isExpired;
+  const uploadButtonText = isRevisionTask ? 'Отправить фотоотчет повторно' : 'Отправить фотоотчет';
   const organizerAvatar = normalizeImageUrl(task.creator_avatar);
 
   // Formatting dates and times
@@ -147,7 +531,7 @@ export const VolunteerTaskDetailScreen: React.FC = () => {
     const day = date.getDate();
     const month = date.toLocaleDateString('ru-RU', { month: 'long' });
     const year = date.getFullYear();
-    return `${day} ${month} ${year} г.`;
+    return `${day} ${month} ${year} \u0433.`;
   };
   const formatTimeInfo = (timeString?: string) => {
     if (!timeString) return '';
@@ -233,7 +617,7 @@ export const VolunteerTaskDetailScreen: React.FC = () => {
     const stars = [];
     for (let i = 1; i <= 5; i++) {
       stars.push(
-        <Ionicons key={i} name={i <= rating ? "star" : "star-outline"} size={14} color="#F59E0B" style={{ marginRight: 2 }} />
+        <Ionicons key={i} name={i <= rating ? "star" : "star-outline"} size={14} color={appColors.warning} style={{ marginRight: 2 }} />
       );
     }
     return <View style={{ flexDirection: 'row' }}>{stars}</View>;
@@ -241,12 +625,15 @@ export const VolunteerTaskDetailScreen: React.FC = () => {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+      <StatusBar
+        barStyle={appColors.surface === appColors.white ? 'dark-content' : 'light-content'}
+        backgroundColor={appColors.surface}
+      />
       
       {/* Header */}
       <SafeAreaView edges={['top']} style={styles.appBar}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color="#1F2937" />
+          <Ionicons name="arrow-back" size={24} color={appColors.text} />
         </TouchableOpacity>
         <Text style={styles.appBarTitle}>Детали задачи</Text>
         <View style={{ width: 40 }} />
@@ -254,16 +641,21 @@ export const VolunteerTaskDetailScreen: React.FC = () => {
 
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
         {/* Cover Image */}
-        <View style={styles.imageContainer}>
-          {imageUrl ? (
-            <Image source={{ uri: imageUrl }} style={styles.coverImage} resizeMode="cover" />
+          <View style={styles.imageContainer}>
+            {imageUrl ? (
+            <Image
+              source={{ uri: imageUrl }}
+              style={styles.coverImage}
+              resizeMode="cover"
+              onError={handleHeroImageError}
+            />
           ) : (
-            <View style={[styles.coverImage, { backgroundColor: '#E5E7EB', justifyContent: 'center', alignItems: 'center' }]}>
-              <Ionicons name="image-outline" size={40} color="#9CA3AF" />
+            <View style={[styles.coverImage, { backgroundColor: appColors.surfaceMuted, justifyContent: 'center', alignItems: 'center' }]}>
+              <Ionicons name="image-outline" size={40} color={appColors.textSoft} />
             </View>
           )}
           <View style={styles.verifiedBadge}>
-            <Ionicons name="shield-checkmark-outline" size={14} color="#10B981" />
+            <Ionicons name="shield-checkmark-outline" size={14} color={appColors.primary} />
             <Text style={styles.verifiedText}>Проверено</Text>
           </View>
         </View>
@@ -285,7 +677,7 @@ export const VolunteerTaskDetailScreen: React.FC = () => {
           <View style={styles.deadlineCard}>
             <View style={styles.deadlineTopRow}>
               <View style={styles.deadlineLabelContainer}>
-                <Ionicons name="calendar-outline" size={14} color="#10B981" />
+                <Ionicons name="calendar-outline" size={14} color={appColors.primary} />
                 <Text style={styles.deadlineLabel}>ДЕДЛАЙН</Text>
               </View>
               <View style={styles.daysLeftPill}>
@@ -310,7 +702,7 @@ export const VolunteerTaskDetailScreen: React.FC = () => {
           {/* Task Info (Location) */}
           <View style={styles.infoRow}>
             <View style={styles.infoItem}>
-              <Ionicons name="location-outline" size={16} color="#10B981" />
+              <Ionicons name="location-outline" size={16} color={appColors.primary} />
               <Text style={styles.infoText} numberOfLines={1}>{task.location || 'Место не указано'}</Text>
             </View>
           </View>
@@ -321,15 +713,15 @@ export const VolunteerTaskDetailScreen: React.FC = () => {
               <Image source={{ uri: organizerAvatar }} style={styles.organizerAvatar} />
             ) : (
               <View style={styles.organizerAvatarFallback}>
-                <Ionicons name="person" size={24} color="#9CA3AF" />
+                <Ionicons name="person" size={24} color={appColors.textSoft} />
               </View>
             )}
             <View style={styles.organizerInfo}>
               <Text style={styles.organizerLabel}>ОРГАНИЗАТОР</Text>
               <Text style={styles.organizerName}>{task.creator_name || 'Организация'}</Text>
             </View>
-            <TouchableOpacity style={styles.chatButton}>
-              <Ionicons name="chatbubble-outline" size={20} color="#10B981" />
+            <TouchableOpacity style={styles.chatButton} onPress={handleOpenTaskChat} activeOpacity={0.8}>
+              <Ionicons name="chatbubble-outline" size={20} color={appColors.primary} />
             </TouchableOpacity>
           </View>
 
@@ -340,113 +732,260 @@ export const VolunteerTaskDetailScreen: React.FC = () => {
           <View style={styles.timeline}>
 
             {/* 1. Task Created */}
-            <View style={styles.timelineNode}>
+            <Animated.View
+              style={[styles.timelineNode, {
+                opacity: nodeAnims[0].opacity,
+                transform: [
+                  { translateY: nodeAnims[0].translateY },
+                  { scale: nodeAnims[0].scale },
+                ],
+              }]}
+            >
               <View style={styles.timelineIndicatorColumn}>
-                <View style={[styles.timelineDot, { backgroundColor: '#10B981' }]}>
-                  <Ionicons name="checkmark" size={14} color="#FFF" />
-                </View>
-                <View style={[styles.timelineLine, { backgroundColor: '#10B981' }]} />
+                <Animated.View style={{ transform: [{ scale: nodeAnims[0].dotScale }] }}>
+                  <PremiumDot color={appColors.primary} isLive={true} isCompleted={true}>
+                    <Ionicons name="checkmark" size={14} color="#FFF" />
+                  </PremiumDot>
+                </Animated.View>
+                <AnimatedLine
+                  color={appColors.primary}
+                  isActive={true}
+                  drawProgress={nodeAnims[0].lineProgress}
+                />
               </View>
               <View style={styles.timelineContent}>
                 <Text style={styles.timelineTitleActive}>Задача создана</Text>
                 <Text style={styles.timelineSubtitle}>{formatTimelineDate(task.created_at)}</Text>
               </View>
-            </View>
+            </Animated.View>
 
-            {/* 2. You accepted */}
-            <View style={styles.timelineNode}>
+            {/* 2. You accepted / declined */}
+            <Animated.View
+              style={[styles.timelineNode, {
+                opacity: nodeAnims[1].opacity,
+                transform: [
+                  { translateY: nodeAnims[1].translateY },
+                  { scale: nodeAnims[1].scale },
+                ],
+              }]}
+            >
               <View style={styles.timelineIndicatorColumn}>
-                <View style={[styles.timelineDot, { backgroundColor: task.accepted ? '#10B981' : '#E5E7EB' }]}>
-                  <Ionicons name="checkmark" size={14} color={task.accepted ? '#FFF' : '#9CA3AF'} />
-                </View>
-                <View style={[styles.timelineLine, { backgroundColor: task.has_photo_report ? '#10B981' : '#E5E7EB' }]} />
+                <Animated.View style={{ transform: [{ scale: nodeAnims[1].dotScale }] }}>
+                  <PremiumDot
+                    color={
+                      isDeclinedTask ? appColors.danger
+                        : task.accepted ? appColors.primary
+                        : appColors.surfaceMuted
+                    }
+                    isLive={false}
+                    isCompleted={task.accepted && !isDeclinedTask}
+                  >
+                    <Ionicons
+                      name={isDeclinedTask ? 'close' : 'checkmark'}
+                      size={14}
+                      color={(task.accepted || isDeclinedTask) ? appColors.white : appColors.textSoft}
+                    />
+                  </PremiumDot>
+                </Animated.View>
+                <AnimatedLine
+                  color={!isDeclinedTask && task.has_photo_report ? appColors.primary : appColors.surfaceMuted}
+                  isActive={!isDeclinedTask && task.has_photo_report}
+                  drawProgress={nodeAnims[1].lineProgress}
+                />
               </View>
               <View style={styles.timelineContent}>
-                <Text style={task.accepted ? styles.timelineTitleActive : styles.timelineTitleInactive}>Вы приняли задачу</Text>
-                {task.accepted_at && (
+                <Text
+                  style={
+                    isDeclinedTask ? styles.timelineTitleDeclined
+                      : task.accepted ? styles.timelineTitleActive
+                      : styles.timelineTitleInactive
+                  }
+                >
+                  {isDeclinedTask ? 'Вы отказались от задачи' : 'Вы приняли задачу'}
+                </Text>
+                {task.accepted_at && task.accepted && (
                   <Text style={styles.timelineSubtitle}>{formatTimelineDate(task.accepted_at)}</Text>
                 )}
               </View>
-            </View>
+            </Animated.View>
 
             {/* 3. Photo uploaded */}
-            <View style={styles.timelineNode}>
+            <Animated.View
+              style={[styles.timelineNode, {
+                opacity: nodeAnims[2].opacity,
+                transform: [
+                  { translateY: nodeAnims[2].translateY },
+                  { scale: nodeAnims[2].scale },
+                ],
+              }]}
+            >
               <View style={styles.timelineIndicatorColumn}>
-                <View style={[styles.timelineDot, { backgroundColor: task.has_photo_report ? '#10B981' : '#E5E7EB' }]}>
-                  <Ionicons name="checkmark" size={14} color={task.has_photo_report ? '#FFF' : '#9CA3AF'} />
-                </View>
-                <View style={[styles.timelineLine, { backgroundColor: task.status === 'under_review' || task.completed ? '#10B981' : '#E5E7EB' }]} />
+                <Animated.View style={{ transform: [{ scale: nodeAnims[2].dotScale }] }}>
+                  <PremiumDot
+                    color={hasUploadedPhoto ? appColors.primary : appColors.surfaceMuted}
+                    isLive={false}
+                    isCompleted={hasUploadedPhoto}
+                  >
+                    <Ionicons
+                      name="checkmark"
+                      size={14}
+                      color={hasUploadedPhoto ? appColors.white : appColors.textSoft}
+                    />
+                  </PremiumDot>
+                </Animated.View>
+                <AnimatedLine
+                  color={(isUnderReviewTask || isRevisionTask || isCompletedTask) ? appColors.primary : appColors.surfaceMuted}
+                  isActive={isUnderReviewTask || isRevisionTask || isCompletedTask}
+                  drawProgress={nodeAnims[2].lineProgress}
+                />
               </View>
               <View style={styles.timelineContent}>
-                <Text style={task.has_photo_report ? styles.timelineTitleActive : styles.timelineTitleInactive}>Фотоотчет загружен</Text>
+                <Text style={hasUploadedPhoto ? styles.timelineTitleActive : styles.timelineTitleInactive}>
+                  Фотоотчет загружен
+                </Text>
                 {task.photo_uploaded_at && (
                   <Text style={styles.timelineSubtitle}>{formatTimelineDate(task.photo_uploaded_at)}</Text>
                 )}
               </View>
-            </View>
+            </Animated.View>
 
             {/* 4. Under Review */}
-            <View style={styles.timelineNode}>
+            <Animated.View
+              style={[styles.timelineNode, {
+                opacity: nodeAnims[3].opacity,
+                transform: [
+                  { translateY: nodeAnims[3].translateY },
+                  { scale: nodeAnims[3].scale },
+                ],
+              }]}
+            >
               <View style={styles.timelineIndicatorColumn}>
-                <View style={[styles.timelineDot, { backgroundColor: task.has_photo_report || task.completed ? '#10B981' : '#E5E7EB' }]}>
-                  {task.has_photo_report || task.completed ? (
-                    <Ionicons name="checkmark" size={14} color="#FFF" />
-                  ) : (
-                    <Ionicons name="time" size={14} color="#9CA3AF" />
-                  )}
-                </View>
-                <View style={[styles.timelineLine, { backgroundColor: task.completed ? '#10B981' : '#E5E7EB' }]} />
+                <Animated.View style={{ transform: [{ scale: nodeAnims[3].dotScale }] }}>
+                  <PremiumDot
+                    color={(isUnderReviewTask || isRevisionTask || isCompletedTask) ? appColors.primary : appColors.surfaceMuted}
+                    isLive={isUnderReviewTask}
+                    isCompleted={isRevisionTask || isCompletedTask}
+                  >
+                    {(isUnderReviewTask || isRevisionTask || isCompletedTask)
+                      ? <Ionicons name="checkmark" size={14} color="#FFF" />
+                      : <Ionicons name="time" size={14} color={appColors.textSoft} />
+                    }
+                  </PremiumDot>
+                </Animated.View>
+                <AnimatedLine
+                  color={(isRevisionTask || isCompletedTask) ? appColors.primary : appColors.surfaceMuted}
+                  isActive={isRevisionTask || isCompletedTask}
+                  drawProgress={nodeAnims[3].lineProgress}
+                />
               </View>
               <View style={styles.timelineContent}>
-                <Text style={task.has_photo_report || task.completed ? styles.timelineTitleActive : styles.timelineTitleInactive}>На проверке</Text>
-                {task.photo_uploaded_at && !task.completed && (
-                  <Text style={styles.timelineSubtitle}>В процессе проверки</Text>
-                )}
-              </View>
-            </View>
-
-            {/* 4. Approved / Rejected */}
-            <View style={styles.timelineNode}>
-              <View style={styles.timelineIndicatorColumn}>
-                <View style={[styles.timelineDot, { 
-                  backgroundColor: task.completed ? (task.photo_status === 'rejected' ? '#EF4444' : '#10B981') : '#E5E7EB' 
-                }]}>
-                  {task.completed ? (
-                    task.photo_status === 'rejected' ? (
-                      <Ionicons name="close" size={14} color="#FFF" />
-                    ) : (
-                      <Ionicons name="star" size={12} color="#FFF" />
-                    )
-                  ) : (
-                    <Ionicons name="star-outline" size={12} color="#9CA3AF" />
-                  )}
-                </View>
-              </View>
-              <View style={styles.timelineContent}>
-                <Text style={task.completed ? styles.timelineTitleActive : styles.timelineTitleInactive}>
-                  {task.completed ? (
-                    task.photo_status === 'rejected' ? 'Задача отклонена' : `Принято с оценкой ${task.rating || 5}`
-                  ) : 'Принятие'}
+                <Text
+                  style={(isUnderReviewTask || isRevisionTask || isCompletedTask) ? styles.timelineTitleActive : styles.timelineTitleInactive}
+                >
+                  На проверке
                 </Text>
-                {task.completed ? (
-                  task.photo_status === 'rejected' ? (
-                    <Text style={[styles.timelineSubtitle, { color: '#EF4444', marginTop: 2 }]} numberOfLines={2}>
-                      Причина: {task.rejection_reason || 'Не соответствует требованиям'}
-                    </Text>
-                  ) : (
-                    renderStars(task.rating || 5)
-                  )
+                {isUnderReviewTask && <Text style={styles.timelineSubtitle}>Отчет ожидает решения организатора</Text>}
+                {isRevisionTask && <Text style={styles.timelineSubtitle}>Проверка завершена, требуется доработка</Text>}
+                {isCompletedTask && <Text style={styles.timelineSubtitle}>Фотоотчет успешно принят</Text>}
+              </View>
+            </Animated.View>
+
+            {/* 5. Review Result */}
+            <Animated.View
+              style={[styles.timelineNode, {
+                opacity: nodeAnims[4].opacity,
+                transform: [
+                  { translateY: nodeAnims[4].translateY },
+                  { scale: nodeAnims[4].scale },
+                ],
+              }]}
+            >
+              <View style={styles.timelineIndicatorColumn}>
+                <Animated.View style={{ transform: [{ scale: nodeAnims[4].dotScale }] }}>
+                  <PremiumDot
+                    color={
+                      isCompletedTask ? '#F0B429'
+                        : isRevisionTask ? appColors.warning
+                        : appColors.surfaceMuted
+                    }
+                    isLive={false}
+                    isCompleted={isCompletedTask || isRevisionTask}
+                  >
+                    {isCompletedTask
+                      ? <Ionicons name="star" size={12} color="#FFF" />
+                      : isRevisionTask
+                        ? <Ionicons name="refresh" size={13} color="#FFF" />
+                        : <Ionicons name="star-outline" size={12} color={appColors.textSoft} />
+                    }
+                  </PremiumDot>
+                </Animated.View>
+              </View>
+              <View style={styles.timelineContent}>
+                <Text
+                  style={[
+                    (isCompletedTask || isRevisionTask) ? styles.timelineTitleActive : styles.timelineTitleInactive,
+                    isCompletedTask ? { color: '#F0B429' } : {},
+                  ]}
+                >
+                  {isCompletedTask
+                    ? `Принято с оценкой ${task.rating || 5}`
+                    : isRevisionTask ? 'На доработке'
+                    : 'Решение организатора'}
+                </Text>
+                {isRevisionTask ? (
+                  <Text style={[styles.timelineSubtitle, { color: '#D97706', marginTop: 2 }]} numberOfLines={2}>
+                    Причина: {task.rejection_reason || 'Организатор попросил доработать фотоотчет'}
+                  </Text>
+                ) : isCompletedTask ? (
+                  renderStars(task.rating || 5)
                 ) : null}
               </View>
-            </View>
+            </Animated.View>
 
           </View>
+
+          {hasUploadedPhoto && (
+            <>
+              <View style={styles.divider} />
+
+              <TouchableOpacity style={styles.reportDetailsCard} onPress={handleOpenReportDetails} activeOpacity={0.85}>
+                <View style={styles.reportDetailsIcon}>
+                  <Ionicons name="document-text-outline" size={22} color={appColors.primary} />
+                </View>
+
+                <View style={styles.reportDetailsContent}>
+                  <Text style={styles.reportDetailsTitle}>Подробная информация об отчете</Text>
+                  <Text style={styles.reportDetailsSubtitle}>
+                    {isCompletedTask
+                      ? 'Отчет одобрен. Откройте карточку с отзывом организатора.'
+                      : isRevisionTask
+                        ? 'Отчет возвращен на доработку. Откройте причину и комментарий.'
+                        : 'Откройте отправленный отчет и текущий статус проверки.'}
+                  </Text>
+                </View>
+
+                <Ionicons name="chevron-forward" size={20} color={appColors.textMuted} />
+              </TouchableOpacity>
+            </>
+          )}
         </View>
       </ScrollView>
 
       {/* Footer Button logic mapped to Activity status */}
       <View style={styles.footerContainer}>
-        {isPending ? (
+        {isNotOpenedYet ? (
+          <TouchableOpacity style={[styles.primaryButtonLarge, { backgroundColor: appColors.textSoft }]} disabled>
+            <Ionicons name="time-outline" size={22} color={appColors.white} />
+            <Text style={styles.primaryButtonText}>
+              Откроется {startDate ? formatTimelineDate(startDate.toISOString()) : ''}
+            </Text>
+          </TouchableOpacity>
+        ) : isExpired && !isCompletedTask ? (
+          <TouchableOpacity style={[styles.primaryButtonLarge, { backgroundColor: appColors.textSoft }]} disabled>
+            <Ionicons name="close-circle-outline" size={22} color={appColors.white} />
+            <Text style={styles.primaryButtonText}>Срок истек</Text>
+          </TouchableOpacity>
+        ) : isPending ? (
           <View style={styles.buttonsRow}>
             <TouchableOpacity style={styles.secondaryButton} onPress={handleDeclineTask}>
               <Text style={styles.secondaryButtonText}>Отклонить</Text>
@@ -455,42 +994,39 @@ export const VolunteerTaskDetailScreen: React.FC = () => {
               <Text style={styles.primaryButtonText}>Начать задачу</Text>
             </TouchableOpacity>
           </View>
-        ) : task.can_upload_photo ? (
+        ) : canUploadPhoto ? (
           <TouchableOpacity
             style={styles.primaryButtonLarge}
             onPress={() => navigation.navigate('SubmitPhotoReport', { taskId })}
           >
-            <Ionicons name="camera-reverse-outline" size={22} color="#FFFFFF" />
-            <Text style={styles.primaryButtonText}>Загрузить фотоотчет</Text>
+            <Ionicons name="camera-reverse-outline" size={22} color={appColors.white} />
+            <Text style={styles.primaryButtonText}>{uploadButtonText}</Text>
           </TouchableOpacity>
-        ) : task.completed ? (
-          <View style={[styles.completedBadge, task.photo_status === 'rejected' && { backgroundColor: '#FEF2F2', borderColor: '#FECACA', borderWidth: 1 }]}>
-            <Ionicons 
-              name={task.photo_status === 'rejected' ? "close-circle" : "checkmark-done-circle"} 
-              size={24} 
-              color={task.photo_status === 'rejected' ? "#EF4444" : "#10B981"} 
-            />
-            <Text style={[styles.completedBadgeText, task.photo_status === 'rejected' && { color: '#B91C1C' }]}>
-              {task.photo_status === 'rejected' ? "Задача завершена (Отклонено)" : "Задача успешно завершена!"}
-            </Text>
+        ) : isCompletedTask ? (
+          <View style={styles.completedBadge}>
+            <Ionicons name="checkmark-done-circle" size={24} color={appColors.primary} />
+            <Text style={styles.completedBadgeText}>Задача успешно завершена!</Text>
           </View>
-        ) : task.has_photo_report && !task.completed ? (
+        ) : isUnderReviewTask ? (
           <View style={styles.reviewBadge}>
-            <Ionicons name="time" size={24} color="#F59E0B" />
+            <Ionicons name="time" size={24} color={appColors.warning} />
             <Text style={styles.reviewBadgeText}>Отчет на проверке</Text>
           </View>
-        ) : isNotOpenedYet ? (
-          <TouchableOpacity style={[styles.primaryButtonLarge, { backgroundColor: '#9CA3AF' }]} disabled>
-            <Ionicons name="time-outline" size={22} color="#FFFFFF" />
-            <Text style={styles.primaryButtonText}>
-              Откроется {startDate ? formatTimelineDate(startDate.toISOString()) : ''}
-            </Text>
-          </TouchableOpacity>
-        ) : isExpired && !task.completed ? (
-          <TouchableOpacity style={[styles.primaryButtonLarge, { backgroundColor: '#9CA3AF' }]} disabled>
-            <Ionicons name="close-circle-outline" size={22} color="#FFFFFF" />
-            <Text style={styles.primaryButtonText}>Срок истек</Text>
-          </TouchableOpacity>
+        ) : isDeclinedTask ? (
+          <View style={[styles.completedBadge, { backgroundColor: appColors.dangerSurface }]}>
+            <Ionicons name="close-circle-outline" size={24} color={appColors.danger} />
+            <Text style={[styles.completedBadgeText, { color: appColors.danger }]}>Вы отказались от задачи</Text>
+          </View>
+        ) : isArchivedTask ? (
+          <View style={[styles.completedBadge, { backgroundColor: appColors.surfaceSoft }]}>
+            <Ionicons name="archive-outline" size={24} color={appColors.textMuted} />
+            <Text style={[styles.completedBadgeText, { color: appColors.textMuted }]}>Задача в архиве</Text>
+          </View>
+        ) : hasUploadedPhoto ? (
+          <View style={styles.reviewBadge}>
+            <Ionicons name="image-outline" size={24} color={appColors.warning} />
+            <Text style={styles.reviewBadgeText}>Фотоотчет отправлен</Text>
+          </View>
         ) : null}
       </View>
     </View>
@@ -500,7 +1036,7 @@ export const VolunteerTaskDetailScreen: React.FC = () => {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: appColors.surface,
   },
   appBar: {
     flexDirection: 'row',
@@ -508,7 +1044,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: appColors.surface,
   },
   backButton: {
     width: 40,
@@ -519,39 +1055,39 @@ const styles = StyleSheet.create({
   appBarTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#111827',
+    color: appColors.text,
   },
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: appColors.surface,
   },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 100, // Leave space for footer
+    paddingBottom: 148, // Extra space so the report card does not hide behind the footer
   },
   center: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: appColors.surface,
   },
   errorText: {
     fontSize: 18,
-    color: '#374151',
+    color: appColors.textSecondary,
     fontWeight: '600',
     marginTop: 16,
     marginBottom: 24,
   },
   goBackButton: {
-    backgroundColor: '#10B981',
+    backgroundColor: appColors.primary,
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 12,
   },
   goBackButtonText: {
-    color: '#FFF',
+    color: appColors.white,
     fontSize: 16,
     fontWeight: '700',
   },
@@ -569,7 +1105,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 12,
     right: 28, // 16 padding + 12
-    backgroundColor: '#FFFFFF',
+    backgroundColor: appColors.surface,
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 8,
@@ -584,7 +1120,7 @@ const styles = StyleSheet.create({
   verifiedText: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#10B981',
+    color: appColors.primary,
   },
   body: {
     paddingHorizontal: 20,
@@ -593,22 +1129,22 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 22,
     fontWeight: '800',
-    color: '#111827',
+    color: appColors.text,
     marginBottom: 12,
     lineHeight: 28,
   },
   description: {
     fontSize: 15,
-    color: '#4B5563',
+    color: appColors.textMuted,
     lineHeight: 24,
     marginBottom: 24,
   },
   deadlineCard: {
-    backgroundColor: '#ECFDF5', // Light green bg
+    backgroundColor: appColors.primarySurface, // Light green bg
     borderRadius: 16,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#D1FAE5',
+    borderColor: '#065F46',
     marginBottom: 24,
   },
   deadlineTopRow: {
@@ -623,19 +1159,19 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   deadlineLabel: {
-    color: '#10B981',
+    color: appColors.primary,
     fontWeight: '700',
     fontSize: 13,
     letterSpacing: 0.5,
   },
    daysLeftPill: {
-    backgroundColor: '#10B981',
+    backgroundColor: appColors.primary,
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 20,
   },
   daysLeftText: {
-    color: '#FFFFFF',
+    color: appColors.white,
     fontSize: 10,
     fontWeight: '900',
     textTransform: 'uppercase',
@@ -648,22 +1184,22 @@ const styles = StyleSheet.create({
   deadlineDate: {
     fontSize: 16,
     fontWeight: '800',
-    color: '#1F2937',
+    color: appColors.text,
     marginBottom: 2,
   },
   deadlineTime: {
     fontSize: 13,
-    color: '#6B7280',
+    color: appColors.textMuted,
   },
   estimatedTimeLabel: {
     fontSize: 12,
-    color: '#6B7280',
+    color: appColors.textMuted,
     marginBottom: 2,
   },
   estimatedTimeValue: {
     fontSize: 14,
     fontWeight: '800',
-    color: '#1F2937',
+    color: appColors.text,
   },
   organizerRow: {
     flexDirection: 'row',
@@ -681,7 +1217,7 @@ const styles = StyleSheet.create({
     height: 44,
     borderRadius: 22,
     marginRight: 12,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: appColors.surfaceSoft,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -691,20 +1227,20 @@ const styles = StyleSheet.create({
   organizerLabel: {
     fontSize: 11,
     fontWeight: '700',
-    color: '#9CA3AF',
+    color: appColors.textSoft,
     letterSpacing: 1,
     marginBottom: 2,
   },
   organizerName: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#111827',
+    color: appColors.text,
   },
   chatButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#ECFDF5',
+    backgroundColor: appColors.primarySurface,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -712,7 +1248,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginBottom: 24,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: appColors.background,
     borderRadius: 12,
     padding: 12,
     gap: 12,
@@ -726,17 +1262,17 @@ const styles = StyleSheet.create({
   infoText: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#4B5563',
+    color: appColors.textMuted,
   },
   divider: {
     height: 1,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: appColors.surfaceSoft,
     marginBottom: 24,
   },
   timelineHeading: {
     fontSize: 12,
     fontWeight: '800',
-    color: '#9CA3AF',
+    color: appColors.textSoft,
     letterSpacing: 1,
     marginBottom: 16,
   },
@@ -749,8 +1285,8 @@ const styles = StyleSheet.create({
   },
   timelineIndicatorColumn: {
     alignItems: 'center',
-    width: 24,
-    marginRight: 12,
+    width: 28,
+    marginRight: 14,
   },
   timelineDot: {
     width: 22,
@@ -776,18 +1312,58 @@ const styles = StyleSheet.create({
   timelineTitleActive: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#111827',
+    color: appColors.text,
     marginBottom: 2,
   },
   timelineTitleInactive: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#9CA3AF',
+    color: appColors.textSoft,
+    marginBottom: 2,
+  },
+  timelineTitleDeclined: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: appColors.danger,
     marginBottom: 2,
   },
   timelineSubtitle: {
     fontSize: 13,
-    color: '#6B7280',
+    color: appColors.textMuted,
+  },
+  reportDetailsCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: appColors.surface,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: appColors.border,
+    padding: 16,
+    marginBottom: 20,
+  },
+  reportDetailsIcon: {
+    width: 46,
+    height: 46,
+    borderRadius: 14,
+    backgroundColor: appColors.primarySurface,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 14,
+  },
+  reportDetailsContent: {
+    flex: 1,
+    paddingRight: 10,
+  },
+  reportDetailsTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: appColors.text,
+    marginBottom: 4,
+  },
+  reportDetailsSubtitle: {
+    fontSize: 13,
+    lineHeight: 18,
+    color: appColors.textMuted,
   },
   footerContainer: {
     position: 'absolute',
@@ -797,9 +1373,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 16,
     paddingBottom: 32, // Adjust for iPhone notch safely
-    backgroundColor: '#FFFFFF',
+    backgroundColor: appColors.surface,
     borderTopWidth: 1,
-    borderTopColor: '#F3F4F6',
+    borderColor: appColors.border,
   },
   buttonsRow: {
     flexDirection: 'row',
@@ -811,12 +1387,14 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#FEE2E2',
+    backgroundColor: appColors.dangerSurface,
+    borderWidth: 1,
+    borderColor: appColors.danger,
   },
   secondaryButtonText: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#EF4444',
+    color: appColors.danger,
   },
   primaryButton: {
     flex: 1,
@@ -824,7 +1402,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#10B981',
+    backgroundColor: appColors.primary,
   },
   primaryButtonLarge: {
     flexDirection: 'row',
@@ -832,9 +1410,9 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#10B981',
+    backgroundColor: appColors.primary,
     gap: 8,
-    shadowColor: '#10B981',
+    shadowColor: appColors.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
@@ -843,35 +1421,34 @@ const styles = StyleSheet.create({
   primaryButtonText: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: appColors.white,
   },
   completedBadge: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
     paddingVertical: 16,
-    backgroundColor: '#ECFDF5',
+    backgroundColor: appColors.primarySurface,
     borderRadius: 16,
     gap: 8,
   },
   completedBadgeText: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#10B981',
+    color: appColors.primary,
   },
   reviewBadge: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
     paddingVertical: 16,
-    backgroundColor: '#FEF3C7',
+    backgroundColor: appColors.warningSurface,
     borderRadius: 16,
     gap: 8,
   },
   reviewBadgeText: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#F59E0B',
+    color: appColors.warning,
   },
 });
-

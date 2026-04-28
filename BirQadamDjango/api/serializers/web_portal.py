@@ -56,6 +56,7 @@ class LoginSerializer(serializers.Serializer):
 class VolunteerProfileSerializer(serializers.ModelSerializer):
     trust_factor = serializers.IntegerField(read_only=True)
     average_rating = serializers.FloatField(read_only=True)
+    active_tasks = serializers.SerializerMethodField()
     tasks_completed = serializers.SerializerMethodField()
     total_hours = serializers.SerializerMethodField()
     active_projects = serializers.SerializerMethodField()
@@ -79,9 +80,11 @@ class VolunteerProfileSerializer(serializers.ModelSerializer):
             'full_name',
             'phone_number',
             'email',
+            'avatar',
             'rating',
             'trust_factor',
             'average_rating',
+            'active_tasks',
             'tasks_completed',
             'total_hours',
             'active_projects',
@@ -96,6 +99,9 @@ class VolunteerProfileSerializer(serializers.ModelSerializer):
             return dashboard_data.get('summary', {}).get('active_tasks', 0)
         except Exception as e:
             return 0
+
+    def get_active_tasks(self, obj: User) -> int:
+        return self.get_tasks_completed(obj)
 
     def get_total_hours(self, obj: User) -> float:
         try:
@@ -126,10 +132,21 @@ class VolunteerProfileSerializer(serializers.ModelSerializer):
             return 0
 
     def update(self, instance: User, validated_data: dict) -> User:
-        instance.name = validated_data.get('name', instance.name)
-        instance.phone_number = validated_data.get('phone_number', instance.phone_number)
-        instance.email = validated_data.get('email', instance.email)
-        instance.save(update_fields=['name', 'phone_number', 'email'])
+        update_fields = []
+        if 'name' in validated_data:
+            instance.name = validated_data['name']
+            update_fields.append('name')
+        if 'phone_number' in validated_data:
+            instance.phone_number = validated_data['phone_number']
+            update_fields.append('phone_number')
+        if 'email' in validated_data:
+            instance.email = validated_data['email']
+            update_fields.append('email')
+        if 'avatar' in validated_data:
+            instance.avatar = validated_data['avatar']
+            update_fields.append('avatar')
+        if update_fields:
+            instance.save(update_fields=update_fields)
         return instance
 
 
@@ -154,6 +171,9 @@ class VolunteerTaskSummarySerializer(serializers.ModelSerializer):
     creator_name = serializers.SerializerMethodField()
     creator_avatar = serializers.SerializerMethodField()
     status = serializers.SerializerMethodField()
+    image = serializers.SerializerMethodField()
+    task_image_url = serializers.SerializerMethodField()
+    project_cover_image_url = serializers.SerializerMethodField()
     
     # Маппинг для фронтенда (текст в заголовок и описание)
     title = serializers.CharField(source='text', read_only=True)
@@ -169,8 +189,18 @@ class VolunteerTaskSummarySerializer(serializers.ModelSerializer):
             # Дополнительные поля
             'location', 'start_date', 'end_date', 'created_at',
             'accepted_at', 'photo_uploaded_at', 'creator_name', 'creator_avatar',
-            'title', 'description'
+            'title', 'description', 'image', 'task_image_url', 'project_cover_image_url'
         )
+
+    def _build_media_url(self, media_field) -> str | None:  # type: ignore[no-untyped-def]
+        if not media_field:
+            return None
+
+        request = self.context.get('request')
+        try:
+            return request.build_absolute_uri(media_field.url) if request else media_field.url
+        except Exception:
+            return getattr(media_field, 'url', None)
 
     def get_accepted(self, obj) -> bool:
         user = self.context['request'].user
@@ -195,6 +225,12 @@ class VolunteerTaskSummarySerializer(serializers.ModelSerializer):
         return photo.status if photo else None
 
     def get_can_upload_photo(self, obj) -> bool:
+        if obj.is_expired():
+            return False
+
+        if obj.status in ['completed', 'under_review', 'archived', 'failed', 'closed']:
+            return False
+
         accepted = self.get_accepted(obj)
         photo_status = self.get_photo_status(obj)
         return accepted and (not self.get_has_photo_report(obj) or photo_status == 'rejected')
@@ -221,11 +257,18 @@ class VolunteerTaskSummarySerializer(serializers.ModelSerializer):
 
     def get_creator_avatar(self, obj) -> str | None:
         if obj.creator and obj.creator.avatar:
-            request = self.context.get('request')
-            if request:
-                return request.build_absolute_uri(obj.creator.avatar.url)
-            return obj.creator.avatar.url
+            return self._build_media_url(obj.creator.avatar)
         return None
+
+    def get_task_image_url(self, obj) -> str | None:
+        return self._build_media_url(getattr(obj, 'task_image', None))
+
+    def get_project_cover_image_url(self, obj) -> str | None:
+        project = getattr(obj, 'project', None)
+        return self._build_media_url(getattr(project, 'cover_image', None))
+
+    def get_image(self, obj) -> str | None:
+        return self.get_task_image_url(obj) or self.get_project_cover_image_url(obj)
 
     def get_status(self, obj) -> str:
         # Если дедлайн прошел и задача не завершена/закрыта

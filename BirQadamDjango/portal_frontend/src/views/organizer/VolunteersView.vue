@@ -98,6 +98,14 @@ function getUserInitials(name: string) {
   return name.slice(0, 2).toUpperCase();
 }
 
+function getMessageImageUrl(message: ChatMessage) {
+  return message.photo_url || message.image_url || null;
+}
+
+function hasMessageText(message: ChatMessage) {
+  return Boolean(message.text?.trim());
+}
+
 // ─── Modal tab (mobile) ───
 const modalTab = ref<'participants' | 'chat'>('participants');
 
@@ -718,7 +726,15 @@ onUnmounted(() => { stopMessagesPolling(); });
                           {{ new Date(msg.created_at).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }) }}
                         </span>
                       </div>
-                      <div class="msg__bubble">{{ msg.text }}</div>
+                      <div v-if="getMessageImageUrl(msg)" class="msg__media">
+                        <img
+                          :src="getMessageImageUrl(msg) || undefined"
+                          alt="Изображение из чата"
+                          class="msg__image"
+                          loading="lazy"
+                        />
+                      </div>
+                      <div v-if="hasMessageText(msg)" class="msg__bubble">{{ msg.text }}</div>
                     </div>
                   </div>
                 </div>
@@ -1357,6 +1373,32 @@ onUnmounted(() => { stopMessagesPolling(); });
 .msg__meta { display: flex; align-items: center; gap: 5px; font-size: 0.72rem; color: rgba(0,0,0,0.38); }
 .msg__sender { font-weight: 600; color: rgba(0,0,0,0.55); }
 .msg__org    { background: rgba(139,195,74,0.15); color: #558b2f; padding: 1px 5px; border-radius: 4px; font-size: 0.67rem; font-weight: 700; }
+
+.msg__media {
+  max-width: min(320px, 100%);
+  border-radius: 18px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.12);
+}
+
+.msg--other .msg__media {
+  background: #fff;
+  border-bottom-left-radius: 4px;
+}
+
+.msg--own .msg__media {
+  background: #d9f99d;
+  border-bottom-right-radius: 4px;
+}
+
+.msg__image {
+  display: block;
+  width: 100%;
+  max-width: 320px;
+  max-height: 320px;
+  object-fit: cover;
+  background: #eef2f7;
+}
 
 .msg__bubble {
   padding: 9px 13px;

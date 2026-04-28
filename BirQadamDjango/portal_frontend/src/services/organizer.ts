@@ -395,12 +395,7 @@ export async function updateOrganizerProject(
 
   const { data } = await httpClient.patch(
     `/api/web/organizer/projects/${projectId}/`,
-    formData,
-    {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-    }
+    formData
   );
   return data;
 }
