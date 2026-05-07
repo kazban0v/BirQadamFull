@@ -1,0 +1,1682 @@
+{% extends 'admin_panel/base.html' %}
+
+{% block topbar_title %}Календарь{% endblock %}
+
+{% block extra_css %}
+<style>
+    .calendar-page {
+        padding: 1.5rem;
+        display: grid;
+        gap: 1.5rem;
+    }
+
+    .calendar-hero {
+        position: relative;
+        overflow: hidden;
+        padding: 1.75rem;
+        border-radius: 1.75rem;
+        background:
+            radial-gradient(circle at top right, rgba(255, 255, 255, 0.13), transparent 34%),
+            linear-gradient(135deg, #142b72 0%, #224bb8 52%, #2f66ea 100%);
+        color: #fff;
+        box-shadow: var(--shadow-lg);
+    }
+
+    .calendar-hero::after {
+        content: "";
+        position: absolute;
+        right: -4rem;
+        top: -4rem;
+        width: 15rem;
+        height: 15rem;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.08);
+    }
+
+    .calendar-hero__header,
+    .calendar-hero__stats,
+    .calendar-hero__footer {
+        position: relative;
+        z-index: 1;
+    }
+
+    .calendar-hero__header {
+        display: flex;
+        justify-content: space-between;
+        gap: 1rem;
+        align-items: flex-start;
+        margin-bottom: 1.25rem;
+    }
+
+    .calendar-hero__eyebrow {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.45rem;
+        padding: 0.45rem 0.75rem;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.12);
+        font-size: 0.75rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        margin-bottom: 0.85rem;
+    }
+
+    .calendar-hero h1 {
+        margin: 0;
+        font-size: clamp(2rem, 4vw, 2.8rem);
+        line-height: 1.02;
+        font-weight: 800;
+        letter-spacing: -0.03em;
+        max-width: 42rem;
+    }
+
+    .calendar-hero p {
+        margin: 0.85rem 0 0;
+        max-width: 42rem;
+        font-size: 1rem;
+        line-height: 1.65;
+        color: rgba(255, 255, 255, 0.82);
+    }
+
+    .calendar-hero__badge {
+        flex-shrink: 0;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.6rem;
+        padding: 0.85rem 1rem;
+        border-radius: 1rem;
+        background: rgba(255, 255, 255, 0.12);
+        font-weight: 700;
+        color: #fff;
+        backdrop-filter: blur(12px);
+    }
+
+    .calendar-hero__stats {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 1rem;
+    }
+
+    .calendar-stat {
+        padding: 1rem 1.1rem;
+        border-radius: 1.25rem;
+        border: 1px solid rgba(255, 255, 255, 0.14);
+        background: rgba(255, 255, 255, 0.08);
+        backdrop-filter: blur(10px);
+    }
+
+    .calendar-stat__label {
+        font-size: 0.74rem;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        font-weight: 700;
+        color: rgba(255, 255, 255, 0.76);
+        margin-bottom: 0.45rem;
+    }
+
+    .calendar-stat__value {
+        font-size: 2rem;
+        line-height: 1;
+        font-weight: 800;
+        margin-bottom: 0.35rem;
+    }
+
+    .calendar-stat__meta {
+        font-size: 0.9rem;
+        color: rgba(255, 255, 255, 0.78);
+    }
+
+    .calendar-layout {
+        display: grid;
+        grid-template-columns: minmax(0, 1.5fr) minmax(21rem, 0.95fr);
+        gap: 1.5rem;
+        align-items: start;
+    }
+
+    .calendar-stack {
+        display: grid;
+        gap: 1.5rem;
+    }
+
+    .calendar-card {
+        background: #fff;
+        border: 1px solid var(--gray-200);
+        border-radius: 1.6rem;
+        box-shadow: var(--shadow);
+    }
+
+    .calendar-shell {
+        padding: 1.4rem;
+    }
+
+    .calendar-header-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 1rem;
+        margin-bottom: 1rem;
+    }
+
+    .calendar-heading {
+        margin: 0;
+        font-size: 1.25rem;
+        font-weight: 800;
+        color: var(--gray-900);
+    }
+
+    .calendar-subtitle {
+        margin: 0.3rem 0 0;
+        color: var(--gray-500);
+        line-height: 1.6;
+        font-size: 0.95rem;
+    }
+
+    .calendar-month-nav {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.55rem 0.75rem;
+        border-radius: 999px;
+        background: var(--gray-100);
+        border: 1px solid var(--gray-200);
+    }
+
+    .calendar-month-button {
+        width: 2.2rem;
+        height: 2.2rem;
+        border: 0;
+        border-radius: 999px;
+        background: #fff;
+        color: var(--gray-700);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: var(--shadow-sm);
+        transition: transform var(--transition), background var(--transition), color var(--transition);
+    }
+
+    .calendar-month-button:hover {
+        transform: translateY(-1px);
+        background: var(--primary);
+        color: #fff;
+    }
+
+    .calendar-month-label {
+        min-width: 11rem;
+        text-align: center;
+        font-weight: 800;
+        color: var(--gray-900);
+        text-transform: capitalize;
+        letter-spacing: -0.01em;
+    }
+
+    .calendar-weekdays,
+    .calendar-grid {
+        display: grid;
+        grid-template-columns: repeat(7, minmax(0, 1fr));
+        gap: 0.4rem;
+    }
+
+    .calendar-weekdays {
+        margin-bottom: 0.65rem;
+    }
+
+    .calendar-weekday {
+        text-align: center;
+        font-size: 0.78rem;
+        font-weight: 800;
+        color: var(--gray-500);
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        padding: 0.3rem 0;
+    }
+
+    .calendar-day {
+        min-height: 5.45rem;
+        padding: 0.7rem 0.55rem 0.55rem;
+        border-radius: 1rem;
+        border: 1px solid transparent;
+        background: var(--gray-50);
+        display: flex;
+        flex-direction: column;
+        gap: 0.55rem;
+        transition: transform var(--transition), border-color var(--transition), box-shadow var(--transition), background var(--transition);
+    }
+
+    .calendar-day:hover {
+        transform: translateY(-2px);
+        border-color: var(--gray-300);
+        box-shadow: var(--shadow-sm);
+    }
+
+    .calendar-day--muted {
+        opacity: 0.48;
+    }
+
+    .calendar-day--selected {
+        border-color: rgba(37, 99, 235, 0.28);
+        background: linear-gradient(180deg, #eff6ff 0%, #eef5ff 100%);
+        box-shadow: inset 0 0 0 1px rgba(37, 99, 235, 0.08);
+    }
+
+    .calendar-day__number {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 2rem;
+        height: 2rem;
+        border-radius: 999px;
+        font-size: 0.95rem;
+        font-weight: 800;
+        color: var(--gray-800);
+    }
+
+    .calendar-day__number--today {
+        background: var(--primary);
+        color: #fff;
+    }
+
+    .calendar-day__number--selected {
+        background: rgba(37, 99, 235, 0.12);
+        color: var(--primary-dark);
+    }
+
+    .calendar-day__dots {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.3rem;
+        min-height: 0.85rem;
+    }
+
+    .calendar-day__dot {
+        width: 0.42rem;
+        height: 0.42rem;
+        border-radius: 999px;
+    }
+
+    .calendar-day__count {
+        margin-top: auto;
+        font-size: 0.72rem;
+        font-weight: 700;
+        color: var(--gray-500);
+    }
+
+    .calendar-legend {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.8rem 1.15rem;
+        margin-top: 1rem;
+        padding-top: 1rem;
+        border-top: 1px solid var(--gray-200);
+    }
+
+    .calendar-legend__item {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.55rem;
+        color: var(--gray-600);
+        font-size: 0.86rem;
+        font-weight: 600;
+    }
+
+    .calendar-legend__dot {
+        width: 0.6rem;
+        height: 0.6rem;
+        border-radius: 999px;
+    }
+
+    .selected-day-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 1rem;
+        margin-bottom: 1rem;
+    }
+
+    .selected-day-title {
+        margin: 0;
+        font-size: 1.1rem;
+        font-weight: 800;
+        color: var(--gray-900);
+    }
+
+    .selected-day-count {
+        min-width: 2rem;
+        height: 2rem;
+        padding: 0 0.55rem;
+        border-radius: 999px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--primary-light);
+        color: var(--primary-dark);
+        font-size: 0.86rem;
+        font-weight: 800;
+    }
+
+    .event-groups {
+        display: grid;
+        gap: 1rem;
+    }
+
+    .event-group {
+        border: 1px solid var(--gray-200);
+        border-radius: 1.35rem;
+        overflow: hidden;
+        background: linear-gradient(180deg, #ffffff 0%, #fbfdff 100%);
+    }
+
+    .event-group__header {
+        padding: 1rem 1rem 0.95rem;
+        display: flex;
+        align-items: flex-start;
+        gap: 0.85rem;
+        background: linear-gradient(180deg, #f8fbff 0%, #ffffff 100%);
+        border-bottom: 1px solid var(--gray-100);
+    }
+
+    .event-group__icon {
+        width: 2.9rem;
+        height: 2.9rem;
+        border-radius: 1rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--primary-light);
+        color: var(--primary);
+        flex-shrink: 0;
+    }
+
+    .event-group__title {
+        margin: 0;
+        font-size: 1.02rem;
+        font-weight: 800;
+        color: var(--gray-900);
+    }
+
+    .event-group__subtitle {
+        margin: 0.25rem 0 0;
+        color: var(--gray-500);
+        font-size: 0.9rem;
+        line-height: 1.55;
+    }
+
+    .event-group__meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.45rem;
+        margin-top: 0.7rem;
+    }
+
+    .event-group__chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        padding: 0.4rem 0.65rem;
+        border-radius: 999px;
+        border: 1px solid var(--gray-200);
+        background: #fff;
+        font-size: 0.76rem;
+        font-weight: 700;
+        color: var(--gray-700);
+    }
+
+    .event-group__rows {
+        padding: 0.25rem 0.85rem 0.95rem;
+        display: grid;
+        gap: 0.5rem;
+    }
+
+    .event-row {
+        position: relative;
+        display: grid;
+        grid-template-columns: auto 1fr auto;
+        gap: 0.9rem;
+        align-items: start;
+        padding: 0.9rem;
+        border-radius: 1rem;
+        background: var(--gray-50);
+        border: 1px solid transparent;
+        cursor: pointer;
+        transition: border-color var(--transition), transform var(--transition), background var(--transition);
+    }
+
+    .event-row:hover {
+        transform: translateY(-1px);
+        border-color: var(--gray-300);
+        background: #fff;
+    }
+
+    .event-row--active {
+        border-color: rgba(37, 99, 235, 0.25);
+        background: linear-gradient(180deg, #eff6ff 0%, #ffffff 100%);
+    }
+
+    .event-row__icon {
+        width: 2.6rem;
+        height: 2.6rem;
+        border-radius: 0.95rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+
+    .event-row__title {
+        margin: 0;
+        font-size: 0.98rem;
+        font-weight: 800;
+        color: var(--gray-900);
+    }
+
+    .event-row__subtitle {
+        margin: 0.28rem 0 0.65rem;
+        color: var(--gray-600);
+        font-size: 0.88rem;
+        line-height: 1.55;
+    }
+
+    .event-row__meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.6rem 1rem;
+    }
+
+    .event-row__meta-item {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        color: var(--gray-500);
+        font-size: 0.8rem;
+        font-weight: 600;
+    }
+
+    .event-row__status {
+        padding: 0.5rem 0.7rem;
+        border-radius: 999px;
+        font-size: 0.74rem;
+        font-weight: 800;
+        white-space: nowrap;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 2.5rem 1.6rem;
+    }
+
+    .empty-state__icon {
+        width: 4rem;
+        height: 4rem;
+        margin: 0 auto 1rem;
+        border-radius: 1.25rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--gray-100);
+        color: var(--gray-400);
+        font-size: 1.6rem;
+    }
+
+    .empty-state h3 {
+        margin: 0 0 0.45rem;
+        font-size: 1.05rem;
+        font-weight: 800;
+        color: var(--gray-900);
+    }
+
+    .empty-state p {
+        margin: 0;
+        color: var(--gray-500);
+        line-height: 1.7;
+    }
+
+    .detail-panel {
+        display: grid;
+        gap: 1rem;
+        position: sticky;
+        top: calc(var(--topbar-h) + 1.2rem);
+    }
+
+    .detail-card {
+        overflow: hidden;
+    }
+
+    .detail-hero {
+        position: relative;
+        min-height: 14rem;
+        background:
+            radial-gradient(circle at top right, rgba(255, 255, 255, 0.16), transparent 30%),
+            linear-gradient(160deg, #0f172a 0%, #17338a 55%, #2563eb 100%);
+        color: #fff;
+    }
+
+    .detail-hero__image {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .detail-hero__overlay {
+        position: relative;
+        z-index: 1;
+        min-height: 14rem;
+        padding: 1.25rem;
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-end;
+        background: linear-gradient(180deg, rgba(15, 23, 42, 0.08) 0%, rgba(15, 23, 42, 0.72) 100%);
+    }
+
+    .detail-hero__overlay--plain {
+        background: transparent;
+    }
+
+    .detail-type {
+        align-self: flex-start;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.45rem;
+        padding: 0.48rem 0.78rem;
+        border-radius: 999px;
+        font-size: 0.78rem;
+        font-weight: 800;
+        margin-bottom: 0.85rem;
+    }
+
+    .detail-title {
+        margin: 0;
+        font-size: 1.85rem;
+        line-height: 1.05;
+        font-weight: 800;
+        letter-spacing: -0.03em;
+    }
+
+    .detail-badges {
+        display: flex;
+        gap: 0.55rem;
+        flex-wrap: wrap;
+        margin-top: 0.95rem;
+    }
+
+    .detail-badge {
+        padding: 0.46rem 0.7rem;
+        border-radius: 999px;
+        font-size: 0.76rem;
+        font-weight: 800;
+        background: rgba(255, 255, 255, 0.15);
+        color: #fff;
+    }
+
+    .detail-body {
+        padding: 1.2rem;
+        display: grid;
+        gap: 1rem;
+    }
+
+    .detail-grid {
+        display: grid;
+        gap: 0.85rem;
+    }
+
+    .detail-meta {
+        display: grid;
+        grid-template-columns: auto 1fr auto;
+        align-items: center;
+        gap: 0.9rem;
+        padding: 0.95rem;
+        border-radius: 1rem;
+        background: var(--gray-50);
+        border: 1px solid var(--gray-100);
+    }
+
+    .detail-meta__icon {
+        width: 2.8rem;
+        height: 2.8rem;
+        border-radius: 0.95rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(34, 197, 94, 0.12);
+        color: #16a34a;
+        font-size: 1rem;
+    }
+
+    .detail-meta__label {
+        font-size: 0.73rem;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--gray-500);
+        font-weight: 800;
+        margin-bottom: 0.3rem;
+    }
+
+    .detail-meta__value {
+        margin: 0;
+        color: var(--gray-900);
+        font-size: 0.95rem;
+        font-weight: 700;
+        line-height: 1.55;
+    }
+
+    .detail-map-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.8rem 0.95rem;
+        border-radius: 0.95rem;
+        background: var(--primary);
+        color: #fff;
+        text-decoration: none;
+        font-size: 0.84rem;
+        font-weight: 800;
+        white-space: nowrap;
+    }
+
+    .detail-description {
+        padding: 1rem;
+        border-radius: 1rem;
+        background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+        border: 1px solid var(--gray-100);
+    }
+
+    .detail-description__title {
+        margin: 0 0 0.55rem;
+        font-size: 0.98rem;
+        font-weight: 800;
+        color: var(--gray-900);
+    }
+
+    .detail-description__text {
+        margin: 0;
+        color: var(--gray-600);
+        line-height: 1.75;
+        white-space: pre-line;
+    }
+
+    .detail-links {
+        display: grid;
+        gap: 0.7rem;
+    }
+
+    .detail-link {
+        display: flex;
+        align-items: center;
+        gap: 0.8rem;
+        padding: 0.95rem 1rem;
+        border-radius: 1rem;
+        border: 1px solid var(--gray-200);
+        text-decoration: none;
+        color: inherit;
+        background: #fff;
+        transition: transform var(--transition), border-color var(--transition), box-shadow var(--transition);
+    }
+
+    .detail-link:hover {
+        transform: translateY(-1px);
+        border-color: var(--gray-300);
+        box-shadow: var(--shadow-sm);
+        color: inherit;
+    }
+
+    .detail-link__icon {
+        width: 2.9rem;
+        height: 2.9rem;
+        border-radius: 1rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--primary-light);
+        color: var(--primary);
+        flex-shrink: 0;
+    }
+
+    .detail-link__label {
+        font-size: 0.73rem;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--gray-500);
+        font-weight: 800;
+        margin-bottom: 0.3rem;
+    }
+
+    .detail-link__title {
+        margin: 0;
+        font-size: 0.95rem;
+        font-weight: 700;
+        color: var(--gray-900);
+        line-height: 1.45;
+    }
+
+    .detail-side-card {
+        padding: 1.1rem;
+    }
+
+    .detail-side-card__title {
+        margin: 0 0 0.7rem;
+        font-size: 1rem;
+        font-weight: 800;
+        color: var(--gray-900);
+    }
+
+    .detail-side-card__rows {
+        display: grid;
+        gap: 0.7rem;
+    }
+
+    .detail-side-card__row {
+        display: flex;
+        justify-content: space-between;
+        gap: 1rem;
+        align-items: center;
+        padding: 0.8rem 0.9rem;
+        border-radius: 0.95rem;
+        background: var(--gray-50);
+        border: 1px solid var(--gray-100);
+        font-size: 0.88rem;
+    }
+
+    .detail-side-card__row span:first-child {
+        color: var(--gray-500);
+        font-weight: 700;
+    }
+
+    .detail-side-card__row span:last-child {
+        color: var(--gray-900);
+        font-weight: 800;
+        text-align: right;
+    }
+
+    @media (max-width: 1200px) {
+        .calendar-layout {
+            grid-template-columns: 1fr;
+        }
+
+        .detail-panel {
+            position: static;
+        }
+    }
+
+    @media (max-width: 900px) {
+        .calendar-page {
+            padding: 1rem;
+        }
+
+        .calendar-hero__header {
+            flex-direction: column;
+        }
+
+        .calendar-hero__stats {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    @media (max-width: 720px) {
+        .calendar-page {
+            padding: 0.75rem;
+            overflow-x: hidden;
+        }
+
+        .calendar-shell {
+            padding: 1rem;
+            border-radius: 1rem;
+        }
+
+        .calendar-header-row {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .calendar-month-nav {
+            width: 100%;
+            justify-content: space-between;
+        }
+
+        .calendar-month-label {
+            min-width: auto;
+            flex: 1;
+        }
+
+        .calendar-day {
+            min-height: 4.7rem;
+            padding: 0.55rem 0.4rem 0.45rem;
+        }
+
+        .event-row {
+            grid-template-columns: auto 1fr;
+        }
+
+        .event-row__status {
+            grid-column: 2;
+            justify-self: start;
+            margin-top: 0.2rem;
+        }
+
+        .detail-meta {
+            grid-template-columns: auto 1fr;
+        }
+
+        .detail-map-link {
+            grid-column: 1 / -1;
+            justify-content: center;
+        }
+    }
+
+    @media (max-width: 520px) {
+        .calendar-weekdays,
+        .calendar-grid {
+            gap: 0.22rem;
+        }
+
+        .calendar-weekday {
+            font-size: 0.62rem;
+            letter-spacing: 0;
+            padding: 0.2rem 0;
+        }
+
+        .calendar-day {
+            min-height: 3.45rem;
+            min-width: 0;
+            padding: 0.32rem 0.18rem;
+            border-radius: 0.7rem;
+            align-items: center;
+            gap: 0.25rem;
+        }
+
+        .calendar-day:hover {
+            transform: none;
+        }
+
+        .calendar-day__number {
+            width: 1.55rem;
+            height: 1.55rem;
+            font-size: 0.78rem;
+        }
+
+        .calendar-day__dots {
+            justify-content: center;
+            gap: 0.18rem;
+            min-height: 0.45rem;
+        }
+
+        .calendar-day__dot {
+            width: 0.32rem;
+            height: 0.32rem;
+        }
+
+        .calendar-day__count {
+            display: none;
+        }
+
+        .calendar-month-nav {
+            gap: 0.35rem;
+            padding: 0.45rem;
+            border-radius: var(--radius);
+        }
+
+        .calendar-month-button {
+            width: 2rem;
+            height: 2rem;
+        }
+
+        .calendar-month-label {
+            font-size: 0.9rem;
+        }
+    }
+
+    @media (max-width: 380px) {
+        .calendar-shell {
+            padding: 0.7rem;
+        }
+
+        .calendar-weekdays,
+        .calendar-grid {
+            gap: 0.16rem;
+        }
+
+        .calendar-day {
+            min-height: 3rem;
+            padding: 0.25rem 0.12rem;
+        }
+
+        .calendar-day__number {
+            width: 1.35rem;
+            height: 1.35rem;
+            font-size: 0.72rem;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="calendar-page">
+    <section class="calendar-hero">
+        <div class="calendar-hero__header">
+            <div>
+                <span class="calendar-hero__eyebrow">
+                    <i class="fa-solid fa-calendar-week"></i>
+                    Календарь активности
+                </span>
+                <h1>Единый календарь задач, проектов и событий</h1>
+                <p>Страница теперь собрана по новой логике: свой месячный грид, выбор дня, группировка по проектам и детальная карточка события без старого календарного движка.</p>
+            </div>
+            <div class="calendar-hero__badge">
+                <i class="fa-regular fa-clock"></i>
+                <span id="calendarCurrentMonthBadge">Текущий месяц</span>
+            </div>
+        </div>
+
+        <div class="calendar-hero__stats">
+            <div class="calendar-stat">
+                <div class="calendar-stat__label">Всего событий</div>
+                <div class="calendar-stat__value">{{ events|length }}</div>
+                <div class="calendar-stat__meta">Все типы без удаленных записей</div>
+            </div>
+            <div class="calendar-stat">
+                <div class="calendar-stat__label">Сегодня</div>
+                <div class="calendar-stat__value">{{ today_events }}</div>
+                <div class="calendar-stat__meta">Событий на текущую дату</div>
+            </div>
+            <div class="calendar-stat">
+                <div class="calendar-stat__label">Впереди</div>
+                <div class="calendar-stat__value">{{ upcoming_events }}</div>
+                <div class="calendar-stat__meta">Предстоящие события и дедлайны</div>
+            </div>
+        </div>
+    </section>
+
+    <div class="calendar-layout">
+        <div class="calendar-stack">
+            <section class="calendar-card">
+                <div class="calendar-shell">
+                    <div class="calendar-header-row">
+                        <div>
+                            <h2 class="calendar-heading">Месячный обзор</h2>
+                            <p class="calendar-subtitle">Переключай месяц, выбирай день и сразу смотри события как в приложении волонтера.</p>
+                        </div>
+
+                        <div class="calendar-month-nav" aria-label="Навигация по месяцам">
+                            <button type="button" class="calendar-month-button" id="prevMonthButton" aria-label="Предыдущий месяц">
+                                <i class="fa-solid fa-chevron-left"></i>
+                            </button>
+                            <div class="calendar-month-label" id="monthLabel">...</div>
+                            <button type="button" class="calendar-month-button" id="nextMonthButton" aria-label="Следующий месяц">
+                                <i class="fa-solid fa-chevron-right"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="calendar-weekdays" id="calendarWeekdays"></div>
+                    <div class="calendar-grid" id="calendarGrid"></div>
+                    <div class="calendar-legend" id="calendarLegend"></div>
+                </div>
+            </section>
+
+            <section class="calendar-card">
+                <div class="calendar-shell">
+                    <div class="selected-day-header">
+                        <h3 class="selected-day-title" id="selectedDayTitle">События на дату</h3>
+                        <span class="selected-day-count" id="selectedDayCount">0</span>
+                    </div>
+                    <div class="event-groups" id="eventGroups"></div>
+                </div>
+            </section>
+        </div>
+
+        <aside class="detail-panel">
+            <section class="calendar-card detail-card" id="detailCard">
+                <div class="detail-hero" id="detailHero">
+                    <div class="detail-hero__overlay detail-hero__overlay--plain" id="detailHeroOverlay">
+                        <div class="detail-type" id="detailType"></div>
+                        <h2 class="detail-title" id="detailTitle">Выбери событие</h2>
+                        <div class="detail-badges" id="detailBadges"></div>
+                    </div>
+                </div>
+
+                <div class="detail-body">
+                    <div class="detail-grid" id="detailMetaGrid"></div>
+
+                    <div class="detail-description">
+                        <h3 class="detail-description__title">Описание</h3>
+                        <p class="detail-description__text" id="detailDescription">Выбери событие слева, и здесь появятся все детали как в новой карточке.</p>
+                    </div>
+
+                    <div class="detail-links" id="detailLinks"></div>
+                </div>
+            </section>
+
+            <section class="calendar-card detail-side-card">
+                <h3 class="detail-side-card__title">Маркеры</h3>
+                <div class="detail-side-card__rows">
+                    <div class="detail-side-card__row">
+                        <span>Старт проекта</span>
+                        <span style="color:#16A34A;">Зеленый маркер</span>
+                    </div>
+                    <div class="detail-side-card__row">
+                        <span>Завершение проекта</span>
+                        <span style="color:#2563EB;">Синий маркер</span>
+                    </div>
+                    <div class="detail-side-card__row">
+                        <span>Дедлайн задачи</span>
+                        <span style="color:#BE123C;">Розовый маркер</span>
+                    </div>
+                </div>
+            </section>
+        </aside>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{{ events_data|json_script:"calendar-events-data" }}
+<script>
+    const weekdayLabels = ['ВС', 'ПН', 'ВТ', 'СР', 'ЧТ', 'ПТ', 'СБ'];
+    const eventsData = JSON.parse(document.getElementById('calendar-events-data').textContent);
+
+    const today = new Date();
+    let displayMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+    let selectedDateKey = buildDateKey(today);
+    let activeEventId = null;
+
+    const nodes = {
+        monthLabel: document.getElementById('monthLabel'),
+        monthBadge: document.getElementById('calendarCurrentMonthBadge'),
+        weekdays: document.getElementById('calendarWeekdays'),
+        grid: document.getElementById('calendarGrid'),
+        legend: document.getElementById('calendarLegend'),
+        selectedDayTitle: document.getElementById('selectedDayTitle'),
+        selectedDayCount: document.getElementById('selectedDayCount'),
+        eventGroups: document.getElementById('eventGroups'),
+        detailHero: document.getElementById('detailHero'),
+        detailHeroOverlay: document.getElementById('detailHeroOverlay'),
+        detailType: document.getElementById('detailType'),
+        detailTitle: document.getElementById('detailTitle'),
+        detailBadges: document.getElementById('detailBadges'),
+        detailMetaGrid: document.getElementById('detailMetaGrid'),
+        detailDescription: document.getElementById('detailDescription'),
+        detailLinks: document.getElementById('detailLinks'),
+    };
+
+    function padNumber(value) {
+        return String(value).padStart(2, '0');
+    }
+
+    function formatMonthKey(date) {
+        return `${date.getFullYear()}-${padNumber(date.getMonth() + 1)}`;
+    }
+
+    function parseDateKey(value) {
+        const [year, month, day] = value.split('-').map(Number);
+        return new Date(year, month - 1, day);
+    }
+
+    function buildDateKey(date) {
+        return `${date.getFullYear()}-${padNumber(date.getMonth() + 1)}-${padNumber(date.getDate())}`;
+    }
+
+    function startOfMonth(date) {
+        return new Date(date.getFullYear(), date.getMonth(), 1);
+    }
+
+    function addMonths(date, amount) {
+        return new Date(date.getFullYear(), date.getMonth() + amount, 1);
+    }
+
+    function buildCalendarDays(monthDate) {
+        const monthStart = startOfMonth(monthDate);
+        const calendarStart = new Date(monthStart);
+        calendarStart.setDate(monthStart.getDate() - monthStart.getDay());
+
+        return Array.from({ length: 42 }, (_, index) => {
+            const day = new Date(calendarStart);
+            day.setDate(calendarStart.getDate() + index);
+            return day;
+        });
+    }
+
+    function formatMonthTitle(date) {
+        return date.toLocaleDateString('ru-RU', {
+            month: 'long',
+            year: 'numeric',
+        });
+    }
+
+    function formatSelectedDateTitle(value) {
+        return parseDateKey(value).toLocaleDateString('ru-RU', {
+            day: 'numeric',
+            month: 'long',
+            year: 'numeric',
+        });
+    }
+
+    function formatLongDate(value) {
+        return parseDateKey(value).toLocaleDateString('ru-RU', {
+            day: 'numeric',
+            month: 'long',
+            year: 'numeric',
+            weekday: 'long',
+        });
+    }
+
+    function isTodayKey(value) {
+        return buildDateKey(today) === value;
+    }
+
+    function getEventTypeConfig(type) {
+        switch (type) {
+            case 'project_start':
+                return {
+                    label: 'Старт проекта',
+                    color: '#16A34A',
+                    softColor: 'rgba(34, 197, 94, 0.14)',
+                    icon: 'fa-leaf',
+                };
+            case 'project_end':
+                return {
+                    label: 'Завершение проекта',
+                    color: '#2563EB',
+                    softColor: '#DBEAFE',
+                    icon: 'fa-flag-checkered',
+                };
+            default:
+                return {
+                    label: 'Задача',
+                    color: '#BE123C',
+                    softColor: '#FFE4E6',
+                    icon: 'fa-list-check',
+                };
+        }
+    }
+
+    function getStatusConfig(status) {
+        switch (status) {
+            case 'completed':
+                return { label: 'Завершено', color: '#15803D', backgroundColor: 'rgba(34, 197, 94, 0.14)' };
+            case 'approved':
+                return { label: 'Одобрено', color: '#047857', backgroundColor: 'rgba(34, 197, 94, 0.14)' };
+            case 'under_review':
+                return { label: 'На проверке', color: '#047857', backgroundColor: 'rgba(34, 197, 94, 0.14)' };
+            case 'revision':
+                return { label: 'На доработке', color: '#2563EB', backgroundColor: '#DBEAFE' };
+            case 'rejected':
+            case 'failed':
+                return { label: 'Отклонено', color: '#BE123C', backgroundColor: '#FFE4E6' };
+            case 'in_progress':
+                return { label: 'В работе', color: '#2563EB', backgroundColor: '#EFF6FF' };
+            case 'open':
+                return { label: 'Открыта', color: '#0F766E', backgroundColor: '#ECFDF5' };
+            case 'archived':
+                return { label: 'В архиве', color: '#64748B', backgroundColor: '#F1F5F9' };
+            case 'pending':
+                return { label: 'На модерации', color: '#D97706', backgroundColor: '#FEF3C7' };
+            default:
+                return status ? { label: status, color: '#64748B', backgroundColor: '#F1F5F9' } : null;
+        }
+    }
+
+    function formatEventTime(event) {
+        if (event.is_all_day) {
+            return 'Весь день';
+        }
+
+        const start = event.start_time ? event.start_time.slice(0, 5) : null;
+        const end = event.end_time ? event.end_time.slice(0, 5) : null;
+
+        if (start && end) {
+            return `${start} - ${end}`;
+        }
+        if (start) {
+            return start;
+        }
+        return 'Время уточняется';
+    }
+
+    function formatEventTimeLong(event) {
+        if (event.is_all_day) {
+            return 'Весь день';
+        }
+
+        const start = event.start_time ? event.start_time.slice(0, 5) : null;
+        const end = event.end_time ? event.end_time.slice(0, 5) : null;
+
+        if (start && end) {
+            return `${start}, до ${end}`;
+        }
+        if (start) {
+            return start;
+        }
+        return 'Время уточняется';
+    }
+
+    function getEventLocation(event) {
+        return event.location || event.project_address || event.project_city || 'Локация уточняется';
+    }
+
+    function getEventGroupKey(event) {
+        if (event.project_id != null) {
+            return `project-${event.project_id}`;
+        }
+        if (event.source_type === 'project') {
+            return `project-source-${event.source_id}`;
+        }
+        return `${event.source_type}-${event.source_id}`;
+    }
+
+    function getEventNodeTitle(event) {
+        if (event.source_type === 'project') {
+            return getEventTypeConfig(event.type).label;
+        }
+        return event.title;
+    }
+
+    function compareCalendarEvents(left, right) {
+        const priority = (event) => {
+            if (event.source_type === 'project' && event.type === 'project_start') return 0;
+            if (event.source_type === 'task') return 1;
+            if (event.source_type === 'project' && event.type === 'project_end') return 2;
+            return 3;
+        };
+
+        return (
+            priority(left) - priority(right) ||
+            String(left.start_time || '00:00').localeCompare(String(right.start_time || '00:00')) ||
+            left.title.localeCompare(right.title, 'ru')
+        );
+    }
+
+    function getMapLink(event) {
+        if (event.project_gis2_url) {
+            return { href: event.project_gis2_url, label: 'Открыть в 2GIS' };
+        }
+        if (event.project_latitude != null && event.project_longitude != null) {
+            return {
+                href: `https://www.google.com/maps?q=${event.project_latitude},${event.project_longitude}`,
+                label: 'Открыть карту',
+            };
+        }
+        const address = event.project_address || event.location;
+        if (address) {
+            return {
+                href: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`,
+                label: 'Открыть карту',
+            };
+        }
+        return null;
+    }
+
+    function selectInitialDate(events, monthDate, previous) {
+        const monthKey = formatMonthKey(monthDate);
+        if (previous && previous.startsWith(monthKey)) {
+            return previous;
+        }
+
+        const todayKey = buildDateKey(today);
+        if (todayKey.startsWith(monthKey)) {
+            return todayKey;
+        }
+
+        const monthEvents = events.filter((event) => event.date.startsWith(monthKey));
+        if (monthEvents.length) {
+            monthEvents.sort(compareCalendarEvents);
+            return monthEvents[0].date;
+        }
+
+        return buildDateKey(startOfMonth(monthDate));
+    }
+
+    function buildEventsByDate() {
+        return eventsData.reduce((accumulator, event) => {
+            if (!accumulator[event.date]) {
+                accumulator[event.date] = [];
+            }
+            accumulator[event.date].push(event);
+            return accumulator;
+        }, {});
+    }
+
+    function buildGroupedEvents(selectedEvents) {
+        const groups = selectedEvents.reduce((accumulator, event) => {
+            const key = getEventGroupKey(event);
+            const existing = accumulator.get(key);
+
+            if (existing) {
+                if (event.source_type === 'task') {
+                    existing.taskEvents.push(event);
+                } else {
+                    existing.projectEvents.push(event);
+                }
+                return accumulator;
+            }
+
+            accumulator.set(key, {
+                key,
+                projectId: event.project_id ?? (event.source_type === 'project' ? event.source_id : null),
+                title: event.project_title || event.title,
+                subtitle: event.project_city || event.project_type || event.subtitle || null,
+                location: getEventLocation(event),
+                projectEvents: event.source_type === 'task' ? [] : [event],
+                taskEvents: event.source_type === 'task' ? [event] : [],
+            });
+
+            return accumulator;
+        }, new Map());
+
+        return Array.from(groups.values())
+            .map((group) => ({
+                ...group,
+                projectEvents: [...group.projectEvents].sort(compareCalendarEvents),
+                taskEvents: [...group.taskEvents].sort(compareCalendarEvents),
+            }))
+            .sort((left, right) => left.title.localeCompare(right.title, 'ru'));
+    }
+
+    function renderWeekdays() {
+        nodes.weekdays.innerHTML = weekdayLabels
+            .map((label) => `<div class="calendar-weekday">${label}</div>`)
+            .join('');
+    }
+
+    function renderLegend() {
+        const legendItems = ['project_start', 'project_end', 'task_deadline'].map(getEventTypeConfig);
+        nodes.legend.innerHTML = legendItems.map((item) => `
+            <div class="calendar-legend__item">
+                <span class="calendar-legend__dot" style="background:${item.color};"></span>
+                <span>${item.label}</span>
+            </div>
+        `).join('');
+    }
+
+    function renderMonth() {
+        const eventsByDate = buildEventsByDate();
+        const monthDays = buildCalendarDays(displayMonth);
+        const monthTitle = formatMonthTitle(displayMonth);
+
+        nodes.monthLabel.textContent = monthTitle;
+        nodes.monthBadge.textContent = monthTitle;
+
+        nodes.grid.innerHTML = monthDays.map((day) => {
+            const key = buildDateKey(day);
+            const dayEvents = eventsByDate[key] || [];
+            const dayDots = [...new Set(dayEvents.map((event) => getEventTypeConfig(event.type).color))].slice(0, 4);
+            const isCurrentMonth = day.getMonth() === displayMonth.getMonth();
+            const isSelected = key === selectedDateKey;
+            const numberClasses = [
+                'calendar-day__number',
+                isTodayKey(key) && !isSelected ? 'calendar-day__number--today' : '',
+                isSelected ? 'calendar-day__number--selected' : '',
+            ].filter(Boolean).join(' ');
+
+            return `
+                <button type="button"
+                    class="calendar-day ${!isCurrentMonth ? 'calendar-day--muted' : ''} ${isSelected ? 'calendar-day--selected' : ''}"
+                    data-day-key="${key}">
+                    <span class="${numberClasses}">${day.getDate()}</span>
+                    <div class="calendar-day__dots">
+                        ${dayDots.map((color) => `<span class="calendar-day__dot" style="background:${color};"></span>`).join('')}
+                    </div>
+                    <span class="calendar-day__count">${dayEvents.length ? `${dayEvents.length} событ.` : ''}</span>
+                </button>
+            `;
+        }).join('');
+
+        nodes.grid.querySelectorAll('[data-day-key]').forEach((button) => {
+            button.addEventListener('click', () => {
+                selectedDateKey = button.dataset.dayKey;
+                const selectedEvents = getSelectedEvents();
+                activeEventId = selectedEvents[0] ? selectedEvents[0].id : null;
+                render();
+            });
+        });
+    }
+
+    function getSelectedEvents() {
+        const eventsByDate = buildEventsByDate();
+        return (eventsByDate[selectedDateKey] || []).slice().sort(compareCalendarEvents);
+    }
+
+    function renderSelectedEvents() {
+        const selectedEvents = getSelectedEvents();
+        const groupedEvents = buildGroupedEvents(selectedEvents);
+
+        nodes.selectedDayTitle.textContent = `События на ${formatSelectedDateTitle(selectedDateKey)}`;
+        nodes.selectedDayCount.textContent = String(selectedEvents.length);
+
+        if (!selectedEvents.length) {
+            nodes.eventGroups.innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-state__icon">
+                        <i class="fa-regular fa-calendar-xmark"></i>
+                    </div>
+                    <h3>На выбранный день событий нет</h3>
+                    <p>Переключи дату или месяц, чтобы посмотреть другие дедлайны задач и даты проектов.</p>
+                </div>
+            `;
+            renderDetailPanel(null);
+            return;
+        }
+
+        if (!activeEventId || !selectedEvents.some((event) => event.id === activeEventId)) {
+            activeEventId = selectedEvents[0].id;
+        }
+
+        nodes.eventGroups.innerHTML = groupedEvents.map((group) => {
+            const groupEvents = [...group.projectEvents, ...group.taskEvents].sort(compareCalendarEvents);
+            const projectEventCount = group.projectEvents.length;
+            const taskEventCount = group.taskEvents.length;
+
+            return `
+                <article class="event-group">
+                    <div class="event-group__header">
+                        <div class="event-group__icon">
+                            <i class="fa-solid fa-code-branch"></i>
+                        </div>
+                        <div>
+                            <h3 class="event-group__title">${escapeHtml(group.title)}</h3>
+                            <p class="event-group__subtitle">${escapeHtml(group.subtitle || group.location || 'Без уточненной локации')}</p>
+                            <div class="event-group__meta">
+                                ${projectEventCount ? `<span class="event-group__chip"><i class="fa-regular fa-flag"></i>${projectEventCount} проектных событий</span>` : ''}
+                                ${taskEventCount ? `<span class="event-group__chip"><i class="fa-solid fa-list-check"></i>${taskEventCount} задач</span>` : ''}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="event-group__rows">
+                        ${groupEvents.map((event) => {
+                            const typeConfig = getEventTypeConfig(event.type);
+                            const statusConfig = getStatusConfig(event.status);
+                            return `
+                                <button type="button" class="event-row ${activeEventId === event.id ? 'event-row--active' : ''}" data-event-id="${event.id}">
+                                    <span class="event-row__icon" style="background:${typeConfig.softColor}; color:${typeConfig.color};">
+                                        <i class="fa-solid ${typeConfig.icon}"></i>
+                                    </span>
+                                    <span>
+                                        <h4 class="event-row__title">${escapeHtml(getEventNodeTitle(event))}</h4>
+                                        <p class="event-row__subtitle">${escapeHtml(event.subtitle || typeConfig.label)}</p>
+                                        <span class="event-row__meta">
+                                            <span class="event-row__meta-item">
+                                                <i class="fa-regular fa-clock"></i>
+                                                <span>${escapeHtml(formatEventTime(event))}</span>
+                                            </span>
+                                            <span class="event-row__meta-item">
+                                                <i class="fa-solid fa-location-dot"></i>
+                                                <span>${escapeHtml(getEventLocation(event))}</span>
+                                            </span>
+                                        </span>
+                                    </span>
+                                    ${statusConfig ? `<span class="event-row__status" style="background:${statusConfig.backgroundColor}; color:${statusConfig.color};">${escapeHtml(statusConfig.label)}</span>` : ''}
+                                </button>
+                            `;
+                        }).join('')}
+                    </div>
+                </article>
+            `;
+        }).join('');
+
+        nodes.eventGroups.querySelectorAll('[data-event-id]').forEach((button) => {
+            button.addEventListener('click', () => {
+                activeEventId = Number(button.dataset.eventId);
+                renderSelectedEvents();
+                renderDetailPanel(eventsData.find((event) => event.id === activeEventId) || null);
+            });
+        });
+
+        renderDetailPanel(eventsData.find((event) => event.id === activeEventId) || null);
+    }
+
+    function renderDetailPanel(event) {
+        if (!event) {
+            nodes.detailHero.style.background = 'linear-gradient(160deg, #0f172a 0%, #17338a 55%, #2563eb 100%)';
+            nodes.detailHero.querySelectorAll('.detail-hero__image').forEach((image) => image.remove());
+            nodes.detailHeroOverlay.classList.add('detail-hero__overlay--plain');
+            nodes.detailType.innerHTML = '<i class="fa-regular fa-calendar-days"></i><span>Событие</span>';
+            nodes.detailType.style.background = 'rgba(255,255,255,0.16)';
+            nodes.detailType.style.color = '#ffffff';
+            nodes.detailTitle.textContent = 'Выбери событие';
+            nodes.detailTitle.style.color = '#ffffff';
+            nodes.detailBadges.innerHTML = '<span class="detail-badge">Нажми на карточку слева</span>';
+            nodes.detailMetaGrid.innerHTML = '';
+            nodes.detailDescription.textContent = 'Выбери событие слева, и здесь появятся все детали как в новой карточке.';
+            nodes.detailLinks.innerHTML = '';
+            return;
+        }
+
+        const typeConfig = getEventTypeConfig(event.type);
+        const statusConfig = getStatusConfig(event.status);
+        const mapLink = getMapLink(event);
+
+        nodes.detailHero.style.background = event.hero_image
+            ? 'linear-gradient(160deg, #0f172a 0%, #17338a 55%, #2563eb 100%)'
+            : `radial-gradient(circle at top right, rgba(255,255,255,0.14), transparent 32%), linear-gradient(160deg, ${typeConfig.color} 0%, #17338a 100%)`;
+
+        nodes.detailHero.querySelectorAll('.detail-hero__image').forEach((image) => image.remove());
+        if (event.hero_image) {
+            const img = document.createElement('img');
+            img.className = 'detail-hero__image';
+            img.src = event.hero_image;
+            img.alt = event.title;
+            nodes.detailHero.prepend(img);
+            nodes.detailHeroOverlay.classList.remove('detail-hero__overlay--plain');
+            nodes.detailTitle.style.color = '#ffffff';
+        } else {
+            nodes.detailHeroOverlay.classList.add('detail-hero__overlay--plain');
+            nodes.detailTitle.style.color = '#ffffff';
+        }
+
+        nodes.detailType.innerHTML = `<i class="fa-solid ${typeConfig.icon}"></i><span>${escapeHtml(typeConfig.label)}</span>`;
+        nodes.detailType.style.background = typeConfig.softColor;
+        nodes.detailType.style.color = typeConfig.color;
+        nodes.detailTitle.textContent = event.title;
+
+        const badges = [];
+        if (statusConfig) {
+            badges.push(`<span class="detail-badge" style="background:${statusConfig.backgroundColor}; color:${statusConfig.color};">${escapeHtml(statusConfig.label)}</span>`);
+        }
+        if (event.visibility_display) {
+            badges.push(`<span class="detail-badge">${escapeHtml(event.visibility_display)}</span>`);
+        }
+        if (event.participants_count) {
+            badges.push(`<span class="detail-badge">${event.participants_count} участников</span>`);
+        }
+        nodes.detailBadges.innerHTML = badges.join('');
+
+        nodes.detailMetaGrid.innerHTML = [
+            renderMetaRow('fa-calendar-days', 'Дата', formatLongDate(event.date)),
+            renderMetaRow('fa-clock', 'Время', formatEventTimeLong(event)),
+            renderMetaRow('fa-location-dot', 'Локация', getEventLocation(event), mapLink ? `<a class="detail-map-link" href="${escapeAttribute(mapLink.href)}" target="_blank" rel="noopener noreferrer">${escapeHtml(mapLink.label)}</a>` : ''),
+            renderMetaRow('fa-user', 'Создатель', event.creator_name || event.creator_username || 'Не указан'),
+        ].join('');
+
+        nodes.detailDescription.textContent = event.description || 'Организатор пока не добавил подробное описание для этого события.';
+
+        const links = [];
+        if (event.project_url && event.project_title) {
+            links.push(`
+                <a class="detail-link" href="${escapeAttribute(event.project_url)}">
+                    <span class="detail-link__icon"><i class="fa-solid fa-layer-group"></i></span>
+                    <span style="flex:1;">
+                        <div class="detail-link__label">Связанный проект</div>
+                        <p class="detail-link__title">${escapeHtml(event.project_title)}${event.project_city ? ` · ${escapeHtml(event.project_city)}` : ''}</p>
+                    </span>
+                    <i class="fa-solid fa-chevron-right" style="color:var(--gray-400);"></i>
+                </a>
+            `);
+        }
+        if (event.task_url && event.task_title) {
+            links.push(`
+                <a class="detail-link" href="${escapeAttribute(event.task_url)}">
+                    <span class="detail-link__icon"><i class="fa-solid fa-list-check"></i></span>
+                    <span style="flex:1;">
+                        <div class="detail-link__label">Связанная задача</div>
+                        <p class="detail-link__title">${escapeHtml(event.task_title)}</p>
+                    </span>
+                    <i class="fa-solid fa-chevron-right" style="color:var(--gray-400);"></i>
+                </a>
+            `);
+        }
+        if (mapLink && !event.project_url && !event.task_url) {
+            links.push(`
+                <a class="detail-link" href="${escapeAttribute(mapLink.href)}" target="_blank" rel="noopener noreferrer">
+                    <span class="detail-link__icon"><i class="fa-solid fa-map-location-dot"></i></span>
+                    <span style="flex:1;">
+                        <div class="detail-link__label">Внешняя навигация</div>
+                        <p class="detail-link__title">${escapeHtml(mapLink.label)}</p>
+                    </span>
+                    <i class="fa-solid fa-arrow-up-right-from-square" style="color:var(--gray-400);"></i>
+                </a>
+            `);
+        }
+        nodes.detailLinks.innerHTML = links.join('');
+    }
+
+    function renderMetaRow(icon, label, value, extra = '') {
+        return `
+            <div class="detail-meta">
+                <span class="detail-meta__icon"><i class="fa-solid ${icon}"></i></span>
+                <div>
+                    <div class="detail-meta__label">${escapeHtml(label)}</div>
+                    <p class="detail-meta__value">${escapeHtml(value)}</p>
+                </div>
+                ${extra || ''}
+            </div>
+        `;
+    }
+
+    function escapeHtml(value) {
+        return String(value ?? '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    function escapeAttribute(value) {
+        return escapeHtml(value);
+    }
+
+    function render() {
+        selectedDateKey = selectInitialDate(eventsData, displayMonth, selectedDateKey);
+        renderMonth();
+        renderSelectedEvents();
+    }
+
+    document.getElementById('prevMonthButton').addEventListener('click', () => {
+        displayMonth = addMonths(displayMonth, -1);
+        selectedDateKey = selectInitialDate(eventsData, displayMonth, selectedDateKey);
+        activeEventId = null;
+        render();
+    });
+
+    document.getElementById('nextMonthButton').addEventListener('click', () => {
+        displayMonth = addMonths(displayMonth, 1);
+        selectedDateKey = selectInitialDate(eventsData, displayMonth, selectedDateKey);
+        activeEventId = null;
+        render();
+    });
+
+    renderWeekdays();
+    renderLegend();
+    render();
+</script>
+{% endblock %}

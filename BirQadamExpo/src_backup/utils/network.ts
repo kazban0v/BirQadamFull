@@ -1,0 +1,150 @@
+import Constants from 'expo-constants';
+import { Platform } from 'react-native';
+
+const PRODUCTION_API_BASE_URL = 'https://cleanup.almau.edu.kz';
+const DEV_API_PORT = '8000';
+export const VOLUNTEER_FALLBACK_IMAGE_URL =
+  'https://images.unsplash.com/photo-1559027615-cd4628902d4a?auto=format&fit=crop&w=1200&q=80';
+
+const BACKEND_HOSTS = new Set([
+  'cleanup.almau.edu.kz',
+  'birqadam.almau.edu.kz',
+  'localhost',
+  '127.0.0.1',
+  '10.0.2.2',
+]);
+
+const trimTrailingSlash = (value: string): string => value.replace(/\/+$/, '');
+
+const extractHost = (value?: string | null): string | null => {
+  if (!value) {
+    return null;
+  }
+
+  const normalized = value.trim().replace(/^[a-z]+:\/\//i, '');
+  const [hostWithPort] = normalized.split('/');
+  const [host] = hostWithPort.split(':');
+
+  return host || null;
+};
+
+const isPrivateIpv4 = (host: string): boolean => {
+  if (/^10\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(host)) {
+    return true;
+  }
+
+  if (/^192\.168\.\d{1,3}\.\d{1,3}$/.test(host)) {
+    return true;
+  }
+
+  const match = host.match(/^172\.(\d{1,3})\.\d{1,3}\.\d{1,3}$/);
+  if (!match) {
+    return false;
+  }
+
+  const secondOctet = Number(match[1]);
+  return secondOctet >= 16 && secondOctet <= 31;
+};
+
+const buildLocalUrl = (host: string): string => `http://${host}:${DEV_API_PORT}`;
+
+const getExpoDevHost = (): string | null => {
+  const candidates = [
+    Constants.expoConfig?.hostUri,
+    Constants.platform?.hostUri,
+    Constants.linkingUri,
+    Constants.experienceUrl,
+  ];
+
+  for (const candidate of candidates) {
+    const host = extractHost(candidate);
+    if (!host) {
+      continue;
+    }
+
+    if (host === 'localhost' || host === '127.0.0.1') {
+      continue;
+    }
+
+    return host;
+  }
+
+  return null;
+};
+
+const getWebDevBaseUrl = (): string => {
+  const location = (globalThis as { location?: { host?: string; hostname?: string } }).location;
+  const host = extractHost(location?.host) ?? location?.hostname ?? 'localhost';
+
+  return buildLocalUrl(host);
+};
+
+export const getApiBaseUrl = (): string => {
+  const envUrl = process.env.EXPO_PUBLIC_API_BASE_URL?.trim();
+  if (envUrl) {
+    return trimTrailingSlash(envUrl);
+  }
+
+  if (!__DEV__) {
+    return PRODUCTION_API_BASE_URL;
+  }
+
+  const expoHost = getExpoDevHost();
+  if (expoHost) {
+    return buildLocalUrl(expoHost);
+  }
+
+  if (Platform.OS === 'android') {
+    return buildLocalUrl('10.0.2.2');
+  }
+
+  if (Platform.OS === 'web') {
+    return getWebDevBaseUrl();
+  }
+
+  return buildLocalUrl('localhost');
+};
+
+export const API_BASE_URL = getApiBaseUrl();
+export const API_ORIGIN = trimTrailingSlash(API_BASE_URL);
+
+const shouldUseCurrentBackendHost = (url: string): boolean => {
+  const host = extractHost(url);
+  if (!host) {
+    return false;
+  }
+
+  return BACKEND_HOSTS.has(host) || isPrivateIpv4(host);
+};
+
+export const replaceWithApiOrigin = (url: string): string => {
+  if (/^https?:\/\//i.test(url)) {
+    return url.replace(/^https?:\/\/[^/]+/i, API_ORIGIN);
+  }
+
+  if (url.startsWith('/')) {
+    return `${API_ORIGIN}${url}`;
+  }
+
+  return `${API_ORIGIN}/${url.replace(/^\/+/, '')}`;
+};
+
+export const normalizeImageUrl = (url: string | undefined | null): string | undefined => {
+  if (!url) {
+    return undefined;
+  }
+
+  if (!__DEV__) {
+    return url;
+  }
+
+  if (url.startsWith('/')) {
+    return `${API_ORIGIN}${url}`;
+  }
+
+  if (shouldUseCurrentBackendHost(url)) {
+    return replaceWithApiOrigin(url);
+  }
+
+  return url;
+};

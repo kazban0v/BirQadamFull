@@ -1,0 +1,327 @@
+{% extends 'admin_panel/base.html' %} {% load static %}
+
+{% block topbar_title %}Задачи{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* ── Hero ── */
+    .tsk-hero {
+        background: linear-gradient(135deg, var(--gray-900) 0%, #667eea 50%, #764ba2 100%);
+        border-radius: var(--radius-lg); padding: 2rem; color: #fff;
+        position: relative; overflow: hidden; margin-bottom: 1.25rem;
+    }
+    .tsk-hero::before {
+        content: ""; position: absolute;
+        width: 280px; height: 280px; border-radius: 50%;
+        right: -70px; top: -110px; background: rgba(255,255,255,0.06);
+        pointer-events: none;
+    }
+    .tsk-hero > * { position: relative; z-index: 1; }
+    .tsk-hero-eyebrow {
+        display: inline-flex; align-items: center; gap: 0.4rem;
+        padding: 0.28rem 0.7rem; border-radius: 999px;
+        background: rgba(255,255,255,0.12); font-size: 0.68rem; font-weight: 700;
+        letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 0.65rem;
+    }
+    .tsk-hero h1 { margin: 0 0 0.3rem; font-size: 1.65rem; font-weight: 800; letter-spacing: -0.02em; }
+    .tsk-hero p  { margin: 0; color: rgba(255,255,255,0.7); font-size: 0.88rem; }
+    
+    .tsk-hero-metrics {
+        display: grid; grid-template-columns: repeat(5, 1fr); gap: 0.75rem; margin-top: 1.25rem;
+    }
+    @media (max-width: 900px) { .tsk-hero-metrics { grid-template-columns: repeat(3, 1fr); } }
+    @media (max-width: 576px) { .tsk-hero-metrics { grid-template-columns: repeat(2, 1fr); } }
+
+    .tsk-hero-metric {
+        padding: 0.8rem; border-radius: var(--radius);
+        background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.1);
+    }
+    .tsk-hero-metric__label {
+        display: block; font-size: 0.62rem; text-transform: uppercase;
+        letter-spacing: 0.07em; color: rgba(255,255,255,0.6); margin-bottom: 0.25rem; font-weight: 700;
+    }
+    .tsk-hero-metric__value { font-size: 1.45rem; font-weight: 800; line-height: 1; }
+
+    /* ── Toolbar ── */
+    .tsk-toolbar {
+        background: #fff; border: 1px solid var(--gray-200); border-radius: var(--radius-lg);
+        padding: 1rem 1.25rem; box-shadow: var(--shadow-sm); margin-bottom: 1.25rem;
+        display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: center;
+    }
+    .tsk-search-wrap { flex: 1; min-width: 220px; position: relative; }
+    .tsk-search-wrap i {
+        position: absolute; left: 0.75rem; top: 50%; transform: translateY(-50%);
+        color: var(--gray-400); font-size: 0.8rem; pointer-events: none;
+    }
+    .tsk-search-input {
+        width: 100%; padding: 0.48rem 0.75rem 0.48rem 2.1rem;
+        border: 1px solid var(--gray-200); border-radius: 0.5rem;
+        font-size: 0.83rem; font-family: inherit; color: var(--gray-800);
+        background: var(--gray-50); transition: all var(--transition);
+    }
+    .tsk-search-input:focus {
+        outline: none; border-color: #667eea; background: #fff;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.25);
+    }
+    .tsk-select {
+        padding: 0.48rem 0.75rem; border: 1px solid var(--gray-200); border-radius: 0.5rem;
+        font-size: 0.83rem; font-family: inherit; color: var(--gray-800); background: var(--gray-50); outline: none;
+    }
+
+    /* ── Table Card ── */
+    .tsk-table-card {
+        background: #fff; border: 1px solid var(--gray-200); border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-sm); overflow: hidden; margin-bottom: 1.5rem;
+    }
+    .tsk-table-card .card-header {
+        background: var(--gray-900); color: #fff; padding: 1rem 1.25rem; border: none;
+        display: flex; align-items: center; justify-content: space-between;
+    }
+    .tsk-table-card .card-header h6 { margin: 0; font-size: 0.875rem; font-weight: 700; }
+
+    .tsk-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+    .tsk-table thead th {
+        padding: 0.75rem 1rem; font-size: 0.7rem; font-weight: 700; text-transform: uppercase;
+        letter-spacing: 0.04em; color: var(--gray-500); background: var(--gray-50);
+        border-bottom: 1px solid var(--gray-200); white-space: nowrap;
+    }
+    .tsk-table tbody td {
+        padding: 0.85rem 1rem; border-bottom: 1px solid var(--gray-100);
+        vertical-align: middle; color: var(--gray-700);
+    }
+    .tsk-table tbody tr:hover td { background: var(--gray-50); }
+    .tsk-table tbody tr:last-child td { border-bottom: none; }
+
+    .tsk-title { font-weight: 700; color: var(--gray-800); font-size: 0.95rem; display: block; }
+    .tsk-project { font-size: 0.75rem; color: var(--gray-500); margin-top: 2px; text-decoration: none; display: inline-block; }
+    .tsk-project:hover { color: #667eea; }
+
+    /* ── Status Badges ── */
+    .status-badge {
+        padding: 0.28rem 0.6rem; border-radius: 999px;
+        font-size: 0.72rem; font-weight: 700; display: inline-block;
+    }
+    .status-completed { background: #d1fae5; color: #059669; }
+    .status-in_progress { background: #fef3c7; color: #d97706; }
+    .status-failed { background: #fee2e2; color: #b91c1c; }
+    .status-open { background: #e0e7ff; color: #4f46e5; }
+    .status-under_review { background: #ede9fe; color: #7c3aed; }
+    .status-closed { background: var(--gray-200); color: var(--gray-600); }
+
+    /* ── Expired Indicator ── */
+    .expired-text { color: #dc2626; font-weight: 700; font-size: 0.75rem; display: block; margin-top: 2px; }
+
+    /* ── Empty ── */
+    .tsk-empty { text-align: center; padding: 3rem 1rem; color: var(--gray-400); }
+    .tsk-empty i { font-size: 2.5rem; opacity: 0.3; display: block; margin-bottom: 0.75rem; }
+    
+    /* ── Pagination ── */
+    .pagination { margin-bottom: 0; margin-top: 1rem; display: flex; justify-content: center; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0">
+
+    <!-- Hero -->
+    <div class="tsk-hero">
+        <span class="tsk-hero-eyebrow"><i class="fas fa-tasks"></i> Задачи</span>
+        <h1>Управление задачами</h1>
+        <p>Мониторинг всех активных и завершенных задач проектов</p>
+        <div class="tsk-hero-metrics">
+            <div class="tsk-hero-metric">
+                <span class="tsk-hero-metric__label">Всего задач</span>
+                <div class="tsk-hero-metric__value">{{ tasks_count }}</div>
+            </div>
+            <div class="tsk-hero-metric" style="background: rgba(79, 70, 229, 0.2);">
+                <span class="tsk-hero-metric__label">Открыто</span>
+                <div class="tsk-hero-metric__value" style="color: #c7d2fe;">{{ stats.open|default:0 }}</div>
+            </div>
+            <div class="tsk-hero-metric" style="background: rgba(245, 158, 11, 0.2);">
+                <span class="tsk-hero-metric__label">В работе</span>
+                <div class="tsk-hero-metric__value" style="color: #fde68a;">{{ stats.in_progress|default:0 }}</div>
+            </div>
+            <div class="tsk-hero-metric" style="background: rgba(16, 185, 129, 0.2);">
+                <span class="tsk-hero-metric__label">Выполнено</span>
+                <div class="tsk-hero-metric__value" style="color: #a7f3d0;">{{ stats.completed|default:0 }}</div>
+            </div>
+            <div class="tsk-hero-metric" style="background: rgba(239, 68, 68, 0.2);">
+                <span class="tsk-hero-metric__label">Отклонено</span>
+                <div class="tsk-hero-metric__value" style="color: #fecaca;">{{ stats.failed|default:0 }}</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toolbar -->
+    <div class="tsk-toolbar">
+        <div class="tsk-search-wrap">
+            <i class="fas fa-search"></i>
+            <input type="text" id="searchInput" class="tsk-search-input" placeholder="Живой поиск по названию или проекту..." value="{{ active_filters.search }}">
+        </div>
+        <select id="statusFilter" class="tsk-select">
+            <option value="">Все статусы</option>
+            <option value="open">Открыто</option>
+            <option value="in_progress">В работе</option>
+            <option value="under_review">На проверке</option>
+            <option value="completed">Выполнено</option>
+            <option value="failed">Отклонено</option>
+            <option value="closed">Закрыто</option>
+        </select>
+        <select id="sortBy" class="tsk-select">
+            <option value="newest">Сначала новые</option>
+            <option value="deadline">Ближайший дедлайн</option>
+            <option value="project">По алфавиту (проект)</option>
+        </select>
+    </div>
+
+    <!-- Table -->
+    <div class="tsk-table-card">
+        <div class="card-header">
+            <h6><i class="fas fa-list me-2"></i>Список задач</h6>
+        </div>
+        <div class="table-responsive">
+            <table class="tsk-table">
+                <thead>
+                    <tr>
+                        <th style="width: 50px;">ID</th>
+                        <th>Задача и Проект</th>
+                        <th class="text-center">Статус</th>
+                        <th class="text-center">Срок выполнения</th>
+                        <th class="text-center">Отклики</th>
+                    </tr>
+                </thead>
+                <tbody id="taskListBody">
+                    {% for task in tasks %}
+                    <tr class="tsk-row" 
+                        data-id="{{ task.id }}" 
+                        data-status="{{ task.status }}" 
+                        data-text="{{ task.text|lower }}" 
+                        data-project="{{ task.project.title|lower }}" 
+                        data-deadline="{{ task.deadline_date|date:'Y-m-d'|default:'9999-12-31' }}">
+                        <td style="color:var(--gray-400); font-weight:700;">#{{ task.id }}</td>
+                        <td>
+                            <div class="tsk-title">{{ task.text|truncatechars:55 }}</div>
+                            <a href="{% url 'admin_panel:project_detail' task.project.id %}" class="tsk-project">
+                                <i class="fas fa-project-diagram me-1"></i> {{ task.project.title }}
+                            </a>
+                        </td>
+                        <td class="text-center">
+                            <span class="status-badge status-{{ task.status }}">
+                                {{ task.get_status_display }}
+                            </span>
+                        </td>
+                        <td class="text-center">
+                            {% if task.deadline_date %}
+                                <div style="font-weight:600; color:var(--gray-800);">{{ task.deadline_date|date:"d.m.Y" }}</div>
+                                {% if task.status == 'closed' %}
+                                <span class="expired-text"><i class="fas fa-exclamation-triangle"></i> Просрочено</span>
+                                {% endif %}
+                            {% else %}
+                                <span style="color:var(--gray-400); font-size:0.8rem;">Без срока</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-center">
+                            <span style="background:var(--gray-100); padding:0.15rem 0.6rem; border-radius:999px; font-weight:700; font-size:0.75rem; color:var(--gray-600);">
+                                <i class="fas fa-user-friends me-1"></i> {{ task.assignments_count }}
+                            </span>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5">
+                            <div class="tsk-empty">
+                                <i class="fas fa-inbox"></i>
+                                <p style="font-weight:600;">Задачи не найдены</p>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Django Pagination if needed -->
+    {% if is_paginated %}
+    <nav aria-label="Page navigation" class="mb-4">
+        <ul class="pagination justify-content-center">
+            {% if page_obj.has_previous %}
+            <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}">&laquo;</a></li>
+            {% endif %}
+            
+            {% for num in page_obj.paginator.page_range %}
+                {% if num == page_obj.number %}
+                <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+                {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                <li class="page-item"><a class="page-link" href="?page={{ num }}">{{ num }}</a></li>
+                {% endif %}
+            {% endfor %}
+            
+            {% if page_obj.has_next %}
+            <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}">&raquo;</a></li>
+            {% endif %}
+        </ul>
+    </nav>
+    {% endif %}
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.getElementById('searchInput');
+    const statusFilter = document.getElementById('statusFilter');
+    const sortBy = document.getElementById('sortBy');
+    const tbody = document.getElementById('taskListBody');
+
+    // Pre-select status from backend if applicable
+    const activeStatus = "{{ active_filters.status }}";
+    if(activeStatus && statusFilter.querySelector(`option[value="${activeStatus}"]`)) {
+        statusFilter.value = activeStatus;
+    }
+
+    function filterAndSort() {
+        if (!tbody) return;
+        const searchTerm = searchInput.value.toLowerCase().trim();
+        const selectedStatus = statusFilter.value;
+        const sortValue = sortBy.value;
+
+        const rows = Array.from(tbody.querySelectorAll('tr.tsk-row'));
+
+        rows.forEach(row => {
+            const text = row.dataset.text;
+            const project = row.dataset.project;
+            const status = row.dataset.status;
+
+            const matchesSearch = text.includes(searchTerm) || project.includes(searchTerm);
+            const matchesStatus = !selectedStatus || status === selectedStatus;
+
+            row.style.display = (matchesSearch && matchesStatus) ? '' : 'none';
+        });
+
+        const visibleRows = rows.filter(r => r.style.display !== 'none');
+        
+        visibleRows.sort((a, b) => {
+            if (sortValue === 'newest') {
+                return parseInt(b.dataset.id) - parseInt(a.dataset.id);
+            } else if (sortValue === 'deadline') {
+                return a.dataset.deadline.localeCompare(b.dataset.deadline);
+            } else if (sortValue === 'project') {
+                return a.dataset.project.localeCompare(b.dataset.project);
+            }
+            return 0;
+        });
+
+        visibleRows.forEach(row => tbody.appendChild(row));
+    }
+
+    if (searchInput) searchInput.addEventListener('input', filterAndSort);
+    if (statusFilter) statusFilter.addEventListener('change', filterAndSort);
+    if (sortBy) sortBy.addEventListener('change', filterAndSort);
+    
+    // Initial run to apply pre-selected filters
+    filterAndSort();
+});
+</script>
+{% endblock %}

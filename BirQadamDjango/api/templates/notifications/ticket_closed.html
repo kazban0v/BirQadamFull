@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>{{ subject }}</title>
+</head>
+<body>
+    <h2>Ваш тикет #{{ ticket.id }} закрыт</h2>
+    
+    <p>Здравствуйте, {{ user.name|default:user.username }}!</p>
+    
+    <p>Ваш тикет был закрыт нашей командой поддержки.</p>
+    
+    <ul>
+        <li><strong>ID тикета:</strong> #{{ ticket.id }}</li>
+        <li><strong>Описание проблемы:</strong> {{ ticket.message|truncatechars:100 }}</li>
+        <li><strong>Дата закрытия:</strong> {{ ticket.updated_at|date:"d.m.Y H:i" }}</li>
+    </ul>
+    
+    {% if ticket.admin_response %}
+    <p><strong>Ответ администратора:</strong></p>
+    <blockquote>{{ ticket.admin_response }}</blockquote>
+    {% endif %}
+    
+    <p>Если у вас возникнут дополнительные вопросы, вы всегда можете создать новый тикет на платформе BirQadam.</p>
+    
+    <p>С уважением,<br>
+    Команда BirQadam</p>
+</body>
+</html>

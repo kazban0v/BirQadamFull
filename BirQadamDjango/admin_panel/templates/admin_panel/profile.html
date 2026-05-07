@@ -1,0 +1,1161 @@
+{% extends 'admin_panel/base.html' %}
+{% load static %}
+
+{% block topbar_title %}Профиль{% endblock %}
+
+{% block extra_css %}
+<style>
+    .profile-shell {
+        display: grid;
+        gap: 1.5rem;
+    }
+
+    .profile-hero {
+        display: grid;
+        grid-template-columns: minmax(0, 1.6fr) minmax(320px, 0.9fr);
+        gap: 1.5rem;
+        align-items: stretch;
+    }
+
+    .profile-hero-main {
+        display: grid;
+        gap: 1rem;
+        align-content: start;
+    }
+
+    .profile-panel,
+    .profile-card,
+    .profile-list-card {
+        background: #fff;
+        border: 1px solid var(--gray-200);
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-sm);
+    }
+
+    .profile-panel {
+        overflow: hidden;
+        align-self: start;
+    }
+
+    .profile-panel__hero {
+        position: relative;
+        overflow: hidden;
+        padding: 1.75rem;
+        background:
+            radial-gradient(circle at top right, rgba(255,255,255,0.12) 0, rgba(255,255,255,0) 36%),
+            linear-gradient(135deg, var(--gray-900) 0%, var(--primary-dark) 55%, var(--primary) 100%);
+        color: #fff;
+    }
+
+    .profile-panel__hero > * {
+        position: relative;
+        z-index: 1;
+    }
+
+    .profile-eyebrow {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        padding: 0.35rem 0.75rem;
+        border-radius: 999px;
+        font-size: 0.72rem;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        background: rgba(255,255,255,0.12);
+        margin-bottom: 0.9rem;
+    }
+
+    .profile-main {
+        display: flex;
+        gap: 1.1rem;
+        align-items: center;
+    }
+
+    .profile-avatar {
+        width: 92px;
+        height: 92px;
+        border-radius: 26px;
+        border: 1px solid rgba(255,255,255,0.16);
+        background: linear-gradient(135deg, rgba(255,255,255,0.16) 0%, rgba(255,255,255,0.04) 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        overflow: hidden;
+        box-shadow: 0 18px 45px rgba(15, 23, 42, 0.25);
+    }
+
+    .profile-avatar img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .profile-avatar__fallback {
+        font-size: 2.2rem;
+        font-weight: 800;
+        color: #fff;
+    }
+
+    .profile-title {
+        margin: 0 0 0.35rem;
+        font-size: 2rem;
+        line-height: 1.05;
+        font-weight: 800;
+        letter-spacing: -0.03em;
+    }
+
+    .profile-subtitle {
+        margin: 0;
+        color: rgba(255,255,255,0.76);
+        font-size: 0.95rem;
+        max-width: 42rem;
+    }
+
+    .profile-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.65rem;
+        margin-top: 1rem;
+    }
+
+    .profile-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.45rem;
+        padding: 0.55rem 0.8rem;
+        border-radius: 999px;
+        background: rgba(255,255,255,0.11);
+        border: 1px solid rgba(255,255,255,0.09);
+        color: rgba(255,255,255,0.92);
+        font-size: 0.8rem;
+        font-weight: 700;
+    }
+
+    .profile-panel__footer {
+        padding: 1rem 1.75rem 1.5rem;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.85rem;
+    }
+
+    .profile-cta {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        border-radius: var(--radius);
+        padding: 0.78rem 1rem;
+        text-decoration: none;
+        font-size: 0.88rem;
+        font-weight: 700;
+        transition: all var(--transition);
+    }
+
+    .profile-cta--primary {
+        background: #fff;
+        color: var(--gray-900);
+    }
+
+    .profile-cta--secondary {
+        background: rgba(255,255,255,0.1);
+        border: 1px solid rgba(255,255,255,0.12);
+        color: #fff;
+    }
+
+    .profile-cta:hover {
+        transform: translateY(-1px);
+    }
+
+    .scope-card {
+        padding: 1.4rem;
+        display: grid;
+        gap: 1rem;
+        background:
+            radial-gradient(circle at top right, rgba(37, 99, 235, 0.1) 0, rgba(37, 99, 235, 0) 42%),
+            #fff;
+    }
+
+    .scope-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        padding: 0.32rem 0.7rem;
+        border-radius: 999px;
+        background: #dbeafe;
+        color: #1d4ed8;
+        font-size: 0.7rem;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+    }
+
+    .scope-card h3 {
+        margin: 0;
+        font-size: 1.2rem;
+        font-weight: 800;
+        color: var(--gray-900);
+    }
+
+    .scope-card p {
+        margin: 0;
+        color: var(--gray-500);
+        font-size: 0.88rem;
+        line-height: 1.6;
+    }
+
+    .scope-list,
+    .priority-list,
+    .quick-actions,
+    .detail-list,
+    .mini-feed {
+        display: grid;
+        gap: 0.7rem;
+    }
+
+    .scope-item,
+    .priority-item,
+    .quick-action,
+    .detail-row,
+    .feed-item {
+        border-radius: var(--radius);
+        border: 1px solid var(--gray-100);
+        background: var(--gray-50);
+    }
+
+    .scope-item {
+        padding: 0.85rem 0.9rem;
+    }
+
+    .scope-item strong {
+        display: block;
+        color: var(--gray-800);
+        margin-bottom: 0.2rem;
+        font-size: 0.88rem;
+    }
+
+    .scope-item span {
+        color: var(--gray-500);
+        font-size: 0.8rem;
+        line-height: 1.45;
+    }
+
+    .command-card {
+        padding: 1rem;
+        background:
+            radial-gradient(circle at top right, rgba(37, 99, 235, 0.08) 0, rgba(37, 99, 235, 0) 38%),
+            #fff;
+    }
+
+    .command-card__head {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 1rem;
+        margin-bottom: 0.9rem;
+    }
+
+    .command-card__head h3 {
+        margin: 0;
+        color: var(--gray-900);
+        font-size: 1rem;
+        font-weight: 800;
+    }
+
+    .command-card__head p {
+        margin: 0.25rem 0 0;
+        color: var(--gray-500);
+        font-size: 0.82rem;
+        line-height: 1.45;
+    }
+
+    .command-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 0.65rem;
+    }
+
+    .command-item {
+        display: grid;
+        gap: 0.35rem;
+        min-height: 6rem;
+        padding: 0.75rem;
+        border: 1px solid var(--gray-100);
+        border-radius: var(--radius);
+        background: var(--gray-50);
+        color: var(--gray-900);
+        text-decoration: none;
+        transition: all var(--transition);
+    }
+
+    .command-item:hover {
+        transform: translateY(-1px);
+        border-color: var(--gray-200);
+        box-shadow: var(--shadow-sm);
+        color: var(--gray-900);
+    }
+
+    .command-item__icon {
+        width: 2.05rem;
+        height: 2.05rem;
+        border-radius: 0.7rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: #eef2ff;
+        color: var(--primary);
+    }
+
+    .command-item__value {
+        display: block;
+        color: var(--gray-900);
+        font-size: 1.3rem;
+        font-weight: 800;
+        line-height: 1;
+    }
+
+    .command-item__label {
+        display: block;
+        color: var(--gray-800);
+        font-size: 0.78rem;
+        font-weight: 800;
+        line-height: 1.3;
+    }
+
+    .command-item__hint {
+        display: block;
+        color: var(--gray-500);
+        font-size: 0.72rem;
+        line-height: 1.35;
+    }
+
+    .metrics-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 1rem;
+    }
+
+    .metric-card {
+        padding: 1.15rem;
+        display: grid;
+        gap: 0.9rem;
+    }
+
+    .metric-top {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 0.8rem;
+    }
+
+    .metric-icon {
+        width: 46px;
+        height: 46px;
+        border-radius: 14px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.05rem;
+        flex-shrink: 0;
+    }
+
+    .metric-icon.primary {
+        background: #dbeafe;
+        color: #2563eb;
+    }
+
+    .metric-icon.success {
+        background: #dcfce7;
+        color: #16a34a;
+    }
+
+    .metric-icon.warning {
+        background: #fef3c7;
+        color: #d97706;
+    }
+
+    .metric-icon.info {
+        background: #cffafe;
+        color: #0891b2;
+    }
+
+    .metric-kicker {
+        color: var(--gray-500);
+        font-size: 0.72rem;
+        font-weight: 700;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+    }
+
+    .metric-value {
+        margin: 0.18rem 0;
+        font-size: 1.85rem;
+        font-weight: 800;
+        color: var(--gray-900);
+        letter-spacing: -0.03em;
+    }
+
+    .metric-hint {
+        color: var(--gray-500);
+        font-size: 0.8rem;
+    }
+
+    .profile-content-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1.15fr) minmax(320px, 0.85fr);
+        gap: 1.5rem;
+    }
+
+    .profile-ops-grid {
+        grid-template-columns: minmax(0, 1fr) minmax(360px, 0.9fr);
+    }
+
+    .profile-account-grid {
+        grid-template-columns: minmax(0, 1fr) minmax(360px, 0.9fr);
+    }
+
+    .profile-stack {
+        display: grid;
+        gap: 1.5rem;
+    }
+
+    .profile-card {
+        padding: 1.35rem;
+    }
+
+    .card-title-row {
+        display: flex;
+        justify-content: space-between;
+        gap: 1rem;
+        align-items: flex-start;
+        margin-bottom: 1rem;
+    }
+
+    .card-title-row h3 {
+        margin: 0;
+        font-size: 1.08rem;
+        font-weight: 800;
+        color: var(--gray-900);
+    }
+
+    .card-title-row p {
+        margin: 0.35rem 0 0;
+        color: var(--gray-500);
+        font-size: 0.84rem;
+    }
+
+    .card-tag {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        padding: 0.26rem 0.65rem;
+        border-radius: 999px;
+        background: var(--gray-100);
+        color: var(--gray-600);
+        font-size: 0.68rem;
+        font-weight: 700;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+        white-space: nowrap;
+    }
+
+    .detail-row {
+        display: grid;
+        grid-template-columns: 18px minmax(110px, 150px) 1fr;
+        gap: 0.8rem;
+        align-items: center;
+        padding: 0.85rem 0.95rem;
+    }
+
+    .detail-row i {
+        color: var(--primary);
+        text-align: center;
+    }
+
+    .detail-label {
+        color: var(--gray-500);
+        font-size: 0.8rem;
+        font-weight: 700;
+    }
+
+    .detail-value {
+        color: var(--gray-900);
+        font-size: 0.88rem;
+        font-weight: 700;
+        text-align: right;
+        word-break: break-word;
+    }
+
+    .priority-item,
+    .quick-action {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 0.8rem;
+        padding: 0.9rem 0.95rem;
+        text-decoration: none;
+        transition: all var(--transition);
+    }
+
+    .priority-item:hover,
+    .quick-action:hover,
+    .feed-item:hover {
+        transform: translateY(-1px);
+        border-color: var(--gray-200);
+        box-shadow: var(--shadow-sm);
+    }
+
+    .priority-main,
+    .quick-main {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        min-width: 0;
+    }
+
+    .priority-icon,
+    .quick-icon {
+        width: 42px;
+        height: 42px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+
+    .priority-icon.warning { background: #fef3c7; color: #d97706; }
+    .priority-icon.info { background: #cffafe; color: #0891b2; }
+    .priority-icon.success { background: #dcfce7; color: #16a34a; }
+    .quick-icon { background: #eef2ff; color: var(--primary); }
+
+    .priority-copy strong,
+    .quick-copy strong {
+        display: block;
+        color: var(--gray-900);
+        font-size: 0.88rem;
+        margin-bottom: 0.12rem;
+    }
+
+    .priority-copy span,
+    .quick-copy span {
+        display: block;
+        color: var(--gray-500);
+        font-size: 0.79rem;
+        line-height: 1.45;
+    }
+
+    .priority-value {
+        min-width: 46px;
+        height: 46px;
+        padding: 0 0.7rem;
+        border-radius: 14px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--gray-900);
+        color: #fff;
+        font-size: 1rem;
+        font-weight: 800;
+    }
+
+    .quick-arrow {
+        color: var(--gray-400);
+        font-size: 0.86rem;
+        flex-shrink: 0;
+    }
+
+    .profile-feed-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 1rem;
+    }
+
+    .profile-list-card {
+        padding: 1.2rem;
+    }
+
+    .profile-list-card h3 {
+        margin: 0 0 0.25rem;
+        font-size: 1rem;
+        font-weight: 800;
+        color: var(--gray-900);
+    }
+
+    .profile-list-card > p {
+        margin: 0 0 0.95rem;
+        color: var(--gray-500);
+        font-size: 0.82rem;
+    }
+
+    .feed-item {
+        display: block;
+        padding: 0.9rem;
+        text-decoration: none;
+        transition: all var(--transition);
+    }
+
+    .feed-item__title {
+        display: block;
+        color: var(--gray-900);
+        font-size: 0.88rem;
+        font-weight: 700;
+        line-height: 1.45;
+        margin-bottom: 0.28rem;
+    }
+
+    .feed-item__meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem 0.7rem;
+        color: var(--gray-500);
+        font-size: 0.76rem;
+    }
+
+    .feed-empty {
+        padding: 1.2rem 0.9rem;
+        text-align: center;
+        border-radius: var(--radius);
+        background: var(--gray-50);
+        border: 1px dashed var(--gray-200);
+        color: var(--gray-400);
+        font-size: 0.84rem;
+    }
+
+    @media (max-width: 1180px) {
+        .metrics-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .command-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .profile-feed-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    @media (max-width: 1024px) {
+        .profile-hero,
+        .profile-content-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    @media (max-width: 768px) {
+        .profile-panel__hero,
+        .profile-card,
+        .scope-card,
+        .profile-list-card {
+            padding: 1rem;
+        }
+
+        .profile-panel__footer {
+            padding: 0 1rem 1rem;
+        }
+
+        .profile-main {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .profile-title {
+            font-size: 1.55rem;
+        }
+
+        .metrics-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .command-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .detail-row {
+            grid-template-columns: 18px 1fr;
+        }
+
+        .detail-label {
+            grid-column: 2;
+        }
+
+        .detail-value {
+            grid-column: 2;
+            text-align: left;
+            margin-top: -0.4rem;
+        }
+    }
+
+    @media (max-width: 576px) {
+        .profile-shell {
+            gap: 1rem;
+        }
+
+        .profile-avatar {
+            width: 78px;
+            height: 78px;
+            border-radius: 22px;
+        }
+
+        .profile-subtitle {
+            font-size: 0.88rem;
+        }
+
+        .priority-item,
+        .quick-action {
+            align-items: flex-start;
+        }
+
+        .priority-value {
+            min-width: 40px;
+            height: 40px;
+            border-radius: 12px;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="profile-shell">
+    <section class="profile-hero">
+        <div class="profile-hero-main">
+            <div class="profile-panel">
+                <div class="profile-panel__hero">
+                    <span class="profile-eyebrow">
+                        <i class="fas fa-shield-halved"></i>
+                        {{ profile_role_label }}
+                    </span>
+
+                    <div class="profile-main">
+                        <div class="profile-avatar">
+                            {% if user.avatar %}
+                                <img src="{{ user.avatar.url }}" alt="Аватар">
+                            {% else %}
+                                <span class="profile-avatar__fallback">
+                                    {% firstof user.get_full_name|first user.username|first user.email|first "A" %}
+                                </span>
+                            {% endif %}
+                        </div>
+
+                        <div>
+                            <h1 class="profile-title">{% firstof user.get_full_name user.name user.username user.email "Администратор" %}</h1>
+                            <p class="profile-subtitle">{{ profile_role_summary }}</p>
+
+                            <div class="profile-meta">
+                                <span class="profile-pill">
+                                    <i class="fas fa-at"></i>
+                                    {% firstof user.email user.username "Без email" %}
+                                </span>
+                                <span class="profile-pill">
+                                    <i class="fas fa-hashtag"></i>
+                                    ID {{ user.id }}
+                                </span>
+                                <span class="profile-pill">
+                                    <i class="fas fa-user-check"></i>
+                                    {% if user.is_staff or user.is_admin %}Доступ к панели открыт{% else %}Базовый доступ{% endif %}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="profile-panel__footer">
+                    <a href="{% url 'admin_panel:profile_edit' %}" class="profile-cta profile-cta--primary">
+                        <i class="fas fa-pen-to-square"></i>
+                        Изменить профиль
+                    </a>
+                    <a href="{% url 'admin_panel:dashboard' %}" class="profile-cta profile-cta--secondary">
+                        <i class="fas fa-chart-pie"></i>
+                        Вернуться в dashboard
+                    </a>
+                </div>
+            </div>
+
+            {% if is_admin_panel_user %}
+            <article class="profile-card command-card">
+                <div class="command-card__head">
+                    <div>
+                        <h3>Операционный пульт</h3>
+                        <p>Короткая сводка вместо пустого места: что активно, где нужна реакция и что уже обработано.</p>
+                    </div>
+                    <span class="card-tag">
+                        <i class="fas fa-signal"></i>
+                        Live
+                    </span>
+                </div>
+
+                <div class="command-grid">
+                    <a class="command-item" href="{% url 'admin_panel:task_list' %}?status=open">
+                        <span class="command-item__icon"><i class="fas fa-list-check"></i></span>
+                        <span class="command-item__value">{{ admin_metrics.open_tasks }}</span>
+                        <span class="command-item__label">Открытые задачи</span>
+                        <span class="command-item__hint">нужно распределять</span>
+                    </a>
+                    <a class="command-item" href="{% url 'admin_panel:task_list' %}?status=under_review">
+                        <span class="command-item__icon"><i class="fas fa-clipboard-check"></i></span>
+                        <span class="command-item__value">{{ admin_metrics.review_tasks }}</span>
+                        <span class="command-item__label">Задачи на проверке</span>
+                        <span class="command-item__hint">ждут контроля статуса</span>
+                    </a>
+                    <a class="command-item" href="{% url 'admin_panel:organizers' %}">
+                        <span class="command-item__icon"><i class="fas fa-user-check"></i></span>
+                        <span class="command-item__value">{{ admin_metrics.pending_organizers }}</span>
+                        <span class="command-item__label">Заявки организаторов</span>
+                        <span class="command-item__hint">решение по доступу</span>
+                    </a>
+                    <a class="command-item" href="{% url 'admin_panel:analytics' %}#photo-reports-overview">
+                        <span class="command-item__icon"><i class="fas fa-camera"></i></span>
+                        <span class="command-item__value">{{ admin_metrics.approved_photos }}</span>
+                        <span class="command-item__label">Одобренные фото</span>
+                        <span class="command-item__hint">проверены организаторами</span>
+                    </a>
+                </div>
+            </article>
+            {% endif %}
+        </div>
+
+        <aside class="profile-card scope-card">
+            <span class="scope-badge">
+                <i class="fas fa-compass"></i>
+                Роль и фокус
+            </span>
+            <h3>{% if is_admin_panel_user %}Чем админ управляет здесь{% else %}Фокус текущего аккаунта{% endif %}</h3>
+            <p>
+                {% if is_admin_panel_user %}
+                    Эта зона теперь показывает не просто личные данные, а рабочую роль администратора: модерация, контроль качества, аналитика и оперативные переходы.
+                {% else %}
+                    Здесь собран базовый обзор профиля и доступов пользователя в системе.
+                {% endif %}
+            </p>
+
+            <div class="scope-list">
+                {% if is_admin_panel_user %}
+                    <div class="scope-item">
+                        <strong>Модерация проектов и организаторов</strong>
+                        <span>Следить за заявками, проверять корректность карточек и принимать решения без лишних переходов.</span>
+                    </div>
+                    <div class="scope-item">
+                        <strong>Контроль задач и фотоотчетов</strong>
+                        <span>Следить за статусом задач и потоком фото; оценку фотоотчетов делают организаторы.</span>
+                    </div>
+                    <div class="scope-item">
+                        <strong>Операционная аналитика</strong>
+                        <span>Держать под рукой цифры по волонтерам, активности, вовлеченности и узким местам платформы.</span>
+                    </div>
+                {% else %}
+                    <div class="scope-item">
+                        <strong>Личный профиль</strong>
+                        <span>Базовые данные аккаунта, история входа и основные настройки.</span>
+                    </div>
+                {% endif %}
+            </div>
+        </aside>
+    </section>
+
+    {% if is_admin_panel_user %}
+    <section class="metrics-grid">
+        <article class="profile-card metric-card">
+            <div class="metric-top">
+                <div>
+                    <div class="metric-kicker">Волонтеры</div>
+                    <div class="metric-value">{{ admin_metrics.volunteers }}</div>
+                    <div class="metric-hint">Всего пользователей-исполнителей</div>
+                </div>
+                <div class="metric-icon primary"><i class="fas fa-users"></i></div>
+            </div>
+        </article>
+
+        <article class="profile-card metric-card">
+            <div class="metric-top">
+                <div>
+                    <div class="metric-kicker">Проекты</div>
+                    <div class="metric-value">{{ admin_metrics.active_projects }}</div>
+                    <div class="metric-hint">Активны и одобрены</div>
+                </div>
+                <div class="metric-icon success"><i class="fas fa-diagram-project"></i></div>
+            </div>
+        </article>
+
+        <article class="profile-card metric-card">
+            <div class="metric-top">
+                <div>
+                    <div class="metric-kicker">На модерации</div>
+                    <div class="metric-value">{{ admin_metrics.pending_projects }}</div>
+                    <div class="metric-hint">Проекты ждут решения</div>
+                </div>
+                <div class="metric-icon warning"><i class="fas fa-hourglass-half"></i></div>
+            </div>
+        </article>
+
+        <article class="profile-card metric-card">
+            <div class="metric-top">
+                <div>
+                    <div class="metric-kicker">Фото у организаторов</div>
+                    <div class="metric-value">{{ admin_metrics.pending_photos }}</div>
+                    <div class="metric-hint">Админ наблюдает очередь</div>
+                </div>
+                <div class="metric-icon info"><i class="fas fa-camera"></i></div>
+            </div>
+        </article>
+    </section>
+    {% endif %}
+
+    {% if is_admin_panel_user %}
+    <section class="profile-content-grid profile-ops-grid">
+        <div class="profile-stack">
+            <article class="profile-card">
+                <div class="card-title-row">
+                    <div>
+                        <h3>Фокус на сегодня</h3>
+                        <p>Самые важные очереди и точки внимания для админа.</p>
+                    </div>
+                    <span class="card-tag">
+                        <i class="fas fa-bolt"></i>
+                        Priority
+                    </span>
+                </div>
+
+                <div class="priority-list">
+                    {% for item in admin_priority_links %}
+                    <a class="priority-item" href="{{ item.url }}">
+                        <div class="priority-main">
+                            <div class="priority-icon {{ item.tone }}">
+                                <i class="{{ item.icon }}"></i>
+                            </div>
+                            <div class="priority-copy">
+                                <strong>{{ item.label }}</strong>
+                                <span>{{ item.hint }}</span>
+                            </div>
+                        </div>
+                        <span class="priority-value">{{ item.value }}</span>
+                    </a>
+                    {% empty %}
+                    <div class="feed-empty">Приоритетные очереди пока не настроены для этой роли.</div>
+                    {% endfor %}
+                </div>
+            </article>
+        </div>
+
+        <div class="profile-stack">
+            <article class="profile-card">
+                <div class="card-title-row">
+                    <div>
+                        <h3>Быстрые действия</h3>
+                        <p>Переходы в ключевые разделы без обхода через меню.</p>
+                    </div>
+                    <span class="card-tag">
+                        <i class="fas fa-rocket"></i>
+                        Actions
+                    </span>
+                </div>
+
+                <div class="quick-actions">
+                    {% for action in admin_quick_actions %}
+                    <a class="quick-action" href="{{ action.url }}">
+                        <div class="quick-main">
+                            <div class="quick-icon">
+                                <i class="{{ action.icon }}"></i>
+                            </div>
+                            <div class="quick-copy">
+                                <strong>{{ action.label }}</strong>
+                                <span>{{ action.description }}</span>
+                            </div>
+                        </div>
+                        <i class="fas fa-arrow-right quick-arrow"></i>
+                    </a>
+                    {% empty %}
+                    <div class="feed-empty">Для этого профиля быстрые действия пока не заданы.</div>
+                    {% endfor %}
+                </div>
+            </article>
+        </div>
+    </section>
+    {% endif %}
+
+    <section class="profile-content-grid profile-account-grid">
+        <div class="profile-stack">
+            <article class="profile-card">
+                <div class="card-title-row">
+                    <div>
+                        <h3>Личные данные</h3>
+                        <p>Основная информация по аккаунту и контактам.</p>
+                    </div>
+                    <span class="card-tag">
+                        <i class="fas fa-id-card"></i>
+                        Аккаунт
+                    </span>
+                </div>
+
+                <div class="detail-list">
+                    <div class="detail-row">
+                        <i class="fas fa-user"></i>
+                        <span class="detail-label">Имя</span>
+                        <span class="detail-value">{% firstof user.get_full_name user.name user.username "Не указано" %}</span>
+                    </div>
+                    <div class="detail-row">
+                        <i class="fas fa-at"></i>
+                        <span class="detail-label">Username / login</span>
+                        <span class="detail-value">{% firstof user.username "Не указан" %}</span>
+                    </div>
+                    <div class="detail-row">
+                        <i class="fas fa-envelope"></i>
+                        <span class="detail-label">Email</span>
+                        <span class="detail-value">{% firstof user.email "Не указан" %}</span>
+                    </div>
+                    {% if not is_admin_panel_user %}
+                    <div class="detail-row">
+                        <i class="fas fa-phone"></i>
+                        <span class="detail-label">Телефон</span>
+                        <span class="detail-value">{% firstof user.phone_number "Не указан" %}</span>
+                    </div>
+                    {% endif %}
+                    {% if user.organization_name and not is_admin_panel_user %}
+                    <div class="detail-row">
+                        <i class="fas fa-building"></i>
+                        <span class="detail-label">Организация</span>
+                        <span class="detail-value">{{ user.organization_name }}</span>
+                    </div>
+                    {% endif %}
+                    {% if not is_admin_panel_user %}
+                    <div class="detail-row">
+                        <i class="fab fa-telegram"></i>
+                        <span class="detail-label">Telegram</span>
+                        <span class="detail-value">{% if user.telegram_id %}Привязан{% else %}Не привязан{% endif %}</span>
+                    </div>
+                    {% endif %}
+                </div>
+            </article>
+        </div>
+
+        <div class="profile-stack">
+            <article class="profile-card">
+                <div class="card-title-row">
+                    <div>
+                        <h3>Доступ и безопасность</h3>
+                        <p>Ключевые параметры доступа в систему и надежности аккаунта.</p>
+                    </div>
+                    <span class="card-tag">
+                        <i class="fas fa-shield"></i>
+                        Security
+                    </span>
+                </div>
+
+                <div class="detail-list">
+                    <div class="detail-row">
+                        <i class="fas fa-user-shield"></i>
+                        <span class="detail-label">Роль</span>
+                        <span class="detail-value">{{ profile_role_label }}</span>
+                    </div>
+                    <div class="detail-row">
+                        <i class="fas fa-key"></i>
+                        <span class="detail-label">ID профиля</span>
+                        <span class="detail-value">#{{ user.id }}</span>
+                    </div>
+                    <div class="detail-row">
+                        <i class="fas fa-calendar-plus"></i>
+                        <span class="detail-label">Регистрация</span>
+                        <span class="detail-value">{{ user.date_joined|date:"d.m.Y H:i" }}</span>
+                    </div>
+                    <div class="detail-row">
+                        <i class="fas fa-clock-rotate-left"></i>
+                        <span class="detail-label">Последний вход</span>
+                        <span class="detail-value">{{ user.last_login|date:"d.m.Y H:i"|default:"Никогда" }}</span>
+                    </div>
+                    {% if user.trust_factor is not None and not is_admin_panel_user %}
+                    <div class="detail-row">
+                        <i class="fas fa-gauge-high"></i>
+                        <span class="detail-label">Trust Factor</span>
+                        <span class="detail-value">{{ user.trust_factor }}/30</span>
+                    </div>
+                    {% endif %}
+                    {% if user.average_rating is not None and not is_admin_panel_user %}
+                    <div class="detail-row">
+                        <i class="fas fa-star"></i>
+                        <span class="detail-label">Средний рейтинг</span>
+                        <span class="detail-value">{{ user.average_rating|floatformat:1 }}/5</span>
+                    </div>
+                    {% endif %}
+                </div>
+            </article>
+        </div>
+    </section>
+
+    {% if is_admin_panel_user %}
+    <section class="profile-feed-grid">
+        <article class="profile-list-card">
+            <h3>Последние проекты</h3>
+            <p>Свежие карточки, которые попали в систему недавно.</p>
+            <div class="mini-feed">
+                {% for project in admin_recent_projects %}
+                <a class="feed-item" href="{% url 'admin_panel:project_detail' project.id %}">
+                    <span class="feed-item__title">{{ project.title|truncatechars:58 }}</span>
+                    <span class="feed-item__meta">
+                        <span>{% if project.creator %}{{ project.creator.username }}{% else %}Без автора{% endif %}</span>
+                        <span>
+                            {% if project.status == 'approved' %}Одобрен
+                            {% elif project.status == 'pending' %}На модерации
+                            {% elif project.status == 'rejected' %}Отклонен
+                            {% else %}{{ project.status }}{% endif %}
+                        </span>
+                    </span>
+                </a>
+                {% empty %}
+                <div class="feed-empty">Нет свежих проектов.</div>
+                {% endfor %}
+            </div>
+        </article>
+
+        <article class="profile-list-card">
+            <h3>Последние задачи</h3>
+            <p>Поток новых и обновляемых задач по проектам.</p>
+            <div class="mini-feed">
+                {% for task in admin_recent_tasks %}
+                <a class="feed-item" href="{% url 'admin_panel:task_list' %}">
+                    <span class="feed-item__title">{{ task.text|truncatechars:64 }}</span>
+                    <span class="feed-item__meta">
+                        <span>{% if task.project %}{{ task.project.title|truncatechars:28 }}{% else %}Без проекта{% endif %}</span>
+                        <span>
+                            {% if task.status == 'open' or task.status == 'pending' %}Открыто
+                            {% elif task.status == 'in_progress' %}В работе
+                            {% elif task.status == 'under_review' %}На проверке
+                            {% elif task.status == 'completed' %}Выполнено
+                            {% elif task.status == 'archived' %}В архиве
+                            {% else %}{{ task.status }}{% endif %}
+                        </span>
+                    </span>
+                </a>
+                {% empty %}
+                <div class="feed-empty">Нет свежих задач.</div>
+                {% endfor %}
+            </div>
+        </article>
+
+        <article class="profile-list-card">
+            <h3>Последние фотоотчеты</h3>
+            <p>Свежие материалы, которые влияют на модерацию и рейтинг.</p>
+            <div class="mini-feed">
+                {% for photo in admin_recent_photos %}
+                <a class="feed-item" href="{% url 'admin_panel:task_list' %}">
+                    <span class="feed-item__title">
+                        {% if photo.project %}{{ photo.project.title|truncatechars:48 }}{% else %}Фотоотчет без проекта{% endif %}
+                    </span>
+                    <span class="feed-item__meta">
+                        <span>{% if photo.volunteer %}{{ photo.volunteer.username }}{% else %}Без волонтера{% endif %}</span>
+                        <span>
+                            {% if photo.status == 'approved' %}Одобрен
+                            {% elif photo.status == 'pending' %}На проверке
+                            {% elif photo.status == 'rejected' %}Отклонен
+                            {% else %}{{ photo.status }}{% endif %}
+                        </span>
+                    </span>
+                </a>
+                {% empty %}
+                <div class="feed-empty">Фотоотчеты пока не найдены.</div>
+                {% endfor %}
+            </div>
+        </article>
+    </section>
+    {% endif %}
+</div>
+{% endblock %}

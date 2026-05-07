@@ -1,0 +1,339 @@
+{% extends 'admin_panel/base.html' %} {% load static %}
+
+{% block topbar_title %}{% if is_edit %}Редактировать проект{% else %}Создать проект{% endif %}{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css" />
+<style>
+    /* ── Hero ── */
+    .prj-hero {
+        background: linear-gradient(135deg, var(--gray-900) 0%, #667eea 50%, #764ba2 100%);
+        border-radius: var(--radius-lg); padding: 2rem; color: #fff;
+        position: relative; overflow: hidden; margin-bottom: 1.25rem;
+    }
+    .prj-hero::before {
+        content: ""; position: absolute;
+        width: 280px; height: 280px; border-radius: 50%;
+        right: -70px; top: -110px; background: rgba(255,255,255,0.06);
+        pointer-events: none;
+    }
+    .prj-hero > * { position: relative; z-index: 1; }
+    .prj-back {
+        display: inline-flex; align-items: center; gap: 0.4rem;
+        padding: 0.4rem 0.85rem; border-radius: 0.5rem;
+        background: rgba(255,255,255,0.12); color: rgba(255,255,255,0.85);
+        text-decoration: none; font-size: 0.8rem; font-weight: 700;
+        transition: background 0.2s; margin-bottom: 1rem;
+    }
+    .prj-back:hover { background: rgba(255,255,255,0.2); color: #fff; }
+    .prj-hero h1 { margin: 0 0 0.25rem; font-size: 1.65rem; font-weight: 800; letter-spacing: -0.02em; }
+    .prj-hero p  { margin: 0; color: rgba(255,255,255,0.65); font-size: 0.85rem; }
+
+    /* ── Form Card ── */
+    .prj-card {
+        background: #fff; border: 1px solid var(--gray-200);
+        border-radius: var(--radius-lg); box-shadow: var(--shadow-sm);
+        overflow: hidden; margin-bottom: 1.25rem;
+    }
+    .prj-card-header {
+        background: var(--gray-900); color: #fff;
+        padding: 1rem 1.25rem; display: flex; align-items: center; gap: 0.5rem;
+        font-size: 1rem; font-weight: 700;
+    }
+    .prj-card-body { padding: 1.5rem 2rem; }
+
+    /* ── Form Controls ── */
+    .form-label {
+        font-weight: 700; color: var(--gray-800);
+        margin-bottom: 0.5rem; font-size: 0.85rem;
+    }
+    .form-control, .form-select {
+        border-radius: 0.5rem; border: 1px solid var(--gray-200);
+        padding: 0.6rem 1rem; transition: all var(--transition);
+        font-size: 0.9rem; font-family: inherit; color: var(--gray-800);
+        background: var(--gray-50);
+    }
+    .form-control:focus, .form-select:focus {
+        border-color: #667eea; background: #fff;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.25); outline: none;
+    }
+    textarea.form-control { min-height: 120px; }
+    .form-text { font-size: 0.75rem; color: var(--gray-500); margin-top: 0.35rem; }
+
+    /* ── Map ── */
+    #form-map {
+        height: 400px; width: 100%; border-radius: var(--radius-lg);
+        border: 1px solid var(--gray-200);
+    }
+    .map-wrapper { position: relative; margin-bottom: 1rem; }
+    .map-hint {
+        position: absolute; top: 10px; left: 50%; transform: translateX(-50%);
+        background: rgba(255, 255, 255, 0.95); padding: 0.5rem 1rem;
+        border-radius: 0.5rem; box-shadow: var(--shadow-sm); z-index: 1000;
+        font-size: 0.8rem; font-weight: 700; color: var(--gray-800);
+        display: none; border: 1px solid var(--gray-200);
+    }
+    .map-hint.show { display: block; }
+
+    /* ── Buttons ── */
+    .prj-btn {
+        display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;
+        padding: 0.6rem 1.25rem; border-radius: 0.5rem; border: none;
+        font-size: 0.85rem; font-weight: 700; text-decoration: none;
+        transition: all var(--transition); cursor: pointer;
+    }
+    .prj-btn:hover { transform: translateY(-1px); box-shadow: var(--shadow-sm); }
+    .prj-btn.primary { background: #667eea; color: #fff; }
+    .prj-btn.primary:hover { background: #5a6fe0; }
+    .prj-btn.secondary { background: var(--gray-100); color: var(--gray-700); }
+    .prj-btn.secondary:hover { background: var(--gray-200); }
+    .prj-btn.danger { background: #ef4444; color: #fff; }
+    .prj-btn.danger:hover { background: #dc2626; }
+
+    /* ── Alert ── */
+    .custom-alert {
+        padding: 1rem 1.25rem; border-radius: var(--radius-lg);
+        margin-bottom: 1.25rem; font-size: 0.85rem;
+    }
+    .custom-alert-warning { background: #fffbeb; color: #b45309; border: 1px solid #fde68a; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0">
+    <!-- Hero -->
+    <div class="prj-hero">
+        <a href="{% url 'admin_panel:project_list' %}" class="prj-back">
+            <i class="fas fa-arrow-left"></i> Все проекты
+        </a>
+        <h1><i class="fas fa-{% if is_edit %}edit{% else %}plus-circle{% endif %} me-2"></i>{% if is_edit %}Редактирование проекта{% else %}Создание проекта{% endif %}</h1>
+        <p>{% if is_edit %}Обновление информации о существующем проекте{% else %}Заполните форму для запуска нового проекта{% endif %}</p>
+    </div>
+
+    <!-- Alert for deleted projects -->
+    {% if form.instance.deleted_at %}
+    <div class="custom-alert custom-alert-warning">
+        <i class="fas fa-exclamation-triangle me-2"></i>
+        <strong>Внимание!</strong> Проект был удалён: {{ form.instance.deleted_at|date:"d.m.Y H:i" }}
+    </div>
+    {% endif %}
+
+    <!-- Form Card -->
+    <div class="prj-card">
+        <div class="prj-card-header">
+            <i class="fas fa-file-alt"></i> Основная информация
+        </div>
+        <div class="prj-card-body">
+            <form method="POST" enctype="multipart/form-data">
+                {% csrf_token %}
+
+                <!-- Title and City Row -->
+                <div class="row mb-4">
+                    <div class="col-md-6 mb-3 mb-md-0">
+                        <label for="{{ form.title.id_for_label }}" class="form-label">Название проекта *</label>
+                        {{ form.title }}
+                        {% if form.title.errors %}
+                        <div class="text-danger mt-1" style="font-size:0.8rem;">{{ form.title.errors }}</div>
+                        {% endif %}
+                        <div class="form-text">Укажите краткое и понятное название</div>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="{{ form.city.id_for_label }}" class="form-label">Город *</label>
+                        {{ form.city }}
+                        {% if form.city.errors %}
+                        <div class="text-danger mt-1" style="font-size:0.8rem;">{{ form.city.errors }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Description -->
+                <div class="mb-4">
+                    <label for="{{ form.description.id_for_label }}" class="form-label">Описание проекта *</label>
+                    {{ form.description }}
+                    {% if form.description.errors %}
+                    <div class="text-danger mt-1" style="font-size:0.8rem;">{{ form.description.errors }}</div>
+                    {% endif %}
+                    <div class="form-text">Подробно опишите цели и задачи проекта (минимум 100 символов)</div>
+                </div>
+
+                <!-- Status and Registration Date Row -->
+                <div class="row mb-4">
+                    <div class="col-md-6 mb-3 mb-md-0">
+                        <label for="{{ form.status.id_for_label }}" class="form-label">Статус проекта</label>
+                        {{ form.status }}
+                        {% if form.status.errors %}
+                        <div class="text-danger mt-1" style="font-size:0.8rem;">{{ form.status.errors }}</div>
+                        {% endif %}
+                    </div>
+                    {% if is_edit and form.instance.registration_date %}
+                    <div class="col-md-6">
+                        <label class="form-label">Дата регистрации</label>
+                        <div class="form-control" style="background: var(--gray-100); color: var(--gray-500); cursor: not-allowed; pointer-events: none;">
+                            {{ form.instance.registration_date|date:"d.m.Y" }}
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <hr style="border-color:var(--gray-200); margin: 2rem 0;">
+
+                <!-- Map Section -->
+                <div class="mb-4">
+                    <label class="form-label mb-3">Местоположение на карте *</label>
+                    <div class="map-wrapper">
+                        <div class="map-hint" id="mapHint">
+                            <i class="fas fa-hand-pointer me-1"></i> Выберите точку на карте
+                        </div>
+                        <div id="form-map"></div>
+                    </div>
+                    <div class="form-text">
+                        <i class="fas fa-info-circle me-1"></i>
+                        Кликните на карте или воспользуйтесь поиском, чтобы установить точные координаты проекта
+                    </div>
+                    {{ form.latitude }}
+                    {{ form.longitude }}
+                </div>
+
+                <hr style="border-color:var(--gray-200); margin: 2rem 0;">
+
+                <!-- Action Buttons -->
+                <div class="d-flex flex-wrap gap-2 justify-content-between align-items-center">
+                    <div class="d-flex flex-wrap gap-2">
+                        <button type="submit" class="prj-btn primary">
+                            <i class="fas fa-save"></i> {% if is_edit %}Сохранить изменения{% else %}Создать проект{% endif %}
+                        </button>
+                        <a href="{% url 'admin_panel:project_list' %}" class="prj-btn secondary">
+                            Отмена
+                        </a>
+                    </div>
+                    {% if is_edit %}
+                    <button type="button" class="prj-btn danger" data-bs-toggle="modal" data-bs-target="#deleteModal">
+                        <i class="fas fa-trash-alt"></i> Удалить проект
+                    </button>
+                    {% endif %}
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Delete Modal -->
+    {% if is_edit %}
+    <div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content" style="border-radius: var(--radius-lg); border: none;">
+                <div class="modal-header" style="background: #ef4444; color: #fff; border: none;">
+                    <h6 class="modal-title m-0" id="deleteModalLabel"><i class="fas fa-exclamation-triangle me-2"></i> Подтверждение удаления</h6>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body text-center p-4">
+                    <i class="fas fa-trash-alt fa-3x text-danger mb-3"></i>
+                    <p style="font-size: 1.05rem; font-weight: 700; color: var(--gray-800);">Вы уверены, что хотите удалить проект<br>"{{ form.instance.title }}"?</p>
+                    <div style="background: #fee2e2; color: #b91c1c; padding: 0.75rem; border-radius: 0.5rem; font-size: 0.85rem; font-weight: 700;">
+                        Внимание! Это действие нельзя отменить.
+                    </div>
+                </div>
+                <div class="modal-footer" style="border: none; padding: 1.5rem;">
+                    <button type="button" class="prj-btn secondary" data-bs-dismiss="modal">Отмена</button>
+                    <form method="POST" action="{% url 'admin_panel:project_delete' pk=form.instance.pk %}" style="display: inline; margin:0;">
+                        {% csrf_token %}
+                        <button type="submit" class="prj-btn danger">Да, удалить</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const latField = document.getElementById('{{ form.latitude.id_for_label }}');
+        const lonField = document.getElementById('{{ form.longitude.id_for_label }}');
+        const mapHint = document.getElementById('mapHint');
+
+        let initialLat = parseFloat(latField.value) || 43.2389;
+        let initialLon = parseFloat(lonField.value) || 76.8897;
+        let initialZoom = latField.value ? 15 : 11;
+
+        const map = L.map('form-map').setView([initialLat, initialLon], initialZoom);
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap contributors',
+            maxZoom: 19
+        }).addTo(map);
+
+        let marker = null;
+        if (latField.value && lonField.value) {
+            marker = L.marker([initialLat, initialLon], {
+                icon: L.icon({
+                    iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-violet.png',
+                    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+                    iconSize: [25, 41],
+                    iconAnchor: [12, 41],
+                    popupAnchor: [1, -34],
+                    shadowSize: [41, 41]
+                })
+            }).addTo(map);
+        } else {
+            mapHint.classList.add('show');
+            setTimeout(() => mapHint.classList.remove('show'), 3000);
+        }
+
+        function updateMarkerAndFields(latlng) {
+            latField.value = latlng.lat.toFixed(6);
+            lonField.value = latlng.lng.toFixed(6);
+
+            if (marker) {
+                marker.setLatLng(latlng);
+            } else {
+                marker = L.marker(latlng, {
+                    icon: L.icon({
+                        iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-violet.png',
+                        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+                        iconSize: [25, 41],
+                        iconAnchor: [12, 41],
+                        popupAnchor: [1, -34],
+                        shadowSize: [41, 41]
+                    })
+                }).addTo(map);
+            }
+            map.panTo(latlng);
+
+            mapHint.innerHTML = '<i class="fas fa-check-circle me-1"></i> Местоположение установлено!';
+            mapHint.classList.add('show');
+            setTimeout(() => mapHint.classList.remove('show'), 2000);
+        }
+
+        map.on('click', function(e) {
+            updateMarkerAndFields(e.latlng);
+        });
+
+        L.Control.geocoder({
+            defaultMarkGeocode: false,
+            placeholder: 'Поиск адреса...',
+            errorMessage: 'Адрес не найден'
+        }).on('markgeocode', function(e) {
+            const latlng = e.geocode.center;
+            updateMarkerAndFields(latlng);
+            map.setView(latlng, 15);
+        }).addTo(map);
+
+        // Add class to generated fields
+        document.querySelectorAll('input[type="text"], input[type="number"], select, textarea').forEach(el => {
+            el.classList.add('form-control');
+            if(el.tagName === 'SELECT') {
+                el.classList.remove('form-control');
+                el.classList.add('form-select');
+            }
+        });
+
+        latField.type = 'hidden';
+        lonField.type = 'hidden';
+    });
+</script>
+{% endblock %}

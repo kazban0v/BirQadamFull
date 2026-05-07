@@ -1,0 +1,361 @@
+{% extends 'admin_panel/base.html' %} {% load static %}
+
+{% block topbar_title %}Проекты{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* ── Hero ── */
+    .prj-hero {
+        background: linear-gradient(135deg, var(--gray-900) 0%, #667eea 50%, #764ba2 100%);
+        border-radius: var(--radius-lg);
+        padding: 2rem;
+        color: #fff;
+        position: relative;
+        overflow: hidden;
+        margin-bottom: 1.25rem;
+    }
+    .prj-hero::before {
+        content: "";
+        position: absolute;
+        width: 280px; height: 280px;
+        border-radius: 50%;
+        right: -70px; top: -110px;
+        background: rgba(255,255,255,0.06);
+        pointer-events: none;
+    }
+    .prj-hero > * { position: relative; z-index: 1; }
+    .prj-hero-eyebrow {
+        display: inline-flex; align-items: center; gap: 0.4rem;
+        padding: 0.28rem 0.7rem; border-radius: 999px;
+        background: rgba(255,255,255,0.12);
+        font-size: 0.68rem; font-weight: 700;
+        letter-spacing: 0.06em; text-transform: uppercase;
+        margin-bottom: 0.65rem;
+    }
+    .prj-hero h1 { margin: 0 0 0.3rem; font-size: 1.65rem; font-weight: 800; letter-spacing: -0.02em; }
+    .prj-hero p  { margin: 0; color: rgba(255,255,255,0.7); font-size: 0.88rem; }
+    .prj-hero-metrics {
+        display: grid; grid-template-columns: repeat(3,1fr);
+        gap: 0.75rem; margin-top: 1.25rem;
+    }
+    @media (max-width: 768px) {
+        .prj-hero-metrics { grid-template-columns: 1fr; }
+    }
+    .prj-hero-metric {
+        padding: 0.8rem; border-radius: var(--radius);
+        background: rgba(255,255,255,0.1);
+        border: 1px solid rgba(255,255,255,0.1);
+    }
+    .prj-hero-metric__label {
+        display: block; font-size: 0.62rem; text-transform: uppercase;
+        letter-spacing: 0.07em; color: rgba(255,255,255,0.6);
+        margin-bottom: 0.25rem; font-weight: 700;
+    }
+    .prj-hero-metric__value { font-size: 1.45rem; font-weight: 800; line-height: 1; }
+
+    /* ── Toolbar ── */
+    .prj-toolbar {
+        background: #fff; border: 1px solid var(--gray-200);
+        border-radius: var(--radius-lg); padding: 1rem 1.25rem;
+        box-shadow: var(--shadow-sm); margin-bottom: 1.25rem;
+        display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: center;
+    }
+    .prj-search-wrap { flex: 1; min-width: 220px; position: relative; }
+    .prj-search-wrap i {
+        position: absolute; left: 0.75rem; top: 50%;
+        transform: translateY(-50%); color: var(--gray-400); font-size: 0.8rem;
+        pointer-events: none;
+    }
+    .prj-search-input {
+        width: 100%; padding: 0.48rem 0.75rem 0.48rem 2.1rem;
+        border: 1px solid var(--gray-200); border-radius: 0.5rem;
+        font-size: 0.83rem; font-family: inherit; color: var(--gray-800);
+        background: var(--gray-50); transition: all var(--transition);
+    }
+    .prj-search-input:focus {
+        outline: none; border-color: #667eea;
+        background: #fff; box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.25);
+    }
+    .prj-select {
+        padding: 0.48rem 0.75rem;
+        border: 1px solid var(--gray-200); border-radius: 0.5rem;
+        font-size: 0.83rem; font-family: inherit; color: var(--gray-800);
+        background: var(--gray-50); outline: none;
+    }
+
+    /* ── Table Card ── */
+    .prj-table-card {
+        background: #fff; border: 1px solid var(--gray-200);
+        border-radius: var(--radius-lg); box-shadow: var(--shadow-sm);
+        overflow: hidden; margin-bottom: 1.5rem;
+    }
+    .prj-table-card .card-header {
+        background: var(--gray-900); color: #fff;
+        padding: 1rem 1.25rem; border: none;
+        display: flex; align-items: center; justify-content: space-between;
+    }
+    .prj-table-card .card-header h6 { margin: 0; font-size: 0.875rem; font-weight: 700; }
+
+    .prj-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+    .prj-table thead th {
+        padding: 0.75rem 1rem; font-size: 0.7rem; font-weight: 700;
+        text-transform: uppercase; letter-spacing: 0.04em;
+        color: var(--gray-500); background: var(--gray-50);
+        border-bottom: 1px solid var(--gray-200); white-space: nowrap;
+    }
+    .prj-table tbody td {
+        padding: 0.85rem 1rem; border-bottom: 1px solid var(--gray-100);
+        vertical-align: middle; color: var(--gray-700);
+    }
+    .prj-table tbody tr:hover td { background: var(--gray-50); }
+    .prj-table tbody tr:last-child td { border-bottom: none; }
+
+    .prj-name { font-weight: 700; color: var(--gray-800); font-size: 0.95rem; text-decoration: none; display: block; }
+    .prj-name:hover { color: #667eea; }
+    .prj-city { font-size: 0.75rem; color: var(--gray-400); margin-top: 2px; }
+
+    /* ── Badges ── */
+    .prj-badge {
+        display: inline-flex; align-items: center; gap: 0.3rem;
+        padding: 0.28rem 0.6rem; border-radius: 999px;
+        font-size: 0.72rem; font-weight: 700;
+    }
+    .prj-badge.primary { background: #e0e7ff; color: #4f46e5; }
+    .prj-badge.info    { background: #cffafe; color: var(--info); }
+    
+    .status-badge {
+        padding: 0.28rem 0.6rem; border-radius: 999px;
+        font-size: 0.72rem; font-weight: 700; display: inline-block;
+    }
+    .status-approved { background: #d1fae5; color: #059669; }
+    .status-rejected { background: #fee2e2; color: #b91c1c; }
+    .status-pending  { background: #fef3c7; color: #d97706; }
+
+    /* ── Actions ── */
+    .prj-action-btn {
+        display: inline-flex; align-items: center; justify-content: center;
+        width: 32px; height: 32px; border-radius: 0.5rem;
+        border: 1px solid var(--gray-200); background: #fff;
+        color: var(--gray-600); font-size: 0.85rem;
+        text-decoration: none; transition: all var(--transition);
+        cursor: pointer; margin-right: 0.2rem;
+    }
+    .prj-action-btn:hover { transform: translateY(-1px); }
+    .prj-action-btn.analytics:hover { border-color: #667eea; background: #e0e7ff; color: #4f46e5; }
+    .prj-action-btn.edit:hover { border-color: #f59e0b; background: #fef3c7; color: #d97706; }
+    .prj-action-btn.feedback:hover { border-color: #10b981; background: #d1fae5; color: #059669; }
+    .prj-action-btn.approve { color: #059669; border-color: rgba(16, 185, 129, 0.35); }
+    .prj-action-btn.approve:hover { border-color: #10b981; background: #d1fae5; color: #047857; }
+    .prj-action-btn.reject { color: #b91c1c; border-color: rgba(239, 68, 68, 0.35); }
+    .prj-action-btn.reject:hover { border-color: #ef4444; background: #fee2e2; color: #991b1b; }
+
+    /* ── Empty ── */
+    .prj-empty { text-align: center; padding: 3rem 1rem; color: var(--gray-400); }
+    .prj-empty i { font-size: 2.5rem; opacity: 0.3; display: block; margin-bottom: 0.75rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0">
+
+    <!-- Hero -->
+    <div class="prj-hero">
+        <span class="prj-hero-eyebrow"><i class="fas fa-project-diagram"></i> Проекты</span>
+        <h1>Управление проектами</h1>
+        <p>Мониторинг всех проектов системы, их активности и вовлеченности волонтеров</p>
+        <div class="prj-hero-metrics">
+            <div class="prj-hero-metric">
+                <span class="prj-hero-metric__label">Всего проектов</span>
+                <div class="prj-hero-metric__value">{{ projects.count }}</div>
+            </div>
+            <!-- Можно добавить другие метрики, если нужно -->
+            <div class="prj-hero-metric" style="opacity:0.7;">
+                <span class="prj-hero-metric__label">Мониторинг активен</span>
+                <div class="prj-hero-metric__value"><i class="fas fa-check-circle"></i></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toolbar -->
+    <div class="prj-toolbar">
+        <div class="prj-search-wrap">
+            <i class="fas fa-search"></i>
+            <input type="text" id="searchInput" class="prj-search-input" placeholder="Поиск проектов по названию или городу...">
+        </div>
+        <select id="statusFilter" class="prj-select">
+            <option value="">Все статусы</option>
+            <option value="pending">Ожидает</option>
+            <option value="approved">Одобрен</option>
+            <option value="rejected">Отклонён</option>
+        </select>
+        <select id="sortBy" class="prj-select">
+            <option value="newest">Новые</option>
+            <option value="oldest">Старые</option>
+            <option value="most-volunteers">Больше волонтёров</option>
+            <option value="most-tasks">Больше задач</option>
+        </select>
+    </div>
+
+    <!-- Table -->
+    <div class="prj-table-card">
+        <div class="card-header">
+            <h6><i class="fas fa-list me-2"></i>Список проектов</h6>
+        </div>
+        <div class="table-responsive">
+            <table class="prj-table">
+                <thead>
+                    <tr>
+                        <th style="width: 50px;">ID</th>
+                        <th>Проект</th>
+                        <th class="text-center">Статус</th>
+                        <th class="text-center">Волонтеры</th>
+                        <th class="text-center">Задачи</th>
+                        <th class="text-center">Действия</th>
+                    </tr>
+                </thead>
+                <tbody id="projectListBody">
+                    {% for project in projects %}
+                    <tr class="prj-row" 
+                        data-project-id="{{ project.id }}" 
+                        data-status="{{ project.status }}" 
+                        data-title="{{ project.title|lower }}" 
+                        data-city="{{ project.city|lower }}" 
+                        data-volunteers="{{ project.volunteer_count }}" 
+                        data-tasks="{{ project.task_count }}">
+                        <td style="color:var(--gray-400); font-weight:700;">#{{ project.id }}</td>
+                        <td>
+                            <a href="{% url 'admin_panel:project_detail' project.id %}" class="prj-name">{{ project.title|truncatechars:60 }}</a>
+                            <div class="prj-city"><i class="fas fa-map-marker-alt me-1"></i>{{ project.city }}</div>
+                        </td>
+                        <td class="text-center">
+                            <span class="status-badge status-{{ project.status }}">{{ project.get_status_display }}</span>
+                        </td>
+                        <td class="text-center">
+                            <span class="prj-badge info"><i class="fas fa-users"></i> {{ project.volunteer_count }}</span>
+                        </td>
+                        <td class="text-center">
+                            <span class="prj-badge primary"><i class="fas fa-tasks"></i> {{ project.task_count }}</span>
+                        </td>
+                        <td class="text-center">
+                            <div class="d-inline-flex flex-wrap align-items-center justify-content-center" style="gap:0.25rem;">
+                                {% if project.status == 'pending' %}
+                                    {% if request.user.is_staff or request.user.is_admin %}
+                                <form method="post" action="{% url 'admin_panel:project_moderate_approve' project.id %}" class="d-inline">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                                    <button type="submit" class="prj-action-btn approve" title="Одобрить проект">
+                                        <i class="fas fa-check"></i>
+                                    </button>
+                                </form>
+                                <form method="post" action="{% url 'admin_panel:project_moderate_reject' project.id %}" class="d-inline"
+                                      onsubmit="return confirm('Отклонить этот проект? Организатор получит уведомление.');">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                                    <button type="submit" class="prj-action-btn reject" title="Отклонить проект">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </form>
+                                    {% endif %}
+                                {% endif %}
+                                <a href="{% url 'admin_panel:project_detail' project.id %}" class="prj-action-btn analytics" title="Аналитика">
+                                    <i class="fas fa-chart-bar"></i>
+                                </a>
+                                <a href="{% url 'admin_panel:project_edit' project.id %}" class="prj-action-btn edit" title="Редактировать">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                                <a href="{% url 'admin_panel:project_feedback' project.id %}" class="prj-action-btn feedback" title="Обратная связь">
+                                    <i class="fas fa-comments"></i>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6">
+                            <div class="prj-empty">
+                                <i class="fas fa-project-diagram"></i>
+                                <p style="font-weight:600;">Нет проектов</p>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.getElementById('searchInput');
+    const statusFilter = document.getElementById('statusFilter');
+    const sortBy = document.getElementById('sortBy');
+    const tbody = document.getElementById('projectListBody');
+
+    function filterAndSort() {
+        if (!tbody) return;
+        const searchTerm = searchInput.value.toLowerCase().trim();
+        const selectedStatus = statusFilter.value;
+        const sortValue = sortBy.value;
+
+        const rows = Array.from(tbody.querySelectorAll('tr.prj-row'));
+
+        rows.forEach(row => {
+            const title = row.dataset.title;
+            const city = row.dataset.city;
+            const status = row.dataset.status;
+
+            const matchesSearch = title.includes(searchTerm) || city.includes(searchTerm);
+            const matchesStatus = !selectedStatus || status === selectedStatus;
+
+            row.style.display = (matchesSearch && matchesStatus) ? '' : 'none';
+        });
+
+        const visibleRows = rows.filter(r => r.style.display !== 'none');
+        
+        visibleRows.sort((a, b) => {
+            const aVol = parseInt(a.dataset.volunteers) || 0;
+            const bVol = parseInt(b.dataset.volunteers) || 0;
+            const aTasks = parseInt(a.dataset.tasks) || 0;
+            const bTasks = parseInt(b.dataset.tasks) || 0;
+            const aId = parseInt(a.dataset.projectId) || 0;
+            const bId = parseInt(b.dataset.projectId) || 0;
+
+            switch(sortValue) {
+                case 'newest': return bId - aId;
+                case 'oldest': return aId - bId;
+                case 'most-volunteers': return bVol - aVol;
+                case 'most-tasks': return bTasks - aTasks;
+                default: return 0;
+            }
+        });
+
+        visibleRows.forEach(row => tbody.appendChild(row));
+    }
+
+    if (searchInput) searchInput.addEventListener('input', filterAndSort);
+    if (statusFilter) {
+        statusFilter.addEventListener('change', function () {
+            filterAndSort();
+            const v = statusFilter.value;
+            const u = new URL(window.location.href);
+            if (v) u.searchParams.set('status', v);
+            else u.searchParams.delete('status');
+            const qs = u.searchParams.toString();
+            window.history.replaceState({}, '', u.pathname + (qs ? '?' + qs : ''));
+        });
+    }
+    if (sortBy) sortBy.addEventListener('change', filterAndSort);
+
+    const params = new URLSearchParams(window.location.search);
+    const statusParam = params.get('status');
+    if (statusParam && ['pending', 'approved', 'rejected'].includes(statusParam) && statusFilter) {
+        statusFilter.value = statusParam;
+        filterAndSort();
+    }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,948 @@
+appnavigator.s_0: RU: Проекты | EN: Projects
+appnavigator.s_1: RU: Центр помощи | EN: Help Center
+appnavigator.s_2: RU: Центр помощи | EN: Help Center
+appnavigator.s_3: RU: Конфиденциальность | EN: Privacy Policy
+appnavigator.s_4: RU: О приложении | EN: About App
+customtabbar.s_0: RU: Главная | EN: Home
+customtabbar.s_1: RU: Главная | EN: Home
+customtabbar.s_2: RU: Задачи | EN: Tasks
+customtabbar.s_3: RU: Календарь | EN: Calendar
+customtabbar.s_4: RU: Чаты | EN: Chats
+emailverification.s_0: RU: Введите код | EN: Enter code
+emailverification.s_1: RU: Введите код | EN: Enter code
+emailverification.s_2: RU: Успешно | EN: Successfully
+emailverification.s_3: RU: Код подтверждения отправлен повторно | EN: Verification code has been resent
+emailverification.s_4: RU: Успешно | EN: Successfully
+emailverification.s_5: RU: Код подтверждения отправлен повторно | EN: Verification code has been resent
+emailverification.s_6: RU: Отмена регистрации | EN: Cancel Registration
+emailverification.s_7: RU: Отмена регистрации | EN: Cancel Registration
+emailverification.s_8: RU: Вы уверены, что хотите отменить регистрацию? Все данные будут удалены. | EN: Are you sure you want to cancel your registration? All data will be deleted.
+emailverification.s_9: RU: Нет | EN: No
+emailverification.s_10: RU: [EmailVerification] Cancel error: | EN: [EmailVerification] Cancel error:
+emailverification.s_11: RU: Ошибка | EN: Error
+emailverification.s_12: RU: Подтвердите email | EN: Confirm your email
+emailverification.s_13: RU: Подтвердите email | EN: Confirm your email
+emailverification.s_14: RU: Код подтверждения | EN: Verification code
+emailverification.s_15: RU: Подтвердить | EN: Confirm
+emailverification.s_16: RU: Отправить код повторно | EN: Resend code
+emailverification.s_17: RU: Отменить регистрацию | EN: Cancel registration
+login.s_0: RU: Введите email, телефон или имя пользователя | EN: Enter email, phone or username
+login.s_1: RU: Введите пароль | EN: Enter your password
+login.s_2: RU: Сбросить онбординг? | EN: Reset onboarding?
+login.s_3: RU: Сбросить онбординг? | EN: Reset onboarding?
+login.s_4: RU: Вы снова увидите экраны приветствия при следующем запуске | EN: You will see the welcome screens again the next time you start
+login.s_5: RU: Отмена | EN: Cancel
+login.s_6: RU: Готово | EN: Done
+login.s_7: RU: Онбординг будет показан при следующем запуске приложения | EN: Onboarding will be shown the next time you launch the application
+login.s_8: RU: Вместе делаем город чище! | EN: Together we make the city cleaner!
+login.s_9: RU: Email, телефон или имя пользователя | EN: Email, phone or username
+login.s_10: RU: Email, телефон или имя пользователя | EN: Email, phone or username
+login.s_11: RU: Пароль | EN: Password
+login.s_12: RU: Пароль | EN: Password
+login.s_13: RU: Забыли пароль? | EN: Forgot your password?
+login.s_14: RU: Войти | EN: Login
+login.s_15: RU: Нет аккаунта? | EN: Don't have an account?
+login.s_16: RU: Зарегистрироваться как волонтёр | EN: Register as a volunteer
+login.s_17: RU: Сбросить онбординг (Debug) | EN: Reset onboarding (Debug)
+passwordreset.s_0: RU: Введите email | EN: Enter email
+passwordreset.s_1: RU: Введите email | EN: Enter email
+passwordreset.s_2: RU: Введите код | EN: Enter code
+passwordreset.s_3: RU: Введите код | EN: Enter code
+passwordreset.s_4: RU: Введите новый пароль | EN: Enter new password
+passwordreset.s_5: RU: Введите новый пароль | EN: Enter new password
+passwordreset.s_6: RU: Пароли не совпадают | EN: Passwords don't match
+passwordreset.s_7: RU: Пароль успешно изменён. Теперь вы можете войти с новым паролем. | EN: The password has been successfully changed. You can now log in with your new password.
+passwordreset.s_8: RU: Сброс пароля | EN: Password reset
+passwordreset.s_9: RU: Сброс пароля | EN: Password reset
+passwordreset.s_10: RU: Отправить код | EN: Send code
+passwordreset.s_11: RU: Введите код | EN: Enter code
+passwordreset.s_12: RU: Введите код | EN: Enter code
+passwordreset.s_13: RU: Код подтверждения | EN: Verification code
+passwordreset.s_14: RU: Продолжить | EN: Continue
+passwordreset.s_15: RU: Отправить код повторно | EN: Resend code
+passwordreset.s_16: RU: Новый пароль | EN: New Password
+passwordreset.s_17: RU: Новый пароль | EN: New Password
+passwordreset.s_18: RU: Новый пароль | EN: New Password
+passwordreset.s_19: RU: Новый пароль | EN: New Password
+passwordreset.s_20: RU: Подтверждение пароля | EN: Password confirmation
+passwordreset.s_21: RU: Подтверждение пароля | EN: Password confirmation
+passwordreset.s_22: RU: Изменить пароль | EN: Change password
+passwordreset.s_23: RU: Сброс пароля | EN: Password reset
+passwordreset.s_24: RU: Сброс пароля | EN: Password reset
+passwordreset.s_25: RU: Сброс пароля | EN: Password reset
+registervolunteer.s_0: RU: Введите ФИО | EN: Enter your full name
+registervolunteer.s_1: RU: Введите номер телефона | EN: Enter your phone number
+registervolunteer.s_2: RU: Введите email | EN: Enter email
+registervolunteer.s_3: RU: Введите email | EN: Enter email
+registervolunteer.s_4: RU: Введите пароль | EN: Enter your password
+registervolunteer.s_5: RU: Введите пароль | EN: Enter your password
+registervolunteer.s_6: RU: Пароли не совпадают | EN: Passwords don't match
+registervolunteer.s_7: RU: Отмена регистрации | EN: Cancellation of registration
+registervolunteer.s_8: RU: Отмена регистрации | EN: Cancellation of registration
+registervolunteer.s_9: RU: Вы уверены, что хотите отменить регистрацию? | EN: Are you sure you want to cancel your registration?
+registervolunteer.s_10: RU: Нет | EN: No
+registervolunteer.s_11: RU: Ошибка | EN: Error
+registervolunteer.s_12: RU: Не удалось отменить регистрацию | EN: Failed to unregister
+registervolunteer.s_13: RU: Подтвердите email | EN: Confirm your email
+registervolunteer.s_14: RU: Подтвердите email | EN: Confirm your email
+registervolunteer.s_15: RU: Ввести код подтверждения | EN: Enter confirmation code
+registervolunteer.s_16: RU: Отменить регистрацию | EN: Cancel registration
+registervolunteer.s_17: RU: Регистрация волонтёра | EN: Volunteer registration
+registervolunteer.s_18: RU: ФИО | EN: Full name
+registervolunteer.s_19: RU: ФИО | EN: Full name
+registervolunteer.s_20: RU: Номер телефона | EN: Phone number
+registervolunteer.s_21: RU: Пароль | EN: Password
+registervolunteer.s_22: RU: Пароль | EN: Password
+registervolunteer.s_23: RU: Подтверждение пароля | EN: Password confirmation
+registervolunteer.s_24: RU: Подтверждение пароля | EN: Password confirmation
+registervolunteer.s_25: RU: Зарегистрироваться | EN: Register
+registervolunteer.s_26: RU: Уже есть аккаунт? | EN: Already have an account?
+registervolunteer.s_27: RU: Уже есть аккаунт? | EN: Already have an account?
+permissionsstatus.s_0: RU: Уведомления | EN: Notifications
+permissionsstatus.s_1: RU: Уведомления | EN: Notifications
+permissionsstatus.s_2: RU: Геолокация | EN: Geolocation
+permissionsstatus.s_3: RU: Геолокация | EN: Geolocation
+permissionsstatus.s_4: RU: Интернет | EN: Internet
+permissionsstatus.s_5: RU: Интернет | EN: Internet
+permissionsstatus.s_6: RU: Всё готово! | EN: Everything is ready!
+permissionsstatus.s_7: RU: Всё готово! | EN: Everything is ready!
+permissionsstatus.s_8: RU: \n | EN: \n
+permissionsstatus.s_9: RU: Разрешения | EN: Permissions
+permissionsstatus.s_10: RU: Требуются разрешения | EN: Permissions required
+permissionsstatus.s_11: RU: Требуются разрешения | EN: Permissions required
+permissionsstatus.s_12: RU: \n | EN: \n
+permissionsstatus.s_14: RU: Проверка... | EN: Checking...
+permissionsstatus.s_15: RU: Проверить снова | EN: Check again
+aboutapp.s_0: RU: Версия {APP_VERSION} | EN: Version {APP_VERSION}
+aboutapp.s_1: RU: Версия {APP_VERSION} | EN: Version {APP_VERSION}
+aboutapp.s_2: RU: Что доступно в приложении | EN: What's available in the app
+aboutapp.s_3: RU: Участие в проектах и выполнение задач | EN: Participation in projects and completing tasks
+aboutapp.s_4: RU: Загрузка фотоотчётов и отслеживание статусов | EN: Uploading photo reports and tracking statuses
+aboutapp.s_5: RU: Просмотр баллов, часов и личной активности | EN: View points, hours and personal activity
+aboutapp.s_6: RU: Полезные ссылки | EN: Useful links
+aboutapp.s_7: RU: Веб-портал | EN: Web portal
+aboutapp.s_8: RU: Политика конфиденциальности | EN: Privacy Policy
+aboutapp.s_9: RU: Помощь и поддержка | EN: Help and support
+achievements.s_0: RU: Январь | EN: January
+achievements.s_1: RU: Февраль | EN: February
+achievements.s_2: RU: Март | EN: March
+achievements.s_3: RU: Апрель | EN: April
+achievements.s_4: RU: Май | EN: May
+achievements.s_5: RU: Июнь | EN: June
+achievements.s_6: RU: Июль | EN: July
+achievements.s_7: RU: Август | EN: August
+achievements.s_8: RU: Сентябрь | EN: September
+achievements.s_9: RU: Октябрь | EN: October
+achievements.s_10: RU: Ноябрь | EN: November
+achievements.s_11: RU: Декабрь | EN: December
+achievements.s_12: RU: Январь | EN: January
+achievements.s_13: RU: Февраль | EN: February
+achievements.s_14: RU: Март | EN: March
+achievements.s_15: RU: Апрель | EN: April
+achievements.s_16: RU: Май | EN: May
+achievements.s_17: RU: Июнь | EN: June
+achievements.s_18: RU: Июль | EN: July
+achievements.s_19: RU: Август | EN: August
+achievements.s_20: RU: Сентябрь | EN: September
+achievements.s_21: RU: Октябрь | EN: October
+achievements.s_22: RU: Ноябрь | EN: November
+achievements.s_23: RU: Декабрь | EN: December
+achievements.s_24: RU: Январь | EN: January
+achievements.s_25: RU: Февраль | EN: February
+achievements.s_26: RU: Март | EN: March
+achievements.s_27: RU: Апрель | EN: April
+achievements.s_28: RU: Май | EN: May
+achievements.s_29: RU: Июнь | EN: June
+achievements.s_30: RU: Июль | EN: July
+achievements.s_31: RU: Янв. | EN: Jan.
+achievements.s_32: RU: Фев. | EN: Feb.
+achievements.s_33: RU: Мар | EN: Mar
+achievements.s_34: RU: Апр | EN: Apr
+achievements.s_35: RU: Май | EN: May
+achievements.s_36: RU: Июн | EN: Jun
+achievements.s_37: RU: Июл. | EN: Jul.
+achievements.s_38: RU: Воскресенье | EN: Sunday
+achievements.s_39: RU: Бронза | EN: Bronze
+achievements.s_40: RU: Бронза | EN: Bronze
+achievements.s_41: RU: Бронза | EN: Bronze
+achievements.s_42: RU: Серебро | EN: Silver
+achievements.s_43: RU: Янв | EN: Jan
+achievements.s_44: RU: Фев | EN: Feb
+achievements.s_45: RU: Мар | EN: Mar
+achievements.s_46: RU: Апр | EN: Apr
+achievements.s_47: RU: Май | EN: May
+achievements.s_48: RU: Июн | EN: Jun
+achievements.s_49: RU: Июл | EN: Jul
+achievements.s_50: RU: Авг | EN: Aug
+achievements.s_51: RU: Сен | EN: Sep
+achievements.s_52: RU: Окт | EN: Oct
+achievements.s_53: RU: Ноя | EN: Nov
+achievements.s_54: RU: Дек | EN: Dec
+achievements.s_55: RU: Выполнено | EN: Done
+achievements.s_56: RU: Достижения | EN: Achievements
+achievements.s_57: RU: Достижения | EN: Achievements
+achievements.s_58: RU: ОБЩИЙ ПРОГРЕСС | EN: OVERALL PROGRESS
+achievements.s_59: RU: Уровень {stats.level} | EN: Level {stats.level}
+achievements.s_62: RU: ИЗ {stats.total_achievements} | EN: FROM {stats.total_achievements}
+achievements.s_63: RU: Активность | EN: Activity
+achievements.s_64: RU: За последние 6 месяцев | EN: Over the past 6 months
+achievements.s_65: RU: Получено очков | EN: Points received
+achievements.s_66: RU: Ваш вклад в общество | EN: Your contribution to society
+achievements.s_67: RU: набрано очков | EN: points scored
+achievements.s_68: RU: задач решено | EN: problems solved
+achievements.s_69: RU: Все награды | EN: All awards
+achievements.s_73: RU: Ничего не найдено | EN: Nothing found
+achievements.s_74: RU: Выбор периода | EN: Select period
+achievements.s_75: RU: Начало: | EN: Start:
+achievements.s_76: RU: Конец: | EN: End:
+achievements.s_77: RU: Отмена | EN: Cancel
+achievements.s_78: RU: Сбросить | EN: Reset
+achievements.s_79: RU: Применить | EN: Apply
+achievements.s_80: RU: Активность | EN: Activity
+achievements.s_81: RU: \n\n | EN: \n\n
+achievements.s_82: RU: \n\n | EN: \n\n
+achievements.s_83: RU: 100% | EN: 100%
+calendareventdetail.s_0: RU: Старт проекта | EN: Start of the project
+calendareventdetail.s_1: RU: Завершение проекта | EN: Project End
+calendareventdetail.s_2: RU: Задача | EN: Task
+calendareventdetail.s_3: RU: Завершено | EN: Completed
+calendareventdetail.s_4: RU: Одобрено | EN: Approved
+calendareventdetail.s_5: RU: На проверке | EN: Under review
+calendareventdetail.s_6: RU: На доработке | EN: Needs Revision
+calendareventdetail.s_7: RU: Отклонено | EN: Rejected
+calendareventdetail.s_8: RU: В работе | EN: In progress
+calendareventdetail.s_9: RU: В архиве | EN: In the archive
+calendareventdetail.s_10: RU: Открыта | EN: Open
+calendareventdetail.s_11: RU: Весь день | EN: All day
+calendareventdetail.s_12: RU: Время уточняется | EN: Time TBD
+calendareventdetail.s_13: RU: Локация уточняется | EN: Location TBD
+calendareventdetail.s_14: RU: Ошибка | EN: Error
+calendareventdetail.s_15: RU: Не удалось открыть меню отправки. | EN: Failed to open send menu.
+calendareventdetail.s_16: RU: Внимание | EN: Attention
+calendareventdetail.s_17: RU: Для этого события пока не указана карта. | EN: There is no map listed for this event yet.
+calendareventdetail.s_18: RU: Не удалось обновить напоминание. | EN: Failed to update reminder.
+calendareventdetail.s_19: RU: Не удалось обновить напоминание. | EN: Failed to update reminder.
+calendareventdetail.s_20: RU: Детали события | EN: Event Details
+calendareventdetail.s_21: RU: Дата | EN: Date
+calendareventdetail.s_22: RU: Время | EN: Time
+calendareventdetail.s_23: RU: Локация | EN: Location
+calendareventdetail.s_24: RU: Открыть карту | EN: Open Map
+calendareventdetail.s_25: RU: Статус | EN: Status
+calendareventdetail.s_26: RU: Описание | EN: Description
+calendareventdetail.s_27: RU: Описание | EN: Description
+calendareventdetail.s_28: RU: Участники | EN: Participants
+calendareventdetail.s_30: RU: Список участников пока не заполнен. | EN: Participant list is empty.
+calendareventdetail.s_31: RU: Напомнить за 30 минут | EN: Remind 30 mins before
+calendareventdetail.s_32: RU: Локальное уведомление уже запланировано. | EN: Reminder already set.
+calendareventdetail.s_33: RU: Локальное уведомление уже запланировано. | EN: Reminder already set.
+calendareventdetail.s_34: RU: Связанный проект | EN: Related project
+calendareventdetail.s_35: RU: Связанный проект | EN: Related project
+calendareventdetail.s_36: RU: Открыть задачу | EN: Open Task
+calendar.s_0: RU: ../../theme | EN: ../../theme
+calendar.s_1: RU: ВС | EN: SUN
+calendar.s_2: RU: ПН | EN: MON
+calendar.s_3: RU: ВТ | EN: TUE
+calendar.s_4: RU: СР | EN: WED
+calendar.s_5: RU: ЧТ | EN: THU
+calendar.s_6: RU: ПТ | EN: FRI
+calendar.s_7: RU: Старт проекта | EN: Start of the project
+calendar.s_8: RU: Завершение проекта | EN: Completion of the project
+calendar.s_9: RU: Задача | EN: Task
+calendar.s_10: RU: Завершено | EN: Completed
+calendar.s_11: RU: Одобрено | EN: Approved
+calendar.s_12: RU: На проверке | EN: Under review
+calendar.s_13: RU: На доработке | EN: Under revision
+calendar.s_14: RU: Отклонено | EN: Rejected
+calendar.s_15: RU: В работе | EN: In progress
+calendar.s_16: RU: Открыта | EN: Open
+calendar.s_17: RU: В архиве | EN: In the archive
+calendar.s_18: RU: Весь день | EN: All day
+calendar.s_19: RU: Время уточняется | EN: Time TBD
+calendar.s_20: RU: Локация уточняется | EN: Location TBD
+calendar.s_21: RU: Ошибка загрузки календаря: | EN: Error loading calendar:
+calendar.s_22: RU: Загружаем календарь задач... | EN: Loading the task calendar...
+calendar.s_23: RU: Календарь волонтёра | EN: Volunteer calendar
+calendar.s_24: RU: Календарь волонтёра | EN: Volunteer calendar
+calendar.s_25: RU: События на {formatSelectedDateTitle(selectedDateKey)} | EN: Events on {formatSelectedDateTitle(selectedDateKey)}
+calendar.s_26: RU: На выбранный день событий нет | EN: There are no events on the selected day
+calendar.s_27: RU: На выбранный день событий нет | EN: There are no events on the selected day
+changepassword.s_0: RU: Введите текущий пароль | EN: Enter your current password
+changepassword.s_1: RU: Введите новый пароль | EN: Enter new password
+changepassword.s_2: RU: Введите новый пароль | EN: Enter new password
+changepassword.s_3: RU: Повторите новый пароль | EN: Repeat new password
+changepassword.s_4: RU: Повторите новый пароль | EN: Repeat new password
+changepassword.s_5: RU: Новый пароль должен отличаться от текущего | EN: The new password must be different from the current one
+changepassword.s_6: RU: Успешно | EN: Successfully
+changepassword.s_7: RU: Пароль успешно изменен. | EN: The password has been successfully changed.
+changepassword.s_8: RU: Не удалось изменить пароль. | EN: Failed to change password.
+changepassword.s_9: RU: Изменить пароль | EN: Change password
+changepassword.s_11: RU: Текущий пароль | EN: Current Password
+changepassword.s_12: RU: Текущий пароль | EN: Current Password
+changepassword.s_13: RU: Новый пароль | EN: New Password
+changepassword.s_14: RU: Новый пароль | EN: New Password
+changepassword.s_15: RU: Повторите новый пароль | EN: Repeat new password
+changepassword.s_16: RU: Повторите новый пароль | EN: Repeat new password
+changepassword.s_17: RU: Сохранить новый пароль | EN: Save new password
+chatdetail.s_0: RU: Вложение | EN: Attachment
+chatdetail.s_1: RU: Вложение | EN: Attachment
+chatdetail.s_2: RU: Этот чат больше недоступен, потому что проект уже не активен. | EN: This chat is no longer available because the project is no longer active.
+chatdetail.s_3: RU: Не удалось загрузить сообщения. Попробуйте ещё раз. | EN: Failed to load messages. Try again.
+chatdetail.s_4: RU: Ошибка | EN: Error
+chatdetail.s_5: RU: Не удалось отправить сообщение. Попробуйте ещё раз. | EN: Failed to send message. Try again.
+chatdetail.s_6: RU: Нет доступа | EN: No access
+chatdetail.s_7: RU: Разрешите доступ к галерее, чтобы выбрать фото. | EN: Allow access to the gallery to select a photo.
+chatdetail.s_8: RU: Image picker error: | EN: Image picker error:
+chatdetail.s_9: RU: Ошибка | EN: Error
+chatdetail.s_10: RU: Активный проектный чат | EN: Active project chat
+chatdetail.s_11: RU: Активный проектный чат | EN: Active project chat
+chatdetail.s_12: RU: Активный проектный чат | EN: Active project chat
+chatdetail.s_13: RU: Только фото | EN: Photo only
+chatdetail.s_14: RU: Только фото | EN: Photo only
+chatdetail.s_15: RU: Только фото | EN: Photo only
+chatdetail.s_16: RU: Чат недоступен | EN: Chat unavailable
+chatdetail.s_17: RU: Назад | EN: Back
+chatdetail.s_19: RU: Сообщение... | EN: Message...
+chatdetail.s_20: RU: Фильтр сообщений | EN: Message filter
+chatdetail.s_21: RU: Все | EN: All
+chatdetail.s_22: RU: Фото | EN: Photo
+chatdetail.s_23: RU: Мои | EN: My
+chatdetail.s_24: RU: Обновить чат | EN: Refresh chat
+chatdetail.s_25: RU: Отметить как прочитанное | EN: Mark as read
+chatdetail.s_26: RU: Сбросить фильтр | EN: Reset filter
+chatdetail.s_27: RU: Прикрепить | EN: Attach
+chatdetail.s_28: RU: Выбрать фото | EN: Select photo
+chats.s_0: RU: Вчера | EN: Yesterday
+chats.s_1: RU: Сообщений пока нет | EN: No messages yet
+chats.s_2: RU: Удалить | EN: Delete
+chats.s_3: RU: Ничего не найдено | EN: Nothing found
+chats.s_4: RU: Пока нет чатов | EN: No chats yet
+chats.s_5: RU: Попробуйте изменить поиск или снять фильтры. | EN: Try changing your search or removing filters.
+chats.s_6: RU: Попробуйте изменить поиск или снять фильтры. | EN: Try changing your search or removing filters.
+chats.s_7: RU: Сбросить фильтры | EN: Reset filters
+chats.s_8: RU: Найти проекты | EN: Find projects
+chats.s_9: RU: Сообщения | EN: Messages
+chats.s_10: RU: Поиск чатов... | EN: Search chats...
+chats.s_11: RU: Все | EN: All
+chats.s_12: RU: Проекты | EN: Projects
+chats.s_13: RU: Непрочитанные | EN: Unread
+chats.s_14: RU: Обновить | EN: Update
+chats.s_15: RU: Показать все чаты | EN: Show all chats
+chats.s_16: RU: Только непрочитанные | EN: Only unread
+chats.s_17: RU: Сбросить фильтры | EN: Reset filters
+dashboard.s_0: RU: Пользователь | EN: User
+dashboard.s_1: RU: Добро пожаловать! | EN: Welcome!
+dashboard.s_2: RU: Добро пожаловать! | EN: Welcome!
+dashboard.s_3: RU: Trust Factor | EN: Trust Factor
+dashboard.s_4: RU: Ваша статистика | EN: Your statistics
+dashboard.s_5: RU: Ваша статистика | EN: Your statistics
+dashboard.s_6: RU: Поиск и фильтры | EN: Search and filters
+dashboard.s_7: RU: Поиск и фильтры | EN: Search and filters
+dashboard.s_8: RU: Недостаточно Trust Factor | EN: Insufficient Trust Factor
+dashboard.s_9: RU: Недостаточно Trust Factor | EN: Insufficient Trust Factor
+dashboard.s_10: RU: Не удалось присоединиться к проекту | EN: Failed to join the project
+dashboard.s_11: RU: Недостаточно Trust Factor | EN: Insufficient Trust Factor
+dashboard.s_12: RU: Ошибка | EN: Error
+dashboard.s_13: RU: Ошибка | EN: Error
+dashboard.s_14: RU: Укажите причину выхода из проекта | EN: Specify the reason for leaving the project
+dashboard.s_15: RU: Не удалось покинуть проект | EN: Failed to leave project
+dashboard.s_16: RU: Не удалось покинуть проект | EN: Failed to leave project
+dashboard.s_17: RU: проекты | EN: projects
+dashboard.s_18: RU: статистика | EN: statistics
+dashboard.s_19: RU: рекомендации | EN: recommendations
+dashboard.s_20: RU: Ближайшая задача | EN: Nearest Task
+dashboard.s_21: RU: Все задачи | EN: All tasks
+dashboard.s_22: RU: Задача без названия | EN: Untitled task
+dashboard.s_23: RU: Проект не указан | EN: Project not specified
+dashboard.s_24: RU: Срок не указан | EN: No deadline specified
+dashboard.s_25: RU: Сегодня | EN: Today
+dashboard.s_26: RU: На неделе | EN: During the week
+dashboard.s_27: RU: В этом месяце | EN: This month
+dashboard.s_28: RU: Очистить все | EN: Clear all
+dashboard.s_34: RU: Избранное | EN: Favorites
+dashboard.s_35: RU: Проекты для вас | EN: Projects for you
+dashboard.s_38: RU: Локация | EN: Location
+dashboard.s_39: RU: Предстоящие возможности | EN: Upcoming Features
+dashboard.s_40: RU: проект | EN: project
+dashboard.s_41: RU: проекта | EN: project
+dashboard.s_42: RU: проектов | EN: projects
+dashboard.s_43: RU: 1 && filteredProjects.length | EN: 1 && filteredProjects.length
+dashboard.s_44: RU: Проектов пока нет | EN: No projects yet
+dashboard.s_45: RU: Проектов пока нет | EN: No projects yet
+dashboard.s_46: RU: Все проекты загружены | EN: All projects are loaded
+dashboard.s_47: RU: проекты | EN: projects
+dashboard.s_48: RU: проекты | EN: projects
+dashboard.s_49: RU: статистика | EN: statistics
+dashboard.s_50: RU: Фильтры | EN: Filters
+dashboard.s_51: RU: Сортировка | EN: Sorting
+dashboard.s_52: RU: Новые | EN: New
+dashboard.s_53: RU: Новые | EN: New
+dashboard.s_54: RU: Новые | EN: New
+dashboard.s_55: RU: Популярные | EN: Popular
+dashboard.s_56: RU: Тип проекта | EN: Project type
+dashboard.s_57: RU: Все | EN: All
+dashboard.s_58: RU: Все | EN: All
+dashboard.s_59: RU: Все | EN: All
+dashboard.s_60: RU: Социальная помощь | EN: Social assistance
+dashboard.s_61: RU: Дата начала | EN: Start Date
+dashboard.s_62: RU: Все | EN: All
+dashboard.s_63: RU: Все | EN: All
+dashboard.s_64: RU: Все | EN: All
+dashboard.s_65: RU: Сегодня | EN: Today
+dashboard.s_66: RU: Теги | EN: Tags
+dashboard.s_67: RU: Сбросить | EN: Reset
+dashboard.s_68: RU: Применить | EN: Apply
+dashboard.s_70: RU: Trust Factor (TF) | EN: Trust Factor (TF)
+dashboard.s_71: RU: Максимум: 30 баллов. | EN: Maximum: 30 points.
+dashboard.s_72: RU: При TF = 0 нельзя вступать в проекты. | EN: When TF = 0, you cannot join projects.
+dashboard.s_73: RU: + Начисляются баллы | EN: + Points are awarded
+dashboard.s_74: RU: Оценка фотоотчёта 5 ⭐ | EN: Photo report rating 5 ⭐
+dashboard.s_75: RU: Оценка фотоотчёта 4 ⭐ | EN: Photo report rating 4 ⭐
+dashboard.s_76: RU: Оценка фотоотчёта 3 ⭐ | EN: Photo report rating 3 ⭐
+dashboard.s_77: RU: — Снимаются баллы | EN: — Points are deducted
+dashboard.s_78: RU: Выход из проекта | EN: Exit from the project
+dashboard.s_79: RU: Оценка фотоотчёта 1–2 ⭐ | EN: Photo report rating 1–2 ⭐
+dashboard.s_80: RU: Отклонение задачи | EN: Rejection of a task
+dashboard.s_82: RU: Присоединиться к проекту? | EN: Join this project?
+dashboard.s_83: RU: Локация не указана | EN: Location not specified
+dashboard.s_86: RU: Отмена | EN: Cancel
+dashboard.s_87: RU: Присоединиться | EN: Join
+editprofile.s_0: RU: Введите имя и фамилию | EN: Enter your first and last name
+editprofile.s_1: RU: Введите номер телефона | EN: Enter your phone number
+editprofile.s_2: RU: Успешно | EN: Successfully
+editprofile.s_3: RU: Профиль обновлен. | EN: Profile updated.
+editprofile.s_4: RU: Редактировать профиль | EN: Edit profile
+editprofile.s_6: RU: Имя и фамилия | EN: First and last name
+editprofile.s_7: RU: Имя и фамилия | EN: First and last name
+editprofile.s_8: RU: Телефон | EN: Telephone
+editprofile.s_9: RU: Email нельзя изменить. | EN: Email cannot be changed.
+editprofile.s_10: RU: Сохранить изменения | EN: Save changes
+help.s_0: RU: help.s_0 | EN: help.s_0
+help.s_1: RU: Как начисляются часы и баллы? | EN: How are hours and points awarded?
+help.s_2: RU: Как начисляются часы и баллы? | EN: How are hours and points awarded?
+help.s_3: RU: Как получить новые достижения? | EN: How to get new achievements?
+help.s_4: RU: Как получить новые достижения? | EN: How to get new achievements?
+help.s_5: RU: Что такое Trust Factor (TF)? | EN: What is Trust Factor (TF)?
+help.s_6: RU: Что такое Trust Factor (TF)? | EN: What is Trust Factor (TF)?
+help.s_7: RU: Как отказаться от задачи без потери Trust Factor? | EN: How to abandon a task without losing Trust Factor?
+help.s_8: RU: Как отказаться от задачи без потери Trust Factor? | EN: How to abandon a task without losing Trust Factor?
+help.s_9: RU: Сколько времени проверяется фотоотчет? | EN: How long does it take to check a photo report?
+help.s_10: RU: Сколько времени проверяется фотоотчет? | EN: How long does it take to check a photo report?
+help.s_11: RU: Что делать, если мой фотоотчет отклонили? | EN: What should I do if my photo report is rejected?
+help.s_12: RU: Что делать, если мой фотоотчет отклонили? | EN: What should I do if my photo report is rejected?
+help.s_13: RU: Организатор не отвечает, что делать? | EN: The organizer does not answer, what should I do?
+help.s_14: RU: Организатор не отвечает, что делать? | EN: The organizer does not answer, what should I do?
+help.s_15: RU: Как удалить аккаунт? | EN: How to delete an account?
+help.s_16: RU: Как удалить аккаунт? | EN: How to delete an account?
+help.s_17: RU: Помощь | EN: Help
+help.s_18: RU: Помощь | EN: Help
+help.s_19: RU: Служба поддержки | EN: Support Center
+help.s_20: RU: Служба поддержки | EN: Support Center
+help.s_21: RU: Написать письмо | EN: Write a letter
+help.s_22: RU: Частые вопросы | EN: Frequently asked questions
+help.s_23: RU: Политика конфиденциальности | EN: Privacy Policy
+myprojects.s_0: RU: Error loading joined projects: | EN: Error loading joined projects:
+myprojects.s_1: RU: Error loading joined projects: | EN: Error loading joined projects:
+myprojects.s_2: RU: Ошибка | EN: Error
+myprojects.s_3: RU: Укажите причину выхода из проекта | EN: Specify the reason for leaving the project
+myprojects.s_4: RU: Вы покинули проект. | EN: You left the project.
+myprojects.s_5: RU: Внимание | EN: Attention
+myprojects.s_6: RU: Успешно | EN: Successfully
+myprojects.s_7: RU: Не удалось покинуть проект | EN: Failed to leave project
+myprojects.s_8: RU: Не удалось покинуть проект | EN: Failed to leave project
+myprojects.s_9: RU: Локация не указана | EN: Location not specified
+myprojects.s_12: RU: Участвуете | EN: Are you participating?
+myprojects.s_13: RU: Выйти | EN: Log out
+myprojects.s_14: RU: Социальная помощь | EN: Social support
+myprojects.s_15: RU: Экология | EN: Ecology
+myprojects.s_16: RU: Культурные мероприятия | EN: Cultural events
+myprojects.s_17: RU: Мои проекты | EN: My projects
+myprojects.s_18: RU: Мои проекты | EN: My projects
+myprojects.s_19: RU: проект | EN: project
+myprojects.s_20: RU: проекта | EN: project
+myprojects.s_21: RU: проектов | EN: projects
+myprojects.s_22: RU: Нет проектов | EN: No projects
+myprojects.s_23: RU: Нет проектов | EN: No projects
+myprojects.s_24: RU: \n | EN: \n
+myprojects.s_25: RU: Найти проект | EN: Find a project
+notifications.s_0: RU: задачу | EN: task
+notifications.s_1: RU: задачу | EN: task
+notifications.s_2: RU: задачу | EN: task
+notifications.s_3: RU: проект | EN: project
+notifications.s_4: RU: проект | EN: project
+notifications.s_5: RU: покинули | EN: left
+notifications.s_6: RU: покинули | EN: left
+notifications.s_7: RU: присоединились | EN: joined
+notifications.s_8: RU: Уведомление | EN: Notification
+notifications.s_9: RU: Уведомления | EN: Notifications
+notifications.s_10: RU: Уведомления | EN: Notifications
+notifications.s_13: RU: Нет уведомлений | EN: No notifications
+notifications.s_14: RU: У вас нет непрочитанных уведомлений. | EN: You have no unread notifications.
+notifications.s_15: RU: У вас нет непрочитанных уведомлений. | EN: You have no unread notifications.
+organizerprofile.s_0: RU: Error loading organizer profile: | EN: Error loading organizer profile:
+organizerprofile.s_1: RU: Error loading organizer profile: | EN: Error loading organizer profile:
+organizerprofile.s_2: RU: Внимание | EN: Attention
+organizerprofile.s_3: RU: Номер телефона не указан | EN: Phone number not specified
+organizerprofile.s_4: RU: Внимание | EN: Attention
+organizerprofile.s_5: RU: Email не указан | EN: Email not specified
+organizerprofile.s_6: RU: Внимание | EN: Attention
+organizerprofile.s_7: RU: Telegram не указан | EN: Telegram is not specified
+organizerprofile.s_8: RU: Внимание | EN: Attention
+organizerprofile.s_9: RU: Не удалось открыть Telegram | EN: Failed to open Telegram
+organizerprofile.s_10: RU: Организатор не найден | EN: Organizer not found
+organizerprofile.s_11: RU: Назад | EN: Back
+organizerprofile.s_12: RU: Профиль организатора | EN: Organizer profile
+organizerprofile.s_13: RU: Возраст | EN: Age
+organizerprofile.s_14: RU: Возраст | EN: Age
+organizerprofile.s_15: RU: год | EN: year
+organizerprofile.s_16: RU: года | EN: year
+organizerprofile.s_17: RU: Пол | EN: Gender
+organizerprofile.s_18: RU: Стаж работы | EN: Work experience
+organizerprofile.s_19: RU: Стаж работы | EN: Work experience
+organizerprofile.s_20: RU: год | EN: year
+organizerprofile.s_21: RU: года | EN: year
+organizerprofile.s_22: RU: Проектов | EN: Projects
+organizerprofile.s_23: RU: О себе | EN: About me
+organizerprofile.s_24: RU: Контакты | EN: Contacts
+photoreportdetail.s_0: RU: Дата не указана | EN: No date specified
+photoreportdetail.s_1: RU: Дата не указана | EN: No date specified
+photoreportdetail.s_2: RU: Одобрено | EN: Approved
+photoreportdetail.s_3: RU: На доработке | EN: Under revision
+photoreportdetail.s_4: RU: На проверке | EN: Under review
+photoreportdetail.s_5: RU: балл | EN: point
+photoreportdetail.s_6: RU: балла | EN: points
+photoreportdetail.s_7: RU: баллов | EN: points
+photoreportdetail.s_8: RU: Организатор проверил отчет и подтвердил выполнение задачи. | EN: The organizer checked the report and confirmed the task was completed.
+photoreportdetail.s_9: RU: Отчет возвращен на доработку. | EN: The report has been returned for revision.
+photoreportdetail.s_10: RU: Организатор еще не оставил комментарий. Отчет находится на проверке. | EN: The organizer has not yet left a comment. The report is being reviewed.
+photoreportdetail.s_11: RU: Волонтер | EN: Volunteer
+photoreportdetail.s_12: RU: Организатор проекта | EN: Project organizer
+photoreportdetail.s_13: RU: Отчет не найден | EN: Report not found
+photoreportdetail.s_14: RU: По этой задаче пока нет доступного фотоотчета. | EN: There is no photo report available for this task yet.
+photoreportdetail.s_15: RU: Отчет не найден | EN: Report not found
+photoreportdetail.s_16: RU: Не удалось загрузить подробную информацию об отчете. | EN: Failed to load report details.
+photoreportdetail.s_17: RU: Не удалось загрузить подробную информацию об отчете. | EN: Failed to load report details.
+photoreportdetail.s_18: RU: Ошибка | EN: Error
+photoreportdetail.s_19: RU: Подробная информация об отчете | EN: Details about the report
+photoreportdetail.s_20: RU: Подробная информация об отчете | EN: Details about the report
+photoreportdetail.s_21: RU: Ошибка | EN: Error
+photoreportdetail.s_22: RU: Не удалось открыть меню отправки. | EN: Failed to open send menu.
+photoreportdetail.s_23: RU: Отчет пока недоступен | EN: The report is not yet available
+photoreportdetail.s_24: RU: Подробности отчета | EN: Report details
+photoreportdetail.s_25: RU: Отправлено {submittedLabel} | EN: Sent {submittedLabel}
+photoreportdetail.s_26: RU: КОММЕНТАРИЙ ВОЛОНТЕРА | EN: VOLUNTEER COMMENT
+photoreportdetail.s_27: RU: КОММЕНТАРИЙ ВОЛОНТЕРА | EN: VOLUNTEER COMMENT
+photoreportdetail.s_28: RU: Отзыв организатора | EN: Feedback from the organizer
+privacypolicy.s_0: RU: Политика конфиденциальности | EN: Privacy Policy
+privacypolicy.s_1: RU: Политика конфиденциальности | EN: Privacy Policy
+privacypolicy.s_2: RU: 1. Общие положения | EN: 1. General provisions
+privacypolicy.s_3: RU: 1. Общие положения | EN: 1. General provisions
+privacypolicy.s_4: RU: 2. Сбор данных | EN: 2. Data collection
+privacypolicy.s_9: RU: 3. Использование данных | EN: 3. Use of data
+privacypolicy.s_14: RU: 4. Защита данных | EN: 4. Data protection
+privacypolicy.s_15: RU: 4. Защита данных | EN: 4. Data protection
+privacypolicy.s_16: RU: 5. Ваши права | EN: 5. Your rights
+privacypolicy.s_17: RU: 5. Ваши права | EN: 5. Your rights
+privacypolicy.s_18: RU: Мы в соцсетях | EN: We are on social networks
+privacypolicy.s_19: RU: Веб-сайт | EN: Website
+privacypolicy.s_20: RU: BirQadam • Версия 1.0.0 | EN: BirQadam • Version 1.0.0
+profile.s_0: RU: Как работают баллы? | EN: How do points work?
+profile.s_1: RU: Как работают баллы? | EN: How do points work?
+profile.s_2: RU: Баллы показывают ваш общий прогресс и активность в приложении. | EN: Points show your overall progress and activity in the application.
+profile.s_3: RU: Баллы растут по мере выполнения задач и участия в проектах. | EN: Points increase as you complete tasks and participate in projects.
+profile.s_4: RU: Баллы растут по мере выполнения задач и участия в проектах. | EN: Points increase as you complete tasks and participate in projects.
+profile.s_5: RU: Баллы помогают отслеживать общий путь волонтёра внутри приложения. | EN: Points help track a volunteer's overall journey within the application.
+profile.s_6: RU: Как работает фактор доверия? | EN: How does the trust factor work?
+profile.s_7: RU: Как работает фактор доверия? | EN: How does the trust factor work?
+profile.s_8: RU: Фактор доверия показывает, насколько вы надёжны как волонтёр. | EN: The trust factor shows how reliable you are as a volunteer.
+profile.s_9: RU: После хороших оценок фотоотчётов фактор доверия растёт. | EN: After good ratings of photo reports, the trust factor grows.
+profile.s_10: RU: После хороших оценок фотоотчётов фактор доверия растёт. | EN: After good ratings of photo reports, the trust factor grows.
+profile.s_11: RU: Высокий фактор доверия помогает поддерживать сильную репутацию в системе. | EN: A high trust factor helps maintain a strong reputation in the system.
+profile.s_12: RU: Как работает фото-рейтинг? | EN: How does photo rating work?
+profile.s_13: RU: Как работает фото-рейтинг? | EN: How does photo rating work?
+profile.s_14: RU: Фото-рейтинг — это средняя оценка ваших фотоотчётов от организаторов. | EN: Photo rating is the average rating of your photo reports from the organizers.
+profile.s_15: RU: Организатор оценивает фотоотчёт после проверки результата задачи. | EN: The organizer evaluates the photo report after checking the result of the task.
+profile.s_16: RU: Организатор оценивает фотоотчёт после проверки результата задачи. | EN: The organizer evaluates the photo report after checking the result of the task.
+profile.s_17: RU: Понятные и качественные фотографии обычно получают более высокий рейтинг. | EN: Clear and high-quality photos usually receive higher ratings.
+profile.s_18: RU: Без названия | EN: Untitled
+profile.s_19: RU: Локация не указана | EN: Location not specified
+profile.s_20: RU: Нет доступа | EN: No access
+profile.s_21: RU: Разрешите доступ к галерее, чтобы выбрать новую аватарку. | EN: Allow access to the gallery to select a new avatar.
+profile.s_22: RU: Файл слишком большой | EN: File too big
+profile.s_23: RU: Размер аватарки не должен превышать 2 МБ. | EN: The size of the avatar should not exceed 2 MB.
+profile.s_24: RU: Ошибка | EN: Error
+profile.s_25: RU: Не удалось обработать изображение. | EN: The image could not be processed.
+profile.s_26: RU: Успешно | EN: Successfully
+profile.s_27: RU: Аватар профиля обновлён. | EN: Profile avatar has been updated.
+profile.s_28: RU: Успешно | EN: Successfully
+profile.s_29: RU: Аватар профиля обновлён. | EN: Profile avatar has been updated.
+profile.s_30: RU: Выход | EN: Exit
+profile.s_31: RU: Вы уверены, что хотите выйти? | EN: Are you sure you want to log out?
+profile.s_32: RU: Выход | EN: Exit
+profile.s_33: RU: Выход | EN: Exit
+profile.s_34: RU: В разработке | EN: In development
+profile.s_35: RU: Готово | EN: Ready
+profile.s_36: RU: Изменения применятся после перезапуска приложения. | EN: The changes will be applied after restarting the application.
+profile.s_37: RU: Ошибка | EN: Error
+profile.s_38: RU: Не удалось сохранить тему. Попробуйте ещё раз. | EN: Failed to save topic. Try again.
+profile.s_39: RU: Выбор языка | EN: Language selection
+profile.s_40: RU: Выбор языка | EN: Language selection
+profile.s_41: RU: Выберите язык приложения | EN: Select application language
+profile.s_42: RU: Русский | EN: Russian
+profile.s_43: RU: Казахский | EN: Kazakh
+profile.s_44: RU: Подключение Telegram | EN: Telegram connection
+profile.s_45: RU: имя | EN: Name
+profile.s_46: RU: имя | EN: Name
+profile.s_47: RU: Профиль | EN: Profile
+profile.s_48: RU: Профиль | EN: Profile
+profile.s_49: RU: Дополните профиль | EN: Complete your profile
+profile.s_50: RU: Редактировать | EN: Edit
+profile.s_51: RU: Проекты | EN: Projects
+profile.s_52: RU: Проекты | EN: Projects
+profile.s_53: RU: Найдите первый проект | EN: Find your first project
+profile.s_54: RU: Открыть проекты | EN: Open projects
+profile.s_55: RU: Открыть проекты | EN: Open projects
+profile.s_56: RU: Подберите направление по интересам | EN: Choose a direction based on your interests
+profile.s_57: RU: Доработка | EN: Finalization
+profile.s_58: RU: Фотоотчёт | EN: Photo report
+profile.s_59: RU: Доработка | EN: Finalization
+profile.s_60: RU: Фотоотчёт | EN: Photo report
+profile.s_61: RU: Исправить отчёт | EN: Correct the report
+profile.s_62: RU: Загрузить фото | EN: Upload photo
+profile.s_63: RU: Исправить отчёт | EN: Correct the report
+profile.s_64: RU: К задаче | EN: To the task
+profile.s_65: RU: Текущая задача | EN: Current task
+profile.s_66: RU: Проверка | EN: Under Review
+profile.s_67: RU: Проверка | EN: Under Review
+profile.s_68: RU: Посмотрите статус фотоотчёта | EN: View the status of the photo report
+profile.s_69: RU: Открыть отчёт | EN: Open report
+profile.s_70: RU: Открыть отчёт | EN: Open report
+profile.s_71: RU: Задачи | EN: Tasks
+profile.s_72: RU: Текущий проект | EN: Current project
+profile.s_73: RU: Задача | EN: Task
+profile.s_74: RU: Задача | EN: Task
+profile.s_75: RU: Продолжайте текущую задачу | EN: Continue the current task
+profile.s_76: RU: Открыть задачу | EN: Open task
+profile.s_77: RU: Открыть задачу | EN: Open task
+profile.s_78: RU: Календарь | EN: Calendar
+profile.s_79: RU: Активный проект | EN: Active project
+profile.s_80: RU: Старт | EN: Start
+profile.s_81: RU: Старт | EN: Start
+profile.s_82: RU: Выберите первую активность | EN: Select your first activity
+profile.s_83: RU: Мои проекты | EN: My projects
+profile.s_84: RU: Мои проекты | EN: My projects
+profile.s_85: RU: Следующий этап откроется после первого отчёта | EN: The next stage will open after the first report
+profile.s_86: RU: Ритм | EN: Rhythm
+profile.s_87: RU: Ритм | EN: Rhythm
+profile.s_88: RU: Сейчас всё под контролем | EN: Everything is under control now
+profile.s_89: RU: Открыть календарь | EN: Open calendar
+profile.s_90: RU: Открыть календарь | EN: Open calendar
+profile.s_91: RU: Волонтер | EN: Volunteer
+profile.s_92: RU: ВОЛОНТЕР | EN: VOLUNTEER
+profile.s_93: RU: БАЛЛЫ | EN: POINTS
+profile.s_94: RU: Прогресс уровня | EN: Level progress
+profile.s_95: RU: Прогресс уровня | EN: Level progress
+profile.s_96: RU: ФАКТОР ДОВЕРИЯ | EN: TRUST FACTOR
+profile.s_97: RU: ФОТО-РЕЙТИНГ | EN: PHOTO RATING
+profile.s_101: RU: НАСТРОЙКИ АККАУНТА | EN: ACCOUNT SETTINGS
+profile.s_102: RU: Редактировать профиль | EN: Edit profile
+profile.s_103: RU: Изменить пароль | EN: Change password
+profile.s_104: RU: Моя статистика | EN: My statistics
+profile.s_105: RU: Уведомления | EN: Notifications
+profile.s_106: RU: Язык | EN: Language
+profile.s_107: RU: Русский | EN: Russian
+profile.s_108: RU: Темная тема | EN: Dark theme
+profile.s_109: RU: О приложении | EN: About the application
+profile.s_110: RU: Помощь и поддержка | EN: Help and support
+profile.s_111: RU: Выйти | EN: Log out
+profile.s_112: RU: Понятно | EN: Got it
+projectdetail.s_0: RU: Error loading project detail: | EN: Error loading project detail:
+projectdetail.s_1: RU: Не удалось загрузить детали проекта | EN: Failed to load project details
+projectdetail.s_2: RU: Информация | EN: Information
+projectdetail.s_3: RU: Вы уже участвуете в этом проекте | EN: Are you already involved in this project?
+projectdetail.s_4: RU: Недостаточно Trust Factor | EN: Insufficient Trust Factor
+projectdetail.s_5: RU: Недостаточно Trust Factor | EN: Insufficient Trust Factor
+projectdetail.s_6: RU: Error joining project: | EN: Error joining project:
+projectdetail.s_7: RU: Внимание | EN: Attention
+projectdetail.s_8: RU: Ошибка | EN: Error
+projectdetail.s_9: RU: Ошибка | EN: Error
+projectdetail.s_10: RU: Ошибка | EN: Error
+projectdetail.s_11: RU: Необходимо указать причину выхода из проекта | EN: It is necessary to indicate the reason for leaving the project
+projectdetail.s_12: RU: Вы покинули проект | EN: You left the project
+projectdetail.s_13: RU: Error leaving project: | EN: Error leaving project:
+projectdetail.s_14: RU: Error leaving project: | EN: Error leaving project:
+projectdetail.s_15: RU: Внимание | EN: Attention
+projectdetail.s_16: RU: Не удалось открыть ссылку на 2ГИС | EN: Failed to open link to 2GIS
+projectdetail.s_17: RU: Внимание | EN: Attention
+projectdetail.s_18: RU: Локация не указана | EN: Location not specified
+projectdetail.s_19: RU: Внимание | EN: Attention
+projectdetail.s_20: RU: Номер телефона не указан | EN: Phone number not specified
+projectdetail.s_21: RU: Внимание | EN: Attention
+projectdetail.s_22: RU: Email не указан | EN: Email not specified
+projectdetail.s_23: RU: Внимание | EN: Attention
+projectdetail.s_24: RU: Telegram не указан | EN: Telegram is not specified
+projectdetail.s_25: RU: Внимание | EN: Attention
+projectdetail.s_26: RU: Не удалось открыть Telegram | EN: Failed to open Telegram
+projectdetail.s_27: RU: Внимание | EN: Attention
+projectdetail.s_28: RU: Веб-сайт не указан | EN: Website not listed
+projectdetail.s_29: RU: Внимание | EN: Attention
+projectdetail.s_30: RU: Не удалось открыть веб-сайт | EN: Couldn't open website
+projectdetail.s_31: RU: Внимание | EN: Attention
+projectdetail.s_32: RU: Информация об организаторе недоступна | EN: Organizer information not available
+projectdetail.s_33: RU: Поделились через: | EN: Shared via:
+projectdetail.s_34: RU: Поделились через: | EN: Shared via:
+projectdetail.s_35: RU: Sharing отменен | EN: Sharing canceled
+projectdetail.s_36: RU: Ошибка | EN: Error
+projectdetail.s_37: RU: Не удалось поделиться проектом | EN: Failed to share project
+projectdetail.s_38: RU: СОЦИАЛЬНАЯ ПОМОЩЬ | EN: SOCIAL ASSISTANCE
+projectdetail.s_39: RU: СОЦИАЛЬНАЯ ПОМОЩЬ | EN: SOCIAL ASSISTANCE
+projectdetail.s_40: RU: ЭКОЛОГИЯ | EN: ECOLOGY
+projectdetail.s_41: RU: Проект не найден | EN: Project not found
+projectdetail.s_42: RU: Назад | EN: Back
+projectdetail.s_43: RU: Локация | EN: Location
+projectdetail.s_44: RU: Локация | EN: Location
+projectdetail.s_45: RU: На карте | EN: On the map
+projectdetail.s_46: RU: Организатор | EN: Organizer
+projectdetail.s_48: RU: Подробнее | EN: More details
+projectdetail.s_49: RU: Описание | EN: Description
+projectdetail.s_50: RU: Участники | EN: Participants
+projectdetail.s_52: RU: Показать всех участников | EN: Show all participants
+projectdetail.s_53: RU: Пока нет участников | EN: No participants yet
+projectdetail.s_54: RU: Контакты | EN: Contacts
+projectdetail.s_55: RU: Все участники | EN: All participants
+projectdetail.s_57: RU: Нет участников | EN: No participants
+projectdetail.s_58: RU: Выход из проекта | EN: Exit from the project
+projectdetail.s_60: RU: Текущий TF | EN: Current TF
+projectdetail.s_61: RU: После выхода | EN: After release
+projectdetail.s_63: RU: Отмена | EN: Cancel
+projectdetail.s_64: RU: Продолжить | EN: Continue
+projectdetail.s_65: RU: Присоединиться к проекту? | EN: Join the project?
+projectdetail.s_69: RU: Отмена | EN: Cancel
+projectdetail.s_70: RU: Присоединиться | EN: Join
+projectdetail.s_71: RU: Причина выхода | EN: Reason for exit
+projectdetail.s_73: RU: Например: изменились планы, нет времени, личные обстоятельства... | EN: For example: plans have changed, there is no time, personal circumstances...
+projectdetail.s_74: RU: Отмена | EN: Cancel
+projectdetail.s_75: RU: Подтвердить выход | EN: Confirm exit
+projectdetail.s_76: RU: Покинуть проект | EN: Leave the project
+projectdetail.s_77: RU: Присоединиться к проекту | EN: Join the project
+projectdetail.s_78: RU: Поздравляем! | EN: Congratulations!
+projectdetail.s_79: RU: Поздравляем! | EN: Congratulations!
+projectdetail.s_82: RU: Отлично! | EN: Great!
+projectdetail.s_83: RU: Вы покинули проект | EN: You left the project
+projectdetail.s_84: RU: Применён штраф | EN: Penalty applied
+projectdetail.s_85: RU: Новый TF | EN: New TF
+projectdetail.s_87: RU: Понятно | EN: It's clear
+projects.s_0: RU: Error loading projects: | EN: Error loading projects:
+projects.s_1: RU: Error loading projects: | EN: Error loading projects:
+projects.s_2: RU: Недостаточно Trust Factor | EN: Insufficient Trust Factor
+projects.s_3: RU: Недостаточно Trust Factor | EN: Insufficient Trust Factor
+projects.s_4: RU: Присоединиться к проекту? | EN: Join the project?
+projects.s_5: RU: Присоединиться к проекту? | EN: Join the project?
+projects.s_6: RU: Отмена | EN: Cancel
+projects.s_7: RU: Да, присоединиться | EN: Yes, join
+projects.s_8: RU: Успешно | EN: Successfully
+projects.s_9: RU: Вы присоединились к проекту | EN: You have joined the project
+projects.s_10: RU: Error joining project: | EN: Error joining project:
+projects.s_11: RU: Внимание | EN: Attention
+projects.s_12: RU: Ошибка | EN: Error
+projects.s_13: RU: Ошибка | EN: Error
+projects.s_14: RU: Ошибка | EN: Error
+projects.s_15: RU: Укажите причину выхода из проекта | EN: Specify the reason for leaving the project
+projects.s_16: RU: Вы покинули проект. | EN: You left the project.
+projects.s_17: RU: Внимание | EN: Attention
+projects.s_18: RU: Успешно | EN: Successfully
+projects.s_19: RU: Не удалось покинуть проект | EN: Failed to leave project
+projects.s_20: RU: Не удалось покинуть проект | EN: Failed to leave project
+projects.s_21: RU: Социальная | EN: Social
+projects.s_22: RU: Социальная | EN: Social
+projects.s_23: RU: Экология | EN: Ecology
+projects.s_24: RU: Локация не указана | EN: Location not specified
+projects.s_27: RU: Вы участвуете | EN: Are you participating?
+projects.s_28: RU: Присоединиться | EN: Join
+projects.s_29: RU: Все проекты | EN: All projects
+projects.s_37: RU: Проектов не найдено | EN: No projects found
+submitphotoreport.s_0: RU: Не удалось загрузить задачу для фотоотчета. | EN: Failed to load task for photo report.
+submitphotoreport.s_1: RU: Не удалось загрузить задачу для фотоотчета. | EN: Failed to load task for photo report.
+submitphotoreport.s_2: RU: Ошибка | EN: Error
+submitphotoreport.s_3: RU: Фотоотчет недоступен | EN: Photo report not available
+submitphotoreport.s_4: RU: Сейчас для этой задачи нельзя отправить фотоотчет. | EN: Currently, you cannot submit a photo report for this task.
+submitphotoreport.s_5: RU: Фотоотчет недоступен | EN: Photo report not available
+submitphotoreport.s_6: RU: Файл слишком большой | EN: File too big
+submitphotoreport.s_7: RU: Один из файлов превышает 10 МБ и не был добавлен. | EN: One of the files is larger than 10 MB and was not added.
+submitphotoreport.s_8: RU: Лимит фотографий | EN: Photo limit
+submitphotoreport.s_9: RU: Нет доступа | EN: No access
+submitphotoreport.s_10: RU: Разрешите доступ к галерее, чтобы выбрать фотографии. | EN: Allow access to the gallery to select photos.
+submitphotoreport.s_11: RU: Лимит фотографий | EN: Photo limit
+submitphotoreport.s_12: RU: Нет доступа | EN: No access
+submitphotoreport.s_13: RU: Разрешите доступ к камере, чтобы сделать фотографию. | EN: Allow access to your camera to take a photo.
+submitphotoreport.s_14: RU: Добавьте фото | EN: Add a photo
+submitphotoreport.s_15: RU: Нужно выбрать хотя бы одну фотографию для фотоотчета. | EN: You must select at least one photo for the photo report.
+submitphotoreport.s_16: RU: Срок истёк | EN: Time limit has expired
+submitphotoreport.s_17: RU: Для просроченной задачи фотоотчёт загрузить нельзя. | EN: For an overdue task, a photo report cannot be uploaded.
+submitphotoreport.s_18: RU: Успешно | EN: Successfully
+submitphotoreport.s_19: RU: Успешно | EN: Successfully
+submitphotoreport.s_20: RU: Фотоотчет отправлен повторно и передан на проверку. | EN: The photo report was resent and submitted for verification.
+submitphotoreport.s_21: RU: Не удалось отправить фотоотчет. | EN: Failed to send photo report.
+submitphotoreport.s_22: RU: Не удалось отправить фотоотчет. | EN: Failed to send photo report.
+submitphotoreport.s_23: RU: Фотоотчет | EN: Photo report
+submitphotoreport.s_24: RU: ЗАДАЧА | EN: TASK
+submitphotoreport.s_25: RU: ЗАДАЧА | EN: TASK
+submitphotoreport.s_26: RU: Без названия | EN: Untitled
+submitphotoreport.s_27: RU: Нужно доработать фотоотчет | EN: Photo report needs to be improved
+submitphotoreport.s_28: RU: Организатор попросил отправить фотоотчет повторно. | EN: The organizer asked to send the photo report again.
+submitphotoreport.s_29: RU: Фотографии | EN: Photos
+submitphotoreport.s_30: RU: Фотографии | EN: Photos
+submitphotoreport.s_31: RU: Из галереи | EN: From gallery
+submitphotoreport.s_32: RU: Сделать фото | EN: Take a photo
+submitphotoreport.s_33: RU: Фотографии еще не выбраны | EN: Photos have not been selected yet
+submitphotoreport.s_34: RU: Комментарий | EN: Comment
+submitphotoreport.s_35: RU: Очистить | EN: Clear
+submitphotoreport.s_36: RU: При необходимости добавьте короткое пояснение | EN: Add a short explanation if necessary
+submitphotoreport.s_38: RU: Отправить повторно | EN: Resend
+submitphotoreport.s_39: RU: Отправить фотоотчет | EN: Send a photo report
+tasks.s_0: RU: Всего задач | EN: Total tasks
+tasks.s_1: RU: Всего задач | EN: Total tasks
+tasks.s_2: RU: Всего задач | EN: Total tasks
+tasks.s_3: RU: Открытые | EN: Open
+tasks.s_4: RU: В работе | EN: In progress
+tasks.s_5: RU: На проверке | EN: Under review
+tasks.s_6: RU: На доработке | EN: Under revision
+tasks.s_7: RU: Без названия | EN: Untitled
+tasks.s_8: RU: Локация не указана | EN: Location not specified
+tasks.s_9: RU: Error loading tasks: | EN: Error loading tasks:
+tasks.s_10: RU: Ошибка | EN: Error
+tasks.s_11: RU: Принять задачу? | EN: Accept the task?
+tasks.s_12: RU: Принять задачу? | EN: Accept the task?
+tasks.s_13: RU: Вы уверены, что хотите взять эту задачу? | EN: Are you sure you want to take on this task?
+tasks.s_14: RU: Отмена | EN: Cancel
+tasks.s_15: RU: Успешно | EN: Successfully
+tasks.s_16: RU: Задача принята в работу | EN: Task accepted
+tasks.s_17: RU: Не удалось принять задачу | EN: Failed to accept task
+tasks.s_18: RU: Не удалось принять задачу | EN: Failed to accept task
+tasks.s_19: RU: Отклонить задачу? | EN: Reject the task?
+tasks.s_20: RU: Отклонить задачу? | EN: Reject the task?
+tasks.s_21: RU: Вы уверены, что хотите отклонить эту задачу? | EN: Are you sure you want to decline this task?
+tasks.s_22: RU: Отмена | EN: Cancel
+tasks.s_23: RU: Задача отклонена | EN: Task rejected
+tasks.s_24: RU: Не удалось отклонить задачу | EN: Failed to reject task
+tasks.s_25: RU: Не удалось отклонить задачу | EN: Failed to reject task
+tasks.s_26: RU: Архивировать задачу? | EN: Archive the task?
+tasks.s_27: RU: Архивировать задачу? | EN: Archive the task?
+tasks.s_28: RU: Вы уверены, что хотите перенести эту задачу в архив? Она перестанет отображаться в списке активных. | EN: Are you sure you want to archive this task? It will no longer appear in the active list.
+tasks.s_29: RU: Отмена | EN: Cancel
+tasks.s_30: RU: Успешно | EN: Successfully
+tasks.s_31: RU: Задача перенесена в архив | EN: The task has been moved to the archive
+tasks.s_32: RU: Не удалось архивировать задачу | EN: Failed to archive task
+tasks.s_33: RU: Не удалось архивировать задачу | EN: Failed to archive task
+tasks.s_34: RU: Сегодня | EN: Today
+tasks.s_35: RU: Сегодня | EN: Today
+tasks.s_36: RU: Завтра | EN: Tomorrow
+tasks.s_37: RU: На проверке | EN: Under review
+tasks.s_38: RU: На доработке | EN: Under revision
+tasks.s_39: RU: В работе | EN: In progress
+tasks.s_40: RU: Завершено | EN: Completed
+tasks.s_41: RU: В архиве | EN: In the archive
+tasks.s_42: RU: Отклонено | EN: Rejected
+tasks.s_43: RU: Закрыто | EN: Closed
+tasks.s_44: RU: Просрочено | EN: Overdue
+tasks.s_45: RU: Просрочено | EN: Overdue
+tasks.s_46: RU: Открыто | EN: Open
+tasks.s_47: RU: Локальная задача | EN: Local task
+tasks.s_48: RU: Принять | EN: Accept
+tasks.s_49: RU: Отклонить | EN: Reject
+tasks.s_51: RU: В архив | EN: To the archive
+tasks.s_52: RU: Завершено | EN: Completed
+tasks.s_53: RU: Отчет на проверке | EN: Inspection report
+tasks.s_54: RU: Перенесено в архив | EN: Moved to archive
+tasks.s_55: RU: Задачи появятся в проектах, к которым вы присоединились. Сейчас можно открыть проекты и выбрать подходящую активность. | EN: Tasks will appear in the projects you have joined. Now you can open projects and select the appropriate activity.
+tasks.s_56: RU: Задачи появятся в проектах, к которым вы присоединились. Сейчас можно открыть проекты и выбрать подходящую активность. | EN: Tasks will appear in the projects you have joined. Now you can open projects and select the appropriate activity.
+tasks.s_57: RU: Главная | EN: Home
+tasks.s_58: RU: Главная | EN: Home
+tasks.s_59: RU: Мои задачи | EN: My tasks
+tasks.s_60: RU: Уведомления | EN: Notifications
+tasks.s_61: RU: Задач пока нет | EN: No tasks yet
+tasks.s_62: RU: Переход | EN: Transition
+tasks.s_63: RU: Откройте раздел проектов в приложении. | EN: Open the projects section in the application.
+tasks.s_64: RU: Открыть проекты | EN: Open projects
+volunteertaskdetail.s_0: RU: Ошибка | EN: Error
+volunteertaskdetail.s_1: RU: Не удалось загрузить детали задачи | EN: Failed to load task details
+volunteertaskdetail.s_2: RU: Успешно | EN: Successfully
+volunteertaskdetail.s_3: RU: Задача принята в работу | EN: Task accepted
+volunteertaskdetail.s_4: RU: Не удалось принять задачу | EN: Failed to accept task
+volunteertaskdetail.s_5: RU: Не удалось принять задачу | EN: Failed to accept task
+volunteertaskdetail.s_6: RU: Успех | EN: Success
+volunteertaskdetail.s_7: RU: Задача отклонена | EN: Task rejected
+volunteertaskdetail.s_8: RU: Не удалось отклонить задачу | EN: Failed to reject task
+volunteertaskdetail.s_9: RU: Не удалось отклонить задачу | EN: Failed to reject task
+volunteertaskdetail.s_10: RU: Чат недоступен | EN: Chat unavailable
+volunteertaskdetail.s_11: RU: Для этой задачи активный чат проекта пока не найден. | EN: No active project chat has been found for this task yet.
+volunteertaskdetail.s_12: RU: Чат проекта | EN: Project chat
+volunteertaskdetail.s_13: RU: Error opening task chat: | EN: Error opening task chat:
+volunteertaskdetail.s_14: RU: Ошибка | EN: Error
+volunteertaskdetail.s_15: RU: Задача не найдена | EN: Task not found
+volunteertaskdetail.s_16: RU: Задача не найдена | EN: Task not found
+volunteertaskdetail.s_17: RU: Отправить фотоотчет повторно | EN: Send photo report again
+volunteertaskdetail.s_18: RU: Отправить фотоотчет | EN: Send a photo report
+volunteertaskdetail.s_19: RU: ДНЕЙ | EN: DAYS
+volunteertaskdetail.s_20: RU: ДНЕЙ | EN: DAYS
+volunteertaskdetail.s_21: RU: ДНЕЙ | EN: DAYS
+volunteertaskdetail.s_22: RU: ИСТЕКЛО | EN: EXPIRED
+volunteertaskdetail.s_23: RU: СЕГОДНЯ | EN: TODAY
+volunteertaskdetail.s_24: RU: ДНЕЙ | EN: DAYS
+volunteertaskdetail.s_25: RU: ДНЕЙ | EN: DAYS
+volunteertaskdetail.s_26: RU: ДНЕЙ | EN: DAYS
+volunteertaskdetail.s_27: RU: часов | EN: hours
+volunteertaskdetail.s_28: RU: часов | EN: hours
+volunteertaskdetail.s_29: RU: часов | EN: hours
+volunteertaskdetail.s_30: RU: Весь день | EN: All day
+volunteertaskdetail.s_31: RU: Детали задачи | EN: Task details
+volunteertaskdetail.s_32: RU: Проверено | EN: Verified
+volunteertaskdetail.s_33: RU: Задача: | EN: Task:
+volunteertaskdetail.s_34: RU: Задача: | EN: Task:
+volunteertaskdetail.s_35: RU: ДЕДЛАЙН | EN: DEADLINE
+volunteertaskdetail.s_36: RU: Занимает времени | EN: Takes time
+volunteertaskdetail.s_37: RU: Место не указано | EN: Location not specified
+volunteertaskdetail.s_38: RU: ОРГАНИЗАТОР | EN: ORGANIZER
+volunteertaskdetail.s_39: RU: ОРГАНИЗАТОР | EN: ORGANIZER
+volunteertaskdetail.s_40: RU: ИСТОРИЯ АКТИВНОСТИ | EN: ACTIVITY HISTORY
+volunteertaskdetail.s_41: RU: Задача создана | EN: Task created
+volunteertaskdetail.s_42: RU: Вы приняли задачу | EN: You accepted the task
+volunteertaskdetail.s_43: RU: Фотоотчет загружен | EN: Photo report uploaded
+volunteertaskdetail.s_45: RU: Отчет ожидает решения организатора | EN: The report is awaiting the organizer's decision
+volunteertaskdetail.s_46: RU: Проверка завершена, требуется доработка | EN: Review completed, revision required
+volunteertaskdetail.s_47: RU: Фотоотчет успешно принят | EN: Photo report successfully accepted
+volunteertaskdetail.s_48: RU: На доработке | EN: Under revision
+volunteertaskdetail.s_49: RU: Решение организатора | EN: Organizer's decision
+volunteertaskdetail.s_52: RU: Подробная информация об отчете | EN: Details about the report
+volunteertaskdetail.s_53: RU: Отчет одобрен. Откройте карточку с отзывом организатора. | EN: The report has been approved. Open the organizer's review card.
+volunteertaskdetail.s_54: RU: Отчет одобрен. Откройте карточку с отзывом организатора. | EN: The report has been approved. Open the organizer's review card.
+volunteertaskdetail.s_55: RU: Отчет возвращен на доработку. Откройте причину и комментарий. | EN: The report has been returned for revision. Open the reason and comment.
+volunteertaskdetail.s_57: RU: Срок истек | EN: The deadline has expired
+volunteertaskdetail.s_58: RU: Отклонить | EN: Reject
+volunteertaskdetail.s_59: RU: Начать задачу | EN: Start task
+volunteertaskdetail.s_60: RU: Задача успешно завершена! | EN: Task completed successfully!
+volunteertaskdetail.s_61: RU: Отчет на проверке | EN: Inspection report
+volunteertaskdetail.s_62: RU: Задача в архиве | EN: Archived task
+volunteertaskdetail.s_63: RU: Фотоотчет отправлен | EN: Photo report sent
+projectcard.s_0: RU: Дата | EN: Date
+projectcard.s_1: RU: Локация | EN: Location
+projectcard.s_4: RU: Выйти из проекта | EN: Leave the project
+projectcard.s_5: RU: Присоединиться | EN: Join
+projectcardgrid.s_0: RU: Локация | EN: Location
+searchbar.s_0: RU: Поиск проектов... | EN: Search for projects...
+statsgrid.s_0: RU: МОИ ПРОЕКТЫ | EN: MY PROJECTS
+statsgrid.s_1: RU: ЗАДАЧ | EN: TASKS
+statsgrid.s_2: RU: ДОСТИЖЕНИЙ | EN: ACHIEVEMENTS
+trustfactorcard.s_0: RU: УРОВЕНЬ ВОЛОНТЁРА | EN: VOLUNTEER LEVEL
+trustfactorcard.s_1: RU: Статистика | EN: Statistics
+trustfactorcard.s_2: RU: из 5.0 | EN: from 5.0
+trustfactorcard.s_3: RU: Все проекты: | EN: All projects:
+tutorialoverlay.s_1: RU: Завершить | EN: Complete
+tutorialoverlay.s_2: RU: Далее | EN: Next
+permissioncard.s_0: RU: Разрешение предоставлено | EN: Permission granted
+permissioncard.s_1: RU: Открыть | EN: Open
+nextbestactioncard.s_0: RU: Следующее действие | EN: Next action
+nextbestactioncard.s_1: RU: Собираем персональную подсказку... | EN: Collecting personal tips...
+leaveprojectreasonmodal.s_0: RU: Причина выхода | EN: Reason for exit
+leaveprojectreasonmodal.s_3: RU: Напишите причину выхода | EN: Write the reason for leaving
+leaveprojectreasonmodal.s_4: RU: Отмена | EN: Cancel
+leaveprojectreasonmodal.s_5: RU: Выйти | EN: Log out

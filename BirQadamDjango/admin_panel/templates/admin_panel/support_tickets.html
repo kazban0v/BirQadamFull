@@ -1,0 +1,163 @@
+{% extends "admin_panel/base.html" %}
+
+{% load static %}
+
+{% block title %}Тикеты поддержки{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h4 class="card-title">Тикеты поддержки</h4>
+                    <span class="badge badge-primary">{{ total_tickets }} всего</span>
+                </div>
+                <div class="card-body">
+                    <!-- Фильтры -->
+                    <div class="row mb-4">
+                        <div class="col-md-3">
+                            <label for="statusFilter">Статус</label>
+                            <select id="statusFilter" class="form-control" onchange="filterTickets()">
+                                <option value="">Все статусы</option>
+                                <option value="open" {% if status_filter == 'open' %}selected{% endif %}>Открыт</option>
+                                <option value="in_progress" {% if status_filter == 'in_progress' %}selected{% endif %}>В обработке</option>
+                                <option value="resolved" {% if status_filter == 'resolved' %}selected{% endif %}>Решен</option>
+                                <option value="closed" {% if status_filter == 'closed' %}selected{% endif %}>Закрыт</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="sourceFilter">Источник</label>
+                            <select id="sourceFilter" class="form-control" onchange="filterTickets()">
+                                <option value="">Все источники</option>
+                                <option value="ai_chat" {% if source_filter == 'ai_chat' %}selected{% endif %}>AI Чат</option>
+                                <option value="manual" {% if source_filter == 'manual' %}selected{% endif %}>Ручное создание</option>
+                                <option value="email" {% if source_filter == 'email' %}selected{% endif %}>Email</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="searchInput">Поиск</label>
+                            <input type="text" id="searchInput" class="form-control" placeholder="Поиск по пользователю или сообщению..." value="{{ search_query }}" onkeypress="handleKeyPress(event)">
+                        </div>
+                        <div class="col-md-2 d-flex align-items-end">
+                            <button class="btn btn-primary w-100" onclick="filterTickets()">Фильтр</button>
+                        </div>
+                    </div>
+
+                    <!-- Таблица тикетов -->
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Пользователь</th>
+                                    <th>Сообщение</th>
+                                    <th>Статус</th>
+                                    <th>Источник</th>
+                                    <th>Дата создания</th>
+                                    <th>Действия</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for ticket in tickets %}
+                                <tr>
+                                    <td>#{{ ticket.id }}</td>
+                                    <td>
+                                        {% if ticket.user %}
+                                            <a href="{% url 'admin:auth_user_change' ticket.user.id %}" target="_blank">
+                                                {{ ticket.user.username }}
+                                            </a>
+                                            <br>
+                                            <small class="text-muted">{{ ticket.user.email }}</small>
+                                        {% else %}
+                                            Анонимный
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ ticket.message|truncatechars:100 }}</td>
+                                    <td>
+                                        <span class="badge 
+                                            {% if ticket.status == 'open' %}badge-info
+                                            {% elif ticket.status == 'in_progress' %}badge-warning
+                                            {% elif ticket.status == 'resolved' %}badge-success
+                                            {% elif ticket.status == 'closed' %}badge-secondary
+                                            {% endif %}">
+                                            {{ ticket.get_status_display }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span class="badge badge-light">{{ ticket.get_source_display }}</span>
+                                    </td>
+                                    <td>{{ ticket.created_at|date:"d.m.Y H:i" }}</td>
+                                    <td>
+                                        <a href="{% url 'admin_panel:ticket_detail' ticket.id %}" class="btn btn-sm btn-outline-primary">Открыть</a>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="7" class="text-center">Нет тикетов для отображения</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Пагинация -->
+                    {% if tickets.has_other_pages %}
+                    <nav aria-label="Тикеты пагинация">
+                        <ul class="pagination justify-content-center">
+                            {% if tickets.has_previous %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page=1{% if status_filter %}&status={{ status_filter }}{% endif %}{% if source_filter %}&source={{ source_filter }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}">&laquo; Первая</a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ tickets.previous_page_number }}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if source_filter %}&source={{ source_filter }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}">Предыдущая</a>
+                                </li>
+                            {% endif %}
+                            
+                            <li class="page-item active">
+                                <span class="page-link">
+                                    Страница {{ tickets.number }} из {{ tickets.paginator.num_pages }}
+                                </span>
+                            </li>
+                            
+                            {% if tickets.has_next %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ tickets.next_page_number }}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if source_filter %}&source={{ source_filter }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}">Следующая</a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ tickets.paginator.num_pages }}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if source_filter %}&source={{ source_filter }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}">Последняя &raquo;</a>
+                                </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function filterTickets() {
+    const status = document.getElementById('statusFilter').value;
+    const source = document.getElementById('sourceFilter').value;
+    const search = document.getElementById('searchInput').value;
+    
+    let url = window.location.pathname;
+    const params = new URLSearchParams();
+    
+    if (status) params.set('status', status);
+    if (source) params.set('source', source);
+    if (search) params.set('search', search);
+    
+    url += '?' + params.toString();
+    window.location.href = url;
+}
+
+function handleKeyPress(event) {
+    if (event.key === 'Enter') {
+        filterTickets();
+    }
+}
+</script>
+{% endblock %}

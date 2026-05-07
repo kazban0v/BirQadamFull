@@ -1,0 +1,429 @@
+{% extends 'admin_panel/base.html' %} {% load static %}
+
+{% block topbar_title %}Проект: {{ project.title }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* ── Hero ── */
+    .prj-hero {
+        background: linear-gradient(135deg, var(--gray-900) 0%, #667eea 50%, #764ba2 100%);
+        border-radius: var(--radius-lg); padding: 2rem; color: #fff;
+        position: relative; overflow: hidden; margin-bottom: 1.25rem;
+    }
+    .prj-hero::before {
+        content: ""; position: absolute;
+        width: 280px; height: 280px; border-radius: 50%;
+        right: -70px; top: -110px; background: rgba(255,255,255,0.06);
+        pointer-events: none;
+    }
+    .prj-hero > * { position: relative; z-index: 1; }
+    .prj-back {
+        display: inline-flex; align-items: center; gap: 0.4rem;
+        padding: 0.4rem 0.85rem; border-radius: 0.5rem;
+        background: rgba(255,255,255,0.12); color: rgba(255,255,255,0.85);
+        text-decoration: none; font-size: 0.8rem; font-weight: 700;
+        transition: background 0.2s; margin-bottom: 1rem;
+    }
+    .prj-back:hover { background: rgba(255,255,255,0.2); color: #fff; }
+    .prj-hero h1 { margin: 0 0 0.25rem; font-size: 1.65rem; font-weight: 800; letter-spacing: -0.02em; }
+    .prj-hero p  { margin: 0; color: rgba(255,255,255,0.65); font-size: 0.85rem; }
+
+    /* ── Stats row ── */
+    .prj-stats {
+        display: grid; grid-template-columns: repeat(4,1fr);
+        gap: 1rem; margin-bottom: 1.25rem;
+    }
+    @media (max-width: 900px) { .prj-stats { grid-template-columns: repeat(2,1fr); } }
+    @media (max-width: 500px)  { .prj-stats { grid-template-columns: 1fr; } }
+
+    .prj-stat-card {
+        background: #fff; border: 1px solid var(--gray-200);
+        border-radius: var(--radius-lg); padding: 1.25rem;
+        box-shadow: var(--shadow-sm); display: flex;
+        align-items: center; gap: 1rem;
+        transition: transform var(--transition), box-shadow var(--transition);
+    }
+    .prj-stat-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+    .prj-stat-icon {
+        width: 48px; height: 48px; border-radius: var(--radius);
+        display: flex; align-items: center; justify-content: center;
+        font-size: 1.25rem; flex-shrink: 0;
+    }
+    .prj-stat-icon.purple { background: #e0e7ff; color: #4f46e5; }
+    .prj-stat-icon.green  { background: #d1fae5; color: var(--success); }
+    .prj-stat-icon.blue   { background: var(--primary-light); color: var(--primary); }
+    .prj-stat-icon.orange { background: #fef3c7; color: var(--warning); }
+    .prj-stat-label { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--gray-400); font-weight: 700; }
+    .prj-stat-value { font-size: 1.6rem; font-weight: 800; color: var(--gray-900); line-height: 1; margin-top: 0.2rem; }
+
+    /* ── Layout ── */
+    .prj-analytics-grid { display: grid; grid-template-columns: 280px 1fr 1fr; gap: 1.25rem; margin-bottom: 1.25rem; }
+    .prj-analytics-grid > div { min-width: 0; }
+    @media (max-width: 1100px) { .prj-analytics-grid { grid-template-columns: 280px 1fr; } }
+    @media (max-width: 900px) { .prj-analytics-grid { grid-template-columns: 1fr; } }
+
+    /* ── Cards ── */
+    .prj-card {
+        background: #fff; border: 1px solid var(--gray-200);
+        border-radius: var(--radius-lg); box-shadow: var(--shadow-sm);
+        overflow: hidden; margin-bottom: 1.25rem;
+    }
+    .prj-card-header {
+        background: var(--gray-900); color: #fff;
+        padding: 0.9rem 1.25rem; display: flex; align-items: center; gap: 0.5rem;
+        font-size: 0.875rem; font-weight: 700;
+    }
+    .prj-card-body { padding: 1.25rem; }
+
+    /* ── Info row ── */
+    .prj-info-row {
+        display: flex; justify-content: space-between; align-items: center;
+        padding: 0.55rem 0; border-bottom: 1px solid var(--gray-100);
+        font-size: 0.82rem;
+    }
+    .prj-info-row:last-child { border-bottom: none; }
+    .prj-info-row span { color: var(--gray-500); }
+    .prj-info-row strong { color: var(--gray-800); text-align: right; max-width: 60%; word-break: break-all; }
+
+    /* ── Chart area ── */
+    .prj-chart-area { height: 260px; position: relative; width: 100%; }
+    .prj-chart-area.large { height: 320px; }
+
+    /* ── Table ── */
+    .prj-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+    .prj-table thead th {
+        padding: 0.65rem 1rem; font-size: 0.68rem; font-weight: 700;
+        text-transform: uppercase; letter-spacing: 0.04em;
+        color: var(--gray-500); background: var(--gray-50);
+        border-bottom: 1px solid var(--gray-200);
+    }
+    .prj-table tbody td {
+        padding: 0.75rem 1rem; border-bottom: 1px solid var(--gray-100);
+        vertical-align: middle; color: var(--gray-700);
+    }
+    .prj-table tbody tr:last-child td { border-bottom: none; }
+    .prj-table tbody tr:hover td { background: var(--gray-50); }
+
+    /* ── Badge ── */
+    .status-badge {
+        padding: 0.22rem 0.55rem; border-radius: 999px;
+        font-size: 0.68rem; font-weight: 700; display: inline-block;
+    }
+    .status-approved { background: #d1fae5; color: #059669; }
+    .status-rejected { background: #fee2e2; color: #b91c1c; }
+    .status-pending  { background: #fef3c7; color: #d97706; }
+
+    /* ── Buttons ── */
+    .prj-btn {
+        display: block; width: 100%; text-align: center;
+        padding: 0.5rem 1rem; border-radius: 0.5rem;
+        background: var(--gray-900); color: #fff;
+        font-size: 0.85rem; font-weight: 700; text-decoration: none;
+        transition: all 0.2s; border: none; cursor: pointer;
+    }
+    .prj-btn:hover { background: var(--gray-800); transform: translateY(-1px); color: #fff; }
+    .prj-btn.outline {
+        background: transparent; border: 1px solid var(--gray-300); color: var(--gray-700);
+    }
+    .prj-btn.outline:hover { background: var(--gray-50); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0">
+
+    <!-- Hero -->
+    <div class="prj-hero">
+        <a href="{% url 'admin_panel:project_list' %}" class="prj-back">
+            <i class="fas fa-arrow-left"></i> Все проекты
+        </a>
+        <h1><i class="fas fa-project-diagram me-2"></i>{{ project.title }}</h1>
+        <p>Детальная аналитика и управление проектом</p>
+    </div>
+
+    <!-- Stat cards -->
+    <div class="prj-stats">
+        <div class="prj-stat-card">
+            <div class="prj-stat-icon blue"><i class="fas fa-users"></i></div>
+            <div>
+                <div class="prj-stat-label">Волонтёров</div>
+                <div class="prj-stat-value">{{ project.volunteer_projects.count }}</div>
+            </div>
+        </div>
+        <div class="prj-stat-card">
+            <div class="prj-stat-icon purple"><i class="fas fa-tasks"></i></div>
+            <div>
+                <div class="prj-stat-label">Всего задач</div>
+                <div class="prj-stat-value">{{ project.tasks.count }}</div>
+            </div>
+        </div>
+        <div class="prj-stat-card">
+            <div class="prj-stat-icon orange"><i class="fas fa-city"></i></div>
+            <div>
+                <div class="prj-stat-label">Локация</div>
+                <div class="prj-stat-value" style="font-size: 1.1rem; margin-top: 0.4rem;">{{ project.city }}</div>
+            </div>
+        </div>
+        <div class="prj-stat-card">
+            <div class="prj-stat-icon green"><i class="fas fa-flag"></i></div>
+            <div>
+                <div class="prj-stat-label">Статус</div>
+                 <div style="margin-top:0.3rem;"><span class="status-badge status-{{ project.status }}">{{ project.get_status_display }}</span></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3-Column Grid -->
+    <div class="prj-analytics-grid">
+        <!-- Left: Project Info -->
+        <div class="prj-card" style="height: 100%; margin-bottom: 0;">
+            <div class="prj-card-header"><i class="fas fa-info-circle"></i> О проекте</div>
+            <div class="prj-card-body">
+                <div style="font-size: 0.85rem; color: var(--gray-600); margin-bottom: 1rem; line-height: 1.5;">
+                    {{ project.description|default:"Нет описания" }}
+                </div>
+                <hr style="border-color:var(--gray-100); margin:0.75rem 0;">
+                <div class="prj-info-row">
+                    <span><i class="fas fa-calendar-plus me-1"></i> Создан</span>
+                    <strong>{{ project.created_at|date:"d.m.Y" }}</strong>
+                </div>
+                <div class="prj-info-row">
+                    <span><i class="fas fa-user-tie me-1"></i> Организатор</span>
+                    <strong>{{ project.creator.name|default:project.creator.username }}</strong>
+                </div>
+                <hr style="border-color:var(--gray-100); margin:0.75rem 0 1rem 0;">
+                <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                    <a href="{% url 'admin_panel:project_edit' project.id %}" class="prj-btn">
+                        <i class="fas fa-edit me-1"></i> Редактировать
+                    </a>
+                    <a href="{% url 'admin_panel:project_feedback' project.id %}" class="prj-btn outline">
+                        <i class="fas fa-comments me-1"></i> Отзывы
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Middle: Task Status Chart -->
+        <div class="prj-card" style="height: 100%; margin-bottom: 0;">
+            <div class="prj-card-header"><i class="fas fa-chart-doughnut"></i> Статусы задач</div>
+            <div class="prj-card-body d-flex flex-column justify-content-center">
+                <div class="prj-chart-area"><canvas id="taskStatsChart"></canvas></div>
+            </div>
+        </div>
+
+        <!-- Right: Top Volunteers -->
+        <div class="prj-card" style="height: 100%; margin-bottom: 0;">
+            <div class="prj-card-header"><i class="fas fa-trophy text-warning"></i> Топ волонтёров</div>
+            <div class="prj-card-body" style="padding:0;">
+                <table class="prj-table">
+                    <thead>
+                        <tr>
+                            <th>Волонтёр</th>
+                            <th class="text-center">Задач</th>
+                            <th class="text-center">Рейтинг</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for volunteer in top_volunteers %}
+                        <tr>
+                            <td>
+                                <div style="display:flex; align-items:center; gap:0.5rem;">
+                                    <div style="width:28px; height:28px; border-radius:50%; background:var(--primary-light); color:var(--primary); display:flex; align-items:center; justify-content:center; font-size:0.75rem; font-weight:800;">
+                                        {{ volunteer.username|slice:":1"|upper }}
+                                    </div>
+                                    <strong style="font-size:0.85rem;">{{ volunteer.username|truncatechars:15 }}</strong>
+                                </div>
+                            </td>
+                            <td class="text-center">
+                                <span style="background:#e0e7ff; color:#4f46e5; padding:0.15rem 0.5rem; border-radius:999px; font-size:0.7rem; font-weight:700;">{{ volunteer.task_count }}</span>
+                            </td>
+                            <td class="text-center">
+                                {% if volunteer.avg_rating %}
+                                <span style="color:#f59e0b; font-weight:700; font-size:0.8rem;">{{ volunteer.avg_rating|floatformat:1 }}⭐</span>
+                                {% else %}
+                                <span style="color:var(--gray-400);">-</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="3">
+                                <div style="text-align:center; padding:1.5rem; color:var(--gray-400);">
+                                    <i class="fas fa-users-slash" style="font-size:1.5rem; opacity:0.5; margin-bottom:0.5rem; display:block;"></i>
+                                    <span style="font-size:0.8rem;">Нет активных волонтёров</span>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Full Width Row: All Volunteers List -->
+    <div class="prj-card">
+        <div class="prj-card-header"><i class="fas fa-users"></i> Все участники проекта</div>
+        <div class="prj-card-body" style="padding:0; max-height: 400px; overflow-y: auto;">
+            <table class="prj-table">
+                <thead style="position: sticky; top: 0; z-index: 10;">
+                    <tr>
+                        <th>Волонтёр</th>
+                        <th>Email</th>
+                        <th class="text-center">Дата вступления</th>
+                        <th class="text-center">Статус</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for vp in project.volunteer_projects.all %}
+                    <tr>
+                        <td>
+                            <div style="display:flex; align-items:center; gap:0.5rem;">
+                                <div style="width:28px; height:28px; border-radius:50%; background:var(--primary-light); color:var(--primary); display:flex; align-items:center; justify-content:center; font-size:0.75rem; font-weight:800;">
+                                    {{ vp.volunteer.username|slice:":1"|upper }}
+                                </div>
+                                <strong style="font-size:0.85rem;">{{ vp.volunteer.name|default:vp.volunteer.username }}</strong>
+                            </div>
+                        </td>
+                        <td style="font-size:0.8rem; color:var(--gray-500);">{{ vp.volunteer.email|default:"-" }}</td>
+                        <td class="text-center" style="font-size:0.8rem;">{{ vp.joined_at|date:"d.m.Y" }}</td>
+                        <td class="text-center">
+                            {% if vp.is_active %}
+                            <span class="status-badge status-approved">Активен</span>
+                            {% else %}
+                            <span class="status-badge status-rejected">Не активен</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="4">
+                            <div class="prj-empty">
+                                <i class="fas fa-users-slash"></i>
+                                <p style="font-weight:600;">В проекте пока нет участников</p>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Full Width Row: Activity Chart -->
+    <div class="prj-card">
+        <div class="prj-card-header"><i class="fas fa-chart-line"></i> Активность волонтёров по дням</div>
+        <div class="prj-card-body">
+            <div class="prj-chart-area large"><canvas id="activityChart"></canvas></div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const fontFamily = "'Plus Jakarta Sans', sans-serif";
+    const tooltipDefaults = {
+        backgroundColor: '#fff', titleColor: '#334155', bodyColor: '#64748b',
+        borderColor: '#e2e8f0', borderWidth: 1, padding: 12, displayColors: true
+    };
+
+    // Task Stats Doughnut
+    let taskStatsData = [];
+    try {
+        taskStatsData = JSON.parse('{{ task_stats|escapejs }}') || [];
+    } catch(e) { console.error(e); }
+
+    const taskMap = {
+        'open': { label: 'Открыта', color: '#94a3b8' },
+        'in_progress': { label: 'В работе', color: '#3b82f6' },
+        'under_review': { label: 'На проверке', color: '#8b5cf6' },
+        'revision': { label: 'На доработке', color: '#f97316' },
+        'completed': { label: 'Выполнено', color: '#10b981' },
+        'failed': { label: 'Отклонено', color: '#ef4444' },
+        'closed': { label: 'Закрыто', color: '#6b7280' },
+        'archived': { label: 'В архиве', color: '#e5e7eb' }
+    };
+
+    const taskLabels = [];
+    const taskCounts = [];
+    const taskColors = [];
+    taskStatsData.forEach(item => {
+        taskLabels.push(taskMap[item.status]?.label || item.status);
+        taskCounts.push(item.count);
+        taskColors.push(taskMap[item.status]?.color || '#94a3b8');
+    });
+
+    if(taskLabels.length === 0) { taskLabels.push('Нет задач'); taskCounts.push(1); taskColors.push('#e2e8f0'); }
+
+    const taskCtx = document.getElementById('taskStatsChart');
+    if (taskCtx) {
+        new Chart(taskCtx, {
+            type: 'doughnut',
+            data: {
+                labels: taskLabels,
+                datasets: [{ data: taskCounts, backgroundColor: taskColors, borderWidth: 2, borderColor: '#fff' }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false, cutout: '65%',
+                plugins: {
+                    legend: { position: 'bottom', labels: { font: { family: fontFamily, size: 11 }, padding: 12, usePointStyle: true } },
+                    tooltip: tooltipDefaults
+                }
+            }
+        });
+    }
+
+    // Activity Line Chart
+    let activityData = [];
+    try {
+        activityData = JSON.parse('{{ activity_data|escapejs }}') || [];
+    } catch(e) { console.error(e); }
+
+    const actCtx = document.getElementById('activityChart');
+    if (actCtx && activityData.length > 0) {
+        const actGradient = actCtx.getContext('2d').createLinearGradient(0, 0, 0, 300);
+        actGradient.addColorStop(0, 'rgba(102, 126, 234, 0.4)');
+        actGradient.addColorStop(1, 'rgba(102, 126, 234, 0.0)');
+
+        new Chart(actCtx, {
+            type: 'line',
+            data: {
+                labels: activityData.map(item => item.day),
+                datasets: [{
+                    label: 'Выполненные задачи',
+                    data: activityData.map(item => item.count),
+                    borderColor: '#667eea',
+                    backgroundColor: actGradient,
+                    borderWidth: 3, fill: true, tension: 0.4,
+                    pointBackgroundColor: '#667eea', pointBorderColor: '#fff',
+                    pointBorderWidth: 2, pointRadius: 4, pointHoverRadius: 6
+                }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                scales: {
+                    y: { beginAtZero: true, grid: { color: 'rgba(0,0,0,0.05)' }, ticks: { font: { family: fontFamily, size: 11 } } },
+                    x: { grid: { display: false }, ticks: { font: { family: fontFamily, size: 11 }, maxRotation: 45, minRotation: 0 } }
+                },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        ...tooltipDefaults,
+                        callbacks: {
+                            title: ctx => `Дата: ${ctx[0].label}`,
+                            label: ctx => `Выполнено: ${ctx.raw} задач`
+                        }
+                    }
+                }
+            }
+        });
+    } else if (actCtx) {
+        // Fallback for empty activity
+        actCtx.outerHTML = '<div style="text-align:center; padding:3rem 1rem; color:var(--gray-400);"><i class="fas fa-chart-line" style="font-size:2.5rem; opacity:0.3; margin-bottom:0.75rem; display:block;"></i><p>Нет активности</p></div>';
+    }
+});
+</script>
+{% endblock %}

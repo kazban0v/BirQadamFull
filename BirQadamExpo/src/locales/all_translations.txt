@@ -1,0 +1,948 @@
+appnavigator.s_0: RU: Проекты | KK: Жобалар
+appnavigator.s_1: RU: Центр помощи | KK: Анықтама орталығы
+appnavigator.s_2: RU: Центр помощи | KK: Анықтама орталығы
+appnavigator.s_3: RU: Конфиденциальность | KK: Құпиялылық саясаты
+appnavigator.s_4: RU: О приложении | KK: Қосымша туралы
+customtabbar.s_0: RU: Главная | KK: Басты бет
+customtabbar.s_1: RU: Главная | KK: Басты бет
+customtabbar.s_2: RU: Задачи | KK: Тапсырмалар
+customtabbar.s_3: RU: Календарь | KK: Күнтізбе
+customtabbar.s_4: RU: Чаты | KK: Чаттар
+emailverification.s_0: RU: Введите код | KK: Кодты енгізіңіз
+emailverification.s_1: RU: Введите код | KK: Кодты енгізіңіз
+emailverification.s_2: RU: Успешно | KK: Сәтті
+emailverification.s_3: RU: Код подтверждения отправлен повторно | KK: Растау коды қайта жіберілді
+emailverification.s_4: RU: Успешно | KK: Сәтті
+emailverification.s_5: RU: Код подтверждения отправлен повторно | KK: Растау коды қайта жіберілді
+emailverification.s_6: RU: Отмена регистрации | KK: Тіркеуді болдырмау
+emailverification.s_7: RU: Отмена регистрации | KK: Тіркеуді болдырмау
+emailverification.s_8: RU: Вы уверены, что хотите отменить регистрацию? Все данные будут удалены. | KK: Тіркеуден бас тартқыңыз келетініне сенімдісіз бе? Барлық деректер жойылады.
+emailverification.s_9: RU: Нет | KK: Жоқ
+emailverification.s_10: RU: [EmailVerification] Cancel error: | KK: [EmailVerification] Бас тарту қатесі:
+emailverification.s_11: RU: Ошибка | KK: Қате
+emailverification.s_12: RU: Подтвердите email | KK: Email растаңыз
+emailverification.s_13: RU: Подтвердите email | KK: Email растаңыз
+emailverification.s_14: RU: Код подтверждения | KK: Тексеру коды
+emailverification.s_15: RU: Подтвердить | KK: Растау
+emailverification.s_16: RU: Отправить код повторно | KK: Кодты қайта жіберу
+emailverification.s_17: RU: Отменить регистрацию | KK: Тіркеуден бас тарту
+login.s_0: RU: Введите email, телефон или имя пользователя | KK: Email, телефон немесе логинді енгізіңіз
+login.s_1: RU: Введите пароль | KK: Құпия сөзіңізді енгізіңіз
+login.s_2: RU: Сбросить онбординг? | KK: Онбордингті қалпына келтіру керек пе?
+login.s_3: RU: Сбросить онбординг? | KK: Онбордингті қалпына келтіру керек пе?
+login.s_4: RU: Вы снова увидите экраны приветствия при следующем запуске | KK: Келесі кіргенде сәлемдесу экрандарын қайта көресіз
+login.s_5: RU: Отмена | KK: Болдырмау
+login.s_6: RU: Готово | KK: Дайын
+login.s_7: RU: Онбординг будет показан при следующем запуске приложения | KK: Онбординг қосымшаны келесі іске қосқанда көрсетіледі
+login.s_8: RU: Вместе делаем город чище! | KK: Біз бірге қаланы таза етеміз!
+login.s_9: RU: Email, телефон или имя пользователя | KK: Email, телефон немесе логин
+login.s_10: RU: Email, телефон или имя пользователя | KK: Email, телефон немесе логин
+login.s_11: RU: Пароль | KK: Құпия сөз
+login.s_12: RU: Пароль | KK: Құпия сөз
+login.s_13: RU: Забыли пароль? | KK: Құпия сөзіңізді ұмыттыңыз ба?
+login.s_14: RU: Войти | KK: Жүйеге кіру
+login.s_15: RU: Нет аккаунта? | KK: Есептік жазбаңыз жоқ па?
+login.s_16: RU: Зарегистрироваться как волонтёр | KK: Волонтер ретінде тіркеліңіз
+login.s_17: RU: Сбросить онбординг (Debug) | KK: Онбордингті қалпына келтіру (Debug)
+passwordreset.s_0: RU: Введите email | KK: Электрондық поштаны енгізіңіз
+passwordreset.s_1: RU: Введите email | KK: Электрондық поштаны енгізіңіз
+passwordreset.s_2: RU: Введите код | KK: Кодты енгізіңіз
+passwordreset.s_3: RU: Введите код | KK: Кодты енгізіңіз
+passwordreset.s_4: RU: Введите новый пароль | KK: Жаңа құпия сөзді енгізіңіз
+passwordreset.s_5: RU: Введите новый пароль | KK: Жаңа құпия сөзді енгізіңіз
+passwordreset.s_6: RU: Пароли не совпадают | KK: Құпия сөздер сәйкес келмейді
+passwordreset.s_7: RU: Пароль успешно изменён. Теперь вы можете войти с новым паролем. | KK: Құпия сөз сәтті өзгертілді. Енді сіз жаңа құпия сөзбен кіре аласыз.
+passwordreset.s_8: RU: Сброс пароля | KK: Құпия сөзді қалпына келтіру
+passwordreset.s_9: RU: Сброс пароля | KK: Құпия сөзді қалпына келтіру
+passwordreset.s_10: RU: Отправить код | KK: Код жіберу
+passwordreset.s_11: RU: Введите код | KK: Кодты енгізіңіз
+passwordreset.s_12: RU: Введите код | KK: Кодты енгізіңіз
+passwordreset.s_13: RU: Код подтверждения | KK: Тексеру коды
+passwordreset.s_14: RU: Продолжить | KK: Жалғастыру
+passwordreset.s_15: RU: Отправить код повторно | KK: Кодты қайта жіберу
+passwordreset.s_16: RU: Новый пароль | KK: Жаңа құпия сөз
+passwordreset.s_17: RU: Новый пароль | KK: Жаңа құпия сөз
+passwordreset.s_18: RU: Новый пароль | KK: Жаңа құпия сөз
+passwordreset.s_19: RU: Новый пароль | KK: Жаңа құпия сөз
+passwordreset.s_20: RU: Подтверждение пароля | KK: Құпия сөзді растау
+passwordreset.s_21: RU: Подтверждение пароля | KK: Құпия сөзді растау
+passwordreset.s_22: RU: Изменить пароль | KK: Құпия сөзді өзгерту
+passwordreset.s_23: RU: Сброс пароля | KK: Құпия сөзді қалпына келтіру
+passwordreset.s_24: RU: Сброс пароля | KK: Құпия сөзді қалпына келтіру
+passwordreset.s_25: RU: Сброс пароля | KK: Құпия сөзді қалпына келтіру
+registervolunteer.s_0: RU: Введите ФИО | KK: Толық аты-жөніңізді енгізіңіз
+registervolunteer.s_1: RU: Введите номер телефона | KK: Телефон нөміріңізді енгізіңіз
+registervolunteer.s_2: RU: Введите email | KK: Электрондық поштаны енгізіңіз
+registervolunteer.s_3: RU: Введите email | KK: Электрондық поштаны енгізіңіз
+registervolunteer.s_4: RU: Введите пароль | KK: Құпия сөзіңізді енгізіңіз
+registervolunteer.s_5: RU: Введите пароль | KK: Құпия сөзіңізді енгізіңіз
+registervolunteer.s_6: RU: Пароли не совпадают | KK: Құпия сөздер сәйкес келмейді
+registervolunteer.s_7: RU: Отмена регистрации | KK: Тіркеуден бас тарту
+registervolunteer.s_8: RU: Отмена регистрации | KK: Тіркеуден бас тарту
+registervolunteer.s_9: RU: Вы уверены, что хотите отменить регистрацию? | KK: Тіркеуден бас тартқыңыз келетініне сенімдісіз бе?
+registervolunteer.s_10: RU: Нет | KK: Жоқ
+registervolunteer.s_11: RU: Ошибка | KK: Қате
+registervolunteer.s_12: RU: Не удалось отменить регистрацию | KK: Тіркеуді болдырмау сәтсіз аяқталды
+registervolunteer.s_13: RU: Подтвердите email | KK: Электрондық поштаңызды растаңыз
+registervolunteer.s_14: RU: Подтвердите email | KK: Электрондық поштаңызды растаңыз
+registervolunteer.s_15: RU: Ввести код подтверждения | KK: Растау кодын енгізіңіз
+registervolunteer.s_16: RU: Отменить регистрацию | KK: Тіркеуден бас тарту
+registervolunteer.s_17: RU: Регистрация волонтёра | KK: Волонтерлерді тіркеу
+registervolunteer.s_18: RU: ФИО | KK: Толық аты-жөні
+registervolunteer.s_19: RU: ФИО | KK: Толық аты-жөні
+registervolunteer.s_20: RU: Номер телефона | KK: Телефон нөмірі
+registervolunteer.s_21: RU: Пароль | KK: Құпия сөз
+registervolunteer.s_22: RU: Пароль | KK: Құпия сөз
+registervolunteer.s_23: RU: Подтверждение пароля | KK: Құпия сөзді растау
+registervolunteer.s_24: RU: Подтверждение пароля | KK: Құпия сөзді растау
+registervolunteer.s_25: RU: Зарегистрироваться | KK: Тіркелу
+registervolunteer.s_26: RU: Уже есть аккаунт? | KK: Есептік жазбаңыз әлдеқашан бар ма?
+registervolunteer.s_27: RU: Уже есть аккаунт? | KK: Есептік жазбаңыз әлдеқашан бар ма?
+permissionsstatus.s_0: RU: Уведомления | KK: Хабарландырулар
+permissionsstatus.s_1: RU: Уведомления | KK: Хабарландырулар
+permissionsstatus.s_2: RU: Геолокация | KK: Геолокация
+permissionsstatus.s_3: RU: Геолокация | KK: Геолокация
+permissionsstatus.s_4: RU: Интернет | KK: Интернет
+permissionsstatus.s_5: RU: Интернет | KK: Интернет
+permissionsstatus.s_6: RU: Всё готово! | KK: Барлығы дайын!
+permissionsstatus.s_7: RU: Всё готово! | KK: Барлығы дайын!
+permissionsstatus.s_8: RU: \n | KK: \n
+permissionsstatus.s_9: RU: Разрешения | KK: Рұқсаттар
+permissionsstatus.s_10: RU: Требуются разрешения | KK: Рұқсаттар қажет
+permissionsstatus.s_11: RU: Требуются разрешения | KK: Рұқсаттар қажет
+permissionsstatus.s_12: RU: \n | KK: \n
+permissionsstatus.s_14: RU: Проверка... | KK: Тексерілуде...
+permissionsstatus.s_15: RU: Проверить снова | KK: Қайтадан тексеріңіз
+aboutapp.s_0: RU: Версия {APP_VERSION} | KK: Нұсқа {APP_VERSION}
+aboutapp.s_1: RU: Версия {APP_VERSION} | KK: Нұсқа {APP_VERSION}
+aboutapp.s_2: RU: Что доступно в приложении | KK: Қосымшада не қолжетімді
+aboutapp.s_3: RU: Участие в проектах и выполнение задач | KK: Жобаларға қатысу және тапсырмаларды орындау
+aboutapp.s_4: RU: Загрузка фотоотчётов и отслеживание статусов | KK: Фото есептерді жүктеп салу және күйлерді бақылау
+aboutapp.s_5: RU: Просмотр баллов, часов и личной активности | KK: Ұпайларды, сағаттарды және жеке белсенділікті көру
+aboutapp.s_6: RU: Полезные ссылки | KK: Пайдалы сілтемелер
+aboutapp.s_7: RU: Веб-портал | KK: Веб-портал
+aboutapp.s_8: RU: Политика конфиденциальности | KK: Құпиялылық саясаты
+aboutapp.s_9: RU: Помощь и поддержка | KK: Көмек және қолдау
+achievements.s_0: RU: Январь | KK: Қаңтар
+achievements.s_1: RU: Февраль | KK: Ақпан
+achievements.s_2: RU: Март | KK: Наурыз
+achievements.s_3: RU: Апрель | KK: Сәуір
+achievements.s_4: RU: Май | KK: Мамыр
+achievements.s_5: RU: Июнь | KK: Маусым
+achievements.s_6: RU: Июль | KK: Шілде
+achievements.s_7: RU: Август | KK: Тамыз
+achievements.s_8: RU: Сентябрь | KK: Қыркүйек
+achievements.s_9: RU: Октябрь | KK: Қазан
+achievements.s_10: RU: Ноябрь | KK: Қараша
+achievements.s_11: RU: Декабрь | KK: Желтоқсан
+achievements.s_12: RU: Январь | KK: Қаңтар
+achievements.s_13: RU: Февраль | KK: Ақпан
+achievements.s_14: RU: Март | KK: Наурыз
+achievements.s_15: RU: Апрель | KK: Сәуір
+achievements.s_16: RU: Май | KK: Мамыр
+achievements.s_17: RU: Июнь | KK: Маусым
+achievements.s_18: RU: Июль | KK: Шілде
+achievements.s_19: RU: Август | KK: Тамыз
+achievements.s_20: RU: Сентябрь | KK: Қыркүйек
+achievements.s_21: RU: Октябрь | KK: Қазан
+achievements.s_22: RU: Ноябрь | KK: Қараша
+achievements.s_23: RU: Декабрь | KK: Желтоқсан
+achievements.s_24: RU: Январь | KK: Қаңтар
+achievements.s_25: RU: Февраль | KK: Ақпан
+achievements.s_26: RU: Март | KK: Наурыз
+achievements.s_27: RU: Апрель | KK: Сәуір
+achievements.s_28: RU: Май | KK: Мамыр
+achievements.s_29: RU: Июнь | KK: Маусым
+achievements.s_30: RU: Июль | KK: Шілде
+achievements.s_31: RU: Янв. | KK: қаңтар
+achievements.s_32: RU: Фев. | KK: ақпан
+achievements.s_33: RU: Мар | KK: наурыз
+achievements.s_34: RU: Апр | KK: Сәуір
+achievements.s_35: RU: Май | KK: мамыр
+achievements.s_36: RU: Июн | KK: маусым
+achievements.s_37: RU: Июл. | KK: шілде
+achievements.s_38: RU: Воскресенье | KK: Жексенбі
+achievements.s_39: RU: Бронза | KK: Қола
+achievements.s_40: RU: Бронза | KK: Қола
+achievements.s_41: RU: Бронза | KK: Қола
+achievements.s_42: RU: Серебро | KK: Күміс
+achievements.s_43: RU: Янв | KK: Қаң
+achievements.s_44: RU: Фев | KK: Ақп
+achievements.s_45: RU: Мар | KK: Нау
+achievements.s_46: RU: Апр | KK: Сәу
+achievements.s_47: RU: Май | KK: Мам
+achievements.s_48: RU: Июн | KK: Мау
+achievements.s_49: RU: Июл | KK: Шіл
+achievements.s_50: RU: Авг | KK: Там
+achievements.s_51: RU: Сен | KK: Қыр
+achievements.s_52: RU: Окт | KK: Қаз
+achievements.s_53: RU: Ноя | KK: Қар
+achievements.s_54: RU: Дек | KK: Жел
+achievements.s_55: RU: Выполнено | KK: Аяқталды
+achievements.s_56: RU: Достижения | KK: Жетістіктер
+achievements.s_57: RU: Достижения | KK: Жетістіктер
+achievements.s_58: RU: ОБЩИЙ ПРОГРЕСС | KK: ЖАЛПЫ ПРОГРЕСС
+achievements.s_59: RU: Уровень {stats.level} | KK: Деңгей {stats.level}
+achievements.s_62: RU: ИЗ {stats.total_achievements} | KK: {stats.total_achievements} ҚАЙДАН
+achievements.s_63: RU: Активность | KK: Белсенділік
+achievements.s_64: RU: За последние 6 месяцев | KK: Соңғы 6 айда
+achievements.s_65: RU: Получено очков | KK: Ұпайлар алынды
+achievements.s_66: RU: Ваш вклад в общество | KK: Сіздің қоғамға қосқан үлесіңіз
+achievements.s_67: RU: набрано очков | KK: ұпай жинады
+achievements.s_68: RU: задач решено | KK: тапсырма орындалды
+achievements.s_69: RU: Все награды | KK: Барлық марапаттар
+achievements.s_73: RU: Ничего не найдено | KK: Ештеңе табылмады
+achievements.s_74: RU: Выбор периода | KK: Кезеңді таңдаңыз
+achievements.s_75: RU: Начало: | KK: Бастау:
+achievements.s_76: RU: Конец: | KK: Соңы:
+achievements.s_77: RU: Отмена | KK: Болдырмау
+achievements.s_78: RU: Сбросить | KK: Қалпына келтіру
+achievements.s_79: RU: Применить | KK: Қолдану
+achievements.s_80: RU: Активность | KK: Белсенділік
+achievements.s_81: RU: \n\n | KK: \n\n
+achievements.s_82: RU: \n\n | KK: \n\n
+achievements.s_83: RU: 100% | KK: 100%
+calendareventdetail.s_0: RU: Старт проекта | KK: Жобаның басталуы
+calendareventdetail.s_1: RU: Завершение проекта | KK: Жобаның аяқталуы
+calendareventdetail.s_2: RU: Задача | KK: Тапсырма
+calendareventdetail.s_3: RU: Завершено | KK: Аяқталды
+calendareventdetail.s_4: RU: Одобрено | KK: Бекітілді
+calendareventdetail.s_5: RU: На проверке | KK: Қаралуда
+calendareventdetail.s_6: RU: На доработке | KK: Өңдеуде
+calendareventdetail.s_7: RU: Отклонено | KK: Қабылданбады
+calendareventdetail.s_8: RU: В работе | KK: Орындалуда
+calendareventdetail.s_9: RU: В архиве | KK: Мұрағатта
+calendareventdetail.s_10: RU: Открыта | KK: Ашық
+calendareventdetail.s_11: RU: Весь день | KK: Күні бойы
+calendareventdetail.s_12: RU: Время уточняется | KK: Уақыты нақтылануда
+calendareventdetail.s_13: RU: Локация уточняется | KK: Өтетін орны нақтылануда
+calendareventdetail.s_14: RU: Ошибка | KK: Қате
+calendareventdetail.s_15: RU: Не удалось открыть меню отправки. | KK: Жіберу мәзірін ашу мүмкін болмады.
+calendareventdetail.s_16: RU: Внимание | KK: Назар аударыңыз
+calendareventdetail.s_17: RU: Для этого события пока не указана карта. | KK: Бұл оқиғаға арналған карта әлі тізімде жоқ.
+calendareventdetail.s_18: RU: Не удалось обновить напоминание. | KK: Еске салғышты жаңарту мүмкін болмады.
+calendareventdetail.s_19: RU: Не удалось обновить напоминание. | KK: Еске салғышты жаңарту мүмкін болмады.
+calendareventdetail.s_20: RU: Детали события | KK: Оқиға толығырақ
+calendareventdetail.s_21: RU: Дата | KK: Күн
+calendareventdetail.s_22: RU: Время | KK: Уақыт
+calendareventdetail.s_23: RU: Локация | KK: Орналасқан жері
+calendareventdetail.s_24: RU: Открыть карту | KK: Картадан ашу
+calendareventdetail.s_25: RU: Статус | KK: Күй
+calendareventdetail.s_26: RU: Описание | KK: Сипаттамасы
+calendareventdetail.s_27: RU: Описание | KK: Сипаттамасы
+calendareventdetail.s_28: RU: Участники | KK: Қатысушылар
+calendareventdetail.s_30: RU: Список участников пока не заполнен. | KK: Қатысушылар тізімі әлі бос.
+calendareventdetail.s_31: RU: Напомнить за 30 минут | KK: 30 минут бұрын еске салу
+calendareventdetail.s_32: RU: Локальное уведомление уже запланировано. | KK: Хабарлама орнатылды.
+calendareventdetail.s_33: RU: Локальное уведомление уже запланировано. | KK: Хабарлама орнатылды.
+calendareventdetail.s_34: RU: Связанный проект | KK: Қатысты жоба
+calendareventdetail.s_35: RU: Связанный проект | KK: Қатысты жоба
+calendareventdetail.s_36: RU: Открыть задачу | KK: Тапсырманы ашу
+calendar.s_0: RU: ../../theme | KK: ../../theme
+calendar.s_1: RU: ВС | KK: ЖС
+calendar.s_2: RU: ПН | KK: ДС
+calendar.s_3: RU: ВТ | KK: СС
+calendar.s_4: RU: СР | KK: СР
+calendar.s_5: RU: ЧТ | KK: БС
+calendar.s_6: RU: ПТ | KK: ЖМ
+calendar.s_7: RU: Старт проекта | KK: Жобаның басталуы
+calendar.s_8: RU: Завершение проекта | KK: Жобаның аяқталуы
+calendar.s_9: RU: Задача | KK: Тапсырма
+calendar.s_10: RU: Завершено | KK: Аяқталды
+calendar.s_11: RU: Одобрено | KK: Бекітілді
+calendar.s_12: RU: На проверке | KK: Тексерісте
+calendar.s_13: RU: На доработке | KK: Өңдеуде
+calendar.s_14: RU: Отклонено | KK: Қабылданбады
+calendar.s_15: RU: В работе | KK: Орындалуда
+calendar.s_16: RU: Открыта | KK: Ашық
+calendar.s_17: RU: В архиве | KK: Мұрағатта
+calendar.s_18: RU: Весь день | KK: Күні бойы
+calendar.s_19: RU: Время уточняется | KK: Уақыты нақтылануда
+calendar.s_20: RU: Локация уточняется | KK: Өтетін орны нақтылануда
+calendar.s_21: RU: Ошибка загрузки календаря: | KK: Күнтізбені жүктеу қатесі:
+calendar.s_22: RU: Загружаем календарь задач... | KK: Тапсырмалар күнтізбесі жүктелуде...
+calendar.s_23: RU: Календарь волонтёра | KK: Еріктілер күнтізбесі
+calendar.s_24: RU: Календарь волонтёра | KK: Еріктілер күнтізбесі
+calendar.s_25: RU: События на {formatSelectedDateTitle(selectedDateKey)} | KK: {formatSelectedDateTitle(selectedDateKey)} күнгі оқиғалар
+calendar.s_26: RU: На выбранный день событий нет | KK: Таңдалған күні ешқандай оқиға жоқ
+calendar.s_27: RU: На выбранный день событий нет | KK: Таңдалған күні ешқандай оқиға жоқ
+changepassword.s_0: RU: Введите текущий пароль | KK: Ағымдағы құпия сөзді енгізіңіз
+changepassword.s_1: RU: Введите новый пароль | KK: Жаңа құпия сөзді енгізіңіз
+changepassword.s_2: RU: Введите новый пароль | KK: Жаңа құпия сөзді енгізіңіз
+changepassword.s_3: RU: Повторите новый пароль | KK: Жаңа құпия сөзді қайталаңыз
+changepassword.s_4: RU: Повторите новый пароль | KK: Жаңа құпия сөзді қайталаңыз
+changepassword.s_5: RU: Новый пароль должен отличаться от текущего | KK: Жаңа құпия сөз қазіргіден басқаша болуы керек
+changepassword.s_6: RU: Успешно | KK: Сәтті
+changepassword.s_7: RU: Пароль успешно изменен. | KK: Құпия сөз сәтті өзгертілді.
+changepassword.s_8: RU: Не удалось изменить пароль. | KK: Құпия сөзді өзгерту мүмкін болмады.
+changepassword.s_9: RU: Изменить пароль | KK: Құпия сөзді өзгерту
+changepassword.s_11: RU: Текущий пароль | KK: ағымдағы құпия сөз
+changepassword.s_12: RU: Текущий пароль | KK: ағымдағы құпия сөз
+changepassword.s_13: RU: Новый пароль | KK: Жаңа құпия сөз
+changepassword.s_14: RU: Новый пароль | KK: Жаңа құпия сөз
+changepassword.s_15: RU: Повторите новый пароль | KK: Жаңа құпия сөзді қайталаңыз
+changepassword.s_16: RU: Повторите новый пароль | KK: Жаңа құпия сөзді қайталаңыз
+changepassword.s_17: RU: Сохранить новый пароль | KK: Жаңа құпия сөзді сақтаңыз
+chatdetail.s_0: RU: Вложение | KK: Тіркеме
+chatdetail.s_1: RU: Вложение | KK: Тіркеме
+chatdetail.s_2: RU: Этот чат больше недоступен, потому что проект уже не активен. | KK: Бұл чат енді қолжетімді емес, себебі жоба енді белсенді емес.
+chatdetail.s_3: RU: Не удалось загрузить сообщения. Попробуйте ещё раз. | KK: Хабарлар жүктелмеді. Қайтадан байқап көріңіз.
+chatdetail.s_4: RU: Ошибка | KK: Қате
+chatdetail.s_5: RU: Не удалось отправить сообщение. Попробуйте ещё раз. | KK: Хабарды жіберу мүмкін болмады. Қайтадан байқап көріңіз.
+chatdetail.s_6: RU: Нет доступа | KK: Кіру жоқ
+chatdetail.s_7: RU: Разрешите доступ к галерее, чтобы выбрать фото. | KK: Фотосуретті таңдау үшін галереяға кіруге рұқсат беріңіз.
+chatdetail.s_8: RU: Image picker error: | KK: Кескінді таңдауда қате:
+chatdetail.s_9: RU: Ошибка | KK: Қате
+chatdetail.s_10: RU: Активный проектный чат | KK: Белсенді жоба чаты
+chatdetail.s_11: RU: Активный проектный чат | KK: Белсенді жоба чаты
+chatdetail.s_12: RU: Активный проектный чат | KK: Белсенді жоба чаты
+chatdetail.s_13: RU: Только фото | KK: Тек фотосурет
+chatdetail.s_14: RU: Только фото | KK: Тек фотосурет
+chatdetail.s_15: RU: Только фото | KK: Тек фотосурет
+chatdetail.s_16: RU: Чат недоступен | KK: Чат қолжетімді емес
+chatdetail.s_17: RU: Назад | KK: Артқа
+chatdetail.s_19: RU: Сообщение... | KK: Хабарлама...
+chatdetail.s_20: RU: Фильтр сообщений | KK: Хабар сүзгісі
+chatdetail.s_21: RU: Все | KK: Барлығы
+chatdetail.s_22: RU: Фото | KK: Фото
+chatdetail.s_23: RU: Мои | KK: Менің
+chatdetail.s_24: RU: Обновить чат | KK: Чатты жаңарту
+chatdetail.s_25: RU: Отметить как прочитанное | KK: Оқылған деп белгілеңіз
+chatdetail.s_26: RU: Сбросить фильтр | KK: Сүзгіні қалпына келтіру
+chatdetail.s_27: RU: Прикрепить | KK: Қоса тіркеу
+chatdetail.s_28: RU: Выбрать фото | KK: Фотосуретті таңдаңыз
+chats.s_0: RU: Вчера | KK: Кеше
+chats.s_1: RU: Сообщений пока нет | KK: Әлі хабарлар жоқ
+chats.s_2: RU: Удалить | KK: Жою
+chats.s_3: RU: Ничего не найдено | KK: Ештеңе табылмады
+chats.s_4: RU: Пока нет чатов | KK: Әзірге чаттар жоқ
+chats.s_5: RU: Попробуйте изменить поиск или снять фильтры. | KK: Іздеу сұрауын өзгертіңіз немесе сүзгілерді тазалаңыз.
+chats.s_6: RU: Попробуйте изменить поиск или снять фильтры. | KK: Іздеу сұрауын өзгертіңіз немесе сүзгілерді тазалаңыз.
+chats.s_7: RU: Сбросить фильтры | KK: Сүзгілерді тазалау
+chats.s_8: RU: Найти проекты | KK: Жобаларды табыңыз
+chats.s_9: RU: Сообщения | KK: Хабарламалар
+chats.s_10: RU: Поиск чатов... | KK: Чаттарды іздеу...
+chats.s_11: RU: Все | KK: Барлығы
+chats.s_12: RU: Проекты | KK: Жобалар
+chats.s_13: RU: Непрочитанные | KK: Оқылмаған
+chats.s_14: RU: Обновить | KK: Жаңарту
+chats.s_15: RU: Показать все чаты | KK: Барлық чаттарды көрсету
+chats.s_16: RU: Только непрочитанные | KK: Тек оқылмағандар
+chats.s_17: RU: Сбросить фильтры | KK: Сүзгілерді тазалау
+dashboard.s_0: RU: Пользователь | KK: Пайдаланушы
+dashboard.s_1: RU: Добро пожаловать! | KK: Қош келдіңіз!
+dashboard.s_2: RU: Добро пожаловать! | KK: Қош келдіңіз!
+dashboard.s_3: RU: Trust Factor | KK: Trust Factor
+dashboard.s_4: RU: Ваша статистика | KK: Сіздің статистикаңыз
+dashboard.s_5: RU: Ваша статистика | KK: Сіздің статистикаңыз
+dashboard.s_6: RU: Поиск и фильтры | KK: Іздеу және сүзгілер
+dashboard.s_7: RU: Поиск и фильтры | KK: Іздеу және сүзгілер
+dashboard.s_8: RU: Недостаточно Trust Factor | KK: Trust Factor жеткіліксіз
+dashboard.s_9: RU: Недостаточно Trust Factor | KK: Trust Factor жеткіліксіз
+dashboard.s_10: RU: Не удалось присоединиться к проекту | KK: Жобаға қосылу мүмкін болмады
+dashboard.s_11: RU: Недостаточно Trust Factor | KK: Trust Factor жеткіліксіз
+dashboard.s_12: RU: Ошибка | KK: Қате
+dashboard.s_13: RU: Ошибка | KK: Қате
+dashboard.s_14: RU: Укажите причину выхода из проекта | KK: Жобадан шығу себебін көрсетіңіз
+dashboard.s_15: RU: Не удалось покинуть проект | KK: Жобадан шығу мүмкін болмады
+dashboard.s_16: RU: Не удалось покинуть проект | KK: Жобадан шығу мүмкін болмады
+dashboard.s_17: RU: проекты | KK: жобалар
+dashboard.s_18: RU: статистика | KK: статистика
+dashboard.s_19: RU: рекомендации | KK: ұсыныстар
+dashboard.s_20: RU: Ближайшая задача | KK: Алдағы тапсырма
+dashboard.s_21: RU: Все задачи | KK: Барлық тапсырмалар
+dashboard.s_22: RU: Задача без названия | KK: Атаусыз тапсырма
+dashboard.s_23: RU: Проект не указан | KK: Жоба көрсетілмеген
+dashboard.s_24: RU: Срок не указан | KK: Мерзімі көрсетілмеген
+dashboard.s_25: RU: Сегодня | KK: Бүгін
+dashboard.s_26: RU: На неделе | KK: Осы аптада
+dashboard.s_27: RU: В этом месяце | KK: Осы айда
+dashboard.s_28: RU: Очистить все | KK: Бәрін тазалау
+dashboard.s_34: RU: Избранное | KK: Таңдаулылар
+dashboard.s_35: RU: Проекты для вас | KK: Сізге арналған жобалар
+dashboard.s_38: RU: Локация | KK: Орналасқан жері
+dashboard.s_39: RU: Предстоящие возможности | KK: Алдағы мүмкіндіктер
+dashboard.s_40: RU: проект | KK: жоба
+dashboard.s_41: RU: проекта | KK: жоба
+dashboard.s_42: RU: проектов | KK: жобалар
+dashboard.s_43: RU: 1 && filteredProjects.length | KK: 1 && filteredProjects.length
+dashboard.s_44: RU: Проектов пока нет | KK: Әзірге жобалар жоқ
+dashboard.s_45: RU: Проектов пока нет | KK: Әзірге жобалар жоқ
+dashboard.s_46: RU: Все проекты загружены | KK: Барлық жобалар жүктелді
+dashboard.s_47: RU: проекты | KK: жобалар
+dashboard.s_48: RU: проекты | KK: жобалар
+dashboard.s_49: RU: статистика | KK: статистика
+dashboard.s_50: RU: Фильтры | KK: Сүзгілер
+dashboard.s_51: RU: Сортировка | KK: Сұрыптау
+dashboard.s_52: RU: Новые | KK: Жаңалары
+dashboard.s_53: RU: Новые | KK: Жаңалары
+dashboard.s_54: RU: Новые | KK: Жаңалары
+dashboard.s_55: RU: Популярные | KK: Танымалдары
+dashboard.s_56: RU: Тип проекта | KK: Жоба түрі
+dashboard.s_57: RU: Все | KK: Барлығы
+dashboard.s_58: RU: Все | KK: Барлығы
+dashboard.s_59: RU: Все | KK: Барлығы
+dashboard.s_60: RU: Социальная помощь | KK: Әлеуметтік көмек
+dashboard.s_61: RU: Дата начала | KK: Басталу күні
+dashboard.s_62: RU: Все | KK: Барлығы
+dashboard.s_63: RU: Все | KK: Барлығы
+dashboard.s_64: RU: Все | KK: Барлығы
+dashboard.s_65: RU: Сегодня | KK: Бүгін
+dashboard.s_66: RU: Теги | KK: Тегтер
+dashboard.s_67: RU: Сбросить | KK: Тазалау
+dashboard.s_68: RU: Применить | KK: Қолдану
+dashboard.s_70: RU: Trust Factor (TF) | KK: Сенім факторы (TF)
+dashboard.s_71: RU: Максимум: 30 баллов. | KK: Максималды: 30 ұпай.
+dashboard.s_72: RU: При TF = 0 нельзя вступать в проекты. | KK: TF = 0 болғанда, жобаларға қосыла алмайсыз.
+dashboard.s_73: RU: + Начисляются баллы | KK: + Балл қосылады
+dashboard.s_74: RU: Оценка фотоотчёта 5 ⭐ | KK: Фоторепортаж рейтингі 5 ⭐
+dashboard.s_75: RU: Оценка фотоотчёта 4 ⭐ | KK: Фоторепортаж рейтингі 4 ⭐
+dashboard.s_76: RU: Оценка фотоотчёта 3 ⭐ | KK: Фоторепортаж рейтингі 3 ⭐
+dashboard.s_77: RU: — Снимаются баллы | KK: — Балл алынады
+dashboard.s_78: RU: Выход из проекта | KK: Жобадан шығу
+dashboard.s_79: RU: Оценка фотоотчёта 1–2 ⭐ | KK: Фоторепортаж рейтингі 1–2 ⭐
+dashboard.s_80: RU: Отклонение задачи | KK: Тапсырманы қабылдамау
+dashboard.s_82: RU: Присоединиться к проекту? | KK: Жобаға қосыласыз ба?
+dashboard.s_83: RU: Локация не указана | KK: Орын көрсетілмеген
+dashboard.s_86: RU: Отмена | KK: Болдырмау
+dashboard.s_87: RU: Присоединиться | KK: Қосылыңыз
+editprofile.s_0: RU: Введите имя и фамилию | KK: Аты-жөніңізді енгізіңіз
+editprofile.s_1: RU: Введите номер телефона | KK: Телефон нөміріңізді енгізіңіз
+editprofile.s_2: RU: Успешно | KK: Сәтті
+editprofile.s_3: RU: Профиль обновлен. | KK: Профиль жаңартылды.
+editprofile.s_4: RU: Редактировать профиль | KK: Профильді өңдеу
+editprofile.s_6: RU: Имя и фамилия | KK: Аты мен тегі
+editprofile.s_7: RU: Имя и фамилия | KK: Аты мен тегі
+editprofile.s_8: RU: Телефон | KK: Телефон
+editprofile.s_9: RU: Email нельзя изменить. | KK: Электрондық поштаны өзгерту мүмкін емес.
+editprofile.s_10: RU: Сохранить изменения | KK: Өзгерістерді сақтау
+help.s_0: RU: help.s_0 | KK: help.s_0
+help.s_1: RU: Как начисляются часы и баллы? | KK: Сағат пен ұпайлар қалай беріледі?
+help.s_2: RU: Как начисляются часы и баллы? | KK: Сағат пен ұпайлар қалай беріледі?
+help.s_3: RU: Как получить новые достижения? | KK: Жаңа жетістіктерге қалай қол жеткізуге болады?
+help.s_4: RU: Как получить новые достижения? | KK: Жаңа жетістіктерге қалай қол жеткізуге болады?
+help.s_5: RU: Что такое Trust Factor (TF)? | KK: Сенім факторы (TF) дегеніміз не?
+help.s_6: RU: Что такое Trust Factor (TF)? | KK: Сенім факторы (TF) дегеніміз не?
+help.s_7: RU: Как отказаться от задачи без потери Trust Factor? | KK: Сенім факторын жоғалтпай тапсырмадан қалай бас тартуға болады?
+help.s_8: RU: Как отказаться от задачи без потери Trust Factor? | KK: Сенім факторын жоғалтпай тапсырмадан қалай бас тартуға болады?
+help.s_9: RU: Сколько времени проверяется фотоотчет? | KK: Фоторепортажды тексеру қанша уақытты алады?
+help.s_10: RU: Сколько времени проверяется фотоотчет? | KK: Фоторепортажды тексеру қанша уақытты алады?
+help.s_11: RU: Что делать, если мой фотоотчет отклонили? | KK: Фоторепортаж қабылданбаған жағдайда не істеуім керек?
+help.s_12: RU: Что делать, если мой фотоотчет отклонили? | KK: Фоторепортаж қабылданбаған жағдайда не істеуім керек?
+help.s_13: RU: Организатор не отвечает, что делать? | KK: Ұйымдастырушы жауап бермейді, не істеуім керек?
+help.s_14: RU: Организатор не отвечает, что делать? | KK: Ұйымдастырушы жауап бермейді, не істеуім керек?
+help.s_15: RU: Как удалить аккаунт? | KK: Есептік жазбаны қалай жоюға болады?
+help.s_16: RU: Как удалить аккаунт? | KK: Есептік жазбаны қалай жоюға болады?
+help.s_17: RU: Помощь | KK: Көмек
+help.s_18: RU: Помощь | KK: Көмек
+help.s_19: RU: Служба поддержки | KK: Қолдау қызметі
+help.s_20: RU: Служба поддержки | KK: Қолдау қызметі
+help.s_21: RU: Написать письмо | KK: Хат жаз
+help.s_22: RU: Частые вопросы | KK: Жиі қойылатын сұрақтар
+help.s_23: RU: Политика конфиденциальности | KK: Құпиялылық саясаты
+myprojects.s_0: RU: Error loading joined projects: | KK: Біріктірілген жобаларды жүктеу қатесі:
+myprojects.s_1: RU: Error loading joined projects: | KK: Біріктірілген жобаларды жүктеу қатесі:
+myprojects.s_2: RU: Ошибка | KK: Қате
+myprojects.s_3: RU: Укажите причину выхода из проекта | KK: Жобадан шығу себебін көрсетіңіз
+myprojects.s_4: RU: Вы покинули проект. | KK: Сіз жобадан шықтыңыз.
+myprojects.s_5: RU: Внимание | KK: Назар аударыңыз
+myprojects.s_6: RU: Успешно | KK: Сәтті
+myprojects.s_7: RU: Не удалось покинуть проект | KK: Жобадан шығу мүмкін болмады
+myprojects.s_8: RU: Не удалось покинуть проект | KK: Жобадан шығу мүмкін болмады
+myprojects.s_9: RU: Локация не указана | KK: Орын көрсетілмеген
+myprojects.s_12: RU: Участвуете | KK: Сіз қатысасыз ба?
+myprojects.s_13: RU: Выйти | KK: Шығу
+myprojects.s_14: RU: Социальная помощь | KK: Әлеуметтік көмек
+myprojects.s_15: RU: Экология | KK: Экология
+myprojects.s_16: RU: Культурные мероприятия | KK: Мәдени іс-шаралар
+myprojects.s_17: RU: Мои проекты | KK: Менің жобаларым
+myprojects.s_18: RU: Мои проекты | KK: Менің жобаларым
+myprojects.s_19: RU: проект | KK: жоба
+myprojects.s_20: RU: проекта | KK: жоба
+myprojects.s_21: RU: проектов | KK: жобалар
+myprojects.s_22: RU: Нет проектов | KK: Жобалар жоқ
+myprojects.s_23: RU: Нет проектов | KK: Жобалар жоқ
+myprojects.s_24: RU: \n | KK: \n
+myprojects.s_25: RU: Найти проект | KK: Жобаны табыңыз
+notifications.s_0: RU: задачу | KK: тапсырма
+notifications.s_1: RU: задачу | KK: тапсырма
+notifications.s_2: RU: задачу | KK: тапсырма
+notifications.s_3: RU: проект | KK: жоба
+notifications.s_4: RU: проект | KK: жоба
+notifications.s_5: RU: покинули | KK: қалды
+notifications.s_6: RU: покинули | KK: қалды
+notifications.s_7: RU: присоединились | KK: қосылды
+notifications.s_8: RU: Уведомление | KK: Хабарландыру
+notifications.s_9: RU: Уведомления | KK: Хабарландырулар
+notifications.s_10: RU: Уведомления | KK: Хабарландырулар
+notifications.s_13: RU: Нет уведомлений | KK: Хабарландырулар жоқ
+notifications.s_14: RU: У вас нет непрочитанных уведомлений. | KK: Сізде оқылмаған хабарландырулар жоқ.
+notifications.s_15: RU: У вас нет непрочитанных уведомлений. | KK: Сізде оқылмаған хабарландырулар жоқ.
+organizerprofile.s_0: RU: Error loading organizer profile: | KK: Ұйымдастырушы профилін жүктеу қатесі:
+organizerprofile.s_1: RU: Error loading organizer profile: | KK: Ұйымдастырушы профилін жүктеу қатесі:
+organizerprofile.s_2: RU: Внимание | KK: Назар аударыңыз
+organizerprofile.s_3: RU: Номер телефона не указан | KK: Телефон нөмірі көрсетілмеген
+organizerprofile.s_4: RU: Внимание | KK: Назар аударыңыз
+organizerprofile.s_5: RU: Email не указан | KK: Электрондық пошта көрсетілмеген
+organizerprofile.s_6: RU: Внимание | KK: Назар аударыңыз
+organizerprofile.s_7: RU: Telegram не указан | KK: Telegram көрсетілмеген
+organizerprofile.s_8: RU: Внимание | KK: Назар аударыңыз
+organizerprofile.s_9: RU: Не удалось открыть Telegram | KK: Telegram ашылмады
+organizerprofile.s_10: RU: Организатор не найден | KK: Ұйымдастырушы табылмады
+organizerprofile.s_11: RU: Назад | KK: Артқа
+organizerprofile.s_12: RU: Профиль организатора | KK: Ұйымдастырушы профилі
+organizerprofile.s_13: RU: Возраст | KK: Жасы
+organizerprofile.s_14: RU: Возраст | KK: Жасы
+organizerprofile.s_15: RU: год | KK: жас
+organizerprofile.s_16: RU: года | KK: жас
+organizerprofile.s_17: RU: Пол | KK: Жынысы
+organizerprofile.s_18: RU: Стаж работы | KK: Жұмыс тәжірибесі
+organizerprofile.s_19: RU: Стаж работы | KK: Жұмыс тәжірибесі
+organizerprofile.s_20: RU: год | KK: жыл
+organizerprofile.s_21: RU: года | KK: жыл
+organizerprofile.s_22: RU: Проектов | KK: Жобалар
+organizerprofile.s_23: RU: О себе | KK: Мен туралы
+organizerprofile.s_24: RU: Контакты | KK: Контактілер
+photoreportdetail.s_0: RU: Дата не указана | KK: Күні көрсетілмеген
+photoreportdetail.s_1: RU: Дата не указана | KK: Күні көрсетілмеген
+photoreportdetail.s_2: RU: Одобрено | KK: Бекітілді
+photoreportdetail.s_3: RU: На доработке | KK: Ревизияда
+photoreportdetail.s_4: RU: На проверке | KK: Қаралуда
+photoreportdetail.s_5: RU: балл | KK: балл
+photoreportdetail.s_6: RU: балла | KK: балл
+photoreportdetail.s_7: RU: баллов | KK: балл
+photoreportdetail.s_8: RU: Организатор проверил отчет и подтвердил выполнение задачи. | KK: Ұйымдастырушы есепті тексеріп, тапсырманың орындалғанын растады.
+photoreportdetail.s_9: RU: Отчет возвращен на доработку. | KK: Есеп қайта қарауға қайтарылды.
+photoreportdetail.s_10: RU: Организатор еще не оставил комментарий. Отчет находится на проверке. | KK: Ұйымдастырушы әлі пікір қалдырған жоқ. Есеп тексерілуде.
+photoreportdetail.s_11: RU: Волонтер | KK: Волонтер
+photoreportdetail.s_12: RU: Организатор проекта | KK: Жобаны ұйымдастырушы
+photoreportdetail.s_13: RU: Отчет не найден | KK: Есеп табылмады
+photoreportdetail.s_14: RU: По этой задаче пока нет доступного фотоотчета. | KK: Бұл тапсырма үшін әлі фото есеп жоқ.
+photoreportdetail.s_15: RU: Отчет не найден | KK: Есеп табылмады
+photoreportdetail.s_16: RU: Не удалось загрузить подробную информацию об отчете. | KK: Есеп мәліметтерін жүктеу сәтсіз аяқталды.
+photoreportdetail.s_17: RU: Не удалось загрузить подробную информацию об отчете. | KK: Есеп мәліметтерін жүктеу сәтсіз аяқталды.
+photoreportdetail.s_18: RU: Ошибка | KK: Қате
+photoreportdetail.s_19: RU: Подробная информация об отчете | KK: Есеп туралы мәліметтер
+photoreportdetail.s_20: RU: Подробная информация об отчете | KK: Есеп туралы мәліметтер
+photoreportdetail.s_21: RU: Ошибка | KK: Қате
+photoreportdetail.s_22: RU: Не удалось открыть меню отправки. | KK: Жіберу мәзірін ашу мүмкін болмады.
+photoreportdetail.s_23: RU: Отчет пока недоступен | KK: Есеп әлі қол жетімді емес
+photoreportdetail.s_24: RU: Подробности отчета | KK: Есеп мәліметтері
+photoreportdetail.s_25: RU: Отправлено {submittedLabel} | KK: Жіберілді {submittedLabel}
+photoreportdetail.s_26: RU: КОММЕНТАРИЙ ВОЛОНТЕРА | KK: ЕРІКТІЛЕРДІҢ ПІКІРІ
+photoreportdetail.s_27: RU: КОММЕНТАРИЙ ВОЛОНТЕРА | KK: ЕРІКТІЛЕРДІҢ ПІКІРІ
+photoreportdetail.s_28: RU: Отзыв организатора | KK: Ұйымдастырушыдан кері байланыс
+privacypolicy.s_0: RU: Политика конфиденциальности | KK: Құпиялылық саясаты
+privacypolicy.s_1: RU: Политика конфиденциальности | KK: Құпиялылық саясаты
+privacypolicy.s_2: RU: 1. Общие положения | KK: 1. Жалпы ережелер
+privacypolicy.s_3: RU: 1. Общие положения | KK: 1. Жалпы ережелер
+privacypolicy.s_4: RU: 2. Сбор данных | KK: 2. Мәліметтерді жинау
+privacypolicy.s_9: RU: 3. Использование данных | KK: 3. Деректерді пайдалану
+privacypolicy.s_14: RU: 4. Защита данных | KK: 4. Деректерді қорғау
+privacypolicy.s_15: RU: 4. Защита данных | KK: 4. Деректерді қорғау
+privacypolicy.s_16: RU: 5. Ваши права | KK: 5. Сіздің құқықтарыңыз
+privacypolicy.s_17: RU: 5. Ваши права | KK: 5. Сіздің құқықтарыңыз
+privacypolicy.s_18: RU: Мы в соцсетях | KK: Біз әлеуметтік желілердеміз
+privacypolicy.s_19: RU: Веб-сайт | KK: Веб-сайт
+privacypolicy.s_20: RU: BirQadam • Версия 1.0.0 | KK: BirQadam • 1.0.0 нұсқасы
+profile.s_0: RU: Как работают баллы? | KK: Ұпайлар қалай жұмыс істейді?
+profile.s_1: RU: Как работают баллы? | KK: Ұпайлар қалай жұмыс істейді?
+profile.s_2: RU: Баллы показывают ваш общий прогресс и активность в приложении. | KK: Ұпайлар қолданбадағы жалпы үлгерім мен белсенділікті көрсетеді.
+profile.s_3: RU: Баллы растут по мере выполнения задач и участия в проектах. | KK: Тапсырмаларды орындап, жобаларға қатысқан сайын ұпайлар көбейеді.
+profile.s_4: RU: Баллы растут по мере выполнения задач и участия в проектах. | KK: Тапсырмаларды орындап, жобаларға қатысқан сайын ұпайлар көбейеді.
+profile.s_5: RU: Баллы помогают отслеживать общий путь волонтёра внутри приложения. | KK: Ұпайлар еріктінің қолданбадағы жалпы саяхатын бақылауға көмектеседі.
+profile.s_6: RU: Как работает фактор доверия? | KK: Сенім факторы қалай жұмыс істейді?
+profile.s_7: RU: Как работает фактор доверия? | KK: Сенім факторы қалай жұмыс істейді?
+profile.s_8: RU: Фактор доверия показывает, насколько вы надёжны как волонтёр. | KK: Сенім факторы сіздің волонтер ретінде қаншалықты сенімді екеніңізді көрсетеді.
+profile.s_9: RU: После хороших оценок фотоотчётов фактор доверия растёт. | KK: Фоторепортаждардың жақсы рейтингтерінен кейін сенім факторы өседі.
+profile.s_10: RU: После хороших оценок фотоотчётов фактор доверия растёт. | KK: Фоторепортаждардың жақсы рейтингтерінен кейін сенім факторы өседі.
+profile.s_11: RU: Высокий фактор доверия помогает поддерживать сильную репутацию в системе. | KK: Жоғары сенім факторы жүйеде күшті беделді сақтауға көмектеседі.
+profile.s_12: RU: Как работает фото-рейтинг? | KK: Фотосуретті бағалау қалай жұмыс істейді?
+profile.s_13: RU: Как работает фото-рейтинг? | KK: Фотосуретті бағалау қалай жұмыс істейді?
+profile.s_14: RU: Фото-рейтинг — это средняя оценка ваших фотоотчётов от организаторов. | KK: Фото рейтингі – ұйымдастырушылар берген фото есептердің орташа бағасы.
+profile.s_15: RU: Организатор оценивает фотоотчёт после проверки результата задачи. | KK: Ұйымдастырушы тапсырманың нәтижесін тексергеннен кейін фоторепортажды бағалайды.
+profile.s_16: RU: Организатор оценивает фотоотчёт после проверки результата задачи. | KK: Ұйымдастырушы тапсырманың нәтижесін тексергеннен кейін фоторепортажды бағалайды.
+profile.s_17: RU: Понятные и качественные фотографии обычно получают более высокий рейтинг. | KK: Ашық және жоғары сапалы фотосуреттер әдетте жоғары баға алады.
+profile.s_18: RU: Без названия | KK: Атаусыз
+profile.s_19: RU: Локация не указана | KK: Орын көрсетілмеген
+profile.s_20: RU: Нет доступа | KK: Кіру жоқ
+profile.s_21: RU: Разрешите доступ к галерее, чтобы выбрать новую аватарку. | KK: Жаңа аватарды таңдау үшін галереяға кіруге рұқсат беріңіз.
+profile.s_22: RU: Файл слишком большой | KK: Файл тым үлкен
+profile.s_23: RU: Размер аватарки не должен превышать 2 МБ. | KK: Аватар өлшемі 2 МБ-тан аспауы керек.
+profile.s_24: RU: Ошибка | KK: Қате
+profile.s_25: RU: Не удалось обработать изображение. | KK: Кескінді өңдеу мүмкін болмады.
+profile.s_26: RU: Успешно | KK: Сәтті
+profile.s_27: RU: Аватар профиля обновлён. | KK: Профиль аватары жаңартылды.
+profile.s_28: RU: Успешно | KK: Сәтті
+profile.s_29: RU: Аватар профиля обновлён. | KK: Профиль аватары жаңартылды.
+profile.s_30: RU: Выход | KK: Шығу
+profile.s_31: RU: Вы уверены, что хотите выйти? | KK: Жүйеден шығуға сенімдісіз бе?
+profile.s_32: RU: Выход | KK: Шығу
+profile.s_33: RU: Выход | KK: Шығу
+profile.s_34: RU: В разработке | KK: Даму үстінде
+profile.s_35: RU: Готово | KK: Дайын
+profile.s_36: RU: Изменения применятся после перезапуска приложения. | KK: Өзгерістер қолданбаны қайта іске қосқаннан кейін қолданылады.
+profile.s_37: RU: Ошибка | KK: Қате
+profile.s_38: RU: Не удалось сохранить тему. Попробуйте ещё раз. | KK: Тақырыпты сақтау мүмкін болмады. Қайтадан байқап көріңіз.
+profile.s_39: RU: Выбор языка | KK: Тіл таңдау
+profile.s_40: RU: Выбор языка | KK: Тіл таңдау
+profile.s_41: RU: Выберите язык приложения | KK: Қолданба тілін таңдаңыз
+profile.s_42: RU: Русский | KK: Орыс тілі
+profile.s_43: RU: Казахский | KK: Қазақ тілі
+profile.s_44: RU: Подключение Telegram | KK: Telegram байланысы
+profile.s_45: RU: имя | KK: Аты
+profile.s_46: RU: имя | KK: Аты
+profile.s_47: RU: Профиль | KK: Профиль
+profile.s_48: RU: Профиль | KK: Профиль
+profile.s_49: RU: Дополните профиль | KK: Профильіңізді толтырыңыз
+profile.s_50: RU: Редактировать | KK: Өңдеу
+profile.s_51: RU: Проекты | KK: Жобалар
+profile.s_52: RU: Проекты | KK: Жобалар
+profile.s_53: RU: Найдите первый проект | KK: Бірінші жобаңызды табыңыз
+profile.s_54: RU: Открыть проекты | KK: Ашық жобалар
+profile.s_55: RU: Открыть проекты | KK: Ашық жобалар
+profile.s_56: RU: Подберите направление по интересам | KK: Сіздің мүдделеріңізге негізделген бағытты таңдаңыз
+profile.s_57: RU: Доработка | KK: Қорытындылау
+profile.s_58: RU: Фотоотчёт | KK: Фоторепортаж
+profile.s_59: RU: Доработка | KK: Қорытындылау
+profile.s_60: RU: Фотоотчёт | KK: Фоторепортаж
+profile.s_61: RU: Исправить отчёт | KK: Есепті түзетіңіз
+profile.s_62: RU: Загрузить фото | KK: Фотосуретті жүктеп салу
+profile.s_63: RU: Исправить отчёт | KK: Есепті түзетіңіз
+profile.s_64: RU: К задаче | KK: Тапсырмаға
+profile.s_65: RU: Текущая задача | KK: Ағымдағы тапсырма
+profile.s_66: RU: Проверка | KK: Тексерісте
+profile.s_67: RU: Проверка | KK: Тексерісте
+profile.s_68: RU: Посмотрите статус фотоотчёта | KK: Фоторепортаждың күйін қараңыз
+profile.s_69: RU: Открыть отчёт | KK: Есепті ашу
+profile.s_70: RU: Открыть отчёт | KK: Есепті ашу
+profile.s_71: RU: Задачи | KK: Тапсырмалар
+profile.s_72: RU: Текущий проект | KK: Ағымдағы жоба
+profile.s_73: RU: Задача | KK: Тапсырма
+profile.s_74: RU: Задача | KK: Тапсырма
+profile.s_75: RU: Продолжайте текущую задачу | KK: Ағымдағы тапсырманы жалғастырыңыз
+profile.s_76: RU: Открыть задачу | KK: Ашық тапсырма
+profile.s_77: RU: Открыть задачу | KK: Ашық тапсырма
+profile.s_78: RU: Календарь | KK: Күнтізбе
+profile.s_79: RU: Активный проект | KK: Белсенді жоба
+profile.s_80: RU: Старт | KK: Бастау
+profile.s_81: RU: Старт | KK: Бастау
+profile.s_82: RU: Выберите первую активность | KK: Бірінші әрекетті таңдаңыз
+profile.s_83: RU: Мои проекты | KK: Менің жобаларым
+profile.s_84: RU: Мои проекты | KK: Менің жобаларым
+profile.s_85: RU: Следующий этап откроется после первого отчёта | KK: Келесі кезең бірінші баяндамадан кейін ашылады
+profile.s_86: RU: Ритм | KK: Ритм
+profile.s_87: RU: Ритм | KK: Ритм
+profile.s_88: RU: Сейчас всё под контролем | KK: Қазір барлығы бақылауда
+profile.s_89: RU: Открыть календарь | KK: Күнтізбені ашу
+profile.s_90: RU: Открыть календарь | KK: Күнтізбені ашу
+profile.s_91: RU: Волонтер | KK: Волонтер
+profile.s_92: RU: ВОЛОНТЕР | KK: ВОЛОНТЕР
+profile.s_93: RU: БАЛЛЫ | KK: Ұпайлар
+profile.s_94: RU: Прогресс уровня | KK: Деңгейдегі прогресс
+profile.s_95: RU: Прогресс уровня | KK: Деңгейдегі прогресс
+profile.s_96: RU: ФАКТОР ДОВЕРИЯ | KK: СЕНІМ ФАКТОРЫ
+profile.s_97: RU: ФОТО-РЕЙТИНГ | KK: ФОТО РЕЙТИНГІ
+profile.s_101: RU: НАСТРОЙКИ АККАУНТА | KK: АККАУНТ БАПТАУЛАРЫ
+profile.s_102: RU: Редактировать профиль | KK: Профильді өңдеу
+profile.s_103: RU: Изменить пароль | KK: Құпия сөзді өзгерту
+profile.s_104: RU: Моя статистика | KK: Менің статистикам
+profile.s_105: RU: Уведомления | KK: Хабарламалар
+profile.s_106: RU: Язык | KK: Тіл
+profile.s_107: RU: Русский | KK: Орыс тілі
+profile.s_108: RU: Темная тема | KK: Қараңғы тақырып
+profile.s_109: RU: О приложении | KK: Қолданба туралы
+profile.s_110: RU: Помощь и поддержка | KK: Көмек және қолдау
+profile.s_111: RU: Выйти | KK: Шығу
+profile.s_112: RU: Понятно | KK: Түсінікті
+projectdetail.s_0: RU: Error loading project detail: | KK: Жоба мәліметтерін жүктеу қатесі:
+projectdetail.s_1: RU: Не удалось загрузить детали проекта | KK: Жоба мәліметтерін жүктеу сәтсіз аяқталды
+projectdetail.s_2: RU: Информация | KK: Ақпарат
+projectdetail.s_3: RU: Вы уже участвуете в этом проекте | KK: Сіз бұл жобаға қатыстыңыз ба?
+projectdetail.s_4: RU: Недостаточно Trust Factor | KK: Сенім факторының жеткіліксіздігі
+projectdetail.s_5: RU: Недостаточно Trust Factor | KK: Сенім факторының жеткіліксіздігі
+projectdetail.s_6: RU: Error joining project: | KK: Жобаға қосылу қатесі:
+projectdetail.s_7: RU: Внимание | KK: Назар аударыңыз
+projectdetail.s_8: RU: Ошибка | KK: Қате
+projectdetail.s_9: RU: Ошибка | KK: Қате
+projectdetail.s_10: RU: Ошибка | KK: Қате
+projectdetail.s_11: RU: Необходимо указать причину выхода из проекта | KK: Жобадан шығу себебін көрсету қажет
+projectdetail.s_12: RU: Вы покинули проект | KK: Сіз жобадан шықтыңыз
+projectdetail.s_13: RU: Error leaving project: | KK: Жобадан шығу қатесі:
+projectdetail.s_14: RU: Error leaving project: | KK: Жобадан шығу қатесі:
+projectdetail.s_15: RU: Внимание | KK: Назар аударыңыз
+projectdetail.s_16: RU: Не удалось открыть ссылку на 2ГИС | KK: 2GIS сілтемесін ашу мүмкін болмады
+projectdetail.s_17: RU: Внимание | KK: Назар аударыңыз
+projectdetail.s_18: RU: Локация не указана | KK: Орын көрсетілмеген
+projectdetail.s_19: RU: Внимание | KK: Назар аударыңыз
+projectdetail.s_20: RU: Номер телефона не указан | KK: Телефон нөмірі көрсетілмеген
+projectdetail.s_21: RU: Внимание | KK: Назар аударыңыз
+projectdetail.s_22: RU: Email не указан | KK: Электрондық пошта көрсетілмеген
+projectdetail.s_23: RU: Внимание | KK: Назар аударыңыз
+projectdetail.s_24: RU: Telegram не указан | KK: Telegram көрсетілмеген
+projectdetail.s_25: RU: Внимание | KK: Назар аударыңыз
+projectdetail.s_26: RU: Не удалось открыть Telegram | KK: Telegram ашылмады
+projectdetail.s_27: RU: Внимание | KK: Назар аударыңыз
+projectdetail.s_28: RU: Веб-сайт не указан | KK: Веб-сайт тізімде жоқ
+projectdetail.s_29: RU: Внимание | KK: Назар аударыңыз
+projectdetail.s_30: RU: Не удалось открыть веб-сайт | KK: Веб-сайтты ашу мүмкін болмады
+projectdetail.s_31: RU: Внимание | KK: Назар аударыңыз
+projectdetail.s_32: RU: Информация об организаторе недоступна | KK: Ұйымдастырушы туралы ақпарат қолжетімді емес
+projectdetail.s_33: RU: Поделились через: | KK: Бөлісілген:
+projectdetail.s_34: RU: Поделились через: | KK: Бөлісілген:
+projectdetail.s_35: RU: Sharing отменен | KK: Бөлісу тоқтатылды
+projectdetail.s_36: RU: Ошибка | KK: Қате
+projectdetail.s_37: RU: Не удалось поделиться проектом | KK: Жоба бөлісілмеді
+projectdetail.s_38: RU: СОЦИАЛЬНАЯ ПОМОЩЬ | KK: ӘЛЕУМЕТТІК КӨМЕК
+projectdetail.s_39: RU: СОЦИАЛЬНАЯ ПОМОЩЬ | KK: ӘЛЕУМЕТТІК КӨМЕК
+projectdetail.s_40: RU: ЭКОЛОГИЯ | KK: ЭКОЛОГИЯ
+projectdetail.s_41: RU: Проект не найден | KK: Жоба табылмады
+projectdetail.s_42: RU: Назад | KK: Артқа
+projectdetail.s_43: RU: Локация | KK: Орналасқан жері
+projectdetail.s_44: RU: Локация | KK: Орналасқан жері
+projectdetail.s_45: RU: На карте | KK: Картада
+projectdetail.s_46: RU: Организатор | KK: Ұйымдастырушы
+projectdetail.s_48: RU: Подробнее | KK: Қосымша мәліметтер
+projectdetail.s_49: RU: Описание | KK: Сипаттама
+projectdetail.s_50: RU: Участники | KK: Қатысушылар
+projectdetail.s_52: RU: Показать всех участников | KK: Барлық қатысушыларды көрсету
+projectdetail.s_53: RU: Пока нет участников | KK: Әзірге қатысушылар жоқ
+projectdetail.s_54: RU: Контакты | KK: Контактілер
+projectdetail.s_55: RU: Все участники | KK: Барлық қатысушылар
+projectdetail.s_57: RU: Нет участников | KK: Қатысушылар жоқ
+projectdetail.s_58: RU: Выход из проекта | KK: Жобадан шығу
+projectdetail.s_60: RU: Текущий TF | KK: Ағымдағы ТФ
+projectdetail.s_61: RU: После выхода | KK: Шығарғаннан кейін
+projectdetail.s_63: RU: Отмена | KK: Болдырмау
+projectdetail.s_64: RU: Продолжить | KK: Жалғастыру
+projectdetail.s_65: RU: Присоединиться к проекту? | KK: Жобаға қосылыңыз ба?
+projectdetail.s_69: RU: Отмена | KK: Болдырмау
+projectdetail.s_70: RU: Присоединиться | KK: Қосылыңыз
+projectdetail.s_71: RU: Причина выхода | KK: Шығу себебі
+projectdetail.s_73: RU: Например: изменились планы, нет времени, личные обстоятельства... | KK: Мысалы: жоспарлар өзгерді, уақыт жоқ, жеке жағдайлар...
+projectdetail.s_74: RU: Отмена | KK: Болдырмау
+projectdetail.s_75: RU: Подтвердить выход | KK: Шығуды растаңыз
+projectdetail.s_76: RU: Покинуть проект | KK: Жобаны қалдырыңыз
+projectdetail.s_77: RU: Присоединиться к проекту | KK: Жобаға қосылыңыз
+projectdetail.s_78: RU: Поздравляем! | KK: Құттықтаймыз!
+projectdetail.s_79: RU: Поздравляем! | KK: Құттықтаймыз!
+projectdetail.s_82: RU: Отлично! | KK: Тамаша!
+projectdetail.s_83: RU: Вы покинули проект | KK: Сіз жобадан шықтыңыз
+projectdetail.s_84: RU: Применён штраф | KK: Айыппұл қолданылды
+projectdetail.s_85: RU: Новый TF | KK: Жаңа ТФ
+projectdetail.s_87: RU: Понятно | KK: Ол түсінікті
+projects.s_0: RU: Error loading projects: | KK: Жобаларды жүктеу қатесі:
+projects.s_1: RU: Error loading projects: | KK: Жобаларды жүктеу қатесі:
+projects.s_2: RU: Недостаточно Trust Factor | KK: Сенім факторының жеткіліксіздігі
+projects.s_3: RU: Недостаточно Trust Factor | KK: Сенім факторының жеткіліксіздігі
+projects.s_4: RU: Присоединиться к проекту? | KK: Жобаға қосылыңыз ба?
+projects.s_5: RU: Присоединиться к проекту? | KK: Жобаға қосылыңыз ба?
+projects.s_6: RU: Отмена | KK: Болдырмау
+projects.s_7: RU: Да, присоединиться | KK: Иә, қосылыңыз
+projects.s_8: RU: Успешно | KK: Сәтті
+projects.s_9: RU: Вы присоединились к проекту | KK: Сіз жобаға қосылдыңыз
+projects.s_10: RU: Error joining project: | KK: Жобаға қосылу қатесі:
+projects.s_11: RU: Внимание | KK: Назар аударыңыз
+projects.s_12: RU: Ошибка | KK: Қате
+projects.s_13: RU: Ошибка | KK: Қате
+projects.s_14: RU: Ошибка | KK: Қате
+projects.s_15: RU: Укажите причину выхода из проекта | KK: Жобадан шығу себебін көрсетіңіз
+projects.s_16: RU: Вы покинули проект. | KK: Сіз жобадан шықтыңыз.
+projects.s_17: RU: Внимание | KK: Назар аударыңыз
+projects.s_18: RU: Успешно | KK: Сәтті
+projects.s_19: RU: Не удалось покинуть проект | KK: Жобадан шығу мүмкін болмады
+projects.s_20: RU: Не удалось покинуть проект | KK: Жобадан шығу мүмкін болмады
+projects.s_21: RU: Социальная | KK: Әлеуметтік
+projects.s_22: RU: Социальная | KK: Әлеуметтік
+projects.s_23: RU: Экология | KK: Экология
+projects.s_24: RU: Локация не указана | KK: Орын көрсетілмеген
+projects.s_27: RU: Вы участвуете | KK: Сіз қатысасыз ба?
+projects.s_28: RU: Присоединиться | KK: Қосылыңыз
+projects.s_29: RU: Все проекты | KK: Барлық жобалар
+projects.s_37: RU: Проектов не найдено | KK: Жобалар табылмады
+submitphotoreport.s_0: RU: Не удалось загрузить задачу для фотоотчета. | KK: Фоторепортаж тапсырмасы жүктелмеді.
+submitphotoreport.s_1: RU: Не удалось загрузить задачу для фотоотчета. | KK: Фоторепортаж тапсырмасы жүктелмеді.
+submitphotoreport.s_2: RU: Ошибка | KK: Қате
+submitphotoreport.s_3: RU: Фотоотчет недоступен | KK: Фото есеп қолжетімді емес
+submitphotoreport.s_4: RU: Сейчас для этой задачи нельзя отправить фотоотчет. | KK: Қазіргі уақытта бұл тапсырма үшін фоторепортаж жібере алмайсыз.
+submitphotoreport.s_5: RU: Фотоотчет недоступен | KK: Фото есеп қолжетімді емес
+submitphotoreport.s_6: RU: Файл слишком большой | KK: Файл тым үлкен
+submitphotoreport.s_7: RU: Один из файлов превышает 10 МБ и не был добавлен. | KK: Файлдардың бірі 10 МБ-тан үлкен және қосылмаған.
+submitphotoreport.s_8: RU: Лимит фотографий | KK: Фотосурет шегі
+submitphotoreport.s_9: RU: Нет доступа | KK: Кіру жоқ
+submitphotoreport.s_10: RU: Разрешите доступ к галерее, чтобы выбрать фотографии. | KK: Фотосуреттерді таңдау үшін галереяға кіруге рұқсат беріңіз.
+submitphotoreport.s_11: RU: Лимит фотографий | KK: Фотосурет шегі
+submitphotoreport.s_12: RU: Нет доступа | KK: Кіру жоқ
+submitphotoreport.s_13: RU: Разрешите доступ к камере, чтобы сделать фотографию. | KK: Фотосуретке түсіру үшін камераға кіруге рұқсат беріңіз.
+submitphotoreport.s_14: RU: Добавьте фото | KK: Фотосурет қосыңыз
+submitphotoreport.s_15: RU: Нужно выбрать хотя бы одну фотографию для фотоотчета. | KK: Фоторепортаж үшін кем дегенде бір фотосуретті таңдау керек.
+submitphotoreport.s_16: RU: Срок истёк | KK: Уақыт шегі бітті
+submitphotoreport.s_17: RU: Для просроченной задачи фотоотчёт загрузить нельзя. | KK: Мерзімі өткен тапсырма үшін фото есепті жүктеп салу мүмкін емес.
+submitphotoreport.s_18: RU: Успешно | KK: Сәтті
+submitphotoreport.s_19: RU: Успешно | KK: Сәтті
+submitphotoreport.s_20: RU: Фотоотчет отправлен повторно и передан на проверку. | KK: Фоторепортаж қайта жіберіліп, тексеруге жіберілді.
+submitphotoreport.s_21: RU: Не удалось отправить фотоотчет. | KK: Фоторепортаж жіберілмеді.
+submitphotoreport.s_22: RU: Не удалось отправить фотоотчет. | KK: Фоторепортаж жіберілмеді.
+submitphotoreport.s_23: RU: Фотоотчет | KK: Фоторепортаж
+submitphotoreport.s_24: RU: ЗАДАЧА | KK: ТАПСЫРМА
+submitphotoreport.s_25: RU: ЗАДАЧА | KK: ТАПСЫРМА
+submitphotoreport.s_26: RU: Без названия | KK: Атаусыз
+submitphotoreport.s_27: RU: Нужно доработать фотоотчет | KK: Фоторепортажды жақсарту керек
+submitphotoreport.s_28: RU: Организатор попросил отправить фотоотчет повторно. | KK: Ұйымдастырушы фоторепортажды қайта жіберуді сұрады.
+submitphotoreport.s_29: RU: Фотографии | KK: Фотосуреттер
+submitphotoreport.s_30: RU: Фотографии | KK: Фотосуреттер
+submitphotoreport.s_31: RU: Из галереи | KK: Галереядан
+submitphotoreport.s_32: RU: Сделать фото | KK: Фотоға түсіру
+submitphotoreport.s_33: RU: Фотографии еще не выбраны | KK: Фотосуреттер әлі таңдалмаған
+submitphotoreport.s_34: RU: Комментарий | KK: Пікір
+submitphotoreport.s_35: RU: Очистить | KK: Таза
+submitphotoreport.s_36: RU: При необходимости добавьте короткое пояснение | KK: Қажет болса, қысқаша түсініктеме қосыңыз
+submitphotoreport.s_38: RU: Отправить повторно | KK: Қайта жіберу
+submitphotoreport.s_39: RU: Отправить фотоотчет | KK: Фоторепортаж жіберіңіз
+tasks.s_0: RU: Всего задач | KK: Барлық тапсырмалар
+tasks.s_1: RU: Всего задач | KK: Барлық тапсырмалар
+tasks.s_2: RU: Всего задач | KK: Барлық тапсырмалар
+tasks.s_3: RU: Открытые | KK: Ашық
+tasks.s_4: RU: В работе | KK: Орындалуда
+tasks.s_5: RU: На проверке | KK: Тексерісте
+tasks.s_6: RU: На доработке | KK: Өңдеуде
+tasks.s_7: RU: Без названия | KK: Атаусыз
+tasks.s_8: RU: Локация не указана | KK: Орын көрсетілмеген
+tasks.s_9: RU: Error loading tasks: | KK: Тапсырмаларды жүктеу қатесі:
+tasks.s_10: RU: Ошибка | KK: Қате
+tasks.s_11: RU: Принять задачу? | KK: Тапсырманы қабылдайсыз ба?
+tasks.s_12: RU: Принять задачу? | KK: Тапсырманы қабылдайсыз ба?
+tasks.s_13: RU: Вы уверены, что хотите взять эту задачу? | KK: Бұл тапсырманы орындағыңыз келетініне сенімдісіз бе?
+tasks.s_14: RU: Отмена | KK: Болдырмау
+tasks.s_15: RU: Успешно | KK: Сәтті
+tasks.s_16: RU: Задача принята в работу | KK: Тапсырма қабылданды
+tasks.s_17: RU: Не удалось принять задачу | KK: Тапсырманы қабылдау мүмкін болмады
+tasks.s_18: RU: Не удалось принять задачу | KK: Тапсырманы қабылдау мүмкін болмады
+tasks.s_19: RU: Отклонить задачу? | KK: Тапсырманы қабылдамау керек пе?
+tasks.s_20: RU: Отклонить задачу? | KK: Тапсырманы қабылдамау керек пе?
+tasks.s_21: RU: Вы уверены, что хотите отклонить эту задачу? | KK: Бұл тапсырманы шынымен қабылдағыңыз келе ме?
+tasks.s_22: RU: Отмена | KK: Болдырмау
+tasks.s_23: RU: Задача отклонена | KK: Тапсырма қабылданбады
+tasks.s_24: RU: Не удалось отклонить задачу | KK: Тапсырма қабылданбады
+tasks.s_25: RU: Не удалось отклонить задачу | KK: Тапсырма қабылданбады
+tasks.s_26: RU: Архивировать задачу? | KK: Тапсырманы мұрағаттау керек пе?
+tasks.s_27: RU: Архивировать задачу? | KK: Тапсырманы мұрағаттау керек пе?
+tasks.s_28: RU: Вы уверены, что хотите перенести эту задачу в архив? Она перестанет отображаться в списке активных. | KK: Бұл тапсырманы мұрағаттағыңыз келетініне сенімдісіз бе? Ол енді белсенді тізімде көрсетілмейді.
+tasks.s_29: RU: Отмена | KK: Болдырмау
+tasks.s_30: RU: Успешно | KK: Сәтті
+tasks.s_31: RU: Задача перенесена в архив | KK: Тапсырма мұрағатқа көшірілді
+tasks.s_32: RU: Не удалось архивировать задачу | KK: Тапсырма мұрағатталмады
+tasks.s_33: RU: Не удалось архивировать задачу | KK: Тапсырма мұрағатталмады
+tasks.s_34: RU: Сегодня | KK: Бүгін
+tasks.s_35: RU: Сегодня | KK: Бүгін
+tasks.s_36: RU: Завтра | KK: Ертең
+tasks.s_37: RU: На проверке | KK: Тексерісте
+tasks.s_38: RU: На доработке | KK: Өңдеуде
+tasks.s_39: RU: В работе | KK: Орындалуда
+tasks.s_40: RU: Завершено | KK: Аяқталды
+tasks.s_41: RU: В архиве | KK: Мұрағатта
+tasks.s_42: RU: Отклонено | KK: Қабылданбады
+tasks.s_43: RU: Закрыто | KK: Жабылды
+tasks.s_44: RU: Просрочено | KK: Мерзімі өткен
+tasks.s_45: RU: Просрочено | KK: Мерзімі өткен
+tasks.s_46: RU: Открыто | KK: Ашық
+tasks.s_47: RU: Локальная задача | KK: Жергілікті тапсырма
+tasks.s_48: RU: Принять | KK: Қабылдау
+tasks.s_49: RU: Отклонить | KK: Қабылдамау
+tasks.s_51: RU: В архив | KK: Мұрағатқа
+tasks.s_52: RU: Завершено | KK: Аяқталды
+tasks.s_53: RU: Отчет на проверке | KK: Тексеру туралы есеп
+tasks.s_54: RU: Перенесено в архив | KK: Мұрағатқа көшірілді
+tasks.s_55: RU: Задачи появятся в проектах, к которым вы присоединились. Сейчас можно открыть проекты и выбрать подходящую активность. | KK: Тапсырмалар сіз қосылған жобаларда пайда болады. Енді сіз жобаларды ашып, сәйкес әрекетті таңдай аласыз.
+tasks.s_56: RU: Задачи появятся в проектах, к которым вы присоединились. Сейчас можно открыть проекты и выбрать подходящую активность. | KK: Тапсырмалар сіз қосылған жобаларда пайда болады. Енді сіз жобаларды ашып, сәйкес әрекетті таңдай аласыз.
+tasks.s_57: RU: Главная | KK: Басты бет
+tasks.s_58: RU: Главная | KK: Басты бет
+tasks.s_59: RU: Мои задачи | KK: Менің тапсырмаларым
+tasks.s_60: RU: Уведомления | KK: Хабарламалар
+tasks.s_61: RU: Задач пока нет | KK: Тапсырмалар әлі жоқ
+tasks.s_62: RU: Переход | KK: Өту
+tasks.s_63: RU: Откройте раздел проектов в приложении. | KK: Қосымшадағы жобалар бөлімін ашыңыз.
+tasks.s_64: RU: Открыть проекты | KK: Жобаларды ашу
+volunteertaskdetail.s_0: RU: Ошибка | KK: Қате
+volunteertaskdetail.s_1: RU: Не удалось загрузить детали задачи | KK: Тапсырма мәліметтерін жүктеу сәтсіз аяқталды
+volunteertaskdetail.s_2: RU: Успешно | KK: Сәтті
+volunteertaskdetail.s_3: RU: Задача принята в работу | KK: Тапсырма қабылданды
+volunteertaskdetail.s_4: RU: Не удалось принять задачу | KK: Тапсырманы қабылдау мүмкін болмады
+volunteertaskdetail.s_5: RU: Не удалось принять задачу | KK: Тапсырманы қабылдау мүмкін болмады
+volunteertaskdetail.s_6: RU: Успех | KK: Сәттілік
+volunteertaskdetail.s_7: RU: Задача отклонена | KK: Тапсырма қабылданбады
+volunteertaskdetail.s_8: RU: Не удалось отклонить задачу | KK: Тапсырма қабылданбады
+volunteertaskdetail.s_9: RU: Не удалось отклонить задачу | KK: Тапсырма қабылданбады
+volunteertaskdetail.s_10: RU: Чат недоступен | KK: Чат қолжетімді емес
+volunteertaskdetail.s_11: RU: Для этой задачи активный чат проекта пока не найден. | KK: Бұл тапсырма үшін белсенді жоба чаты әлі табылмады.
+volunteertaskdetail.s_12: RU: Чат проекта | KK: Жоба сұхбаты
+volunteertaskdetail.s_13: RU: Error opening task chat: | KK: Тапсырма чатын ашу қатесі:
+volunteertaskdetail.s_14: RU: Ошибка | KK: Қате
+volunteertaskdetail.s_15: RU: Задача не найдена | KK: Тапсырма табылмады
+volunteertaskdetail.s_16: RU: Задача не найдена | KK: Тапсырма табылмады
+volunteertaskdetail.s_17: RU: Отправить фотоотчет повторно | KK: Фоторепортажды қайта жіберіңіз
+volunteertaskdetail.s_18: RU: Отправить фотоотчет | KK: Фоторепортаж жіберіңіз
+volunteertaskdetail.s_19: RU: ДНЕЙ | KK: КҮНДЕР
+volunteertaskdetail.s_20: RU: ДНЕЙ | KK: КҮНДЕР
+volunteertaskdetail.s_21: RU: ДНЕЙ | KK: КҮНДЕР
+volunteertaskdetail.s_22: RU: ИСТЕКЛО | KK: МЕРЗІМІ ӨТКЕН
+volunteertaskdetail.s_23: RU: СЕГОДНЯ | KK: БҮГІН
+volunteertaskdetail.s_24: RU: ДНЕЙ | KK: КҮНДЕР
+volunteertaskdetail.s_25: RU: ДНЕЙ | KK: КҮНДЕР
+volunteertaskdetail.s_26: RU: ДНЕЙ | KK: КҮНДЕР
+volunteertaskdetail.s_27: RU: часов | KK: сағат
+volunteertaskdetail.s_28: RU: часов | KK: сағат
+volunteertaskdetail.s_29: RU: часов | KK: сағат
+volunteertaskdetail.s_30: RU: Весь день | KK: Күні бойы
+volunteertaskdetail.s_31: RU: Детали задачи | KK: Тапсырма мәліметтері
+volunteertaskdetail.s_32: RU: Проверено | KK: Тексерілді
+volunteertaskdetail.s_33: RU: Задача: | KK: Тапсырма:
+volunteertaskdetail.s_34: RU: Задача: | KK: Тапсырма:
+volunteertaskdetail.s_35: RU: ДЕДЛАЙН | KK: МЕРЗІМІ
+volunteertaskdetail.s_36: RU: Занимает времени | KK: Уақыт алады
+volunteertaskdetail.s_37: RU: Место не указано | KK: Орын көрсетілмеген
+volunteertaskdetail.s_38: RU: ОРГАНИЗАТОР | KK: ҰЙЫМДАСТЫРУШЫ
+volunteertaskdetail.s_39: RU: ОРГАНИЗАТОР | KK: ҰЙЫМДАСТЫРУШЫ
+volunteertaskdetail.s_40: RU: ИСТОРИЯ АКТИВНОСТИ | KK: ҚЫЗМЕТ ТАРИХЫ
+volunteertaskdetail.s_41: RU: Задача создана | KK: Тапсырма жасалды
+volunteertaskdetail.s_42: RU: Вы приняли задачу | KK: Сіз тапсырманы қабылдадыңыз
+volunteertaskdetail.s_43: RU: Фотоотчет загружен | KK: Фото есеп жүктеп салынды
+volunteertaskdetail.s_45: RU: Отчет ожидает решения организатора | KK: Баяндама ұйымдастырушының шешімін күтуде
+volunteertaskdetail.s_46: RU: Проверка завершена, требуется доработка | KK: Тексеру аяқталды, қайта қарау қажет
+volunteertaskdetail.s_47: RU: Фотоотчет успешно принят | KK: Фоторепортаж сәтті қабылданды
+volunteertaskdetail.s_48: RU: На доработке | KK: Ревизияда
+volunteertaskdetail.s_49: RU: Решение организатора | KK: Ұйымдастырушының шешімі
+volunteertaskdetail.s_52: RU: Подробная информация об отчете | KK: Есеп туралы мәліметтер
+volunteertaskdetail.s_53: RU: Отчет одобрен. Откройте карточку с отзывом организатора. | KK: Есеп бекітілді. Ұйымдастырушының шолу картасын ашыңыз.
+volunteertaskdetail.s_54: RU: Отчет одобрен. Откройте карточку с отзывом организатора. | KK: Есеп бекітілді. Ұйымдастырушының шолу картасын ашыңыз.
+volunteertaskdetail.s_55: RU: Отчет возвращен на доработку. Откройте причину и комментарий. | KK: Есеп қайта қарауға қайтарылды. Себебін ашып, пікір қалдырыңыз.
+volunteertaskdetail.s_57: RU: Срок истек | KK: Мерзімі аяқталды
+volunteertaskdetail.s_58: RU: Отклонить | KK: Қабылдамау
+volunteertaskdetail.s_59: RU: Начать задачу | KK: Тапсырманы бастау
+volunteertaskdetail.s_60: RU: Задача успешно завершена! | KK: Тапсырма сәтті орындалды!
+volunteertaskdetail.s_61: RU: Отчет на проверке | KK: Тексеру туралы есеп
+volunteertaskdetail.s_62: RU: Задача в архиве | KK: Мұрағатталған тапсырма
+volunteertaskdetail.s_63: RU: Фотоотчет отправлен | KK: Фото есеп жіберілді
+projectcard.s_0: RU: Дата | KK: Күн
+projectcard.s_1: RU: Локация | KK: Орналасқан жері
+projectcard.s_4: RU: Выйти из проекта | KK: Жобаны қалдырыңыз
+projectcard.s_5: RU: Присоединиться | KK: Қосылыңыз
+projectcardgrid.s_0: RU: Локация | KK: Орналасқан жері
+searchbar.s_0: RU: Поиск проектов... | KK: Жобаларды іздеу...
+statsgrid.s_0: RU: МОИ ПРОЕКТЫ | KK: МЕНІҢ ЖОБАЛАРЫМ
+statsgrid.s_1: RU: ЗАДАЧ | KK: Тапсырмалар
+statsgrid.s_2: RU: ДОСТИЖЕНИЙ | KK: ЖЕТІСТІКТЕР
+trustfactorcard.s_0: RU: УРОВЕНЬ ВОЛОНТЁРА | KK: ВОЛОНТЕРЛІК ДЕҢГЕЙІ
+trustfactorcard.s_1: RU: Статистика | KK: Статистика
+trustfactorcard.s_2: RU: из 5.0 | KK: 5.0 бастап
+trustfactorcard.s_3: RU: Все проекты: | KK: Барлық жобалар:
+tutorialoverlay.s_1: RU: Завершить | KK: Аяқталды
+tutorialoverlay.s_2: RU: Далее | KK: Келесі
+permissioncard.s_0: RU: Разрешение предоставлено | KK: Рұқсат берілді
+permissioncard.s_1: RU: Открыть | KK: Ашық
+nextbestactioncard.s_0: RU: Следующее действие | KK: Келесі әрекет
+nextbestactioncard.s_1: RU: Собираем персональную подсказку... | KK: Жеке кеңестер жиналуда...
+leaveprojectreasonmodal.s_0: RU: Причина выхода | KK: Шығу себебі
+leaveprojectreasonmodal.s_3: RU: Напишите причину выхода | KK: Шығу себебін жазыңыз
+leaveprojectreasonmodal.s_4: RU: Отмена | KK: Болдырмау
+leaveprojectreasonmodal.s_5: RU: Выйти | KK: Шығу

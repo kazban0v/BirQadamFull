@@ -1,0 +1,600 @@
+{% extends 'admin_panel/base.html' %}
+{% load static %}
+
+{% block topbar_title %}Редактирование профиля{% endblock %}
+
+{% block extra_css %}
+<style>
+    .edit-shell {
+        display: grid;
+        gap: 1.5rem;
+    }
+
+    .edit-hero {
+        display: grid;
+        grid-template-columns: minmax(0, 1.55fr) minmax(320px, 0.85fr);
+        gap: 1.5rem;
+        align-items: start;
+    }
+
+    .edit-panel,
+    .edit-card {
+        background: #fff;
+        border: 1px solid var(--gray-200);
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-sm);
+    }
+
+    .edit-panel {
+        overflow: hidden;
+        align-self: start;
+    }
+
+    .edit-panel__hero {
+        padding: 1.7rem;
+        background:
+            radial-gradient(circle at top right, rgba(255,255,255,0.12) 0, rgba(255,255,255,0) 35%),
+            linear-gradient(135deg, var(--gray-900) 0%, var(--primary-dark) 50%, var(--primary) 100%);
+        color: #fff;
+    }
+
+    .edit-eyebrow {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        padding: 0.34rem 0.74rem;
+        border-radius: 999px;
+        background: rgba(255,255,255,0.12);
+        font-size: 0.72rem;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        margin-bottom: 0.85rem;
+    }
+
+    .edit-panel__hero h1 {
+        margin: 0 0 0.35rem;
+        font-size: 1.9rem;
+        font-weight: 800;
+        letter-spacing: -0.03em;
+    }
+
+    .edit-panel__hero p {
+        margin: 0;
+        color: rgba(255,255,255,0.76);
+        font-size: 0.92rem;
+        max-width: 42rem;
+        line-height: 1.6;
+    }
+
+    .edit-panel__footer {
+        padding: 1rem 1.7rem 1.35rem;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.85rem;
+    }
+
+    .edit-cta {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.8rem 1rem;
+        border-radius: var(--radius);
+        text-decoration: none;
+        font-size: 0.88rem;
+        font-weight: 700;
+        transition: all var(--transition);
+    }
+
+    .edit-cta--primary {
+        background: #fff;
+        color: var(--gray-900);
+        border: none;
+    }
+
+    .edit-cta--secondary {
+        color: #fff;
+        background: rgba(255,255,255,0.1);
+        border: 1px solid rgba(255,255,255,0.12);
+    }
+
+    .edit-cta:hover {
+        transform: translateY(-1px);
+    }
+
+    .edit-info-card {
+        padding: 1.3rem;
+        display: grid;
+        gap: 1rem;
+        background:
+            radial-gradient(circle at top right, rgba(59,130,246,0.08) 0, rgba(59,130,246,0) 42%),
+            #fff;
+    }
+
+    .edit-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        padding: 0.3rem 0.68rem;
+        border-radius: 999px;
+        background: #dbeafe;
+        color: #1d4ed8;
+        font-size: 0.68rem;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+    }
+
+    .edit-info-card h3,
+    .edit-card h3 {
+        margin: 0;
+        font-size: 1.06rem;
+        font-weight: 800;
+        color: var(--gray-900);
+    }
+
+    .edit-info-card p,
+    .edit-subtitle {
+        margin: 0;
+        color: var(--gray-500);
+        font-size: 0.84rem;
+        line-height: 1.6;
+    }
+
+    .avatar-block {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 0.85rem;
+        border-radius: var(--radius);
+        background: var(--gray-50);
+        border: 1px solid var(--gray-100);
+    }
+
+    .avatar-preview {
+        width: 88px;
+        height: 88px;
+        border-radius: 24px;
+        background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary) 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #fff;
+        font-size: 2rem;
+        font-weight: 800;
+        overflow: hidden;
+        flex-shrink: 0;
+    }
+
+    .avatar-preview img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .avatar-copy strong {
+        display: block;
+        color: var(--gray-900);
+        font-size: 0.9rem;
+        margin-bottom: 0.2rem;
+    }
+
+    .avatar-copy span {
+        display: block;
+        color: var(--gray-500);
+        font-size: 0.8rem;
+        line-height: 1.5;
+    }
+
+    .mini-details {
+        display: grid;
+        gap: 0.7rem;
+    }
+
+    .mini-detail {
+        display: flex;
+        justify-content: space-between;
+        gap: 1rem;
+        padding: 0.82rem 0.9rem;
+        border-radius: var(--radius);
+        background: var(--gray-50);
+        border: 1px solid var(--gray-100);
+    }
+
+    .mini-detail__label {
+        color: var(--gray-500);
+        font-size: 0.8rem;
+        font-weight: 700;
+    }
+
+    .mini-detail__value {
+        color: var(--gray-900);
+        font-size: 0.84rem;
+        font-weight: 700;
+        text-align: right;
+        word-break: break-word;
+    }
+
+    .form-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1.1fr) minmax(300px, 0.9fr);
+        gap: 1.5rem;
+    }
+
+    .edit-card {
+        padding: 1.35rem;
+    }
+
+    .card-head {
+        margin-bottom: 1rem;
+    }
+
+    .card-head h3 {
+        margin-bottom: 0.3rem;
+    }
+
+    .form-stack {
+        display: grid;
+        gap: 1rem;
+    }
+
+    .field-group {
+        display: grid;
+        gap: 0.45rem;
+    }
+
+    .field-group label {
+        color: var(--gray-600);
+        font-size: 0.82rem;
+        font-weight: 700;
+    }
+
+    .field-group input[type="text"],
+    .field-group input[type="email"],
+    .field-group input[type="file"],
+    .field-group input[type="tel"],
+    .field-group textarea,
+    .field-group select {
+        width: 100%;
+        border: 1px solid var(--gray-200);
+        border-radius: var(--radius);
+        padding: 0.82rem 0.95rem;
+        font-size: 0.9rem;
+        color: var(--gray-900);
+        background: #fff;
+        transition: all var(--transition);
+    }
+
+    .field-group input:focus,
+    .field-group textarea:focus,
+    .field-group select:focus {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.08);
+        outline: none;
+    }
+
+    .field-help {
+        color: var(--gray-500);
+        font-size: 0.77rem;
+        line-height: 1.45;
+    }
+
+    .field-errors {
+        color: #dc2626;
+        font-size: 0.78rem;
+        font-weight: 600;
+    }
+
+    .readonly-box,
+    .safe-box {
+        border-radius: var(--radius);
+        border: 1px solid var(--gray-100);
+        background: var(--gray-50);
+    }
+
+    .readonly-box {
+        padding: 0.9rem 0.95rem;
+    }
+
+    .readonly-box strong {
+        display: block;
+        color: var(--gray-900);
+        font-size: 0.9rem;
+        margin-bottom: 0.12rem;
+    }
+
+    .readonly-box span {
+        color: var(--gray-500);
+        font-size: 0.78rem;
+    }
+
+    .safe-box {
+        padding: 1rem;
+        display: grid;
+        gap: 0.7rem;
+    }
+
+    .safe-box__item {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.7rem;
+    }
+
+    .safe-box__item i {
+        color: var(--primary);
+        margin-top: 0.1rem;
+    }
+
+    .safe-box__item strong {
+        display: block;
+        color: var(--gray-900);
+        font-size: 0.86rem;
+        margin-bottom: 0.12rem;
+    }
+
+    .safe-box__item span {
+        color: var(--gray-500);
+        font-size: 0.78rem;
+        line-height: 1.45;
+    }
+
+    .action-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.8rem;
+        margin-top: 1rem;
+    }
+
+    .btn-save,
+    .btn-cancel {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        padding: 0.85rem 1.2rem;
+        border-radius: var(--radius);
+        text-decoration: none;
+        font-size: 0.9rem;
+        font-weight: 700;
+        transition: all var(--transition);
+        border: 1px solid transparent;
+    }
+
+    .btn-save {
+        background: var(--primary);
+        color: #fff;
+        border: none;
+    }
+
+    .btn-cancel {
+        background: #fff;
+        color: var(--gray-700);
+        border-color: var(--gray-200);
+    }
+
+    .btn-save:hover,
+    .btn-cancel:hover {
+        transform: translateY(-1px);
+    }
+
+    @media (max-width: 1024px) {
+        .edit-hero,
+        .form-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    @media (max-width: 768px) {
+        .edit-panel__hero,
+        .edit-card,
+        .edit-info-card {
+            padding: 1rem;
+        }
+
+        .edit-panel__footer {
+            padding: 0 1rem 1rem;
+        }
+
+        .edit-panel__hero h1 {
+            font-size: 1.55rem;
+        }
+
+        .avatar-block {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .action-row {
+            flex-direction: column;
+        }
+
+        .btn-save,
+        .btn-cancel {
+            width: 100%;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="edit-shell">
+    <section class="edit-hero">
+        <div class="edit-panel">
+            <div class="edit-panel__hero">
+                <span class="edit-eyebrow">
+                    <i class="fas fa-user-gear"></i>
+                    Системный профиль
+                </span>
+                <h1>Редактирование профиля администратора</h1>
+                <p>
+                    Здесь мы держим только то, что действительно нужно администратору: имя, email, аватар и базовые данные аккаунта.
+                    Волонтерские поля и лишний шум убраны.
+                </p>
+            </div>
+
+            <div class="edit-panel__footer">
+                <button type="submit" form="adminProfileForm" class="edit-cta edit-cta--primary">
+                    <i class="fas fa-floppy-disk"></i>
+                    Сохранить изменения
+                </button>
+                <a href="{% url 'admin_panel:profile' %}" class="edit-cta edit-cta--secondary">
+                    <i class="fas fa-arrow-left"></i>
+                    Вернуться в профиль
+                </a>
+            </div>
+        </div>
+
+        <aside class="edit-info-card">
+            <span class="edit-badge">
+                <i class="fas fa-circle-info"></i>
+                Что редактируем
+            </span>
+            <h3>Только полезные системные поля</h3>
+            <p>
+                Для админа эта страница больше не выглядит как форма волонтера. Мы оставляем только рабочие данные аккаунта и понятный безопасный блок справа.
+            </p>
+
+            <div class="avatar-block">
+                <div class="avatar-preview" id="avatar-preview">
+                    {% if user.avatar %}
+                        <img src="{{ user.avatar.url }}" alt="Аватар">
+                    {% else %}
+                        <span>{% firstof user.get_full_name|first user.username|first user.email|first "A" %}</span>
+                    {% endif %}
+                </div>
+                <div class="avatar-copy">
+                    <strong>{% firstof user.get_full_name user.name user.username "Администратор" %}</strong>
+                    <span>Аватар используется в шапке, карточке профиля и быстрых идентификаторах внутри панели.</span>
+                </div>
+            </div>
+
+            <div class="mini-details">
+                <div class="mini-detail">
+                    <span class="mini-detail__label">Username</span>
+                    <span class="mini-detail__value">{% firstof user.username "Не указан" %}</span>
+                </div>
+                <div class="mini-detail">
+                    <span class="mini-detail__label">Роль</span>
+                    <span class="mini-detail__value">Администратор системы</span>
+                </div>
+                <div class="mini-detail">
+                    <span class="mini-detail__label">Регистрация</span>
+                    <span class="mini-detail__value">{{ user.date_joined|date:"d.m.Y H:i" }}</span>
+                </div>
+                <div class="mini-detail">
+                    <span class="mini-detail__label">Последний вход</span>
+                    <span class="mini-detail__value">{{ user.last_login|date:"d.m.Y H:i"|default:"Никогда" }}</span>
+                </div>
+            </div>
+        </aside>
+    </section>
+
+    <form id="adminProfileForm" method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+
+        <section class="form-grid">
+            <div class="edit-card">
+                <div class="card-head">
+                    <h3>Основные данные</h3>
+                    <p class="edit-subtitle">Минимальный и чистый набор полей для системного профиля администратора.</p>
+                </div>
+
+                <div class="form-stack">
+                    <div class="field-group">
+                        <label for="{{ form.name.id_for_label }}">Имя</label>
+                        {{ form.name }}
+                        {% if form.name.errors %}
+                        <div class="field-errors">{{ form.name.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="field-group">
+                        <label for="{{ form.email.id_for_label }}">Email</label>
+                        {{ form.email }}
+                        {% if form.email.errors %}
+                        <div class="field-errors">{{ form.email.errors.0 }}</div>
+                        {% endif %}
+                        <div class="field-help">Этот email используется для входа, восстановления доступа и системных уведомлений.</div>
+                    </div>
+
+                    <div class="field-group">
+                        <label for="{{ form.avatar.id_for_label }}">Аватар</label>
+                        {{ form.avatar }}
+                        {% if form.avatar.errors %}
+                        <div class="field-errors">{{ form.avatar.errors.0 }}</div>
+                        {% endif %}
+                        <div class="field-help">Лучше квадратное изображение. Оно автоматически подстроится под карточки и верхнюю панель.</div>
+                    </div>
+
+                    <div class="readonly-box">
+                        <strong>{% firstof user.username "Не указан" %}</strong>
+                        <span>Username остается только для чтения. Это системный идентификатор аккаунта.</span>
+                    </div>
+                </div>
+
+                <div class="action-row">
+                    <button type="submit" class="btn-save">
+                        <i class="fas fa-check"></i>
+                        Сохранить
+                    </button>
+                    <a href="{% url 'admin_panel:profile' %}" class="btn-cancel">
+                        <i class="fas fa-xmark"></i>
+                        Отмена
+                    </a>
+                </div>
+            </div>
+
+            <aside class="edit-card">
+                <div class="card-head">
+                    <h3>Безопасность и рамки</h3>
+                    <p class="edit-subtitle">Что можно менять здесь, а что лучше держать под системным контролем.</p>
+                </div>
+
+                <div class="safe-box">
+                    <div class="safe-box__item">
+                        <i class="fas fa-shield-halved"></i>
+                        <div>
+                            <strong>Роль и доступы не меняются отсюда</strong>
+                            <span>Админский уровень доступа должен оставаться управляемым отдельно, без случайных правок из профиля.</span>
+                        </div>
+                    </div>
+
+                    <div class="safe-box__item">
+                        <i class="fas fa-lock"></i>
+                        <div>
+                            <strong>Пароль не редактируем на этой странице</strong>
+                            <span>Для смены пароля лучше сделать отдельный чистый flow, а не смешивать его с визуальными настройками профиля.</span>
+                        </div>
+                    </div>
+
+                    <div class="safe-box__item">
+                        <i class="fas fa-filter-circle-xmark"></i>
+                        <div>
+                            <strong>Волонтерские поля убраны</strong>
+                            <span>Рейтинг, внешние привязки и другие волонтерские параметры здесь специально не показываются, чтобы не путать роль администратора.</span>
+                        </div>
+                    </div>
+                </div>
+            </aside>
+        </section>
+    </form>
+</div>
+
+<script>
+const avatarInput = document.getElementById('id_avatar');
+const avatarPreview = document.getElementById('avatar-preview');
+
+if (avatarInput && avatarPreview) {
+    avatarInput.addEventListener('change', function (event) {
+        const file = event.target.files && event.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function (loadEvent) {
+            avatarPreview.innerHTML = `<img src="${loadEvent.target.result}" alt="Предпросмотр аватара">`;
+        };
+        reader.readAsDataURL(file);
+    });
+}
+</script>
+{% endblock %}

@@ -1,0 +1,446 @@
+{% extends 'admin_panel/base.html' %}
+{% load static %}
+
+{% block topbar_title %}Массовые рассылки{% endblock %}
+
+{% block extra_css %}
+<style>
+    .notif-page { padding: 1.5rem; display: grid; gap: 1.25rem; }
+
+    /* Hero */
+    .notif-hero {
+        background: linear-gradient(135deg, #1e1b4b 0%, #4f46e5 55%, #7c3aed 100%);
+        border-radius: var(--radius-lg); padding: 2rem; color: #fff;
+        position: relative; overflow: hidden; box-shadow: var(--shadow-lg);
+    }
+    .notif-hero::before {
+        content: ""; position: absolute; right: -80px; top: -100px;
+        width: 280px; height: 280px; border-radius: 50%;
+        background: rgba(255,255,255,0.07); pointer-events: none;
+    }
+    .notif-hero > * { position: relative; z-index: 1; }
+    .notif-hero__eyebrow {
+        display: inline-flex; align-items: center; gap: 0.45rem;
+        padding: 0.3rem 0.75rem; border-radius: 999px;
+        background: rgba(255,255,255,0.12);
+        font-size: 0.68rem; font-weight: 700;
+        letter-spacing: 0.08em; text-transform: uppercase;
+        margin-bottom: 0.8rem;
+    }
+    .notif-hero h1 { margin: 0 0 0.4rem; font-size: clamp(1.6rem,3.5vw,2.2rem); font-weight: 800; letter-spacing: -0.02em; }
+    .notif-hero p { margin: 0; color: rgba(255,255,255,0.72); font-size: 0.92rem; max-width: 42rem; }
+    .notif-hero__stats {
+        display: grid; grid-template-columns: repeat(3,1fr);
+        gap: 0.85rem; margin-top: 1.4rem;
+    }
+    .notif-stat {
+        padding: 0.9rem 1rem; border-radius: 1rem;
+        background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.12);
+        transition: background 0.2s;
+    }
+    .notif-stat:hover { background: rgba(255,255,255,0.18); }
+    .notif-stat__label { display: block; font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.07em; color: rgba(255,255,255,0.65); margin-bottom: 0.3rem; font-weight: 700; }
+    .notif-stat__val { font-size: 1.55rem; font-weight: 800; line-height: 1; }
+
+    /* Layout */
+    .notif-layout { display: grid; grid-template-columns: 1fr 360px; gap: 1.25rem; align-items: start; }
+
+    /* Compose card */
+    .notif-card {
+        background: #fff; border: 1px solid var(--gray-200);
+        border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); overflow: hidden;
+    }
+    .notif-card__header {
+        padding: 1rem 1.25rem; border-bottom: 1px solid var(--gray-200);
+        display: flex; align-items: center; gap: 0.6rem;
+        background: linear-gradient(135deg, #1e1b4b 0%, #4f46e5 100%); color: #fff;
+    }
+    .notif-card__header h3 { margin: 0; font-size: 0.96rem; font-weight: 800; }
+    .notif-card__body { padding: 1.25rem 1.4rem; }
+
+    .notif-field { margin-bottom: 1.15rem; }
+    .notif-field label {
+        display: block; margin-bottom: 0.4rem;
+        font-size: 0.72rem; font-weight: 800;
+        text-transform: uppercase; letter-spacing: 0.06em; color: var(--gray-600);
+    }
+    .notif-field input,
+    .notif-field select,
+    .notif-field textarea {
+        width: 100%; border: 1.5px solid var(--gray-200); border-radius: 0.75rem;
+        padding: 0.72rem 0.95rem; font-size: 0.88rem; font-family: inherit;
+        color: var(--gray-800); background: var(--gray-50);
+        transition: all var(--transition); resize: vertical;
+    }
+    .notif-field input:focus,
+    .notif-field select:focus,
+    .notif-field textarea:focus {
+        outline: none; border-color: #4f46e5;
+        background: #fff; box-shadow: 0 0 0 3px rgba(79,70,229,0.12);
+    }
+    .notif-field textarea { min-height: 120px; }
+    .char-counter { font-size: 0.72rem; color: var(--gray-400); text-align: right; margin-top: 0.25rem; }
+
+    /* Audience chips */
+    .audience-chips { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.5rem; }
+    .aud-chip {
+        display: inline-flex; align-items: center; gap: 0.35rem;
+        padding: 0.42rem 0.85rem; border-radius: 999px;
+        border: 1.5px solid var(--gray-200); background: var(--gray-50);
+        color: var(--gray-600); font-size: 0.78rem; font-weight: 700;
+        cursor: pointer; transition: all var(--transition); user-select: none;
+    }
+    .aud-chip.active {
+        background: #4f46e5; border-color: #4f46e5; color: #fff;
+        box-shadow: 0 0 14px rgba(79,70,229,0.35);
+    }
+    .aud-chip:hover:not(.active) { border-color: #4f46e5; color: #4f46e5; }
+
+    /* Send button */
+    .notif-send-btn {
+        width: 100%; padding: 0.85rem; border: none; border-radius: 0.85rem;
+        background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+        color: #fff; font-size: 0.95rem; font-weight: 800;
+        cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 0.5rem;
+        transition: all var(--transition); box-shadow: 0 4px 16px rgba(79,70,229,0.35);
+        font-family: inherit; letter-spacing: -0.01em;
+    }
+    .notif-send-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(79,70,229,0.45); }
+    .notif-send-btn:active { transform: translateY(0); }
+    .notif-send-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+    /* Preview panel */
+    .preview-phone {
+        width: 100%; background: var(--gray-900); border-radius: 1.5rem;
+        padding: 1.5rem 1rem 1rem; margin-top: 1rem;
+        box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+    }
+    .preview-phone__notif {
+        background: rgba(255,255,255,0.10); border-radius: 1rem;
+        padding: 0.85rem 1rem; border: 1px solid rgba(255,255,255,0.08);
+    }
+    .preview-phone__app {
+        font-size: 0.65rem; color: rgba(255,255,255,0.5);
+        font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em;
+        margin-bottom: 0.3rem; display: flex; align-items: center; gap: 0.35rem;
+    }
+    .preview-phone__title { font-weight: 800; color: #fff; font-size: 0.88rem; margin-bottom: 0.2rem; }
+    .preview-phone__body { font-size: 0.78rem; color: rgba(255,255,255,0.72); line-height: 1.5; }
+
+    /* History list */
+    .notif-history { display: grid; gap: 0.75rem; margin-top: 0.5rem; }
+    .notif-history-item {
+        padding: 0.85rem 1rem; border-radius: 0.85rem;
+        border: 1px solid var(--gray-100); background: var(--gray-50);
+        transition: box-shadow 0.2s, transform 0.2s;
+    }
+    .notif-history-item:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.07); transform: translateY(-1px); }
+    .notif-history-item__title { font-weight: 800; font-size: 0.88rem; color: var(--gray-800); margin-bottom: 0.2rem; }
+    .notif-history-item__meta { font-size: 0.75rem; color: var(--gray-500); display: flex; gap: 0.75rem; flex-wrap: wrap; }
+    .hist-badge {
+        display: inline-flex; align-items: center; gap: 0.3rem;
+        padding: 0.18rem 0.55rem; border-radius: 999px; font-size: 0.7rem; font-weight: 700;
+    }
+    .hist-badge.sent { background: #d1fae5; color: #065f46; }
+    .hist-badge.pending { background: #fef3c7; color: #92400e; }
+    .hist-badge.failed { background: #fee2e2; color: #991b1b; }
+
+    /* Toast */
+    .notif-toast {
+        position: fixed; bottom: 1.5rem; right: 1.5rem; z-index: 9999;
+        background: #1e1b4b; color: #fff; padding: 0.9rem 1.4rem;
+        border-radius: 1rem; box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+        display: flex; align-items: center; gap: 0.65rem;
+        font-weight: 700; font-size: 0.88rem;
+        transform: translateY(100px); opacity: 0;
+        transition: all 0.4s cubic-bezier(.22,1,.36,1);
+    }
+    .notif-toast.show { transform: translateY(0); opacity: 1; }
+
+    @media (max-width: 900px) {
+        .notif-layout { grid-template-columns: 1fr; }
+        .notif-hero__stats { grid-template-columns: repeat(2,1fr); }
+    }
+    @media (max-width: 576px) {
+        .notif-page { padding: 1rem; }
+        .notif-hero__stats { grid-template-columns: 1fr; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="notif-page">
+
+    <!-- Hero -->
+    <section class="notif-hero">
+        <span class="notif-hero__eyebrow"><i class="fas fa-bell"></i> Рассылки</span>
+        <h1>Массовые Уведомления</h1>
+        <p>Отправляйте push-уведомления всем волонтёрам, организаторам или конкретной группе пользователей прямо из панели администратора.</p>
+        <div class="notif-hero__stats">
+            <div class="notif-stat" id="heroTotal">
+                <span class="notif-stat__label">Всего отправлено</span>
+                <span class="notif-stat__val" id="heroTotalVal">—</span>
+            </div>
+            <div class="notif-stat" id="heroRecipients">
+                <span class="notif-stat__label">Выбрано получателей</span>
+                <span class="notif-stat__val" id="heroRecipientsVal">0</span>
+            </div>
+            <div class="notif-stat">
+                <span class="notif-stat__label">Последняя рассылка</span>
+                <span class="notif-stat__val" id="heroLastVal" style="font-size:1rem;">—</span>
+            </div>
+        </div>
+    </section>
+
+    <div class="notif-layout">
+
+        <!-- LEFT: Compose -->
+        <div style="display:grid; gap:1.25rem;">
+            <div class="notif-card">
+                <div class="notif-card__header">
+                    <i class="fas fa-pen-to-square"></i>
+                    <h3>Создать уведомление</h3>
+                </div>
+                <div class="notif-card__body">
+                    <div class="notif-field">
+                        <label>Заголовок <span style="color:#ef4444">*</span></label>
+                        <input type="text" id="notifTitle" maxlength="80" placeholder="Например: Новый проект в вашем районе!" oninput="updatePreview(); updateChar(this,'titleCount')">
+                        <div class="char-counter"><span id="titleCount">0</span>/80</div>
+                    </div>
+                    <div class="notif-field">
+                        <label>Текст сообщения <span style="color:#ef4444">*</span></label>
+                        <textarea id="notifBody" maxlength="200" placeholder="Краткое описание — будет показано под заголовком в уведомлении..." oninput="updatePreview(); updateChar(this,'bodyCount')"></textarea>
+                        <div class="char-counter"><span id="bodyCount">0</span>/200</div>
+                    </div>
+                    <div class="notif-field">
+                        <label>Аудитория</label>
+                        <div class="audience-chips">
+                            <div class="aud-chip active" data-audience="all" onclick="selectAudience(this)">
+                                <i class="fas fa-globe"></i> Все пользователи
+                            </div>
+                            <div class="aud-chip" data-audience="volunteers" onclick="selectAudience(this)">
+                                <i class="fas fa-users"></i> Волонтёры
+                            </div>
+                            <div class="aud-chip" data-audience="organizers" onclick="selectAudience(this)">
+                                <i class="fas fa-users-cog"></i> Организаторы
+                            </div>
+                        </div>
+                    </div>
+                    <button class="notif-send-btn" id="sendBtn" onclick="sendNotification()">
+                        <i class="fas fa-paper-plane"></i> Отправить уведомление
+                    </button>
+                </div>
+            </div>
+
+            <!-- History -->
+            <div class="notif-card">
+                <div class="notif-card__header" style="background: linear-gradient(135deg, #1c1917 0%, #7c3aed 100%);">
+                    <i class="fas fa-history"></i>
+                    <h3>История рассылок</h3>
+                </div>
+                <div class="notif-card__body">
+                    <div id="historyList" class="notif-history">
+                        <div style="text-align:center; padding:2rem; color:var(--gray-400);">
+                            <i class="fas fa-inbox" style="font-size:2rem; opacity:0.3; display:block; margin-bottom:0.6rem;"></i>
+                            Загрузка истории...
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- RIGHT: Preview + tips -->
+        <div style="display:grid; gap:1.25rem;">
+            <div class="notif-card">
+                <div class="notif-card__header" style="background: linear-gradient(135deg, #0c4a6e 0%, #0ea5e9 100%);">
+                    <i class="fas fa-mobile-alt"></i>
+                    <h3>Предпросмотр</h3>
+                </div>
+                <div class="notif-card__body">
+                    <p style="font-size:0.8rem; color:var(--gray-500); margin:0 0 0.5rem;">Так уведомление выглядит на телефоне:</p>
+                    <div class="preview-phone">
+                        <div class="preview-phone__notif">
+                            <div class="preview-phone__app">
+                                <i class="fas fa-hands-helping"></i> BirQadam
+                            </div>
+                            <div class="preview-phone__title" id="previewTitle">Заголовок уведомления</div>
+                            <div class="preview-phone__body" id="previewBody">Текст вашего сообщения появится здесь...</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="notif-card">
+                <div class="notif-card__header" style="background: linear-gradient(135deg, #0f766e 0%, #10b981 100%);">
+                    <i class="fas fa-lightbulb"></i>
+                    <h3>Советы по рассылке</h3>
+                </div>
+                <div class="notif-card__body" style="display:grid; gap:0.7rem;">
+                    <div style="display:flex; gap:0.75rem; align-items:flex-start;">
+                        <div style="width:28px;height:28px;border-radius:50%;background:#d1fae5;color:#065f46;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:0.75rem;"><i class="fas fa-check"></i></div>
+                        <p style="margin:0;font-size:0.82rem;color:var(--gray-600);line-height:1.55;">Короткий заголовок (до 40 симв.) читается лучше всего</p>
+                    </div>
+                    <div style="display:flex; gap:0.75rem; align-items:flex-start;">
+                        <div style="width:28px;height:28px;border-radius:50%;background:#dbeafe;color:#1d4ed8;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:0.75rem;"><i class="fas fa-clock"></i></div>
+                        <p style="margin:0;font-size:0.82rem;color:var(--gray-600);line-height:1.55;">Лучшее время — с 10:00 до 12:00 и с 18:00 до 20:00</p>
+                    </div>
+                    <div style="display:flex; gap:0.75rem; align-items:flex-start;">
+                        <div style="width:28px;height:28px;border-radius:50%;background:#fef3c7;color:#92400e;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:0.75rem;"><i class="fas fa-exclamation"></i></div>
+                        <p style="margin:0;font-size:0.82rem;color:var(--gray-600);line-height:1.55;">Не отправляйте более 2 уведомлений в день — иначе пользователи отключат их</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Toast -->
+<div class="notif-toast" id="toast">
+    <i class="fas fa-check-circle" style="color:#34d399;"></i>
+    <span id="toastMsg">Уведомление отправлено!</span>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const API_BASE = '/custom-admin/api/v1';
+let selectedAudience = 'all';
+
+/* ── Preview ── */
+function updatePreview() {
+    const t = document.getElementById('notifTitle').value.trim();
+    const b = document.getElementById('notifBody').value.trim();
+    document.getElementById('previewTitle').textContent = t || 'Заголовок уведомления';
+    document.getElementById('previewBody').textContent  = b || 'Текст вашего сообщения появится здесь...';
+}
+
+function updateChar(el, countId) {
+    document.getElementById(countId).textContent = el.value.length;
+}
+
+/* ── Audience ── */
+function selectAudience(chip) {
+    document.querySelectorAll('.aud-chip').forEach(c => c.classList.remove('active'));
+    chip.classList.add('active');
+    selectedAudience = chip.dataset.audience;
+    loadRecipientCount();
+}
+
+/* ── Recipient count ── */
+async function loadRecipientCount() {
+    try {
+        const res = await fetch(`${API_BASE}/bulk-notifications/preview-recipients/`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrf() },
+            body: JSON.stringify({ audience: selectedAudience })
+        });
+        if (res.ok) {
+            const data = await res.json();
+            document.getElementById('heroRecipientsVal').textContent = data.count ?? '—';
+        }
+    } catch(e) {}
+}
+
+/* ── Send ── */
+async function sendNotification() {
+    const title = document.getElementById('notifTitle').value.trim();
+    const body  = document.getElementById('notifBody').value.trim();
+    if (!title || !body) {
+        showToast('⚠️ Заполните заголовок и текст сообщения', '#f59e0b');
+        return;
+    }
+    const btn = document.getElementById('sendBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Отправка...';
+
+    try {
+        /* 1. Create notification */
+        const createRes = await fetch(`${API_BASE}/bulk-notifications/create/`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrf() },
+            body: JSON.stringify({ title, body, audience: selectedAudience })
+        });
+        const created = await createRes.json();
+        if (!createRes.ok) throw new Error(created.error || 'Ошибка создания');
+
+        /* 2. Send it */
+        const sendRes = await fetch(`${API_BASE}/bulk-notifications/${created.id}/send/`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrf() },
+            body: JSON.stringify({})
+        });
+        if (!sendRes.ok) throw new Error('Ошибка отправки');
+
+        showToast('✅ Уведомление успешно отправлено!');
+        document.getElementById('notifTitle').value = '';
+        document.getElementById('notifBody').value = '';
+        document.getElementById('titleCount').textContent = '0';
+        document.getElementById('bodyCount').textContent = '0';
+        updatePreview();
+        loadHistory();
+    } catch(err) {
+        showToast('❌ ' + err.message, '#ef4444');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-paper-plane"></i> Отправить уведомление';
+    }
+}
+
+/* ── History ── */
+async function loadHistory() {
+    try {
+        const res = await fetch(`${API_BASE}/bulk-notifications/`);
+        const data = await res.json();
+        const list = Array.isArray(data) ? data : (data.results || []);
+        const container = document.getElementById('historyList');
+
+        if (!list.length) {
+            container.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--gray-400);"><i class="fas fa-inbox" style="font-size:2rem;opacity:0.3;display:block;margin-bottom:0.6rem;"></i>Рассылок пока не было</div>';
+            return;
+        }
+
+        document.getElementById('heroTotalVal').textContent = list.length;
+        const last = list[0];
+        if (last.created_at) {
+            const d = new Date(last.created_at);
+            document.getElementById('heroLastVal').textContent = d.toLocaleDateString('ru-RU', { day:'2-digit', month:'short' });
+        }
+
+        container.innerHTML = list.slice(0, 10).map(n => {
+            const statusCls = n.status === 'sent' ? 'sent' : n.status === 'failed' ? 'failed' : 'pending';
+            const statusLbl = n.status === 'sent' ? 'Отправлено' : n.status === 'failed' ? 'Ошибка' : 'В очереди';
+            const date = n.created_at ? new Date(n.created_at).toLocaleDateString('ru-RU') : '—';
+            return `
+            <div class="notif-history-item">
+                <div class="notif-history-item__title">${n.title || '—'}</div>
+                <div class="notif-history-item__meta">
+                    <span class="hist-badge ${statusCls}"><i class="fas fa-${statusCls === 'sent' ? 'check' : statusCls === 'failed' ? 'times' : 'clock'}"></i> ${statusLbl}</span>
+                    <span><i class="fas fa-calendar" style="opacity:.5;"></i> ${date}</span>
+                    ${n.recipient_count ? `<span><i class="fas fa-users" style="opacity:.5;"></i> ${n.recipient_count} получ.</span>` : ''}
+                </div>
+            </div>`;
+        }).join('');
+    } catch(e) {
+        document.getElementById('historyList').innerHTML = '<div style="text-align:center;padding:1.5rem;color:var(--gray-400);">Не удалось загрузить историю</div>';
+    }
+}
+
+/* ── Toast ── */
+function showToast(msg, bg = '#1e1b4b') {
+    const t = document.getElementById('toast');
+    t.style.background = bg;
+    document.getElementById('toastMsg').textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 3500);
+}
+
+function getCsrf() {
+    return document.cookie.split(';').map(c => c.trim()).find(c => c.startsWith('csrftoken='))?.split('=')[1] || '';
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    loadHistory();
+    loadRecipientCount();
+});
+</script>
+{% endblock %}

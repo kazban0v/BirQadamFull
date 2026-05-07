@@ -1,0 +1,978 @@
+{% extends 'admin_panel/base.html' %} {% load static %}
+
+{% block topbar_title %}Организаторы{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* ── Hero ── */
+    .org-hero {
+        background: linear-gradient(135deg, var(--gray-900) 0%, #667eea 50%, #764ba2 100%);
+        border-radius: var(--radius-lg);
+        padding: 2rem;
+        color: #fff;
+        position: relative;
+        overflow: hidden;
+        margin-bottom: 1.25rem;
+    }
+
+    .org-hero::before {
+        content: "";
+        position: absolute;
+        width: 280px;
+        height: 280px;
+        border-radius: 50%;
+        right: -70px;
+        top: -110px;
+        background: rgba(255, 255, 255, 0.06);
+        pointer-events: none;
+    }
+
+    .org-hero>* {
+        position: relative;
+        z-index: 1;
+    }
+
+    .org-hero-eyebrow {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        padding: 0.28rem 0.7rem;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.12);
+        font-size: 0.68rem;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        margin-bottom: 0.65rem;
+    }
+
+    .org-hero h1 {
+        margin: 0 0 0.3rem;
+        font-size: 1.65rem;
+        font-weight: 800;
+        letter-spacing: -0.02em;
+    }
+
+    .org-hero p {
+        margin: 0;
+        color: rgba(255, 255, 255, 0.7);
+        font-size: 0.88rem;
+    }
+
+    .org-hero-metrics {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 0.75rem;
+        margin-top: 1.25rem;
+    }
+
+    .org-hero-metric {
+        padding: 0.8rem;
+        border-radius: var(--radius);
+        background: rgba(255, 255, 255, 0.1);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .org-hero-metric__label {
+        display: block;
+        font-size: 0.62rem;
+        text-transform: uppercase;
+        letter-spacing: 0.07em;
+        color: rgba(255, 255, 255, 0.6);
+        margin-bottom: 0.25rem;
+        font-weight: 700;
+    }
+
+    .org-hero-metric__value {
+        font-size: 1.45rem;
+        font-weight: 800;
+        line-height: 1;
+    }
+
+    /* ── Toolbar ── */
+    .org-toolbar {
+        background: #fff;
+        border: 1px solid var(--gray-200);
+        border-radius: var(--radius-lg);
+        padding: 1rem 1.25rem;
+        box-shadow: var(--shadow-sm);
+        margin-bottom: 1.25rem;
+        display: flex;
+        gap: 0.75rem;
+        flex-wrap: wrap;
+        align-items: center;
+    }
+
+    .org-search-wrap {
+        flex: 1;
+        min-width: 220px;
+        position: relative;
+    }
+
+    .org-search-wrap i {
+        position: absolute;
+        left: 0.75rem;
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--gray-400);
+        font-size: 0.8rem;
+        pointer-events: none;
+    }
+
+    .org-search-input {
+        width: 100%;
+        padding: 0.48rem 0.75rem 0.48rem 2.1rem;
+        border: 1px solid var(--gray-200);
+        border-radius: 0.5rem;
+        font-size: 0.83rem;
+        font-family: inherit;
+        color: var(--gray-800);
+        background: var(--gray-50);
+        transition: all var(--transition);
+    }
+
+    .org-search-input:focus {
+        outline: none;
+        border-color: #667eea;
+        background: #fff;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.25);
+    }
+
+    /* ── Table Card ── */
+    .org-table-card {
+        background: #fff;
+        border: 1px solid var(--gray-200);
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-sm);
+        overflow: hidden;
+        margin-bottom: 1.5rem;
+    }
+
+    .org-table-card .card-header {
+        background: var(--gray-900);
+        color: #fff;
+        padding: 1rem 1.25rem;
+        border: none;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .org-table-card .card-header h6 {
+        margin: 0;
+        font-size: 0.875rem;
+        font-weight: 700;
+    }
+
+    .org-table-card.pending .card-header {
+        background: linear-gradient(135deg, #f59e0b, #d97706);
+    }
+
+    .org-table-card.rejected .card-header {
+        background: linear-gradient(135deg, #ef4444, #b91c1c);
+    }
+
+    .org-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.875rem;
+    }
+
+    .org-table thead th {
+        padding: 0.75rem 1rem;
+        font-size: 0.7rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: var(--gray-500);
+        background: var(--gray-50);
+        border-bottom: 1px solid var(--gray-200);
+        white-space: nowrap;
+    }
+
+    .org-table tbody td {
+        padding: 0.85rem 1rem;
+        border-bottom: 1px solid var(--gray-100);
+        vertical-align: top;
+        color: var(--gray-700);
+    }
+
+    .org-table tbody tr:hover td {
+        background: var(--gray-50);
+    }
+
+    .org-table tbody tr:last-child td {
+        border-bottom: none;
+    }
+
+    /* ── Avatar ── */
+    .org-avatar {
+        width: 38px;
+        height: 38px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #fff;
+        font-weight: 800;
+        font-size: 0.95rem;
+        flex-shrink: 0;
+    }
+
+    .org-avatar.pending {
+        background: linear-gradient(135deg, #f59e0b, #d97706);
+    }
+
+    .org-avatar.rejected {
+        background: linear-gradient(135deg, #ef4444, #b91c1c);
+    }
+
+    .org-name {
+        font-weight: 700;
+        color: var(--gray-800);
+        font-size: 0.875rem;
+    }
+
+    .org-email {
+        font-size: 0.75rem;
+        color: var(--gray-400);
+        margin-top: 1px;
+    }
+
+    /* ── Badges ── */
+    .org-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.3rem;
+        padding: 0.28rem 0.6rem;
+        border-radius: 999px;
+        font-size: 0.72rem;
+        font-weight: 700;
+    }
+
+    .org-badge.primary {
+        background: #e0e7ff;
+        color: #4f46e5;
+    }
+
+    .org-badge.info {
+        background: #cffafe;
+        color: var(--info);
+    }
+
+    /* ── Actions ── */
+    .org-action-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        padding: 0.38rem 0.75rem;
+        border-radius: 0.5rem;
+        border: 1px solid var(--gray-200);
+        background: #fff;
+        color: var(--gray-600);
+        font-size: 0.78rem;
+        font-weight: 700;
+        text-decoration: none;
+        transition: all var(--transition);
+        cursor: pointer;
+    }
+
+    .org-action-btn:hover {
+        border-color: #667eea;
+        background: #e0e7ff;
+        color: #4f46e5;
+        transform: translateY(-1px);
+    }
+
+    .org-action-btn.success:hover {
+        border-color: #10b981;
+        background: #d1fae5;
+        color: #059669;
+    }
+
+    .org-action-btn.danger:hover {
+        border-color: #ef4444;
+        background: #fee2e2;
+        color: #b91c1c;
+    }
+
+    /* ── Empty ── */
+    .org-empty {
+        text-align: center;
+        padding: 3rem 1rem;
+        color: var(--gray-400);
+    }
+
+    .org-empty i {
+        font-size: 2.5rem;
+        opacity: 0.3;
+        display: block;
+        margin-bottom: 0.75rem;
+    }
+
+    form.inline-form {
+        display: inline;
+        margin: 0;
+        padding: 0;
+    }
+
+    .org-table th:nth-child(3),
+    .org-table td:nth-child(3) {
+        min-width: 14rem;
+        max-width: 19rem;
+    }
+
+    .org-app-cell {
+        max-width: 19rem;
+    }
+
+    .org-app-hero {
+        border-radius: 0.5rem;
+        padding: 0.45rem 0.55rem 0.4rem;
+        background: linear-gradient(135deg, rgba(255, 251, 235, 0.95) 0%, rgba(254, 243, 199, 0.35) 100%);
+        border: 1px solid rgba(245, 158, 11, 0.35);
+        box-shadow: 0 1px 0 rgba(255, 255, 255, 0.9) inset;
+        margin-bottom: 0.35rem;
+    }
+
+    .org-app-hero__row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.5rem;
+        margin-bottom: 0.3rem;
+    }
+
+    .org-app-hero__tag {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        font-size: 0.62rem;
+        font-weight: 800;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: #b45309;
+        background: rgba(251, 191, 36, 0.25);
+        padding: 0.2rem 0.5rem;
+        border-radius: 999px;
+    }
+
+    .org-app-hero__hint {
+        font-size: 0.65rem;
+        font-weight: 600;
+        color: var(--gray-500);
+    }
+
+    .org-app-quote {
+        margin: 0;
+        padding: 0.35rem 0 0;
+        font-size: 0.8rem;
+        font-weight: 600;
+        line-height: 1.45;
+        color: #1f2937;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+
+    .org-app-quote--empty {
+        font-weight: 500;
+        color: var(--gray-500);
+        font-size: 0.8rem;
+        -webkit-line-clamp: unset;
+    }
+
+    .org-app-chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.28rem;
+        margin-top: 0.3rem;
+    }
+
+    .org-app-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.28rem;
+        font-size: 0.68rem;
+        font-weight: 700;
+        padding: 0.18rem 0.45rem;
+        border-radius: 999px;
+        background: #fff;
+        border: 1px solid rgba(245, 158, 11, 0.35);
+        color: #92400e;
+    }
+
+    .org-app-chip i {
+        opacity: 0.75;
+        font-size: 0.65rem;
+    }
+
+    .org-app-details {
+        margin-top: 0.1rem;
+    }
+
+    .org-app-details>summary {
+        cursor: pointer;
+        list-style: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        padding: 0.28rem 0.55rem;
+        border-radius: 0.45rem;
+        font-size: 0.68rem;
+        font-weight: 800;
+        letter-spacing: 0.02em;
+        color: #4f46e5;
+        background: #eef2ff;
+        border: 1px solid #c7d2fe;
+        transition: background 0.15s, border-color 0.15s, transform 0.12s;
+    }
+
+    .org-app-details>summary::-webkit-details-marker {
+        display: none;
+    }
+
+    .org-app-details>summary:hover {
+        background: #e0e7ff;
+        border-color: #a5b4fc;
+    }
+
+    .org-app-details>summary .org-app-chev {
+        display: inline-block;
+        transition: transform 0.2s;
+        font-size: 0.65rem;
+        opacity: 0.85;
+    }
+
+    .org-app-details[open]>summary .org-app-chev {
+        transform: rotate(90deg);
+    }
+
+    .org-app-panel {
+        margin-top: 0.45rem;
+        padding: 0.45rem;
+        border-radius: 0.5rem;
+        background: #fff;
+        border: 1px solid var(--gray-200);
+        box-shadow: 0 4px 16px -10px rgba(15, 23, 42, 0.15);
+        max-height: 11.5rem;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+    }
+
+    .org-app-grid {
+        display: flex;
+        flex-direction: column;
+        gap: 0.35rem;
+    }
+
+    .org-app-tile {
+        border-radius: 0.4rem;
+        border: 1px solid var(--gray-100);
+        background: linear-gradient(180deg, #fafafa 0%, #fff 100%);
+        overflow: hidden;
+    }
+
+    .org-app-tile__head {
+        display: flex;
+        align-items: center;
+        gap: 0.35rem;
+        padding: 0.28rem 0.5rem;
+        font-size: 0.58rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--gray-600);
+        background: rgba(102, 126, 234, 0.08);
+        border-bottom: 1px solid var(--gray-100);
+    }
+
+    .org-app-tile__head i {
+        color: #667eea;
+        font-size: 0.68rem;
+    }
+
+    .org-app-tile__body {
+        padding: 0.38rem 0.5rem 0.45rem;
+        font-size: 0.74rem;
+        line-height: 1.45;
+        color: var(--gray-800);
+        word-break: break-word;
+    }
+
+    .org-app-tile__body a {
+        color: #4f46e5;
+        font-weight: 600;
+        word-break: break-all;
+    }
+
+    @media (max-width: 900px) {
+        .org-hero {
+            padding: 1.25rem;
+        }
+
+        .org-hero h1 {
+            font-size: 1.35rem;
+            letter-spacing: 0;
+        }
+
+        .org-hero-metrics {
+            grid-template-columns: 1fr;
+        }
+
+        .org-toolbar {
+            padding: 0.85rem;
+            border-radius: var(--radius);
+        }
+
+        .org-search-wrap,
+        .org-toolbar .org-action-btn {
+            width: 100%;
+            min-width: 0;
+        }
+
+        .org-toolbar .org-action-btn {
+            justify-content: center;
+        }
+    }
+
+    @media (max-width: 760px) {
+
+        .org-table th:nth-child(3),
+        .org-table td:nth-child(3) {
+            min-width: 0;
+            max-width: none;
+        }
+
+        .table-responsive {
+            overflow: visible;
+        }
+
+        .org-table,
+        .org-table thead,
+        .org-table tbody,
+        .org-table tr,
+        .org-table td {
+            display: block;
+            width: 100%;
+        }
+
+        .org-table thead {
+            display: none;
+        }
+
+        .org-table tbody {
+            padding: 0.75rem;
+            display: grid;
+            gap: 0.75rem;
+        }
+
+        .org-table tbody tr {
+            border: 1px solid var(--gray-200);
+            border-radius: var(--radius);
+            background: #fff;
+            overflow: hidden;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .org-table tbody tr:hover td {
+            background: transparent;
+        }
+
+        .org-table tbody td {
+            display: grid;
+            grid-template-columns: 7.2rem minmax(0, 1fr);
+            gap: 0.75rem;
+            align-items: center;
+            padding: 0.75rem;
+            border-bottom: 1px solid var(--gray-100);
+            text-align: left !important;
+        }
+
+        .org-table tbody td::before {
+            content: attr(data-label);
+            color: var(--gray-500);
+            font-size: 0.72rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0;
+        }
+
+        .org-table tbody td[data-label=""]::before {
+            display: none;
+        }
+
+        .org-table tbody td:first-child {
+            grid-template-columns: 1fr;
+            background: var(--gray-50);
+        }
+
+        .org-table tbody td:first-child::before {
+            margin-bottom: 0.35rem;
+        }
+
+        .org-table tbody td[data-label="Действия"] {
+            grid-template-columns: 1fr;
+            gap: 0.55rem;
+        }
+
+        .org-table tbody td[data-label="Действия"]::before {
+            margin-bottom: 0.1rem;
+        }
+
+        .org-table tbody td[data-label="Действия"] .inline-form,
+        .org-table tbody td[data-label="Действия"] .org-action-btn {
+            width: 100%;
+        }
+
+        .org-table tbody td[data-label="Действия"] .inline-form {
+            display: block;
+        }
+
+        .org-table tbody td[data-label="Действия"] .inline-form.ms-1 {
+            margin-left: 0 !important;
+        }
+
+        .org-table tbody td[data-label="Действия"] .org-action-btn {
+            justify-content: center;
+        }
+
+        .org-table-card .card-header {
+            align-items: flex-start;
+            flex-direction: column;
+            gap: 0.55rem;
+        }
+    }
+
+    @media (max-width: 430px) {
+
+        .org-hero,
+        .org-table-card,
+        .org-toolbar {
+            border-radius: var(--radius);
+        }
+
+        .org-table tbody {
+            padding: 0.55rem;
+        }
+
+        .org-table tbody td {
+            grid-template-columns: 1fr;
+            gap: 0.35rem;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0">
+
+    <!-- Hero -->
+    <div class="org-hero">
+        <span class="org-hero-eyebrow"><i class="fas fa-users-cog"></i> Организаторы</span>
+        <h1>Управление организаторами</h1>
+        <p>Управление заявками и профилями организаторов, создающих проекты в системе</p>
+        <div class="org-hero-metrics">
+            <div class="org-hero-metric">
+                <span class="org-hero-metric__label">Одобренных</span>
+                <div class="org-hero-metric__value">{{ approved_count }}</div>
+            </div>
+            <div class="org-hero-metric">
+                <span class="org-hero-metric__label">На рассмотрении</span>
+                <div class="org-hero-metric__value">{{ pending_count }}</div>
+            </div>
+            <div class="org-hero-metric">
+                <span class="org-hero-metric__label">Отклоненных</span>
+                <div class="org-hero-metric__value">{{ rejected_count }}</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toolbar: search -->
+    <div class="org-toolbar">
+        <div class="org-search-wrap">
+            <i class="fas fa-search"></i>
+            <input type="text" id="orgSearch" class="org-search-input" placeholder="Поиск по имени, email, организации, тексту заявки...">
+        </div>
+        <a href="{% url 'admin_panel:analytics' %}" class="org-action-btn">
+            <i class="fas fa-chart-bar"></i> Общая Аналитика
+        </a>
+    </div>
+
+    <!-- Pending Table -->
+    {% if pending_organizers %}
+    <div class="org-table-card pending">
+        <div class="card-header">
+            <h6><i class="fas fa-clock me-2"></i>Ожидают одобрения</h6>
+            <span style="font-size:0.78rem; font-weight:700; background:rgba(255,255,255,0.2); padding:0.2rem 0.6rem; border-radius:999px;">{{ pending_count }} заявок</span>
+        </div>
+        <div class="table-responsive">
+            <table class="org-table">
+                <thead>
+                    <tr>
+                        <th>Организатор</th>
+                        <th>Организация</th>
+                        <th>Текст заявки</th>
+                        <th class="text-center">Дата заявки</th>
+                        <th class="text-center">Действия</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for organizer in pending_organizers %}
+                    <tr class="org-row" data-name="{{ organizer.name|default:organizer.username|lower }}" data-email="{{ organizer.email|lower }}" data-org="{{ organizer.organization_name|default:''|lower }}" data-app="{{ organizer.organizer_app_notes|default:''|lower }} {{ organizer.organizer_app_description|default:''|lower }} {{ organizer.organizer_app_city|default:''|lower }} {{ organizer.organizer_app_contact_person|default:''|lower }}">
+                        <td data-label="Организатор">
+                            <div style="display:flex; align-items:center; gap:0.75rem;">
+                                <div class="org-avatar pending">{{ organizer.username|slice:":1"|upper }}</div>
+                                <div>
+                                    <div class="org-name">{{ organizer.name|default:organizer.email|default:organizer.username|default:"Без имени" }}</div>
+                                    <div class="org-email">{{ organizer.email|default:"—" }}</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td data-label="Организация">
+                            <span style="font-size:0.82rem; font-weight:600; color:var(--gray-800);">
+                                <i class="fas fa-building me-1 text-muted"></i> {{ organizer.organization_name|default:"Не указана" }}
+                            </span>
+                        </td>
+                        <td data-label="Текст заявки">
+                            {% if organizer.organizer_app_notes or organizer.organizer_app_description or organizer.organizer_app_city or organizer.organizer_app_website or organizer.organizer_app_contact_person %}
+                            <div class="org-app-cell">
+                                <div class="org-app-hero">
+                                    <div class="org-app-hero__row">
+                                        <span class="org-app-hero__tag"><i class="fas fa-clipboard-list"></i> Заявка</span>
+                                        {% if organizer.organizer_app_notes %}
+                                        <span class="org-app-hero__hint">{{ organizer.organizer_app_notes|length }} симв.</span>
+                                        {% endif %}
+                                    </div>
+                                    {% if organizer.organizer_app_notes %}
+                                    <div class="org-app-quote">{{ organizer.organizer_app_notes|linebreaksbr }}</div>
+                                    {% elif organizer.organizer_app_description %}
+                                    <div class="org-app-quote">{{ organizer.organizer_app_description|linebreaksbr }}</div>
+                                    {% else %}
+                                    <p class="org-app-quote org-app-quote--empty mb-0">Текста мало — откройте полное досье ниже.</p>
+                                    {% endif %}
+                                    <div class="org-app-chips">
+                                        {% if organizer.organizer_app_city %}
+                                        <span class="org-app-chip"><i class="fas fa-map-marker-alt"></i>{{ organizer.organizer_app_city }}</span>
+                                        {% endif %}
+                                        {% if organizer.organizer_app_contact_person %}
+                                        <span class="org-app-chip"><i class="fas fa-user-tie"></i>{{ organizer.organizer_app_contact_person }}</span>
+                                        {% endif %}
+                                        {% if organizer.organizer_app_website %}
+                                        <span class="org-app-chip"><i class="fas fa-link"></i>Сайт</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <details class="org-app-details">
+                                    <summary>
+                                        <i class="fas fa-layer-group"></i>
+                                        Полное досье заявки
+                                        <span class="org-app-chev"><i class="fas fa-chevron-right"></i></span>
+                                    </summary>
+                                    <div class="org-app-panel">
+                                        <div class="org-app-grid">
+                                            {% if organizer.organizer_app_description %}
+                                            <div class="org-app-tile">
+                                                <div class="org-app-tile__head"><i class="fas fa-align-left"></i> Описание деятельности</div>
+                                                <div class="org-app-tile__body">{{ organizer.organizer_app_description|linebreaksbr }}</div>
+                                            </div>
+                                            {% endif %}
+                                            {% if organizer.organizer_app_notes %}
+                                            <div class="org-app-tile">
+                                                <div class="org-app-tile__head"><i class="fas fa-seedling"></i> Планируемые проекты</div>
+                                                <div class="org-app-tile__body">{{ organizer.organizer_app_notes|linebreaksbr }}</div>
+                                            </div>
+                                            {% endif %}
+                                            {% if organizer.organizer_app_city %}
+                                            <div class="org-app-tile">
+                                                <div class="org-app-tile__head"><i class="fas fa-city"></i> Город</div>
+                                                <div class="org-app-tile__body">{{ organizer.organizer_app_city }}</div>
+                                            </div>
+                                            {% endif %}
+                                            {% if organizer.organizer_app_website %}
+                                            <div class="org-app-tile">
+                                                <div class="org-app-tile__head"><i class="fas fa-globe"></i> Сайт</div>
+                                                <div class="org-app-tile__body"><a href="{{ organizer.organizer_app_website }}" target="_blank" rel="noopener noreferrer">{{ organizer.organizer_app_website }}</a></div>
+                                            </div>
+                                            {% endif %}
+                                            {% if organizer.organizer_app_contact_person %}
+                                            <div class="org-app-tile">
+                                                <div class="org-app-tile__head"><i class="fas fa-address-card"></i> Контактное лицо</div>
+                                                <div class="org-app-tile__body">{{ organizer.organizer_app_contact_person }}</div>
+                                            </div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </details>
+                            </div>
+                            {% else %}
+                            <span style="font-size:0.8rem; color:var(--gray-400);">Нет данных заявки</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-center" data-label="Дата заявки">
+                            <span style="font-size:0.82rem; color:var(--gray-500);">
+                                {{ organizer.date_joined|date:"d.m.Y" }}
+                            </span>
+                        </td>
+                        <td class="text-center" data-label="Действия">
+                            <form method="post" action="{% url 'admin_panel:approve_organizer' organizer.id %}" class="inline-form">
+                                {% csrf_token %}
+                                <button type="submit" class="org-action-btn success">
+                                    <i class="fas fa-check"></i> Одобрить
+                                </button>
+                            </form>
+                            <form method="post" action="{% url 'admin_panel:reject_organizer' organizer.id %}" class="inline-form ms-1">
+                                {% csrf_token %}
+                                <button type="submit" class="org-action-btn danger">
+                                    <i class="fas fa-times"></i> Отклонить
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Approved Table -->
+    <div class="org-table-card">
+        <div class="card-header">
+            <h6><i class="fas fa-check-circle me-2"></i>Одобренные организаторы</h6>
+            <span style="font-size:0.78rem; font-weight:700; background:rgba(255,255,255,0.2); padding:0.2rem 0.6rem; border-radius:999px;">{{ approved_count }} чел.</span>
+        </div>
+        <div class="table-responsive">
+            <table class="org-table">
+                <thead>
+                    <tr>
+                        <th>Организатор</th>
+                        <th>Организация</th>
+                        <th class="text-center">Проекты</th>
+                        <th class="text-center">Задачи</th>
+                        <th class="text-center">Действия</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for organizer in approved_organizers %}
+                    <tr class="org-row" data-name="{{ organizer.name|default:organizer.username|lower }}" data-email="{{ organizer.email|lower }}" data-org="{{ organizer.organization_name|default:''|lower }}" data-app="{{ organizer.organizer_app_notes|default:''|lower }} {{ organizer.organizer_app_description|default:''|lower }}">
+                        <td data-label="Организатор">
+                            <div style="display:flex; align-items:center; gap:0.75rem;">
+                                <div class="org-avatar">{{ organizer.username|slice:":1"|upper }}</div>
+                                <div>
+                                    <div class="org-name">{{ organizer.name|default:organizer.email|default:organizer.username|default:"Без имени" }}</div>
+                                    <div class="org-email">{{ organizer.email|default:"—" }}</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td data-label="Организация">
+                            <span style="font-size:0.82rem; font-weight:600; color:var(--gray-800);">
+                                <i class="fas fa-building me-1 text-muted"></i> {{ organizer.organization_name|default:"Не указана" }}
+                            </span>
+                        </td>
+                        <td class="text-center" data-label="Проекты">
+                            <span class="org-badge info">
+                                <i class="fas fa-project-diagram"></i> {{ organizer.project_count }}
+                            </span>
+                        </td>
+                        <td class="text-center" data-label="Задачи">
+                            <span class="org-badge primary">
+                                <i class="fas fa-tasks"></i> {{ organizer.task_count }}
+                            </span>
+                        </td>
+                        <td class="text-center" data-label="Действия">
+                            <a href="{% url 'admin_panel:organizer_analytics' organizer.id %}" class="org-action-btn">
+                                <i class="fas fa-chart-line"></i> Аналитика
+                            </a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" data-label="">
+                            <div class="org-empty">
+                                <i class="fas fa-users-slash"></i>
+                                <p style="font-weight:600;">Нет одобренных организаторов</p>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Rejected Table -->
+    {% if rejected_organizers %}
+    <div class="org-table-card rejected">
+        <div class="card-header">
+            <h6><i class="fas fa-times-circle me-2"></i>Отклоненные заявки</h6>
+            <span style="font-size:0.78rem; font-weight:700; background:rgba(255,255,255,0.2); padding:0.2rem 0.6rem; border-radius:999px;">{{ rejected_count }} заявок</span>
+        </div>
+        <div class="table-responsive">
+            <table class="org-table">
+                <thead>
+                    <tr>
+                        <th>Организатор</th>
+                        <th>Организация</th>
+                        <th class="text-center">Действия</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for organizer in rejected_organizers %}
+                    <tr class="org-row" data-name="{{ organizer.name|default:organizer.username|lower }}" data-email="{{ organizer.email|lower }}" data-org="{{ organizer.organization_name|default:''|lower }}" data-app="{{ organizer.organizer_app_notes|default:''|lower }} {{ organizer.organizer_app_description|default:''|lower }}">
+                        <td data-label="Организатор">
+                            <div style="display:flex; align-items:center; gap:0.75rem;">
+                                <div class="org-avatar rejected">{{ organizer.username|slice:":1"|upper }}</div>
+                                <div>
+                                    <div class="org-name">{{ organizer.name|default:organizer.email|default:organizer.username|default:"Без имени" }}</div>
+                                    <div class="org-email">{{ organizer.email|default:"—" }}</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td data-label="Организация">
+                            <span style="font-size:0.82rem; font-weight:600; color:var(--gray-800);">
+                                <i class="fas fa-building me-1 text-muted"></i> {{ organizer.organization_name|default:"Не указана" }}
+                            </span>
+                        </td>
+                        <td class="text-center" data-label="Действия">
+                            <form method="post" action="{% url 'admin_panel:approve_organizer' organizer.id %}" class="inline-form">
+                                {% csrf_token %}
+                                <button type="submit" class="org-action-btn success">
+                                    <i class="fas fa-check"></i> Одобрить
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const input = document.getElementById('orgSearch');
+        const rows = document.querySelectorAll('.org-row');
+
+        input.addEventListener('input', function() {
+            const q = this.value.toLowerCase().trim();
+            rows.forEach(row => {
+                const app = (row.dataset.app || '').toLowerCase();
+                const match = !q ||
+                    (row.dataset.name || '').includes(q) ||
+                    (row.dataset.email || '').includes(q) ||
+                    (row.dataset.org || '').includes(q) ||
+                    app.includes(q);
+                row.style.display = match ? '' : 'none';
+            });
+        });
+    });
+</script>
+{% endblock %}

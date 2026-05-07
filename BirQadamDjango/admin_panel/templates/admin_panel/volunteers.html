@@ -1,0 +1,450 @@
+{% extends 'admin_panel/base.html' %} {% load static %}
+
+{% block topbar_title %}Волонтёры{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* ── Hero ── */
+    .vol-hero {
+        background: linear-gradient(135deg, var(--gray-900) 0%, var(--primary-dark) 50%, var(--primary) 100%);
+        border-radius: var(--radius-lg);
+        padding: 2rem;
+        color: #fff;
+        position: relative;
+        overflow: hidden;
+        margin-bottom: 1.25rem;
+    }
+    .vol-hero::before {
+        content: "";
+        position: absolute;
+        width: 280px; height: 280px;
+        border-radius: 50%;
+        right: -70px; top: -110px;
+        background: rgba(255,255,255,0.06);
+        pointer-events: none;
+    }
+    .vol-hero > * { position: relative; z-index: 1; }
+    .vol-hero-eyebrow {
+        display: inline-flex; align-items: center; gap: 0.4rem;
+        padding: 0.28rem 0.7rem; border-radius: 999px;
+        background: rgba(255,255,255,0.12);
+        font-size: 0.68rem; font-weight: 700;
+        letter-spacing: 0.06em; text-transform: uppercase;
+        margin-bottom: 0.65rem;
+    }
+    .vol-hero h1 { margin: 0 0 0.3rem; font-size: 1.65rem; font-weight: 800; letter-spacing: -0.02em; }
+    .vol-hero p  { margin: 0; color: rgba(255,255,255,0.7); font-size: 0.88rem; }
+    .vol-hero-metrics {
+        display: grid; grid-template-columns: repeat(3,1fr);
+        gap: 0.75rem; margin-top: 1.25rem;
+    }
+    .vol-hero-metric {
+        padding: 0.8rem; border-radius: var(--radius);
+        background: rgba(255,255,255,0.1);
+        border: 1px solid rgba(255,255,255,0.1);
+    }
+    .vol-hero-metric__label {
+        display: block; font-size: 0.62rem; text-transform: uppercase;
+        letter-spacing: 0.07em; color: rgba(255,255,255,0.6);
+        margin-bottom: 0.25rem; font-weight: 700;
+    }
+    .vol-hero-metric__value { font-size: 1.45rem; font-weight: 800; line-height: 1; }
+
+    /* ── Toolbar ── */
+    .vol-toolbar {
+        background: #fff; border: 1px solid var(--gray-200);
+        border-radius: var(--radius-lg); padding: 1rem 1.25rem;
+        box-shadow: var(--shadow-sm); margin-bottom: 1.25rem;
+        display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: center;
+    }
+    .vol-search-wrap { flex: 1; min-width: 220px; position: relative; }
+    .vol-search-wrap i {
+        position: absolute; left: 0.75rem; top: 50%;
+        transform: translateY(-50%); color: var(--gray-400); font-size: 0.8rem;
+        pointer-events: none;
+    }
+    .vol-search-input {
+        width: 100%; padding: 0.48rem 0.75rem 0.48rem 2.1rem;
+        border: 1px solid var(--gray-200); border-radius: 0.5rem;
+        font-size: 0.83rem; font-family: inherit; color: var(--gray-800);
+        background: var(--gray-50); transition: all var(--transition);
+    }
+    .vol-search-input:focus {
+        outline: none; border-color: var(--primary);
+        background: #fff; box-shadow: 0 0 0 3px var(--primary-light);
+    }
+
+    /* ── Table Card ── */
+    .vol-table-card {
+        background: #fff; border: 1px solid var(--gray-200);
+        border-radius: var(--radius-lg); box-shadow: var(--shadow-sm);
+        overflow: hidden;
+    }
+    .vol-table-card .card-header {
+        background: var(--gray-900); color: #fff;
+        padding: 1rem 1.25rem; border: none;
+        display: flex; align-items: center; justify-content: space-between;
+    }
+    .vol-table-card .card-header h6 { margin: 0; font-size: 0.875rem; font-weight: 700; }
+
+    .vol-table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+    .vol-table thead th {
+        padding: 0.75rem 1rem; font-size: 0.7rem; font-weight: 700;
+        text-transform: uppercase; letter-spacing: 0.04em;
+        color: var(--gray-500); background: var(--gray-50);
+        border-bottom: 1px solid var(--gray-200); white-space: nowrap;
+    }
+    .vol-table tbody td {
+        padding: 0.85rem 1rem; border-bottom: 1px solid var(--gray-100);
+        vertical-align: middle; color: var(--gray-700);
+    }
+    .vol-table tbody tr:hover td { background: var(--gray-50); }
+    .vol-table tbody tr:last-child td { border-bottom: none; }
+
+    /* ── Avatar ── */
+    .vol-avatar {
+        width: 38px; height: 38px; border-radius: 50%;
+        background: linear-gradient(135deg, var(--primary-dark), var(--primary));
+        display: flex; align-items: center; justify-content: center;
+        color: #fff; font-weight: 800; font-size: 0.95rem; flex-shrink: 0;
+    }
+    .vol-name { font-weight: 700; color: var(--gray-800); font-size: 0.875rem; }
+    .vol-email { font-size: 0.75rem; color: var(--gray-400); margin-top: 1px; }
+
+    /* ── Badges ── */
+    .vol-badge {
+        display: inline-flex; align-items: center; gap: 0.3rem;
+        padding: 0.28rem 0.6rem; border-radius: 999px;
+        font-size: 0.72rem; font-weight: 700;
+    }
+    .vol-badge.primary { background: var(--primary-light); color: var(--primary); }
+    .vol-badge.success { background: #d1fae5; color: var(--success); }
+    .vol-badge.info    { background: #cffafe; color: var(--info); }
+
+    /* ── Actions ── */
+    .vol-action-btn {
+        display: inline-flex; align-items: center; gap: 0.35rem;
+        padding: 0.38rem 0.75rem; border-radius: 0.5rem;
+        border: 1px solid var(--gray-200); background: #fff;
+        color: var(--gray-600); font-size: 0.78rem; font-weight: 700;
+        text-decoration: none; transition: all var(--transition);
+    }
+    .vol-action-btn:hover {
+        border-color: var(--primary); background: var(--primary-light);
+        color: var(--primary); transform: translateY(-1px);
+    }
+
+    /* ── Empty ── */
+    .vol-empty { text-align: center; padding: 3rem 1rem; color: var(--gray-400); }
+    .vol-empty i { font-size: 2.5rem; opacity: 0.3; display: block; margin-bottom: 0.75rem; }
+
+    /* ── Sortable headers ── */
+    .sort-th a {
+        display: inline-flex; align-items: center; gap: 0.3rem;
+        color: var(--gray-500); text-decoration: none;
+        font-size: 0.7rem; font-weight: 700;
+        text-transform: uppercase; letter-spacing: 0.04em;
+        transition: color var(--transition);
+    }
+    .sort-th a:hover { color: var(--primary); }
+    .sort-th.sort-active a { color: var(--primary); }
+
+    @media (max-width: 900px) {
+        .vol-hero {
+            padding: 1.25rem;
+        }
+
+        .vol-hero h1 {
+            font-size: 1.35rem;
+            letter-spacing: 0;
+        }
+
+        .vol-hero-metrics {
+            grid-template-columns: 1fr;
+        }
+
+        .vol-toolbar {
+            padding: 0.85rem;
+            border-radius: var(--radius);
+        }
+
+        .vol-search-wrap,
+        .vol-toolbar .vol-action-btn {
+            width: 100%;
+            min-width: 0;
+        }
+
+        .vol-toolbar .vol-action-btn {
+            justify-content: center;
+        }
+    }
+
+    @media (max-width: 760px) {
+        .table-responsive {
+            overflow: visible;
+        }
+
+        .vol-table,
+        .vol-table thead,
+        .vol-table tbody,
+        .vol-table tr,
+        .vol-table td {
+            display: block;
+            width: 100%;
+        }
+
+        .vol-table thead {
+            display: none;
+        }
+
+        .vol-table tbody {
+            padding: 0.75rem;
+            display: grid;
+            gap: 0.75rem;
+        }
+
+        .vol-table tbody tr {
+            border: 1px solid var(--gray-200);
+            border-radius: var(--radius);
+            background: #fff;
+            overflow: hidden;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .vol-table tbody tr:hover td {
+            background: transparent;
+        }
+
+        .vol-table tbody td {
+            display: grid;
+            grid-template-columns: 7.2rem minmax(0, 1fr);
+            gap: 0.75rem;
+            align-items: center;
+            padding: 0.75rem;
+            border-bottom: 1px solid var(--gray-100);
+            text-align: left !important;
+        }
+
+        .vol-table tbody td::before {
+            content: attr(data-label);
+            color: var(--gray-500);
+            font-size: 0.72rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0;
+        }
+
+        .vol-table tbody td[data-label=""]::before {
+            display: none;
+        }
+
+        .vol-table tbody td:first-child {
+            grid-template-columns: 1fr;
+            background: var(--gray-50);
+        }
+
+        .vol-table tbody td:first-child::before {
+            margin-bottom: 0.35rem;
+        }
+
+        .vol-table tbody td[data-label="Действия"] {
+            grid-template-columns: 1fr;
+            gap: 0.55rem;
+        }
+
+        .vol-table tbody td[data-label="Действия"]::before {
+            margin-bottom: 0.1rem;
+        }
+
+        .vol-table tbody td[data-label="Действия"] .vol-action-btn {
+            width: 100%;
+            justify-content: center;
+        }
+
+        .vol-table-card .card-header {
+            align-items: flex-start;
+            flex-direction: column;
+            gap: 0.55rem;
+        }
+    }
+
+    @media (max-width: 430px) {
+        .vol-hero,
+        .vol-table-card,
+        .vol-toolbar {
+            border-radius: var(--radius);
+        }
+
+        .vol-table tbody {
+            padding: 0.55rem;
+        }
+
+        .vol-table tbody td {
+            grid-template-columns: 1fr;
+            gap: 0.35rem;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0">
+
+    <!-- Hero -->
+    <div class="vol-hero">
+        <span class="vol-hero-eyebrow"><i class="fas fa-users"></i> Волонтёры</span>
+        <h1>Управление волонтёрами</h1>
+        <p>Список всех зарегистрированных волонтёров системы BirQadam</p>
+        <div class="vol-hero-metrics">
+            <div class="vol-hero-metric">
+                <span class="vol-hero-metric__label">Всего</span>
+                <div class="vol-hero-metric__value">{{ total_volunteers }}</div>
+            </div>
+            <div class="vol-hero-metric">
+                <span class="vol-hero-metric__label">Ср. рейтинг</span>
+                <div class="vol-hero-metric__value">{{ avg_rating|floatformat:1 }}</div>
+            </div>
+            <div class="vol-hero-metric">
+                <span class="vol-hero-metric__label">Выполнено задач</span>
+                <div class="vol-hero-metric__value">{{ total_tasks }}</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toolbar: search -->
+    <div class="vol-toolbar">
+        <div class="vol-search-wrap">
+            <i class="fas fa-search"></i>
+            <input type="text" id="volSearch" class="vol-search-input" placeholder="Поиск по имени, email, телефону...">
+        </div>
+        <a href="{% url 'admin_panel:analytics' %}" class="vol-action-btn">
+            <i class="fas fa-chart-bar"></i> Аналитика
+        </a>
+    </div>
+
+    <!-- Table -->
+    <div class="vol-table-card">
+        <div class="card-header">
+            <h6><i class="fas fa-list me-2"></i>Список волонтёров</h6>
+            <span style="font-size:0.78rem; color:rgba(255,255,255,0.6);" id="volCount">{{ volunteers|length }} чел.</span>
+        </div>
+        <div class="table-responsive">
+            <table class="vol-table" id="volTable">
+                <thead>
+                    <tr>
+                        <th>Волонтёр</th>
+                        <th class="text-center">Телефон</th>
+                        {% url 'admin_panel:volunteers' as vol_url %}
+                        <th class="text-center sort-th {% if sort_by == 'project_count' %}sort-active{% endif %}">
+                            <a href="{{ vol_url }}?sort=project_count&dir={% if sort_by == 'project_count' and sort_dir == 'desc' %}asc{% else %}desc{% endif %}">
+                                Проекты {% if sort_by == 'project_count' %}<i class="fas fa-sort-{% if sort_dir == 'desc' %}down{% else %}up{% endif %}"></i>{% else %}<i class="fas fa-sort" style="opacity:.35"></i>{% endif %}
+                            </a>
+                        </th>
+                        <th class="text-center sort-th {% if sort_by == 'task_count' %}sort-active{% endif %}">
+                            <a href="{{ vol_url }}?sort=task_count&dir={% if sort_by == 'task_count' and sort_dir == 'desc' %}asc{% else %}desc{% endif %}">
+                                Задачи {% if sort_by == 'task_count' %}<i class="fas fa-sort-{% if sort_dir == 'desc' %}down{% else %}up{% endif %}"></i>{% else %}<i class="fas fa-sort" style="opacity:.35"></i>{% endif %}
+                            </a>
+                        </th>
+                        <th class="text-center sort-th {% if sort_by == 'avg_rating' %}sort-active{% endif %}">
+                            <a href="{{ vol_url }}?sort=avg_rating&dir={% if sort_by == 'avg_rating' and sort_dir == 'desc' %}asc{% else %}desc{% endif %}">
+                                Рейтинг {% if sort_by == 'avg_rating' %}<i class="fas fa-sort-{% if sort_dir == 'desc' %}down{% else %}up{% endif %}"></i>{% else %}<i class="fas fa-sort" style="opacity:.35"></i>{% endif %}
+                            </a>
+                        </th>
+                        <th class="text-center sort-th {% if sort_by == 'date_joined' %}sort-active{% endif %}">
+                            <a href="{{ vol_url }}?sort=date_joined&dir={% if sort_by == 'date_joined' and sort_dir == 'desc' %}asc{% else %}desc{% endif %}">
+                                Дата <i class="fas fa-sort" style="opacity:.35"></i>
+                            </a>
+                        </th>
+                        <th class="text-center">Действия</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for volunteer in volunteers %}
+                    <tr class="vol-row"
+                        data-name="{{ volunteer.name|default:volunteer.username|lower }}"
+                        data-email="{{ volunteer.email|lower }}"
+                        data-phone="{{ volunteer.phone_number|default:'' }}">
+                        <td data-label="Волонтёр">
+                            <div style="display:flex; align-items:center; gap:0.75rem;">
+                                <div class="vol-avatar">{{ volunteer.username|slice:":1"|upper }}</div>
+                                <div>
+                                    <div class="vol-name">{{ volunteer.name|default:volunteer.email|default:volunteer.username|default:"Без имени" }}</div>
+                                    <div class="vol-email">{{ volunteer.email|default:"—" }}</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="text-center" data-label="Телефон">
+                            <span style="font-size:0.82rem; color:var(--gray-600);">
+                                {{ volunteer.phone_number|default:"—" }}
+                            </span>
+                        </td>
+                        <td class="text-center" data-label="Проекты">
+                            <span class="vol-badge info">
+                                <i class="fas fa-project-diagram"></i> {{ volunteer.project_count }}
+                            </span>
+                        </td>
+                        <td class="text-center" data-label="Задачи">
+                            <span class="vol-badge primary">
+                                <i class="fas fa-tasks"></i> {{ volunteer.task_count }}
+                            </span>
+                        </td>
+                        <td class="text-center" data-label="Рейтинг">
+                            {% if volunteer.avg_rating %}
+                                <span class="vol-badge success">
+                                    <i class="fas fa-star"></i> {{ volunteer.avg_rating|floatformat:1 }}
+                                </span>
+                            {% else %}
+                                <span style="color:var(--gray-400); font-size:0.78rem;">—</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-center" data-label="Дата" style="font-size:0.78rem; color:var(--gray-500);">
+                            {{ volunteer.date_joined|date:"d.m.Y" }}
+                        </td>
+                        <td class="text-center" data-label="Действия">
+                            <a href="{% url 'admin_panel:volunteer_analytics' volunteer.id %}" class="vol-action-btn">
+                                <i class="fas fa-chart-line"></i> Детали
+                            </a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" data-label="">
+                            <div class="vol-empty">
+                                <i class="fas fa-users-slash"></i>
+                                <p style="font-weight:600;">Нет волонтёров</p>
+                                <p style="font-size:0.82rem;">Пока никто не зарегистрировался</p>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const input = document.getElementById('volSearch');
+    const rows  = document.querySelectorAll('.vol-row');
+    const count = document.getElementById('volCount');
+
+    input.addEventListener('input', function() {
+        const q = this.value.toLowerCase().trim();
+        let visible = 0;
+        rows.forEach(row => {
+            const match = !q
+                || row.dataset.name.includes(q)
+                || row.dataset.email.includes(q)
+                || row.dataset.phone.includes(q);
+            row.style.display = match ? '' : 'none';
+            if (match) visible++;
+        });
+        count.textContent = visible + ' чел.';
+    });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,1594 @@
+{% extends 'admin_panel/base.html' %}
+{% load static %}
+
+{% block topbar_title %}Аналитика{% endblock %}
+
+{% block extra_css %}
+<style>
+    .analytics-page {
+        width: 100%;
+        max-width: 1520px;
+        margin: 0 auto;
+        padding: 1.5rem;
+        display: grid;
+        gap: 1.25rem;
+    }
+
+    .analytics-hero {
+        position: relative;
+        overflow: hidden;
+        color: #fff;
+        border-radius: var(--radius-lg);
+        padding: 1.65rem;
+        background:
+            radial-gradient(circle at top right, rgba(255,255,255,0.14), transparent 33%),
+            linear-gradient(135deg, #12245f 0%, #234eb8 52%, #2f68ee 100%);
+        box-shadow: var(--shadow-lg);
+    }
+
+    .analytics-hero::after {
+        content: "";
+        position: absolute;
+        right: -4.5rem;
+        top: -5rem;
+        width: 16rem;
+        height: 16rem;
+        border-radius: 999px;
+        background: rgba(255,255,255,0.08);
+    }
+
+    .analytics-hero__inner {
+        position: relative;
+        z-index: 1;
+        display: grid;
+        gap: 1.3rem;
+    }
+
+    .analytics-hero__top {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 1rem;
+    }
+
+    .analytics-eyebrow {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.45rem;
+        width: fit-content;
+        padding: 0.4rem 0.75rem;
+        border-radius: 999px;
+        background: rgba(255,255,255,0.14);
+        color: rgba(255,255,255,0.95);
+        font-size: 0.72rem;
+        font-weight: 800;
+        letter-spacing: 0;
+        text-transform: uppercase;
+    }
+
+    .analytics-hero h1 {
+        margin: 1rem 0 0.5rem;
+        max-width: 760px;
+        font-size: 2rem;
+        line-height: 1.12;
+        font-weight: 900;
+        letter-spacing: 0;
+    }
+
+    .analytics-hero p {
+        max-width: 760px;
+        color: rgba(255,255,255,0.86);
+        line-height: 1.65;
+        font-size: 0.98rem;
+    }
+
+    .analytics-period-badge {
+        flex: 0 0 auto;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.55rem;
+        padding: 0.8rem 1rem;
+        border-radius: var(--radius);
+        background: rgba(255,255,255,0.14);
+        color: #fff;
+        font-weight: 800;
+        white-space: nowrap;
+    }
+
+    .analytics-hero__stats {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 0.9rem;
+    }
+
+    .analytics-stat {
+        padding: 0.9rem;
+        border: 1px solid rgba(255,255,255,0.18);
+        border-radius: var(--radius);
+        background: rgba(255,255,255,0.11);
+        backdrop-filter: blur(10px);
+    }
+
+    .analytics-stat__label {
+        display: block;
+        color: rgba(255,255,255,0.72);
+        font-size: 0.72rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0;
+        margin-bottom: 0.4rem;
+    }
+
+    .analytics-stat__value {
+        display: block;
+        color: #fff;
+        font-size: 1.55rem;
+        line-height: 1;
+        font-weight: 900;
+    }
+
+    .analytics-stat__hint {
+        display: block;
+        margin-top: 0.4rem;
+        color: rgba(255,255,255,0.74);
+        font-size: 0.78rem;
+    }
+
+    .analytics-toolbar,
+    .analytics-card {
+        border: 1px solid var(--gray-200);
+        border-radius: var(--radius);
+        background: #fff;
+        box-shadow: var(--shadow-sm);
+    }
+
+    .analytics-toolbar {
+        padding: 1rem;
+        display: grid;
+        gap: 0.9rem;
+    }
+
+    .analytics-toolbar__head {
+        display: flex;
+        justify-content: space-between;
+        gap: 1rem;
+        align-items: center;
+    }
+
+    .analytics-toolbar__title {
+        display: grid;
+        gap: 0.2rem;
+    }
+
+    .analytics-toolbar__title strong {
+        color: var(--gray-900);
+        font-size: 1rem;
+    }
+
+    .analytics-toolbar__title span {
+        color: var(--gray-500);
+        font-size: 0.86rem;
+        line-height: 1.5;
+    }
+
+    .analytics-export-btn,
+    .analytics-apply-btn,
+    .analytics-chip {
+        border: 0;
+        text-decoration: none;
+        cursor: pointer;
+        transition: transform var(--transition), box-shadow var(--transition), background var(--transition);
+    }
+
+    .analytics-export-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.45rem;
+        padding: 0.65rem 0.85rem;
+        border-radius: var(--radius);
+        background: var(--gray-100);
+        color: var(--gray-800);
+        font-weight: 800;
+        font-size: 0.86rem;
+    }
+
+    .analytics-export-btn:hover,
+    .analytics-chip:hover {
+        transform: translateY(-1px);
+        box-shadow: var(--shadow-md);
+    }
+
+    .analytics-filter-grid {
+        display: grid;
+        grid-template-columns: minmax(180px, 1fr) minmax(180px, 1fr) minmax(170px, 0.8fr) minmax(150px, 0.55fr);
+        gap: 0.75rem;
+        align-items: end;
+    }
+
+    .analytics-field {
+        display: grid;
+        gap: 0.35rem;
+    }
+
+    .analytics-field label {
+        color: var(--gray-600);
+        font-size: 0.72rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0;
+    }
+
+    .analytics-field input,
+    .analytics-field select {
+        width: 100%;
+        min-height: 2.85rem;
+        border: 1px solid var(--gray-300);
+        border-radius: var(--radius);
+        padding: 0 0.85rem;
+        color: var(--gray-900);
+        background: #fff;
+        font: inherit;
+        outline: none;
+        transition: border-color var(--transition), box-shadow var(--transition);
+    }
+
+    .analytics-field input:focus,
+    .analytics-field select:focus {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 4px rgba(37,99,235,0.12);
+    }
+
+    .analytics-apply-btn {
+        min-height: 2.85rem;
+        border-radius: var(--radius);
+        background: var(--primary);
+        color: #fff;
+        font-weight: 900;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.45rem;
+    }
+
+    .analytics-apply-btn:hover {
+        background: var(--primary-dark);
+        box-shadow: var(--shadow-md);
+    }
+
+    .analytics-chip-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.55rem;
+    }
+
+    .analytics-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        min-height: 2.25rem;
+        padding: 0 0.8rem;
+        border: 1px solid var(--gray-200);
+        border-radius: 999px;
+        color: var(--gray-700);
+        background: var(--gray-50);
+        font-size: 0.84rem;
+        font-weight: 800;
+    }
+
+    .analytics-chip.is-active {
+        border-color: transparent;
+        color: #fff;
+        background: var(--primary);
+    }
+
+    .analytics-section {
+        display: grid;
+        gap: 0.9rem;
+    }
+
+    .analytics-section__head {
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-between;
+        gap: 1rem;
+    }
+
+    .analytics-section__head h2 {
+        margin: 0;
+        color: var(--gray-900);
+        font-size: 1.2rem;
+        font-weight: 900;
+        letter-spacing: 0;
+    }
+
+    .analytics-section__head p {
+        margin: 0.25rem 0 0;
+        max-width: 760px;
+        color: var(--gray-500);
+        line-height: 1.55;
+        font-size: 0.9rem;
+    }
+
+    .analytics-section__tag {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        padding: 0.42rem 0.7rem;
+        border-radius: 999px;
+        background: var(--primary-light);
+        color: var(--primary-dark);
+        font-size: 0.78rem;
+        font-weight: 900;
+        white-space: nowrap;
+    }
+
+    .analytics-focus-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1.25fr) minmax(330px, 0.75fr);
+        gap: 1rem;
+        align-items: start;
+    }
+
+    .analytics-side-stack {
+        display: grid;
+        gap: 1rem;
+    }
+
+    .analytics-left-stack {
+        display: grid;
+        gap: 1rem;
+    }
+
+    .analytics-card {
+        overflow: hidden;
+        min-width: 0;
+    }
+
+    .analytics-card__header {
+        min-height: 3.45rem;
+        padding: 0.9rem 1rem;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        color: #fff;
+        background: linear-gradient(135deg, #111c34 0%, #1f4bb8 100%);
+    }
+
+    .analytics-card__header.is-green {
+        background: linear-gradient(135deg, #047857 0%, #10b981 100%);
+    }
+
+    .analytics-card__header.is-amber {
+        background: linear-gradient(135deg, #92400e 0%, #f59e0b 100%);
+    }
+
+    .analytics-card__header.is-purple {
+        background: linear-gradient(135deg, #4c1d95 0%, #7c3aed 100%);
+    }
+
+    .analytics-card__header.is-cyan {
+        background: linear-gradient(135deg, #155e75 0%, #0ea5e9 100%);
+    }
+
+    .analytics-card__title {
+        min-width: 0;
+        display: flex;
+        align-items: center;
+        gap: 0.55rem;
+        font-weight: 900;
+        color: #fff;
+    }
+
+    .analytics-card__title span {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .analytics-card__meta {
+        color: rgba(255,255,255,0.74);
+        font-size: 0.78rem;
+        font-weight: 800;
+        white-space: nowrap;
+    }
+
+    .analytics-card__body {
+        padding: 1rem;
+    }
+
+    .analytics-card__text {
+        margin: 0 0 1rem;
+        color: var(--gray-500);
+        line-height: 1.55;
+        font-size: 0.9rem;
+    }
+
+    .funnel-list {
+        display: grid;
+        gap: 0.85rem;
+    }
+
+    .funnel-step {
+        display: grid;
+        grid-template-columns: 2.8rem minmax(0, 1fr) auto;
+        gap: 0.85rem;
+        align-items: center;
+        padding: 0.9rem;
+        border: 1px solid var(--gray-200);
+        border-radius: var(--radius);
+        background: var(--gray-50);
+    }
+
+    .funnel-step__icon {
+        width: 2.8rem;
+        height: 2.8rem;
+        display: grid;
+        place-items: center;
+        border-radius: var(--radius);
+        color: var(--step-color);
+        background: color-mix(in srgb, var(--step-color) 12%, white);
+    }
+
+    .funnel-step__content {
+        display: grid;
+        gap: 0.45rem;
+        min-width: 0;
+    }
+
+    .funnel-step__name {
+        color: var(--gray-900);
+        font-weight: 900;
+        font-size: 0.92rem;
+    }
+
+    .funnel-step__track {
+        width: 100%;
+        height: 0.55rem;
+        overflow: hidden;
+        border-radius: 999px;
+        background: var(--gray-200);
+    }
+
+    .funnel-step__fill {
+        display: block;
+        width: 0;
+        height: 100%;
+        border-radius: inherit;
+        background: var(--step-color);
+        transition: width 0.9s cubic-bezier(0.2,0.8,0.2,1);
+    }
+
+    .funnel-step__count {
+        color: var(--gray-900);
+        font-size: 1.25rem;
+        font-weight: 900;
+        white-space: nowrap;
+    }
+
+    .funnel-summary {
+        margin-top: 0.9rem;
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.7rem;
+    }
+
+    .funnel-summary__item,
+    .mini-metric {
+        border: 1px solid var(--gray-200);
+        border-radius: var(--radius);
+        background: #fff;
+        padding: 0.85rem;
+    }
+
+    .funnel-summary__label,
+    .mini-metric__label {
+        display: block;
+        color: var(--gray-500);
+        font-size: 0.76rem;
+        font-weight: 800;
+    }
+
+    .funnel-summary__value,
+    .mini-metric__value {
+        display: block;
+        margin-top: 0.3rem;
+        color: var(--gray-900);
+        font-size: 1.35rem;
+        font-weight: 900;
+    }
+
+    .photo-metric-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 0.65rem;
+        margin-bottom: 0.9rem;
+    }
+
+    .mini-metric {
+        text-align: center;
+    }
+
+    .mini-metric.is-pending .mini-metric__value { color: var(--warning); }
+    .mini-metric.is-approved .mini-metric__value { color: var(--success); }
+    .mini-metric.is-rejected .mini-metric__value { color: var(--danger); }
+
+    .photo-split {
+        display: grid;
+        grid-template-columns: minmax(150px, 0.8fr) minmax(0, 1fr);
+        gap: 0.9rem;
+        align-items: center;
+    }
+
+    .chart-box {
+        position: relative;
+        width: 100%;
+        height: 250px;
+    }
+
+    .chart-box.is-small {
+        height: 190px;
+    }
+
+    .chart-box.is-line {
+        height: 320px;
+    }
+
+    .photo-insights {
+        display: grid;
+        gap: 0.65rem;
+    }
+
+    .insight-pill {
+        display: flex;
+        justify-content: space-between;
+        gap: 0.75rem;
+        align-items: center;
+        padding: 0.75rem;
+        border-radius: var(--radius);
+        background: var(--gray-50);
+        border: 1px solid var(--gray-200);
+        color: var(--gray-700);
+        font-weight: 800;
+        font-size: 0.85rem;
+    }
+
+    .insight-pill strong {
+        color: var(--gray-900);
+        font-size: 1rem;
+    }
+
+    .attention-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.7rem;
+    }
+
+    .attention-item {
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr);
+        gap: 0.75rem;
+        align-items: center;
+        padding: 0.85rem;
+        border: 1px solid var(--gray-200);
+        border-radius: var(--radius);
+        background: var(--gray-50);
+    }
+
+    .attention-item__icon {
+        width: 2.45rem;
+        height: 2.45rem;
+        display: grid;
+        place-items: center;
+        border-radius: var(--radius);
+        color: var(--attention-color);
+        background: color-mix(in srgb, var(--attention-color) 12%, white);
+    }
+
+    .attention-item__label {
+        display: block;
+        color: var(--gray-500);
+        font-size: 0.76rem;
+        font-weight: 800;
+    }
+
+    .attention-item__value {
+        display: block;
+        margin-top: 0.15rem;
+        color: var(--gray-900);
+        font-size: 1.15rem;
+        font-weight: 900;
+    }
+
+    .attention-note {
+        margin-top: 0.8rem;
+        padding: 0.85rem;
+        border-radius: var(--radius);
+        background: #eff6ff;
+        color: var(--primary-dark);
+        font-size: 0.86rem;
+        line-height: 1.55;
+        font-weight: 700;
+    }
+
+    .ranking-list {
+        display: grid;
+        gap: 0.7rem;
+    }
+
+    .ranking-row {
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr) auto;
+        gap: 0.75rem;
+        align-items: center;
+        padding: 0.85rem;
+        border: 1px solid var(--gray-200);
+        border-radius: var(--radius);
+        background: var(--gray-50);
+        color: inherit;
+        text-decoration: none;
+        transition: transform var(--transition), box-shadow var(--transition), border-color var(--transition);
+    }
+
+    .ranking-row:hover {
+        transform: translateY(-1px);
+        border-color: rgba(37,99,235,0.32);
+        box-shadow: var(--shadow-md);
+    }
+
+    .ranking-row__rank {
+        width: 2.4rem;
+        height: 2.4rem;
+        border-radius: 999px;
+        display: grid;
+        place-items: center;
+        color: #fff;
+        background: var(--primary);
+        font-weight: 900;
+        box-shadow: 0 8px 18px rgba(37,99,235,0.22);
+    }
+
+    .ranking-row:nth-child(1) .ranking-row__rank { background: #f59e0b; }
+    .ranking-row:nth-child(2) .ranking-row__rank { background: #64748b; }
+    .ranking-row:nth-child(3) .ranking-row__rank { background: #b45309; }
+
+    .ranking-row__main {
+        min-width: 0;
+    }
+
+    .ranking-row__name {
+        margin: 0;
+        color: var(--gray-900);
+        font-weight: 900;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .ranking-row__meta {
+        margin: 0.25rem 0 0;
+        color: var(--gray-500);
+        font-size: 0.8rem;
+        line-height: 1.45;
+    }
+
+    .ranking-row__score {
+        color: var(--gray-900);
+        font-weight: 900;
+        text-align: right;
+        white-space: nowrap;
+    }
+
+    .ranking-row__score small {
+        display: block;
+        margin-top: 0.15rem;
+        color: var(--gray-500);
+        font-weight: 800;
+    }
+
+    .analytics-chart-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 1rem;
+        align-items: start;
+    }
+
+    .analytics-card.is-wide {
+        grid-column: 1 / -1;
+    }
+
+    .volunteer-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 0.9fr) minmax(0, 0.9fr) minmax(360px, 1.2fr);
+        gap: 1rem;
+        align-items: start;
+    }
+
+    .empty-state {
+        padding: 1.25rem;
+        border: 1px dashed var(--gray-300);
+        border-radius: var(--radius);
+        background: var(--gray-50);
+        color: var(--gray-500);
+        text-align: center;
+        line-height: 1.55;
+    }
+
+    .analytics-modal {
+        position: fixed;
+        inset: 0;
+        z-index: 2000;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        padding: 1rem;
+        background: rgba(15,23,42,0.56);
+    }
+
+    .analytics-modal.is-open {
+        display: flex;
+    }
+
+    .analytics-modal__panel {
+        width: min(560px, 100%);
+        border-radius: var(--radius-lg);
+        overflow: hidden;
+        background: #fff;
+        box-shadow: 0 24px 60px rgba(15,23,42,0.3);
+    }
+
+    .analytics-modal__head {
+        display: flex;
+        justify-content: space-between;
+        gap: 1rem;
+        align-items: center;
+        padding: 1rem;
+        background: var(--gray-900);
+        color: #fff;
+    }
+
+    .analytics-modal__head h3 {
+        margin: 0;
+        font-size: 1.05rem;
+        font-weight: 900;
+    }
+
+    .analytics-modal__close {
+        width: 2.2rem;
+        height: 2.2rem;
+        border: 0;
+        border-radius: var(--radius);
+        color: #fff;
+        background: rgba(255,255,255,0.12);
+        cursor: pointer;
+    }
+
+    .analytics-modal__body {
+        padding: 1rem;
+        display: grid;
+        gap: 0.85rem;
+    }
+
+    .export-option {
+        display: flex;
+        gap: 0.7rem;
+        align-items: center;
+        padding: 0.8rem;
+        border: 1px solid var(--gray-200);
+        border-radius: var(--radius);
+        color: var(--gray-800);
+        font-weight: 800;
+    }
+
+    .analytics-reveal {
+        opacity: 0;
+        transform: translateY(10px);
+        animation: analyticsReveal 0.55s ease forwards;
+    }
+
+    .analytics-reveal:nth-child(2) { animation-delay: 0.05s; }
+    .analytics-reveal:nth-child(3) { animation-delay: 0.1s; }
+    .analytics-reveal:nth-child(4) { animation-delay: 0.15s; }
+
+    @keyframes analyticsReveal {
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    @media (max-width: 1180px) {
+        .analytics-hero__stats,
+        .analytics-chart-grid,
+        .volunteer-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .analytics-focus-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .volunteer-grid .analytics-card:last-child {
+            grid-column: 1 / -1;
+        }
+    }
+
+    @media (max-width: 900px) {
+        .analytics-page {
+            padding: 1rem;
+        }
+
+        .analytics-hero__top,
+        .analytics-toolbar__head,
+        .analytics-section__head {
+            align-items: flex-start;
+            flex-direction: column;
+        }
+
+        .analytics-period-badge,
+        .analytics-export-btn {
+            width: 100%;
+            justify-content: center;
+        }
+
+        .analytics-filter-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .photo-split {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    @media (max-width: 640px) {
+        .analytics-page {
+            padding: 0.75rem;
+            gap: 1rem;
+        }
+
+        .analytics-hero {
+            padding: 1.15rem;
+        }
+
+        .analytics-hero h1 {
+            font-size: 1.45rem;
+        }
+
+        .analytics-hero p {
+            font-size: 0.9rem;
+        }
+
+        .analytics-hero__stats,
+        .analytics-filter-grid,
+        .analytics-chart-grid,
+        .volunteer-grid,
+        .photo-metric-grid,
+        .funnel-summary,
+        .attention-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .funnel-step {
+            grid-template-columns: 2.6rem minmax(0, 1fr);
+        }
+
+        .funnel-step__count {
+            grid-column: 2;
+            font-size: 1.05rem;
+        }
+
+        .analytics-card__header {
+            align-items: flex-start;
+            flex-direction: column;
+        }
+
+        .analytics-card__meta {
+            white-space: normal;
+        }
+
+        .ranking-row {
+            grid-template-columns: auto minmax(0, 1fr);
+        }
+
+        .ranking-row__score {
+            grid-column: 2;
+            text-align: left;
+        }
+
+        .chart-box,
+        .chart-box.is-line {
+            height: 250px;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="analytics-page">
+    <section class="analytics-hero analytics-reveal">
+        <div class="analytics-hero__inner">
+            <div class="analytics-hero__top">
+                <div>
+                    <span class="analytics-eyebrow">
+                        <i class="fa-solid fa-chart-line"></i>
+                        Центр аналитики
+                    </span>
+                    <h1>Понятная картина активности BirQadam</h1>
+                    <p>Сначала видим операционный фокус: где волонтёры выпадают из воронки, сколько фото ждёт проверки и какие организаторы дают лучший результат. Ниже - статусы, динамика и лидеры.</p>
+                </div>
+                <div class="analytics-period-badge">
+                    <i class="fa-solid fa-calendar-days"></i>
+                    {{ date_from|date:"d.m.Y" }} - {{ date_to|date:"d.m.Y" }}
+                </div>
+            </div>
+
+            <div class="analytics-hero__stats">
+                <div class="analytics-stat">
+                    <span class="analytics-stat__label">Проекты</span>
+                    <span class="analytics-stat__value">{{ analytics_summary.projects_total|default:0 }}</span>
+                    <span class="analytics-stat__hint">в выбранном периоде</span>
+                </div>
+                <div class="analytics-stat">
+                    <span class="analytics-stat__label">Задачи</span>
+                    <span class="analytics-stat__value">{{ analytics_summary.tasks_total|default:0 }}</span>
+                    <span class="analytics-stat__hint">создано и обновлено</span>
+                </div>
+                <div class="analytics-stat">
+                    <span class="analytics-stat__label">Активные волонтёры</span>
+                    <span class="analytics-stat__value">{{ analytics_summary.active_volunteers|default:0 }}</span>
+                    <span class="analytics-stat__hint">участвовали в проектах</span>
+                </div>
+                <div class="analytics-stat">
+                    <span class="analytics-stat__label">Фото на проверке</span>
+                    <span class="analytics-stat__value">{{ analytics_summary.photos_pending|default:0 }}</span>
+                    <span class="analytics-stat__hint">важная очередь модерации</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="analytics-toolbar analytics-reveal">
+        <div class="analytics-toolbar__head">
+            <div class="analytics-toolbar__title">
+                <strong>Период отчёта</strong>
+                <span>Фильтр влияет на графики статусов, динамику задач, активность и лидерские списки.</span>
+            </div>
+            <button type="button" class="analytics-export-btn" data-open-export>
+                <i class="fa-solid fa-file-export"></i>
+                Экспорт
+            </button>
+        </div>
+
+        <form method="get" class="analytics-filter-grid">
+            <div class="analytics-field">
+                <label for="date_from">От</label>
+                <input type="date" id="date_from" name="date_from" value="{{ date_from|date:'Y-m-d' }}">
+            </div>
+            <div class="analytics-field">
+                <label for="date_to">До</label>
+                <input type="date" id="date_to" name="date_to" value="{{ date_to|date:'Y-m-d' }}">
+            </div>
+            <div class="analytics-field">
+                <label for="period">Быстрый период</label>
+                <select id="period" name="period">
+                    <option value="week" {% if period == 'week' %}selected{% endif %}>7 дней</option>
+                    <option value="month" {% if period == 'month' %}selected{% endif %}>30 дней</option>
+                    <option value="year" {% if period == 'year' %}selected{% endif %}>Год</option>
+                </select>
+            </div>
+            <button type="submit" class="analytics-apply-btn">
+                <i class="fa-solid fa-filter"></i>
+                Применить
+            </button>
+        </form>
+
+        <div class="analytics-chip-row">
+            <a class="analytics-chip {% if period == 'week' %}is-active{% endif %}" href="?period=week">
+                <i class="fa-solid fa-calendar-week"></i>
+                7 дней
+            </a>
+            <a class="analytics-chip {% if period == 'month' %}is-active{% endif %}" href="?period=month">
+                <i class="fa-solid fa-calendar-days"></i>
+                30 дней
+            </a>
+            <a class="analytics-chip {% if period == 'year' %}is-active{% endif %}" href="?period=year">
+                <i class="fa-solid fa-calendar"></i>
+                Год
+            </a>
+        </div>
+    </section>
+
+    <section class="analytics-section analytics-reveal">
+        <div class="analytics-section__head">
+            <div>
+                <h2>Операционный фокус</h2>
+                <p>Три блока, которые администратор должен видеть первыми: путь волонтёра, очередь фотоотчётов и сильные организаторы.</p>
+            </div>
+            <span class="analytics-section__tag">
+                <i class="fa-solid fa-bolt"></i>
+                главное для решений
+            </span>
+        </div>
+
+        <div class="analytics-focus-grid">
+            <div class="analytics-left-stack">
+                <article class="analytics-card">
+                    <div class="analytics-card__header is-purple">
+                        <div class="analytics-card__title">
+                            <i class="fa-solid fa-filter-circle-dollar"></i>
+                            <span>Воронка волонтёров</span>
+                        </div>
+                        <span class="analytics-card__meta">4 шага участия</span>
+                    </div>
+                    <div class="analytics-card__body">
+                        <p class="analytics-card__text">Зарегистрировались - вступили в проект - выполнили задачу - стали регулярными. Так сразу видно, где люди теряются.</p>
+
+                        {% if funnel_data %}
+                        <div class="funnel-list">
+                            {% for item in funnel_data %}
+                            <div class="funnel-step" style="--step-color: {{ item.color }};" data-count="{{ item.count|default:0 }}">
+                                <div class="funnel-step__icon">
+                                    <i class="fa-solid fa-{{ item.icon }}"></i>
+                                </div>
+                                <div class="funnel-step__content">
+                                    <span class="funnel-step__name">{{ item.stage }}</span>
+                                    <span class="funnel-step__track"><span class="funnel-step__fill js-funnel-fill"></span></span>
+                                </div>
+                                <strong class="funnel-step__count">{{ item.count|default:0 }}</strong>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        <div class="funnel-summary">
+                            <div class="funnel-summary__item">
+                                <span class="funnel-summary__label">До регулярных</span>
+                                <span class="funnel-summary__value">{{ funnel_summary.regular_conversion|default:0 }}%</span>
+                            </div>
+                            <div class="funnel-summary__item">
+                                <span class="funnel-summary__label">Не дошли до проекта</span>
+                                <span class="funnel-summary__value">{{ funnel_summary.drop_before_join|default:0 }}</span>
+                            </div>
+                        </div>
+                        {% else %}
+                        <div class="empty-state">Пока нет данных для построения воронки.</div>
+                        {% endif %}
+                    </div>
+                </article>
+
+                <article class="analytics-card">
+                    <div class="analytics-card__header is-cyan">
+                        <div class="analytics-card__title">
+                            <i class="fa-solid fa-triangle-exclamation"></i>
+                            <span>Что требует внимания</span>
+                        </div>
+                        <span class="analytics-card__meta">быстрый чек</span>
+                    </div>
+                    <div class="analytics-card__body">
+                        <div class="attention-grid">
+                            <div class="attention-item" style="--attention-color:#f59e0b;">
+                                <span class="attention-item__icon"><i class="fa-solid fa-camera"></i></span>
+                                <span>
+                                    <span class="attention-item__label">Фото ждут модерации</span>
+                                    <strong class="attention-item__value">{{ photo_stats.pending|default:0 }}</strong>
+                                </span>
+                            </div>
+                            <div class="attention-item" style="--attention-color:#ef4444;">
+                                <span class="attention-item__icon"><i class="fa-solid fa-user-clock"></i></span>
+                                <span>
+                                    <span class="attention-item__label">Не дошли до проекта</span>
+                                    <strong class="attention-item__value">{{ funnel_summary.drop_before_join|default:0 }}</strong>
+                                </span>
+                            </div>
+                            <div class="attention-item" style="--attention-color:#10b981;">
+                                <span class="attention-item__icon"><i class="fa-solid fa-fire"></i></span>
+                                <span>
+                                    <span class="attention-item__label">Регулярные волонтёры</span>
+                                    <strong class="attention-item__value">{{ analytics_summary.regular_volunteers|default:0 }}</strong>
+                                </span>
+                            </div>
+                            <div class="attention-item" style="--attention-color:#2563eb;">
+                                <span class="attention-item__icon"><i class="fa-solid fa-user-check"></i></span>
+                                <span>
+                                    <span class="attention-item__label">Активные в периоде</span>
+                                    <strong class="attention-item__value">{{ analytics_summary.active_volunteers|default:0 }}</strong>
+                                </span>
+                            </div>
+                        </div>
+                        <div class="attention-note">
+                            Если число фото на проверке растёт, сначала разгружаем модерацию. Если много людей не дошло до проекта, стоит проверить понятность карточек проектов и первые задачи.
+                        </div>
+                    </div>
+                </article>
+            </div>
+
+            <div class="analytics-side-stack">
+                <article class="analytics-card" id="photo-reports-overview">
+                    <div class="analytics-card__header is-green">
+                        <div class="analytics-card__title">
+                            <i class="fa-solid fa-images"></i>
+                            <span>Статистика фотоотчётов</span>
+                        </div>
+                        <span class="analytics-card__meta">{{ photo_stats.total|default:0 }} всего</span>
+                    </div>
+                    <div class="analytics-card__body">
+                        <p class="analytics-card__text">Фотоотчёты проверяют организаторы. Здесь админ видит очередь и качество обработки без права оценивать отчёты.</p>
+
+                        <div class="photo-metric-grid">
+                            <div class="mini-metric is-pending">
+                                <span class="mini-metric__label">Ждут</span>
+                                <span class="mini-metric__value">{{ photo_stats.pending|default:0 }}</span>
+                            </div>
+                            <div class="mini-metric is-approved">
+                                <span class="mini-metric__label">Одобрены</span>
+                                <span class="mini-metric__value">{{ photo_stats.approved|default:0 }}</span>
+                            </div>
+                            <div class="mini-metric is-rejected">
+                                <span class="mini-metric__label">Отклонены</span>
+                                <span class="mini-metric__value">{{ photo_stats.rejected|default:0 }}</span>
+                            </div>
+                        </div>
+
+                        <div class="photo-split">
+                            <div class="chart-box is-small">
+                                <canvas id="photoStatusChart"></canvas>
+                            </div>
+                            <div class="photo-insights">
+                                <div class="insight-pill">
+                                    <span>Обработано</span>
+                                    <strong>{{ photo_stats.processed|default:0 }}</strong>
+                                </div>
+                                <div class="insight-pill">
+                                    <span>Доля одобрения</span>
+                                    <strong>{{ photo_stats.approval_rate|default:0 }}%</strong>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </article>
+
+                <article class="analytics-card">
+                    <div class="analytics-card__header is-amber">
+                        <div class="analytics-card__title">
+                            <i class="fa-solid fa-crown"></i>
+                            <span>Топ организаторов</span>
+                        </div>
+                        <a class="analytics-card__meta" href="{% url 'admin_panel:organizers' %}" style="color: rgba(255,255,255,0.86); text-decoration: none;">
+                            Открыть список
+                        </a>
+                    </div>
+                    <div class="analytics-card__body">
+                        {% if top_organizers %}
+                        <div class="ranking-list">
+                            {% for org in top_organizers %}
+                            <a href="{% url 'admin_panel:organizer_analytics' org.id %}" class="ranking-row">
+                                <span class="ranking-row__rank">{{ forloop.counter }}</span>
+                                <div class="ranking-row__main">
+                                    <p class="ranking-row__name">{{ org.name|default:org.username }}</p>
+                                    <p class="ranking-row__meta">{{ org.project_count|default:0 }} проектов, {{ org.approved_count|default:0 }} одобрено</p>
+                                </div>
+                                <div class="ranking-row__score">
+                                    {{ org.volunteer_count|default:0 }}
+                                    <small>волонтёров</small>
+                                </div>
+                            </a>
+                            {% endfor %}
+                        </div>
+                        {% else %}
+                        <div class="empty-state">Пока нет организаторов с проектами в системе.</div>
+                        {% endif %}
+                    </div>
+                </article>
+            </div>
+        </div>
+    </section>
+
+    <section class="analytics-section analytics-reveal">
+        <div class="analytics-section__head">
+            <div>
+                <h2>Статусы и динамика</h2>
+                <p>Здесь видно состояние проектов, задач и общий темп активности за выбранный период.</p>
+            </div>
+            <span class="analytics-section__tag">
+                <i class="fa-solid fa-chart-pie"></i>
+                графики
+            </span>
+        </div>
+
+        <div class="analytics-chart-grid">
+            <article class="analytics-card">
+                <div class="analytics-card__header">
+                    <div class="analytics-card__title">
+                        <i class="fa-solid fa-diagram-project"></i>
+                        <span>Статусы проектов</span>
+                    </div>
+                    <span class="analytics-card__meta">распределение</span>
+                </div>
+                <div class="analytics-card__body">
+                    <div class="chart-box">
+                        <canvas id="projectStatusChart"></canvas>
+                    </div>
+                </div>
+            </article>
+
+            <article class="analytics-card">
+                <div class="analytics-card__header is-green">
+                    <div class="analytics-card__title">
+                        <i class="fa-solid fa-list-check"></i>
+                        <span>Статусы задач</span>
+                    </div>
+                    <span class="analytics-card__meta">текущая воронка</span>
+                </div>
+                <div class="analytics-card__body">
+                    <div class="chart-box">
+                        <canvas id="taskStatusChart"></canvas>
+                    </div>
+                </div>
+            </article>
+
+            <article class="analytics-card is-wide">
+                <div class="analytics-card__header is-purple">
+                    <div class="analytics-card__title">
+                        <i class="fa-solid fa-wave-square"></i>
+                        <span>Активность по дням</span>
+                    </div>
+                    <span class="analytics-card__meta">{{ analytics_summary.activity_total|default:0 }} событий</span>
+                </div>
+                <div class="analytics-card__body">
+                    <div class="chart-box is-line">
+                        <canvas id="activityChart"></canvas>
+                    </div>
+                </div>
+            </article>
+        </div>
+    </section>
+
+    <section class="analytics-section analytics-reveal">
+        <div class="analytics-section__head">
+            <div>
+                <h2>Волонтёры</h2>
+                <p>Рейтинг, вовлечённость и лидеры помогают понять, кто реально двигает проекты вперёд.</p>
+            </div>
+            <span class="analytics-section__tag">
+                <i class="fa-solid fa-users"></i>
+                люди
+            </span>
+        </div>
+
+        <div class="volunteer-grid">
+            <article class="analytics-card">
+                <div class="analytics-card__header is-cyan">
+                    <div class="analytics-card__title">
+                        <i class="fa-solid fa-user-check"></i>
+                        <span>Вовлечённость</span>
+                    </div>
+                    <span class="analytics-card__meta">активные / неактивные</span>
+                </div>
+                <div class="analytics-card__body">
+                    <div class="chart-box">
+                        <canvas id="engagementChart"></canvas>
+                    </div>
+                </div>
+            </article>
+
+            <article class="analytics-card">
+                <div class="analytics-card__header is-amber">
+                    <div class="analytics-card__title">
+                        <i class="fa-solid fa-star"></i>
+                        <span>Диапазоны рейтинга</span>
+                    </div>
+                    <span class="analytics-card__meta">оценки</span>
+                </div>
+                <div class="analytics-card__body">
+                    <div class="chart-box">
+                        <canvas id="ratingChart"></canvas>
+                    </div>
+                </div>
+            </article>
+
+            <article class="analytics-card">
+                <div class="analytics-card__header">
+                    <div class="analytics-card__title">
+                        <i class="fa-solid fa-trophy"></i>
+                        <span>Лидеры волонтёрства</span>
+                    </div>
+                    <span class="analytics-card__meta">{{ analytics_summary.top_volunteers_count|default:0 }} в выборке</span>
+                </div>
+                <div class="analytics-card__body">
+                    {% if top_volunteers %}
+                    <div class="ranking-list">
+                        {% for volunteer in top_volunteers %}
+                        <a href="{% url 'admin_panel:volunteer_analytics' volunteer.id %}" class="ranking-row">
+                            <span class="ranking-row__rank">{{ forloop.counter }}</span>
+                            <div class="ranking-row__main">
+                                <p class="ranking-row__name">{{ volunteer.get_full_name|default:volunteer.name|default:volunteer.username }}</p>
+                                <p class="ranking-row__meta">Средний рейтинг: {{ volunteer.avg_rating|default:0|floatformat:1 }}</p>
+                            </div>
+                            <div class="ranking-row__score">
+                                {{ volunteer.completed_count|default:0 }}
+                                <small>задач выполнено</small>
+                            </div>
+                        </a>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <div class="empty-state">За выбранный период лидеров пока нет.</div>
+                    {% endif %}
+                </div>
+            </article>
+        </div>
+    </section>
+</div>
+
+<div class="analytics-modal" id="analyticsExportModal" aria-hidden="true">
+    <div class="analytics-modal__panel">
+        <div class="analytics-modal__head">
+            <h3>Экспорт аналитики</h3>
+            <button type="button" class="analytics-modal__close" data-close-export aria-label="Закрыть">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+        <form method="post" action="{% url 'admin_panel:export_report' %}" class="analytics-modal__body">
+            {% csrf_token %}
+            <input type="hidden" name="period" value="custom">
+            <input type="hidden" name="date_from" value="{{ date_from|date:'Y-m-d' }}">
+            <input type="hidden" name="date_to" value="{{ date_to|date:'Y-m-d' }}">
+
+            <label class="analytics-field">
+                <span style="font-size: 0.78rem; font-weight: 900; color: var(--gray-600);">Формат</span>
+                <select name="format">
+                    <option value="csv">CSV</option>
+                    <option value="pdf">PDF</option>
+                </select>
+            </label>
+
+            <label class="export-option">
+                <input type="checkbox" name="data_to_export" value="projects" checked>
+                Проекты и статусы
+            </label>
+            <label class="export-option">
+                <input type="checkbox" name="data_to_export" value="tasks" checked>
+                Задачи и динамика
+            </label>
+            <label class="export-option">
+                <input type="checkbox" name="data_to_export" value="volunteers" checked>
+                Волонтёры и лидеры
+            </label>
+            <button type="submit" class="analytics-apply-btn">
+                <i class="fa-solid fa-download"></i>
+                Скачать отчёт
+            </button>
+        </form>
+    </div>
+</div>
+
+{{ chart_data|json_script:"analytics-chart-data" }}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const chartNode = document.getElementById('analytics-chart-data');
+    const chartData = chartNode ? JSON.parse(chartNode.textContent || '{}') : {};
+
+    const palette = {
+        blue: '#2563eb',
+        darkBlue: '#1e40af',
+        green: '#10b981',
+        amber: '#f59e0b',
+        red: '#ef4444',
+        purple: '#7c3aed',
+        cyan: '#06b6d4',
+        slate: '#64748b',
+        soft: '#e2e8f0'
+    };
+
+    const statusLabels = {
+        approved: 'Одобрено',
+        pending: 'На модерации',
+        rejected: 'Отклонено',
+        active: 'Активно',
+        completed: 'Выполнено',
+        in_progress: 'В работе',
+        open: 'Открыто',
+        archived: 'В архиве',
+        under_review: 'На проверке',
+        draft: 'Черновик',
+        cancelled: 'Отменено'
+    };
+
+    const statusColors = {
+        approved: palette.green,
+        pending: palette.amber,
+        rejected: palette.red,
+        active: palette.blue,
+        completed: palette.green,
+        in_progress: palette.cyan,
+        open: palette.blue,
+        archived: palette.slate,
+        under_review: '#8b5cf6',
+        draft: palette.slate,
+        cancelled: palette.red
+    };
+
+    if (window.Chart) {
+        Chart.defaults.font.family = "'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif";
+        Chart.defaults.color = '#64748b';
+        Chart.defaults.plugins.legend.labels.usePointStyle = true;
+        Chart.defaults.plugins.legend.labels.boxWidth = 9;
+    }
+
+    const asList = (value) => Array.isArray(value) ? value : [];
+    const translateStatus = (status) => statusLabels[status] || status || 'Без статуса';
+    const colorForStatus = (status, index) => statusColors[status] || [palette.blue, palette.green, palette.amber, palette.red, palette.purple, palette.cyan][index % 6];
+
+    function pieDataset(items, key) {
+        const list = asList(items);
+        if (!list.length || list.every(item => Number(item.count || 0) === 0)) {
+            return {
+                labels: ['Нет данных'],
+                values: [1],
+                colors: [palette.soft]
+            };
+        }
+
+        return {
+            labels: list.map(item => key === 'status' ? translateStatus(item.status) : item.range),
+            values: list.map(item => Number(item.count || 0)),
+            colors: list.map((item, index) => key === 'status' ? colorForStatus(item.status, index) : [palette.red, palette.amber, palette.blue, palette.cyan, palette.purple][index % 5])
+        };
+    }
+
+    function createDoughnut(id, dataset, cutout = '68%') {
+        const canvas = document.getElementById(id);
+        if (!canvas || !window.Chart) return;
+
+        new Chart(canvas, {
+            type: 'doughnut',
+            data: {
+                labels: dataset.labels,
+                datasets: [{
+                    data: dataset.values,
+                    backgroundColor: dataset.colors,
+                    borderColor: '#fff',
+                    borderWidth: 4,
+                    hoverOffset: 8
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            padding: 16,
+                            font: { weight: '700' }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    createDoughnut('projectStatusChart', pieDataset(chartData.project_data, 'status'));
+    createDoughnut('taskStatusChart', pieDataset(chartData.task_data, 'status'));
+    createDoughnut('ratingChart', pieDataset(chartData.rating_data, 'range'), '62%');
+
+    createDoughnut('engagementChart', {
+        labels: ['Активные', 'Неактивные'],
+        values: [
+            Number(chartData.engagement_data?.active || 0),
+            Number(chartData.engagement_data?.inactive || 0)
+        ],
+        colors: [palette.green, palette.soft]
+    });
+
+    const photoValues = [
+        Number(chartData.photo_stats?.pending || 0),
+        Number(chartData.photo_stats?.approved || 0),
+        Number(chartData.photo_stats?.rejected || 0)
+    ];
+    createDoughnut('photoStatusChart', photoValues.some(Boolean) ? {
+        labels: ['Ждут', 'Одобрены', 'Отклонены'],
+        values: photoValues,
+        colors: [palette.amber, palette.green, palette.red]
+    } : {
+        labels: ['Нет данных'],
+        values: [1],
+        colors: [palette.soft]
+    }, '70%');
+
+    const activityCanvas = document.getElementById('activityChart');
+    if (activityCanvas && window.Chart) {
+        const activity = asList(chartData.activity_data);
+        const labels = activity.length
+            ? activity.map(item => item.day ? new Date(item.day).toLocaleDateString('ru-RU', { day: '2-digit', month: 'short' }) : 'Без даты')
+            : ['Нет данных'];
+        const values = activity.length ? activity.map(item => Number(item.count || 0)) : [0];
+
+        new Chart(activityCanvas, {
+            type: 'line',
+            data: {
+                labels,
+                datasets: [{
+                    label: 'Активность',
+                    data: values,
+                    borderColor: palette.purple,
+                    backgroundColor: 'rgba(124,58,237,0.16)',
+                    fill: true,
+                    tension: 0.42,
+                    pointRadius: 4,
+                    pointHoverRadius: 6,
+                    pointBackgroundColor: '#fff',
+                    pointBorderColor: palette.purple,
+                    pointBorderWidth: 3
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: { precision: 0 },
+                        grid: { color: 'rgba(148,163,184,0.18)' }
+                    },
+                    x: {
+                        grid: { display: false }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: { font: { weight: '700' } }
+                    }
+                }
+            }
+        });
+    }
+
+    const funnelSteps = Array.from(document.querySelectorAll('.funnel-step'));
+    if (funnelSteps.length) {
+        const counts = funnelSteps.map(step => Number(step.dataset.count || 0));
+        const max = Math.max(...counts, 0);
+        funnelSteps.forEach((step) => {
+            const count = Number(step.dataset.count || 0);
+            const fill = step.querySelector('.js-funnel-fill');
+            if (!fill) return;
+            const width = max ? Math.max((count / max) * 100, count > 0 ? 6 : 0) : 0;
+            window.requestAnimationFrame(() => {
+                fill.style.width = `${width}%`;
+            });
+        });
+    }
+
+    const modal = document.getElementById('analyticsExportModal');
+    const openBtn = document.querySelector('[data-open-export]');
+    const closeBtn = document.querySelector('[data-close-export]');
+
+    function closeModal() {
+        if (!modal) return;
+        modal.classList.remove('is-open');
+        modal.setAttribute('aria-hidden', 'true');
+    }
+
+    if (openBtn && modal) {
+        openBtn.addEventListener('click', () => {
+            modal.classList.add('is-open');
+            modal.setAttribute('aria-hidden', 'false');
+        });
+    }
+
+    if (closeBtn) {
+        closeBtn.addEventListener('click', closeModal);
+    }
+
+    if (modal) {
+        modal.addEventListener('click', (event) => {
+            if (event.target === modal) closeModal();
+        });
+    }
+});
+</script>
+{% endblock %}

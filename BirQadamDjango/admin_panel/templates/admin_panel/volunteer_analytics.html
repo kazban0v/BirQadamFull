@@ -1,0 +1,568 @@
+{% extends 'admin_panel/base.html' %} {% load static %}
+
+{% block topbar_title %}Волонтёр: {{ volunteer.username }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* ── Hero ── */
+    .va-hero {
+        background: linear-gradient(135deg, var(--gray-900) 0%, var(--primary-dark) 50%, var(--primary) 100%);
+        border-radius: var(--radius-lg); padding: 2rem; color: #fff;
+        position: relative; overflow: hidden; margin-bottom: 1.25rem;
+    }
+    .va-hero::before {
+        content: ""; position: absolute;
+        width: 280px; height: 280px; border-radius: 50%;
+        right: -70px; top: -110px; background: rgba(255,255,255,0.06);
+        pointer-events: none;
+    }
+    .va-hero > * { position: relative; z-index: 1; }
+    .va-back {
+        display: inline-flex; align-items: center; gap: 0.4rem;
+        padding: 0.4rem 0.85rem; border-radius: 0.5rem;
+        background: rgba(255,255,255,0.12); color: rgba(255,255,255,0.85);
+        text-decoration: none; font-size: 0.8rem; font-weight: 700;
+        transition: background 0.2s; margin-bottom: 1rem;
+    }
+    .va-back:hover { background: rgba(255,255,255,0.2); color: #fff; }
+    .va-hero h1 { margin: 0 0 0.25rem; font-size: 1.65rem; font-weight: 800; letter-spacing: -0.02em; }
+    .va-hero p  { margin: 0; color: rgba(255,255,255,0.65); font-size: 0.85rem; }
+
+    /* ── Stats row ── */
+    .va-stats {
+        display: grid; grid-template-columns: repeat(4,1fr);
+        gap: 1rem; margin-bottom: 1.25rem;
+    }
+    @media (max-width: 900px) { .va-stats { grid-template-columns: repeat(2,1fr); } }
+    @media (max-width: 500px)  { .va-stats { grid-template-columns: 1fr; } }
+
+    .va-stat-card {
+        background: #fff; border: 1px solid var(--gray-200);
+        border-radius: var(--radius-lg); padding: 1.25rem;
+        box-shadow: var(--shadow-sm); display: flex;
+        align-items: center; gap: 1rem;
+        transition: transform var(--transition), box-shadow var(--transition);
+    }
+    .va-stat-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+    .va-stat-icon {
+        width: 48px; height: 48px; border-radius: var(--radius);
+        display: flex; align-items: center; justify-content: center;
+        font-size: 1.25rem; flex-shrink: 0;
+    }
+    .va-stat-icon.yellow { background: #fef3c7; color: var(--warning); }
+    .va-stat-icon.green  { background: #d1fae5; color: var(--success); }
+    .va-stat-icon.blue   { background: var(--primary-light); color: var(--primary); }
+    .va-stat-icon.cyan   { background: #cffafe; color: var(--info); }
+    .va-stat-label { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--gray-400); font-weight: 700; }
+    .va-stat-value { font-size: 1.6rem; font-weight: 800; color: var(--gray-900); line-height: 1; margin-top: 0.2rem; }
+
+    /* ── Layout ── */
+    .va-grid { display: grid; grid-template-columns: 280px 1fr; gap: 1.25rem; margin-bottom: 1.25rem; }
+    .va-charts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; margin-bottom: 1.25rem; }
+    .va-grid > div, .va-charts-grid > div { min-width: 0; }
+    @media (max-width: 900px) { 
+        .va-grid { grid-template-columns: 1fr; } 
+        .va-charts-grid { grid-template-columns: 1fr; }
+    }
+
+    /* ── Cards ── */
+    .va-card {
+        background: #fff; border: 1px solid var(--gray-200);
+        border-radius: var(--radius-lg); box-shadow: var(--shadow-sm);
+        overflow: hidden; margin-bottom: 1.25rem;
+    }
+    .va-card-header {
+        background: var(--gray-900); color: #fff;
+        padding: 0.9rem 1.25rem; display: flex; align-items: center; gap: 0.5rem;
+        font-size: 0.875rem; font-weight: 700;
+    }
+    .va-card-body { padding: 1.25rem; }
+
+    /* ── Profile sidebar ── */
+    .va-profile-avatar {
+        width: 80px; height: 80px; border-radius: 50%;
+        background: linear-gradient(135deg, var(--primary-dark), var(--primary));
+        display: flex; align-items: center; justify-content: center;
+        color: #fff; font-size: 2rem; font-weight: 800;
+        margin: 0 auto 0.85rem;
+    }
+    .va-profile-name { text-align: center; font-weight: 800; font-size: 1.05rem; color: var(--gray-900); margin-bottom: 0.2rem; word-break: break-word; }
+    .va-profile-name:not(.va-profile-name--clean) { display: none; }
+    .va-profile-email { text-align: center; font-size: 0.78rem; color: var(--gray-400); margin-bottom: 1rem; word-break: break-all; }
+
+    .va-info-row {
+        display: flex; justify-content: space-between; align-items: center;
+        padding: 0.55rem 0; border-bottom: 1px solid var(--gray-100);
+        font-size: 0.82rem;
+    }
+    .va-info-row:last-child { border-bottom: none; }
+    .va-info-row span { color: var(--gray-500); }
+    .va-info-row strong { color: var(--gray-800); text-align: right; max-width: 60%; word-break: break-all; }
+    .va-profile-clean {
+        display: grid;
+        gap: 0.55rem;
+        margin-top: 0.85rem;
+    }
+    .va-profile-clean .va-info-row {
+        display: flex !important;
+    }
+    .va-profile-legacy {
+        display: none;
+    }
+
+    /* ── Chart area ── */
+    .va-chart-area { height: 260px; position: relative; width: 100%; }
+
+    /* ── Table ── */
+    .va-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+    .va-table thead th {
+        padding: 0.65rem 1rem; font-size: 0.68rem; font-weight: 700;
+        text-transform: uppercase; letter-spacing: 0.04em;
+        color: var(--gray-500); background: var(--gray-50);
+        border-bottom: 1px solid var(--gray-200);
+    }
+    .va-table tbody td {
+        padding: 0.75rem 1rem; border-bottom: 1px solid var(--gray-100);
+        vertical-align: middle; color: var(--gray-700);
+    }
+    .va-table tbody tr:last-child td { border-bottom: none; }
+    .va-table tbody tr:hover td { background: var(--gray-50); }
+
+    /* ── Photo grid ── */
+    .va-photo-grid {
+        display: grid; grid-template-columns: repeat(auto-fill, minmax(180px,1fr));
+        gap: 1rem;
+    }
+    .va-photo-card { border-radius: var(--radius); overflow: hidden; border: 1px solid var(--gray-200); }
+    .va-photo-card img { width: 100%; height: 160px; object-fit: cover; display: block; }
+    .va-photo-body { padding: 0.65rem 0.75rem; }
+
+    /* ── Empty ── */
+    .va-empty { text-align: center; padding: 2rem 1rem; color: var(--gray-400); }
+    .va-empty i { font-size: 2rem; opacity: 0.3; display: block; margin-bottom: 0.5rem; }
+
+    /* ── Badge ── */
+    .status-badge {
+        padding: 0.22rem 0.55rem; border-radius: 999px;
+        font-size: 0.68rem; font-weight: 700;
+    }
+    .status-approved { background: #d1fae5; color: var(--success); }
+    .status-rejected { background: #fee2e2; color: var(--danger); }
+    .status-pending  { background: #fef3c7; color: var(--warning); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0">
+
+    <!-- Hero -->
+    <div class="va-hero">
+        <a href="{% url 'admin_panel:volunteers' %}" class="va-back">
+            <i class="fas fa-arrow-left"></i> Все волонтёры
+        </a>
+        <h1><i class="fas fa-user me-2"></i>{{ volunteer.name|default:volunteer.username|default:"Волонтёр" }}</h1>
+        <p>Детальная информация и аналитика волонтёра</p>
+    </div>
+
+    <!-- Stat cards -->
+    <div class="va-stats">
+        <div class="va-stat-card">
+            <div class="va-stat-icon yellow"><i class="fas fa-star"></i></div>
+            <div>
+                <div class="va-stat-label">Рейтинг</div>
+                <div class="va-stat-value">{{ stats.rating|floatformat:1|default:"0" }}</div>
+            </div>
+        </div>
+        <div class="va-stat-card">
+            <div class="va-stat-icon green"><i class="fas fa-project-diagram"></i></div>
+            <div>
+                <div class="va-stat-label">Проектов</div>
+                <div class="va-stat-value">{{ stats.project_count }}</div>
+            </div>
+        </div>
+        <div class="va-stat-card">
+            <div class="va-stat-icon blue"><i class="fas fa-check-circle"></i></div>
+            <div>
+                <div class="va-stat-label">Выполнено задач</div>
+                <div class="va-stat-value">{{ stats.task_count }}</div>
+            </div>
+        </div>
+        <div class="va-stat-card">
+            <div class="va-stat-icon cyan"><i class="fas fa-camera"></i></div>
+            <div>
+                <div class="va-stat-label">Фотоотчётов</div>
+                <div class="va-stat-value">{{ stats.photo_count }}</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Profile + Charts -->
+    <div class="va-grid">
+        <!-- Left: Profile card -->
+        <div>
+            <div class="va-card">
+                <div class="va-card-header">
+                    <i class="fas fa-user"></i> Личные данные
+                </div>
+                <div class="va-card-body">
+                    <div class="va-profile-avatar">{{ volunteer_initial }}</div>
+                    <div class="va-profile-name va-profile-name--clean">{{ volunteer_display_name|default:"Без имени" }}</div>
+                    <div class="va-profile-name">{{ volunteer.name|default:volunteer.username|default:"Без имени" }}</div>
+                    <div class="va-profile-email">{{ volunteer.email|default:"Email не указан" }}</div>
+                    <hr style="border-color:var(--gray-100); margin:0.75rem 0;">
+                    <div class="va-profile-clean">
+                        <div class="va-info-row">
+                            <span><i class="fas fa-id-card me-1"></i> Имя</span>
+                            <strong>{{ volunteer_display_name|default:"Не указано" }}</strong>
+                        </div>
+                        <div class="va-info-row">
+                            <span><i class="fas fa-user me-1"></i> Username</span>
+                            <strong>{{ volunteer.username|default:"Не указан" }}</strong>
+                        </div>
+                        <div class="va-info-row">
+                            <span><i class="fas fa-phone me-1"></i> Телефон</span>
+                            <strong>{{ volunteer.phone_number|default:"Не указан" }}</strong>
+                        </div>
+                        <div class="va-info-row">
+                            <span><i class="fas fa-envelope me-1"></i> Email</span>
+                            <strong>{{ volunteer.email|default:"Не указан" }}</strong>
+                        </div>
+                        <div class="va-info-row">
+                            <span><i class="fab fa-telegram me-1"></i> Telegram</span>
+                            <strong>{{ volunteer.telegram_id|default:"Не привязан" }}</strong>
+                        </div>
+                        <div class="va-info-row">
+                            <span><i class="fas fa-calendar-plus me-1"></i> Регистрация</span>
+                            <strong>{{ volunteer.date_joined|date:"d.m.Y" }}</strong>
+                        </div>
+                        <div class="va-info-row">
+                            <span><i class="fas fa-star me-1"></i> Ср. рейтинг фото</span>
+                            <strong>{{ volunteer_avg_rating|floatformat:1 }}</strong>
+                        </div>
+                    </div>
+                    <div class="va-profile-legacy">
+                    <div class="va-info-row">
+                        <span><i class="fas fa-user me-1"></i> Username</span>
+                        <strong>{{ volunteer.username }}</strong>
+                    </div>
+                    <div class="va-info-row">
+                        <span><i class="fas fa-phone me-1"></i> Телефон</span>
+                        <strong>{{ volunteer.phone_number|default:"Не указан" }}</strong>
+                    </div>
+                    <div class="va-info-row">
+                        <span><i class="fab fa-telegram me-1"></i> Telegram</span>
+                        <strong>{{ volunteer.telegram_id|default:"Не привязан" }}</strong>
+                    </div>
+                    <div class="va-info-row">
+                        <span><i class="fas fa-calendar-plus me-1"></i> Регистрация</span>
+                        <strong>{{ volunteer.date_joined|date:"d.m.Y" }}</strong>
+                    </div>
+                    <div class="va-info-row">
+                        <span><i class="fas fa-star me-1"></i> Ср. рейтинг фото</span>
+                        <strong>{{ volunteer_avg_rating|floatformat:1 }}</strong>
+                    </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right: Charts -->
+        <div>
+            <div class="va-card" style="margin-bottom:1.25rem;">
+                <div class="va-card-header"><i class="fas fa-chart-line"></i> Динамика рейтинга</div>
+                <div class="va-card-body">
+                    <div class="va-chart-area"><canvas id="ratingChart"></canvas></div>
+                </div>
+            </div>
+            <div class="va-card">
+                <div class="va-card-header"><i class="fas fa-chart-bar"></i> Активность (последние 30 дней)</div>
+                <div class="va-card-body">
+                    <div class="va-chart-area"><canvas id="activityChart"></canvas></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts row 2 -->
+    <div class="va-charts-grid">
+        <div class="va-card" style="margin-bottom:0;">
+            <div class="va-card-header"><i class="fas fa-chart-pie"></i> Задачи по проектам</div>
+            <div class="va-card-body">
+                <div class="va-chart-area"><canvas id="projectsChart"></canvas></div>
+            </div>
+        </div>
+        <div class="va-card" style="margin-bottom:0;">
+            <div class="va-card-header"><i class="fas fa-chart-area"></i> Статистика фотоотчётов</div>
+            <div class="va-card-body">
+                <div class="va-chart-area"><canvas id="photosChart"></canvas></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Projects table -->
+    <div class="va-card">
+        <div class="va-card-header"><i class="fas fa-project-diagram"></i> Участие в проектах</div>
+        <div class="va-card-body" style="padding:0;">
+            {% if volunteer.volunteer_projects.exists %}
+            <div class="table-responsive">
+                <table class="va-table">
+                    <thead>
+                        <tr>
+                            <th>Проект</th>
+                            <th class="text-center">Дата присоединения</th>
+                            <th class="text-center">Задач в проекте</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for vp in volunteer.volunteer_projects.all %}
+                        <tr>
+                            <td><strong>{{ vp.project.title }}</strong></td>
+                            <td class="text-center">
+                                <span style="font-size:0.8rem; color:var(--gray-500);">{{ vp.joined_at|date:"d.m.Y" }}</span>
+                            </td>
+                            <td class="text-center">
+                                <span style="padding:0.2rem 0.6rem; border-radius:999px; background:var(--primary-light); color:var(--primary); font-size:0.75rem; font-weight:700;">
+                                    {{ vp.project.tasks.count }}
+                                </span>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="va-empty">
+                <i class="fas fa-project-diagram"></i>
+                <p style="font-weight:600;">Нет участия в проектах</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Completed tasks -->
+    <div class="va-card">
+        <div class="va-card-header"><i class="fas fa-check-circle"></i> Выполненные задачи</div>
+        <div class="va-card-body" style="padding:0;">
+            {% if completed_tasks %}
+            <div class="table-responsive">
+                <table class="va-table">
+                    <thead>
+                        <tr>
+                            <th>Задача</th>
+                            <th>Проект</th>
+                            <th class="text-center">Дата завершения</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in completed_tasks|slice:":15" %}
+                        <tr>
+                            <td>
+                                <strong>{{ item.task.text|truncatechars:60 }}</strong>
+                                <div style="margin-top:0.25rem; font-size:0.72rem; color:var(--gray-400);">
+                                    {% if item.source == 'photo' %}Подтверждено по фотоотчёту{% else %}Подтверждено по назначению{% endif %}
+                                </div>
+                            </td>
+                            <td style="color:var(--gray-500);">{{ item.project.title|truncatechars:30 }}</td>
+                            <td class="text-center">
+                                <span style="padding:0.2rem 0.6rem; border-radius:999px; background:#d1fae5; color:var(--success); font-size:0.72rem; font-weight:700;">
+                                    {{ item.completed_at|date:"d.m.Y H:i" }}
+                                </span>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="va-empty">
+                <i class="fas fa-tasks"></i>
+                <p style="font-weight:600;">Нет выполненных задач</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Photos -->
+    <div class="va-card">
+        <div class="va-card-header"><i class="fas fa-camera"></i> Последние фотоотчёты</div>
+        <div class="va-card-body">
+            {% if volunteer.photos.exists %}
+            <div class="va-photo-grid">
+                {% for photo in volunteer.photos.all|slice:":8" %}
+                <div class="va-photo-card">
+                    {% if photo.image %}
+                    <img src="{{ photo.image.url }}" alt="Photo">
+                    {% else %}
+                    <div style="width:100%; height:160px; background:linear-gradient(135deg,var(--primary-dark),var(--primary)); display:flex; align-items:center; justify-content:center;">
+                        <i class="fas fa-image fa-2x" style="color:rgba(255,255,255,0.4);"></i>
+                    </div>
+                    {% endif %}
+                    <div class="va-photo-body">
+                        <div style="font-size:0.8rem; font-weight:700; color:var(--gray-800); margin-bottom:0.35rem;">{{ photo.project.title|truncatechars:25 }}</div>
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <span class="status-badge status-{{ photo.status }}">{{ photo.get_status_display }}</span>
+                            {% if photo.rating %}
+                            <span style="font-size:0.72rem; color:var(--warning); font-weight:700;">
+                                <i class="fas fa-star"></i> {{ photo.rating }}/5
+                            </span>
+                            {% endif %}
+                        </div>
+                        <div style="font-size:0.7rem; color:var(--gray-400); margin-top:0.3rem;">{{ photo.uploaded_at|date:"d.m.Y" }}</div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="va-empty">
+                <i class="fas fa-camera"></i>
+                <p style="font-weight:600;">Нет фотоотчётов</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const fontFamily = "'Plus Jakarta Sans', sans-serif";
+
+    // Parse JSON data passed from view
+    let ratingHistory = [];
+    let activityData  = [];
+    try {
+        ratingHistory = JSON.parse('{{ rating_history|escapejs }}') || [];
+        activityData  = JSON.parse('{{ activity_data|escapejs }}')  || [];
+    } catch(e) { console.error('Chart data parse error:', e); }
+
+    const tooltipDefaults = {
+        backgroundColor: '#fff', titleColor: '#334155', bodyColor: '#64748b',
+        borderColor: '#e2e8f0', borderWidth: 1, padding: 12, displayColors: false
+    };
+
+    // ── Rating Chart ──
+    const ratingCtx = document.getElementById('ratingChart');
+    if (ratingCtx) {
+        const ctx = ratingCtx.getContext('2d');
+        const grad = ctx.createLinearGradient(0, 0, 0, 260);
+        grad.addColorStop(0, 'rgba(37,99,235,0.25)');
+        grad.addColorStop(1, 'rgba(37,99,235,0)');
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: ratingHistory.map(i => i.period),
+                datasets: [{
+                    label: 'Рейтинг',
+                    data: ratingHistory.map(i => parseFloat(i.rating) || 0),
+                    borderColor: '#2563eb', backgroundColor: grad,
+                    borderWidth: 2.5, tension: 0.4, fill: true,
+                    pointRadius: 4, pointBackgroundColor: '#2563eb',
+                    pointBorderColor: '#fff', pointBorderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { display: false }, tooltip: { ...tooltipDefaults, displayColors: false } },
+                scales: {
+                    y: { beginAtZero: true, max: 5, grid: { color: '#f1f5f9' }, ticks: { font: { family: fontFamily, size: 11 } } },
+                    x: { grid: { display: false }, ticks: { font: { family: fontFamily, size: 10 }, maxRotation: 45, minRotation: 45 } }
+                }
+            }
+        });
+    }
+
+    // ── Activity Chart ──
+    const actCtx = document.getElementById('activityChart');
+    if (actCtx) {
+        new Chart(actCtx, {
+            type: 'bar',
+            data: {
+                labels: activityData.map(i => i.day),
+                datasets: [{
+                    label: 'Задач',
+                    data: activityData.map(i => i.count || 0),
+                    backgroundColor: '#2563eb', borderRadius: 5,
+                    hoverBackgroundColor: '#1e40af'
+                }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { display: false }, tooltip: { ...tooltipDefaults, callbacks: { label: ctx => `Задач: ${ctx.raw}` } } },
+                scales: {
+                    y: { beginAtZero: true, ticks: { stepSize: 1, font: { family: fontFamily, size: 11 } }, grid: { color: '#f1f5f9' } },
+                    x: { grid: { display: false }, ticks: { font: { family: fontFamily, size: 10 }, maxRotation: 45, minRotation: 45 } }
+                }
+            }
+        });
+    }
+
+    // ── Projects Distribution Chart ──
+    const projLabels = [];
+    const projCounts = [];
+    {% for vp in volunteer.volunteer_projects.all %}
+        projLabels.push('{{ vp.project.title|escapejs|truncatechars:20 }}');
+        projCounts.push({{ vp.project.tasks.count }});
+    {% endfor %}
+
+    const projCtx = document.getElementById('projectsChart');
+    if (projCtx) {
+        if (projLabels.length === 0) { projLabels.push('Нет проектов'); projCounts.push(1); }
+        new Chart(projCtx, {
+            type: 'doughnut',
+            data: {
+                labels: projLabels,
+                datasets: [{
+                    data: projCounts,
+                    backgroundColor: ['#2563eb','#059669','#0891b2','#d97706','#dc2626','#7c3aed','#0f172a'],
+                    borderWidth: 3, borderColor: '#fff'
+                }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false, cutout: '65%',
+                plugins: {
+                    legend: { position: 'bottom', labels: { font: { family: fontFamily, size: 11 }, padding: 12, usePointStyle: true } },
+                    tooltip: { ...tooltipDefaults, displayColors: true }
+                }
+            }
+        });
+    }
+
+    // ── Photos Status Chart ──
+    const photoLabels = ['Одобрено', 'На проверке', 'Отклонено'];
+    const photoCounts = [
+        {{ volunteer.photos.all|length }} > 0 ? {{ volunteer.photos.filter_approved_count|default:0 }} : 0,
+        0, 0
+    ];
+
+    // Count photo statuses
+    const photoStatus = { approved: 0, pending: 0, rejected: 0 };
+    {% for photo in volunteer.photos.all %}
+        photoStatus['{{ photo.status }}'] = (photoStatus['{{ photo.status }}'] || 0) + 1;
+    {% endfor %}
+
+    const photoCtx = document.getElementById('photosChart');
+    if (photoCtx) {
+        new Chart(photoCtx, {
+            type: 'pie',
+            data: {
+                labels: ['Одобрено', 'На проверке', 'Отклонено'],
+                datasets: [{
+                    data: [photoStatus.approved || 0, photoStatus.pending || 0, photoStatus.rejected || 0],
+                    backgroundColor: ['#059669','#d97706','#dc2626'],
+                    borderWidth: 3, borderColor: '#fff'
+                }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'bottom', labels: { font: { family: fontFamily, size: 11 }, padding: 12, usePointStyle: true } },
+                    tooltip: { ...tooltipDefaults, displayColors: true }
+                }
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,373 @@
+{% extends 'admin_panel/base.html' %} {% load static %}
+
+{% block topbar_title %}Организатор: {{ organizer.username }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* ── Hero ── */
+    .va-hero {
+        background: linear-gradient(135deg, var(--gray-900) 0%, #667eea 50%, #764ba2 100%);
+        border-radius: var(--radius-lg); padding: 2rem; color: #fff;
+        position: relative; overflow: hidden; margin-bottom: 1.25rem;
+    }
+    .va-hero::before {
+        content: ""; position: absolute;
+        width: 280px; height: 280px; border-radius: 50%;
+        right: -70px; top: -110px; background: rgba(255,255,255,0.06);
+        pointer-events: none;
+    }
+    .va-hero > * { position: relative; z-index: 1; }
+    .va-back {
+        display: inline-flex; align-items: center; gap: 0.4rem;
+        padding: 0.4rem 0.85rem; border-radius: 0.5rem;
+        background: rgba(255,255,255,0.12); color: rgba(255,255,255,0.85);
+        text-decoration: none; font-size: 0.8rem; font-weight: 700;
+        transition: background 0.2s; margin-bottom: 1rem;
+    }
+    .va-back:hover { background: rgba(255,255,255,0.2); color: #fff; }
+    .va-hero h1 { margin: 0 0 0.25rem; font-size: 1.65rem; font-weight: 800; letter-spacing: -0.02em; }
+    .va-hero p  { margin: 0; color: rgba(255,255,255,0.65); font-size: 0.85rem; }
+
+    /* ── Stats row ── */
+    .va-stats {
+        display: grid; grid-template-columns: repeat(4,1fr);
+        gap: 1rem; margin-bottom: 1.25rem;
+    }
+    @media (max-width: 900px) { .va-stats { grid-template-columns: repeat(2,1fr); } }
+    @media (max-width: 500px)  { .va-stats { grid-template-columns: 1fr; } }
+
+    .va-stat-card {
+        background: #fff; border: 1px solid var(--gray-200);
+        border-radius: var(--radius-lg); padding: 1.25rem;
+        box-shadow: var(--shadow-sm); display: flex;
+        align-items: center; gap: 1rem;
+        transition: transform var(--transition), box-shadow var(--transition);
+    }
+    .va-stat-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+    .va-stat-icon {
+        width: 48px; height: 48px; border-radius: var(--radius);
+        display: flex; align-items: center; justify-content: center;
+        font-size: 1.25rem; flex-shrink: 0;
+    }
+    .va-stat-icon.purple { background: #e0e7ff; color: #4f46e5; }
+    .va-stat-icon.green  { background: #d1fae5; color: var(--success); }
+    .va-stat-icon.blue   { background: var(--primary-light); color: var(--primary); }
+    .va-stat-icon.orange { background: #fef3c7; color: var(--warning); }
+    .va-stat-label { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--gray-400); font-weight: 700; }
+    .va-stat-value { font-size: 1.6rem; font-weight: 800; color: var(--gray-900); line-height: 1; margin-top: 0.2rem; }
+
+    /* ── Layout ── */
+    .va-grid { display: grid; grid-template-columns: 280px 1fr; gap: 1.25rem; margin-bottom: 1.25rem; }
+    .va-charts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; margin-bottom: 1.25rem; }
+    .org-analytics-grid { display: grid; grid-template-columns: 280px 1fr 1fr; gap: 1.25rem; margin-bottom: 1.25rem; }
+    .va-grid > div, .va-charts-grid > div, .org-analytics-grid > div { min-width: 0; }
+    @media (max-width: 1100px) {
+        .org-analytics-grid { grid-template-columns: 280px 1fr; }
+    }
+    @media (max-width: 900px) { 
+        .va-grid, .va-charts-grid, .org-analytics-grid { grid-template-columns: 1fr; } 
+    }
+
+    /* ── Cards ── */
+    .va-card {
+        background: #fff; border: 1px solid var(--gray-200);
+        border-radius: var(--radius-lg); box-shadow: var(--shadow-sm);
+        overflow: hidden; margin-bottom: 1.25rem;
+    }
+    .va-card-header {
+        background: var(--gray-900); color: #fff;
+        padding: 0.9rem 1.25rem; display: flex; align-items: center; gap: 0.5rem;
+        font-size: 0.875rem; font-weight: 700;
+    }
+    .va-card-body { padding: 1.25rem; }
+
+    /* ── Profile sidebar ── */
+    .va-profile-avatar {
+        width: 80px; height: 80px; border-radius: 50%;
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        display: flex; align-items: center; justify-content: center;
+        color: #fff; font-size: 2rem; font-weight: 800;
+        margin: 0 auto 0.85rem;
+    }
+    .va-profile-name { text-align: center; font-weight: 800; font-size: 1.05rem; color: var(--gray-900); margin-bottom: 0.2rem; word-break: break-word; }
+    .va-profile-email { text-align: center; font-size: 0.78rem; color: var(--gray-400); margin-bottom: 1rem; word-break: break-all; }
+
+    .va-info-row {
+        display: flex; justify-content: space-between; align-items: center;
+        padding: 0.55rem 0; border-bottom: 1px solid var(--gray-100);
+        font-size: 0.82rem;
+    }
+    .va-info-row:last-child { border-bottom: none; }
+    .va-info-row span { color: var(--gray-500); }
+    .va-info-row strong { color: var(--gray-800); text-align: right; max-width: 60%; word-break: break-all; }
+
+    /* ── Chart area ── */
+    .va-chart-area { height: 260px; position: relative; width: 100%; }
+
+    /* ── Table ── */
+    .va-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+    .va-table thead th {
+        padding: 0.65rem 1rem; font-size: 0.68rem; font-weight: 700;
+        text-transform: uppercase; letter-spacing: 0.04em;
+        color: var(--gray-500); background: var(--gray-50);
+        border-bottom: 1px solid var(--gray-200);
+    }
+    .va-table tbody td {
+        padding: 0.75rem 1rem; border-bottom: 1px solid var(--gray-100);
+        vertical-align: middle; color: var(--gray-700);
+    }
+    .va-table tbody tr:last-child td { border-bottom: none; }
+    .va-table tbody tr:hover td { background: var(--gray-50); }
+
+    /* ── Empty ── */
+    .va-empty { text-align: center; padding: 2rem 1rem; color: var(--gray-400); }
+    .va-empty i { font-size: 2rem; opacity: 0.3; display: block; margin-bottom: 0.5rem; }
+
+    /* ── Badge ── */
+    .status-badge {
+        padding: 0.22rem 0.55rem; border-radius: 999px;
+        font-size: 0.68rem; font-weight: 700;
+    }
+    .status-approved { background: #d1fae5; color: var(--success); }
+    .status-rejected { background: #fee2e2; color: var(--danger); }
+    .status-pending  { background: #fef3c7; color: var(--warning); }
+    .status-completed { background: #d1fae5; color: var(--success); }
+    .status-in_progress { background: #e0e7ff; color: #4f46e5; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0">
+
+    <!-- Hero -->
+    <div class="va-hero">
+        <a href="{% url 'admin_panel:organizers' %}" class="va-back">
+            <i class="fas fa-arrow-left"></i> Все организаторы
+        </a>
+        <h1><i class="fas fa-user-tie me-2"></i>{{ organizer.name|default:organizer.username|default:"Организатор" }}</h1>
+        <p>Детальная информация и аналитика проектов организатора</p>
+    </div>
+
+    <!-- Stat cards -->
+    <div class="va-stats">
+        <div class="va-stat-card">
+            <div class="va-stat-icon purple"><i class="fas fa-project-diagram"></i></div>
+            <div>
+                <div class="va-stat-label">Проектов создано</div>
+                <div class="va-stat-value">{{ stats.project_count }}</div>
+            </div>
+        </div>
+        <div class="va-stat-card">
+            <div class="va-stat-icon blue"><i class="fas fa-tasks"></i></div>
+            <div>
+                <div class="va-stat-label">Задач создано</div>
+                <div class="va-stat-value">{{ stats.task_count }}</div>
+            </div>
+        </div>
+        <div class="va-stat-card">
+            <div class="va-stat-icon green"><i class="fas fa-check-circle"></i></div>
+            <div>
+                <div class="va-stat-label">Одобрено проектов</div>
+                <div class="va-stat-value">{{ stats.approved_projects }}</div>
+            </div>
+        </div>
+        <div class="va-stat-card">
+            <div class="va-stat-icon orange"><i class="fas fa-clock"></i></div>
+            <div>
+                <div class="va-stat-label">Ожидает модерации</div>
+                <div class="va-stat-value">{{ stats.pending_projects }}</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Profile + Charts -->
+    <div class="org-analytics-grid">
+        <!-- Left: Profile card -->
+        <div>
+            <div class="va-card" style="height: 100%; margin-bottom: 0;">
+                <div class="va-card-header">
+                    <i class="fas fa-user"></i> Личные данные
+                </div>
+                <div class="va-card-body">
+                    <div class="va-profile-avatar">{{ organizer.username|slice:":1"|upper }}</div>
+                    <div class="va-profile-name">{{ organizer.name|default:organizer.username|default:"Без имени" }}</div>
+                    <div class="va-profile-email">{{ organizer.email|default:"Email не указан" }}</div>
+                    <hr style="border-color:var(--gray-100); margin:0.75rem 0;">
+                    <div class="va-info-row">
+                        <span><i class="fas fa-user me-1"></i> Username</span>
+                        <strong>{{ organizer.username }}</strong>
+                    </div>
+                    <div class="va-info-row">
+                        <span><i class="fas fa-phone me-1"></i> Телефон</span>
+                        <strong>{{ organizer.phone_number|default:"Не указан" }}</strong>
+                    </div>
+                    <div class="va-info-row">
+                        <span><i class="fas fa-building me-1"></i> Организация</span>
+                        <strong>{{ organizer.organization_name|default:"Не указана" }}</strong>
+                    </div>
+                    <div class="va-info-row">
+                        <span><i class="fab fa-telegram me-1"></i> Telegram</span>
+                        <strong>{{ organizer.telegram_id|default:"Не привязан" }}</strong>
+                    </div>
+                    <div class="va-info-row">
+                        <span><i class="fas fa-calendar-plus me-1"></i> Регистрация</span>
+                        <strong>{{ organizer.date_joined|date:"d.m.Y" }}</strong>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Middle: Project Status Chart -->
+        <div class="va-card" style="margin-bottom:0; height: 100%;">
+            <div class="va-card-header"><i class="fas fa-chart-pie"></i> Статусы проектов</div>
+            <div class="va-card-body d-flex flex-column justify-content-center">
+                <div class="va-chart-area"><canvas id="projectStatusChart"></canvas></div>
+            </div>
+        </div>
+
+        <!-- Right: Task Status Chart -->
+        <div class="va-card" style="margin-bottom:0; height: 100%;">
+            <div class="va-card-header"><i class="fas fa-chart-doughnut"></i> Статусы задач</div>
+            <div class="va-card-body d-flex flex-column justify-content-center">
+                <div class="va-chart-area"><canvas id="taskStatusChart"></canvas></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Projects table -->
+    <div class="va-card">
+        <div class="va-card-header"><i class="fas fa-project-diagram"></i> Созданные проекты</div>
+        <div class="va-card-body" style="padding:0;">
+            {% if projects.exists %}
+            <div class="table-responsive">
+                <table class="va-table">
+                    <thead>
+                        <tr>
+                            <th>Проект</th>
+                            <th class="text-center">Дата создания</th>
+                            <th class="text-center">Волонтеров</th>
+                            <th class="text-center">Задач</th>
+                            <th class="text-center">Статус</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for project in projects %}
+                        <tr>
+                            <td><strong>{{ project.title }}</strong></td>
+                            <td class="text-center">
+                                <span style="font-size:0.8rem; color:var(--gray-500);">{{ project.created_at|date:"d.m.Y" }}</span>
+                            </td>
+                            <td class="text-center">
+                                <span style="padding:0.2rem 0.6rem; border-radius:999px; background:var(--primary-light); color:var(--primary); font-size:0.75rem; font-weight:700;">
+                                    {{ project.volunteer_count|default:0 }}
+                                </span>
+                            </td>
+                            <td class="text-center">
+                                <span style="padding:0.2rem 0.6rem; border-radius:999px; background:#e0e7ff; color:#4f46e5; font-size:0.75rem; font-weight:700;">
+                                    {{ project.task_count|default:0 }}
+                                </span>
+                            </td>
+                            <td class="text-center">
+                                <span class="status-badge status-{{ project.status }}">{{ project.get_status_display }}</span>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="va-empty">
+                <i class="fas fa-project-diagram"></i>
+                <p style="font-weight:600;">Нет созданных проектов</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const fontFamily = "'Plus Jakarta Sans', sans-serif";
+    const tooltipDefaults = {
+        backgroundColor: '#fff', titleColor: '#334155', bodyColor: '#64748b',
+        borderColor: '#e2e8f0', borderWidth: 1, padding: 12, displayColors: true
+    };
+
+    let projectStatusData = [];
+    let taskStatusData = [];
+    try {
+        projectStatusData = JSON.parse('{{ project_status_data|escapejs }}') || [];
+        taskStatusData = JSON.parse('{{ task_status_data|escapejs }}') || [];
+    } catch(e) { console.error('Parse error', e); }
+
+    const formatData = (data, map) => {
+        const labels = [];
+        const counts = [];
+        const colors = [];
+        data.forEach(item => {
+            labels.push(map[item.status]?.label || item.status);
+            counts.push(item.count);
+            colors.push(map[item.status]?.color || '#94a3b8');
+        });
+        if (labels.length === 0) { labels.push('Нет данных'); counts.push(1); colors.push('#e2e8f0'); }
+        return { labels, counts, colors };
+    };
+
+    const projectMap = {
+        'approved': { label: 'Одобрен', color: '#10b981' },
+        'pending': { label: 'На модерации', color: '#f59e0b' },
+        'rejected': { label: 'Отклонен', color: '#ef4444' }
+    };
+    const taskMap = {
+        'completed': { label: 'Выполнено', color: '#10b981' },
+        'in_progress': { label: 'В процессе', color: '#3b82f6' },
+        'pending': { label: 'Ожидает', color: '#f59e0b' },
+        'under_review': { label: 'На проверке', color: '#8b5cf6' },
+        'open': { label: 'Открыта', color: '#94a3b8' },
+        'rejected': { label: 'Отклонена', color: '#ef4444' }
+    };
+
+    const pData = formatData(projectStatusData, projectMap);
+    const tData = formatData(taskStatusData, taskMap);
+
+    const projectCtx = document.getElementById('projectStatusChart');
+    if (projectCtx) {
+        new Chart(projectCtx, {
+            type: 'pie',
+            data: {
+                labels: pData.labels,
+                datasets: [{ data: pData.counts, backgroundColor: pData.colors, borderWidth: 2, borderColor: '#fff' }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'bottom', labels: { font: { family: fontFamily, size: 11 }, padding: 12, usePointStyle: true } },
+                    tooltip: tooltipDefaults
+                }
+            }
+        });
+    }
+
+    const taskCtx = document.getElementById('taskStatusChart');
+    if (taskCtx) {
+        new Chart(taskCtx, {
+            type: 'doughnut',
+            data: {
+                labels: tData.labels,
+                datasets: [{ data: tData.counts, backgroundColor: tData.colors, borderWidth: 2, borderColor: '#fff' }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false, cutout: '65%',
+                plugins: {
+                    legend: { position: 'bottom', labels: { font: { family: fontFamily, size: 11 }, padding: 12, usePointStyle: true } },
+                    tooltip: tooltipDefaults
+                }
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

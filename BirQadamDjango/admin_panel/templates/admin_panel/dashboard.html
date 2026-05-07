@@ -1,0 +1,2292 @@
+{% extends "admin_panel/base.html" %} {% load static %}
+
+{% block topbar_title %}{% endblock %}
+
+{% block topbar_search %}
+<div class="topbar-search" id="searchContainer">
+    <i class="fas fa-search topbar-search-icon"></i>
+    <input type="text" id="globalSearchInput" class="topbar-search-input"
+        placeholder="Поиск волонтеров, проектов, задач..." autocomplete="off">
+    <div class="topbar-search-spinner" id="searchSpinner" style="display:none;">
+        <i class="fas fa-spinner fa-spin"></i>
+    </div>
+    <div class="topbar-search-results" id="searchResults" style="display:none;">
+        <div class="search-results-content"></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<style>
+    /* ═══════════════════════════════════════════
+       DASHBOARD HERO
+    ═══════════════════════════════════════════ */
+    .topbar-search { max-width: 700px !important; }
+
+    /* ═══════════════════════════════════════════
+   TOPBAR SEARCH
+═══════════════════════════════════════════ */
+.topbar-search {
+    max-width: 600px !important;
+    width: 100%;
+    position: relative;
+    margin: 0 auto;
+}
+
+.topbar-search-input {
+    width: 100%;
+    height: 42px;
+    padding: 0 1rem 0 2.75rem;
+    border: 1.5px solid var(--gray-200);
+    border-radius: 10px;
+    background: var(--gray-50);
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--gray-800);
+    transition: all var(--transition);
+    font-family: inherit;
+    outline: none;
+}
+
+.topbar-search-input::placeholder {
+    color: var(--gray-500);
+    font-weight: 500;
+    opacity: 1;
+}
+
+.topbar-search-input:hover {
+    border-color: var(--gray-300);
+    background: #fff;
+}
+
+.topbar-search-input:focus {
+    border-color: var(--primary);
+    background: #fff;
+    box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1);
+}
+
+.topbar-search-icon {
+    position: absolute;
+    left: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--gray-400);
+    font-size: 0.9rem;
+    pointer-events: none;
+    transition: color var(--transition);
+}
+
+.topbar-search-input:focus ~ .topbar-search-icon,
+.topbar-search:focus-within .topbar-search-icon {
+    color: var(--primary);
+}
+
+.topbar-search-spinner {
+    position: absolute;
+    right: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--primary);
+}
+
+.topbar-search-results {
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 0;
+    right: 0;
+    background: #fff;
+    border: 1px solid var(--gray-200);
+    border-radius: 12px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.12);
+    max-height: 480px;
+    overflow-y: auto;
+    z-index: 1050;
+}
+    
+    .dash-hero {
+
+        background: linear-gradient(135deg, var(--gray-900) 0%, var(--primary-dark) 50%, var(--primary) 100%);
+        border-radius: var(--radius-lg);
+        padding: 2rem;
+        color: #fff;
+        position: relative;
+        overflow: hidden;
+        margin-bottom: 1.5rem;
+    }
+
+    .dash-hero::before {
+        content: "";
+        position: absolute;
+        width: 300px;
+        height: 300px;
+        border-radius: 50%;
+        right: -80px;
+        top: -120px;
+        background: rgba(255, 255, 255, 0.06);
+        pointer-events: none;
+    }
+
+    .dash-hero>* {
+        position: relative;
+        z-index: 1;
+    }
+
+    .dash-hero-eyebrow {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        padding: 0.3rem 0.7rem;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.12);
+        font-size: 0.7rem;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        margin-bottom: 0.75rem;
+    }
+
+    .dash-hero h1 {
+        margin: 0 0 0.35rem;
+        font-size: 1.75rem;
+        font-weight: 800;
+        letter-spacing: -0.02em;
+    }
+
+    .dash-hero p {
+        margin: 0;
+        color: rgba(255, 255, 255, 0.7);
+        font-size: 0.9rem;
+        max-width: 36rem;
+    }
+
+    /* ── Hero Metrics ── */
+    .hero-metrics {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 0.75rem;
+        margin-top: 1.25rem;
+    }
+
+    .hero-metric {
+        padding: 0.85rem;
+        border-radius: var(--radius);
+        background: rgba(255, 255, 255, 0.1);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .hero-metric__label {
+        display: block;
+        font-size: 0.65rem;
+        text-transform: uppercase;
+        letter-spacing: 0.07em;
+        color: rgba(255, 255, 255, 0.6);
+        margin-bottom: 0.3rem;
+        font-weight: 700;
+    }
+
+    .hero-metric__value {
+        font-size: 1.5rem;
+        font-weight: 800;
+        line-height: 1;
+        background: linear-gradient(90deg, #fff 0%, rgba(255,255,255,0.62) 40%, #fff 60%);
+        background-size: 200% auto;
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        animation: shimmerText 2.8s linear infinite;
+    }
+
+    .hero-metric__hint {
+        margin-top: 0.25rem;
+        font-size: 0.75rem;
+        color: rgba(255, 255, 255, 0.65);
+    }
+
+    /* ═══════════════════════════════════════════
+       TWO-COLUMN LAYOUT: hero + ops rail
+    ═══════════════════════════════════════════ */
+    .dash-top-grid {
+        display: grid;
+        grid-template-columns: 1.8fr 1fr;
+        gap: 1.5rem;
+        margin-bottom: 1.5rem;
+        align-items: start;
+    }
+
+    .dash-main-column {
+        display: grid;
+        gap: 1rem;
+        min-width: 0;
+    }
+
+    /* ── Ops Rail ── */
+    .ops-card {
+        background: #fff;
+        border: 1px solid var(--gray-200);
+        border-radius: var(--radius-lg);
+        padding: 1.25rem;
+        box-shadow: var(--shadow-sm);
+        opacity: 0;
+        transform: translateY(24px);
+        transition: opacity 0.55s ease, transform 0.55s ease, box-shadow 0.3s ease;
+    }
+
+    .ops-card.card-visible {
+        opacity: 1;
+        transform: translateY(0);
+    }
+
+    .ops-card+.ops-card {
+        margin-top: 1rem;
+    }
+
+    .ops-eyebrow {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        padding: 0.25rem 0.6rem;
+        border-radius: 999px;
+        font-size: 0.65rem;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+    }
+
+    .ops-card h3 {
+        margin: 0.6rem 0 0.25rem;
+        font-size: 1rem;
+        font-weight: 800;
+        color: var(--gray-800);
+    }
+
+    .ops-card>p {
+        margin: 0;
+        font-size: 0.82rem;
+        color: var(--gray-500);
+    }
+
+    .ops-list {
+        display: grid;
+        gap: 0.6rem;
+        margin-top: 1rem;
+    }
+
+    .ops-list-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0.7rem 0.85rem;
+        border-radius: var(--radius);
+        background: var(--gray-50);
+        border: 1px solid var(--gray-100);
+    }
+
+    .ops-list-item span {
+        color: var(--gray-600);
+        font-weight: 600;
+        font-size: 0.85rem;
+    }
+
+    .ops-list-item strong {
+        font-size: 1.05rem;
+        color: var(--gray-900);
+    }
+
+    a.ops-list-item--link {
+        text-decoration: none;
+        color: inherit;
+        transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    a.ops-list-item--link:hover {
+        background: #fff;
+        border-color: var(--gray-200);
+        box-shadow: 0 2px 8px rgba(15, 23, 42, 0.06);
+    }
+
+    /* Quick links */
+    .quick-links {
+        display: grid;
+        gap: 0.5rem;
+        margin-top: 0.85rem;
+    }
+
+    .quick-link {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0.7rem 0.85rem;
+        border-radius: var(--radius);
+        background: var(--gray-50);
+        border: 1px solid var(--gray-100);
+        color: var(--gray-700);
+        text-decoration: none;
+        font-weight: 700;
+        font-size: 0.85rem;
+        transition: all var(--transition);
+    }
+
+    .quick-link:hover {
+        color: var(--primary);
+        border-color: var(--primary-light);
+        background: var(--primary-light);
+        transform: translateY(-1px);
+    }
+
+    .context-card {
+        background: #fff;
+        border: 1px solid var(--gray-200);
+        border-radius: var(--radius-lg);
+        padding: 1.25rem;
+        box-shadow: var(--shadow-sm);
+        opacity: 0;
+        transform: translateY(24px);
+        transition: opacity 0.55s ease, transform 0.55s ease, box-shadow 0.3s ease;
+    }
+
+    .context-card.card-visible {
+        opacity: 1;
+        transform: translateY(0);
+    }
+
+    .context-card__header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 1rem;
+        margin-bottom: 1rem;
+    }
+
+    .context-card__eyebrow {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        padding: 0.28rem 0.62rem;
+        border-radius: 999px;
+        background: #dbeafe;
+        color: #1d4ed8;
+        font-size: 0.68rem;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+    }
+
+    .context-card h3 {
+        margin: 0.7rem 0 0.25rem;
+        font-size: 1rem;
+        font-weight: 800;
+        color: var(--gray-900);
+    }
+
+    .context-card p {
+        margin: 0;
+        color: var(--gray-500);
+        font-size: 0.84rem;
+        max-width: 34rem;
+    }
+
+    .context-period-pill {
+        white-space: nowrap;
+        padding: 0.7rem 0.9rem;
+        border-radius: var(--radius);
+        background: var(--gray-50);
+        border: 1px solid var(--gray-100);
+        color: var(--gray-700);
+        font-weight: 700;
+        font-size: 0.85rem;
+    }
+
+    .context-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.85rem;
+        margin-bottom: 1rem;
+    }
+
+    .context-item {
+        padding: 0.9rem 1rem;
+        border-radius: var(--radius);
+        background: linear-gradient(180deg, #f8fbff 0%, #f8fafc 100%);
+        border: 1px solid var(--gray-100);
+    }
+
+    .context-item__label {
+        display: block;
+        margin-bottom: 0.35rem;
+        color: var(--gray-500);
+        font-size: 0.72rem;
+        font-weight: 700;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+    }
+
+    .context-item__value {
+        display: block;
+        color: var(--gray-900);
+        font-size: 1.2rem;
+        font-weight: 800;
+        line-height: 1.1;
+    }
+
+    .context-item__hint {
+        margin-top: 0.22rem;
+        color: var(--gray-500);
+        font-size: 0.8rem;
+    }
+
+    .context-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+    }
+
+    .context-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.45rem;
+        padding: 0.7rem 0.95rem;
+        border-radius: var(--radius);
+        border: 1px solid var(--gray-200);
+        background: #fff;
+        color: var(--gray-700);
+        text-decoration: none;
+        font-size: 0.84rem;
+        font-weight: 700;
+        transition: all var(--transition);
+    }
+
+    .context-link:hover {
+        color: var(--primary);
+        border-color: var(--primary-light);
+        background: var(--primary-light);
+        transform: translateY(-1px);
+    }
+
+    /* ═══════════════════════════════════════════
+       SEARCH RESULTS (dropdown from topbar)
+    ═══════════════════════════════════════════ */
+    .search-results-content {
+        padding: 0.75rem;
+    }
+
+    .search-section {
+        margin-bottom: 1rem;
+    }
+
+    .search-section:last-child {
+        margin-bottom: 0;
+    }
+
+    .search-section-title {
+        font-size: 0.7rem;
+        font-weight: 700;
+        color: var(--primary);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-bottom: 0.5rem;
+        padding-left: 0.5rem;
+        border-left: 2px solid var(--primary);
+    }
+
+    .search-result-item {
+        padding: 0.55rem 0.7rem;
+        border-radius: var(--radius);
+        cursor: pointer;
+        border: 1px solid transparent;
+        display: flex;
+        align-items: center;
+        gap: 0.65rem;
+        transition: all 0.15s;
+    }
+
+    .search-result-item:hover {
+        background: var(--gray-50);
+        border-color: var(--gray-200);
+    }
+
+    .search-result-icon {
+        width: 30px;
+        height: 30px;
+        border-radius: 0.4rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.8rem;
+        flex-shrink: 0;
+        color: #fff;
+    }
+
+    .search-result-icon.user {
+        background: var(--primary);
+    }
+
+    .search-result-icon.project {
+        background: var(--success);
+    }
+
+    .search-result-icon.task {
+        background: var(--info);
+    }
+
+    .search-result-info {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .search-result-title {
+        font-weight: 600;
+        font-size: 0.8rem;
+        color: var(--gray-800);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .search-result-subtitle {
+        font-size: 0.7rem;
+        color: var(--gray-500);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .search-result-badge {
+        padding: 0.15rem 0.45rem;
+        border-radius: 999px;
+        font-size: 0.6rem;
+        font-weight: 700;
+        flex-shrink: 0;
+    }
+
+    .badge-volunteer {
+        background: var(--primary-light);
+        color: var(--primary);
+    }
+
+    .badge-organizer {
+        background: #d1fae5;
+        color: var(--success);
+    }
+
+    .badge-approved {
+        background: #d1fae5;
+        color: var(--success);
+    }
+
+    .badge-pending {
+        background: #fef3c7;
+        color: var(--warning);
+    }
+
+    .badge-completed {
+        background: #cffafe;
+        color: var(--info);
+    }
+
+    .search-no-results {
+        text-align: center;
+        padding: 1.5rem 1rem;
+        color: var(--gray-400);
+    }
+
+    .search-no-results i {
+        font-size: 1.5rem;
+        opacity: 0.4;
+        margin-bottom: 0.5rem;
+    }
+
+    .search-view-all {
+        text-align: center;
+        padding: 0.6rem;
+        border-top: 1px solid var(--gray-200);
+    }
+
+    .search-view-all a {
+        color: var(--primary);
+        text-decoration: none;
+        font-weight: 700;
+        font-size: 0.8rem;
+    }
+
+    /* ═══════════════════════════════════════════
+       FILTER TOOLBAR
+    ═══════════════════════════════════════════ */
+    .filter-bar {
+        background: #fff;
+        border: 1px solid var(--gray-200);
+        border-radius: var(--radius-lg);
+        padding: 1rem 1.25rem;
+        margin-bottom: 1.5rem;
+        box-shadow: var(--shadow-sm);
+    }
+
+    .dashboard-filter-form .form-label {
+        margin-bottom: 0.35rem;
+        font-size: 0.7rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--gray-500);
+    }
+
+    /* ═══════════════════════════════════════════
+       STAT CARDS
+    ═══════════════════════════════════════════ */
+    .stat-card {
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-sm);
+        transition: all var(--transition), opacity 0.55s ease, transform 0.55s ease;
+        opacity: 0;
+        transform: translateY(24px);
+    }
+
+    .stat-card.card-visible {
+        opacity: 1;
+        transform: translateY(0);
+    }
+
+    .stat-card:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-md);
+    }
+
+    .stat-card .card-body {
+        padding: 1.25rem;
+    }
+
+    .stat-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: var(--radius);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.35rem;
+    }
+
+    .stat-icon.primary {
+        background: var(--primary-light);
+        color: var(--primary);
+    }
+
+    .stat-icon.success {
+        background: #d1fae5;
+        color: var(--success);
+    }
+
+    .stat-icon.info {
+        background: #cffafe;
+        color: var(--info);
+    }
+
+    .stat-icon.warning {
+        background: #fef3c7;
+        color: var(--warning);
+    }
+
+    .stat-card .stat-value {
+        font-size: 1.75rem;
+        font-weight: 800;
+        color: var(--gray-900);
+        margin: 0.35rem 0;
+        letter-spacing: -0.02em;
+    }
+
+    .stat-card .stat-label {
+        font-size: 0.7rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--gray-500);
+    }
+
+    .stat-card a {
+        text-decoration: none;
+        color: var(--gray-400);
+        font-size: 0.8rem;
+        font-weight: 600;
+        transition: color var(--transition);
+    }
+
+    .stat-card a:hover {
+        color: var(--primary);
+    }
+
+    /* ═══════════════════════════════════════════
+       CHART CARDS
+    ═══════════════════════════════════════════ */
+    .dashboard-section {
+        margin-bottom: 1.5rem;
+    }
+
+    .dashboard-section-head {
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-between;
+        gap: 1rem;
+        margin-bottom: 0.9rem;
+    }
+
+    .dashboard-section-head h2 {
+        margin: 0;
+        color: var(--gray-900);
+        font-size: 1.18rem;
+        font-weight: 900;
+        letter-spacing: 0;
+    }
+
+    .dashboard-section-head p {
+        margin: 0.25rem 0 0;
+        color: var(--gray-500);
+        font-size: 0.9rem;
+        line-height: 1.5;
+    }
+
+    .dashboard-section-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.45rem;
+        padding: 0.5rem 0.75rem;
+        border-radius: 999px;
+        background: var(--primary-light);
+        color: var(--primary-dark);
+        font-size: 0.78rem;
+        font-weight: 900;
+        white-space: nowrap;
+    }
+
+    .dashboard-chart-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 1rem;
+    }
+
+    .dashboard-flow-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1.45fr) minmax(320px, 0.55fr);
+        gap: 1rem;
+        align-items: stretch;
+    }
+
+    .chart-card {
+        position: relative;
+        overflow: hidden;
+        border-radius: var(--radius-lg);
+        box-shadow: 0 16px 40px rgba(15, 23, 42, 0.07);
+        border: 1px solid rgba(226, 232, 240, 0.95);
+        background: #fff;
+        opacity: 0;
+        transform: translateY(28px);
+        transition: opacity 0.55s ease, transform 0.55s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+    }
+
+    .chart-card::after {
+        content: "";
+        position: absolute;
+        inset: auto -15% -45% auto;
+        width: 16rem;
+        height: 16rem;
+        border-radius: 999px;
+        background: radial-gradient(circle, rgba(37, 99, 235, 0.08), transparent 64%);
+        pointer-events: none;
+    }
+
+    .chart-card:hover {
+        transform: translateY(-2px);
+        border-color: rgba(37, 99, 235, 0.2);
+        box-shadow: 0 20px 50px rgba(15, 23, 42, 0.11);
+    }
+
+    .chart-card.card-visible {
+        opacity: 1;
+        transform: translateY(0);
+    }
+
+    @keyframes shimmerText {
+        0% { background-position: -200% center; }
+        100% { background-position: 200% center; }
+    }
+
+    .chart-card .card-header {
+        position: relative;
+        z-index: 1;
+        background:
+            radial-gradient(circle at top right, rgba(255, 255, 255, 0.12), transparent 32%),
+            linear-gradient(135deg, var(--gray-900), #1d4ed8);
+        color: #fff;
+        border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+        padding: 1rem 1.25rem;
+        border: none;
+    }
+
+    .chart-card.chart-card--task .card-header {
+        background:
+            radial-gradient(circle at top right, rgba(255,255,255,0.14), transparent 32%),
+            linear-gradient(135deg, #047857, #10b981);
+    }
+
+    .chart-card.chart-card--activity .card-header {
+        background:
+            radial-gradient(circle at top right, rgba(255,255,255,0.14), transparent 32%),
+            linear-gradient(135deg, #4c1d95, #7c3aed);
+    }
+
+    .chart-card .card-header h6 {
+        margin: 0;
+        font-weight: 900;
+        font-size: 0.93rem;
+    }
+
+    .chart-card .card-header small {
+        color: rgba(255,255,255,0.72);
+        font-weight: 700;
+    }
+
+    .chart-card .card-body {
+        position: relative;
+        z-index: 1;
+        padding: 1rem;
+    }
+
+    .chart-area {
+        height: 320px;
+        position: relative;
+    }
+
+    .chart-area.chart-area--compact {
+        height: 300px;
+    }
+
+    .chart-empty-note {
+        position: absolute;
+        inset: 0;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        color: var(--gray-400);
+        font-weight: 800;
+        pointer-events: none;
+    }
+
+    /* ═══════════════════════════════════════════
+       LEADERBOARD
+    ═══════════════════════════════════════════ */
+    .leaderboard-card {
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-sm);
+        border: 1px solid var(--gray-200);
+        overflow: hidden;
+        opacity: 0;
+        transform: translateY(28px);
+        transition: opacity 0.55s ease, transform 0.55s ease, box-shadow 0.3s ease;
+    }
+
+    .leaderboard-card.card-visible {
+        opacity: 1;
+        transform: translateY(0);
+    }
+
+    .leaderboard-card .list-group-item {
+        border: none;
+        border-bottom: 1px solid var(--gray-100);
+        padding: 0.85rem 1rem;
+        transition: background var(--transition);
+    }
+
+    .leaderboard-card .list-group-item:hover {
+        background: var(--gray-50);
+    }
+
+    .leaderboard-card .list-group-item a {
+        text-decoration: none;
+        color: var(--gray-800);
+        font-weight: 600;
+        font-size: 0.875rem;
+    }
+
+    .leaderboard-card .badge {
+        background: var(--primary);
+        padding: 0.35rem 0.6rem;
+        font-weight: 700;
+        font-size: 0.75rem;
+    }
+
+    /* ═══════════════════════════════════════════
+       MAP
+    ═══════════════════════════════════════════ */
+    #map {
+        height: 520px;
+        width: 100%;
+        border-radius: var(--radius-lg);
+        z-index: 1;
+        background: linear-gradient(135deg, #e0f2fe, #f8fafc);
+        box-shadow: inset 0 0 0 1px rgba(226,232,240,0.9);
+    }
+
+    .map-controls {
+        background: linear-gradient(180deg, #fff 0%, #f8fafc 100%);
+        border: 1px solid var(--gray-200);
+        padding: 0.85rem;
+        border-radius: var(--radius);
+        margin-bottom: 0.9rem;
+        display: flex;
+        gap: 0.75rem;
+        flex-wrap: wrap;
+        align-items: center;
+    }
+
+    .control-group {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .control-group label {
+        font-weight: 700;
+        margin: 0;
+        font-size: 0.8rem;
+        color: var(--gray-600);
+    }
+
+    .control-btn {
+        min-height: 2.3rem;
+        padding: 0.4rem 0.9rem;
+        border-radius: 0.5rem;
+        border: 1px solid transparent;
+        background: var(--primary);
+        color: #fff;
+        cursor: pointer;
+        font-weight: 800;
+        font-size: 0.8rem;
+        transition: all var(--transition);
+        font-family: inherit;
+    }
+
+    .control-btn:hover {
+        transform: translateY(-1px);
+        background: var(--primary-dark);
+        color: #fff;
+    }
+
+    .map-shell {
+        position: relative;
+        overflow: hidden;
+        border-radius: var(--radius-lg);
+        border: 1px solid var(--gray-200);
+        background: #fff;
+    }
+
+    .stats-overlay {
+        position: absolute;
+        top: 1rem;
+        right: 1rem;
+        background: rgba(255,255,255,0.92);
+        backdrop-filter: blur(12px);
+        padding: 0.8rem;
+        border-radius: var(--radius);
+        box-shadow: var(--shadow-md);
+        z-index: 1000;
+        min-width: 170px;
+        border: 1px solid var(--gray-200);
+    }
+
+    .stat-item-map {
+        padding: 0.4rem 0;
+        border-bottom: 1px solid var(--gray-100);
+    }
+
+    .stat-item-map:last-child {
+        border-bottom: none;
+    }
+
+    .stat-label-map {
+        color: var(--gray-500);
+        font-size: 0.6rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        font-weight: 700;
+    }
+
+    .stat-value-map {
+        font-size: 1.15rem;
+        font-weight: 800;
+        color: var(--primary);
+    }
+
+    .map-loading {
+        position: absolute;
+        left: 1rem;
+        bottom: 1rem;
+        z-index: 900;
+        display: none;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.55rem 0.75rem;
+        border-radius: 999px;
+        background: rgba(15,23,42,0.82);
+        color: #fff;
+        font-size: 0.78rem;
+        font-weight: 800;
+        box-shadow: var(--shadow-md);
+    }
+
+    .map-loading.is-visible {
+        display: inline-flex;
+    }
+
+    /* Markers */
+    .custom-marker {
+        position: relative;
+        background-color: var(--success);
+        border-radius: 50%;
+        border: 3px solid white;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        font-size: 11px;
+        color: white;
+        animation: markerEnter 0.45s ease both;
+    }
+
+    .custom-marker.pending {
+        background-color: var(--warning);
+    }
+
+    .custom-marker.rejected {
+        background-color: var(--danger);
+    }
+
+    .marker-pulse {
+        animation: pulse-map 2s ease-in-out infinite;
+    }
+
+    @keyframes markerEnter {
+        from { transform: scale(0.55); opacity: 0; }
+        to { transform: scale(1); opacity: 1; }
+    }
+
+    @keyframes pulse-map {
+
+        0%,
+        100% {
+            transform: scale(1);
+            opacity: 1;
+        }
+
+        50% {
+            transform: scale(1.12);
+            opacity: 0.85;
+        }
+    }
+
+    .popup-title {
+        margin: 0 0 8px;
+        font-size: 14px;
+        color: var(--primary);
+        font-weight: bold;
+    }
+
+    .popup-info {
+        margin: 4px 0;
+        font-size: 13px;
+    }
+
+    .popup-info strong {
+        color: var(--gray-800);
+    }
+
+    .popup-actions {
+        margin-top: 10px;
+    }
+
+    .popup-link-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 8px 12px;
+        border-radius: 999px;
+        background: linear-gradient(135deg, #22c55e, #0ea5e9);
+        color: #fff;
+        font-size: 12px;
+        font-weight: 700;
+        text-decoration: none;
+        box-shadow: 0 10px 24px rgba(14, 165, 233, 0.18);
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .popup-link-btn:hover {
+        transform: translateY(-1px);
+        color: #fff;
+        box-shadow: 0 12px 28px rgba(14, 165, 233, 0.24);
+    }
+
+    /* ═══════════════════════════════════════════
+       PHOTO CARDS
+    ═══════════════════════════════════════════ */
+    .photo-card {
+        border-radius: var(--radius-lg);
+        overflow: hidden;
+        box-shadow: var(--shadow-sm);
+        border: 1px solid var(--gray-200);
+        transition: all var(--transition);
+    }
+
+    .photo-card:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-md);
+    }
+
+    .photo-card img {
+        height: 180px;
+        object-fit: cover;
+    }
+
+    /* ═══════════════════════════════════════════
+       RESPONSIVE
+    ═══════════════════════════════════════════ */
+    @media (max-width: 1199.98px) {
+        .dash-top-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .dashboard-flow-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .col-xl-3 {
+            flex: 0 0 50%;
+            max-width: 50%;
+        }
+
+        .col-xl-6 {
+            flex: 0 0 100%;
+            max-width: 100%;
+        }
+    }
+
+    @media (max-width: 767.98px) {
+        .dashboard-section-head {
+            align-items: flex-start;
+            flex-direction: column;
+        }
+
+        .dashboard-section-pill {
+            width: 100%;
+            justify-content: center;
+        }
+
+        .dashboard-chart-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .dash-hero {
+            padding: 1.5rem;
+        }
+
+        .dash-hero h1 {
+            font-size: 1.35rem;
+        }
+
+        .hero-metrics {
+            grid-template-columns: 1fr;
+            gap: 0.5rem;
+        }
+
+        .hero-metric {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.6rem 0.85rem;
+        }
+
+        .hero-metric__value {
+            font-size: 1.25rem;
+        }
+
+        .hero-metric__hint {
+            display: none;
+        }
+
+        .col-xl-3.col-md-6 {
+            flex: 0 0 50%;
+            max-width: 50%;
+            padding-left: 0.5rem;
+            padding-right: 0.5rem;
+        }
+
+        .stat-card .stat-value {
+            font-size: 1.35rem;
+        }
+
+        .stat-icon {
+            width: 40px;
+            height: 40px;
+            font-size: 1.1rem;
+        }
+
+        .chart-area {
+            height: 270px;
+        }
+
+        #map {
+            height: 360px;
+        }
+
+        .stats-overlay {
+            position: relative;
+            top: auto;
+            right: auto;
+            margin-top: 0.75rem;
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 0.6rem;
+            min-width: 0;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .stat-item-map {
+            border-bottom: none;
+            padding: 0.55rem;
+            border-radius: var(--radius);
+            background: var(--gray-50);
+            text-align: center;
+        }
+
+        .row {
+            margin-left: -0.5rem;
+            margin-right: -0.5rem;
+        }
+
+        .col-md-6,
+        .col-xl-3,
+        .col-xl-6,
+        .col-xl-8,
+        .col-xl-4,
+        .col-xl-12,
+        .col-md-4 {
+            padding-left: 0.5rem;
+            padding-right: 0.5rem;
+        }
+
+        .card-body .row .col-md-4 {
+            flex: 0 0 50%;
+            max-width: 50%;
+        }
+
+        .filter-bar .row {
+            flex-direction: column;
+        }
+
+        .filter-bar [class*="col-"] {
+            flex: 0 0 100%;
+            max-width: 100%;
+        }
+
+        .filter-bar [class*="col-"]+[class*="col-"] {
+            margin-top: 0.5rem;
+        }
+
+        .context-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .context-card__header {
+            flex-direction: column;
+        }
+
+        .map-controls {
+            display: grid;
+            grid-template-columns: 1fr;
+        }
+
+        .control-group {
+            width: 100%;
+            display: grid;
+            grid-template-columns: 5rem minmax(0, 1fr);
+        }
+
+        .control-group .form-select,
+        .control-group .form-control,
+        .control-btn {
+            width: 100% !important;
+        }
+    }
+
+    @media (max-width: 575.98px) {
+        .dash-hero {
+            padding: 1.25rem;
+        }
+
+        .dash-hero h1 {
+            font-size: 1.2rem;
+        }
+
+        .dash-hero p {
+            font-size: 0.8rem;
+        }
+
+        .col-xl-3.col-md-6 {
+            flex: 0 0 100%;
+            max-width: 100%;
+        }
+
+        .stat-card .stat-value {
+            font-size: 1.5rem;
+        }
+
+        .stat-icon {
+            width: 44px;
+            height: 44px;
+            font-size: 1.2rem;
+        }
+
+        .card-header.d-flex {
+            flex-direction: column;
+            align-items: flex-start !important;
+            gap: 0.5rem;
+        }
+
+        .card-header .btn-sm {
+            width: 100%;
+        }
+
+        .card-body .row .col-md-4 {
+            flex: 0 0 100%;
+            max-width: 100%;
+        }
+
+        .ops-card {
+            padding: 1rem;
+        }
+
+        .context-actions {
+            flex-direction: column;
+        }
+
+        .context-link {
+            width: 100%;
+            justify-content: center;
+        }
+
+        #map {
+            height: 280px;
+        }
+
+        .stats-overlay {
+            grid-template-columns: 1fr;
+        }
+
+        .chart-card .card-body {
+            padding: 0.85rem;
+        }
+
+        .chart-area {
+            height: 245px;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<!-- ── Hero Section (Full Width) ── -->
+<div class="dash-hero mb-4">
+    <span class="dash-hero-eyebrow"><i class="fas fa-wave-square"></i> Обзор</span>
+    <h1>BirQadam Control Center</h1>
+    <p>Основные метрики системы волонтерской активности. Используйте поиск в шапке для быстрого доступа.</p>
+    
+    <div class="row mt-4 px-2">
+        <div class="col-12 col-md mb-2">
+            <div class="hero-metric text-center h-100">
+                <span class="hero-metric__label">Волонтеры</span>
+                <div class="hero-metric__value">{{ stats.total_volunteers }}</div>
+            </div>
+        </div>
+        <div class="col-12 col-md mb-2">
+            <div class="hero-metric text-center h-100">
+                <span class="hero-metric__label">Активные проекты</span>
+                <div class="hero-metric__value">{{ stats.active_projects }}</div>
+            </div>
+        </div>
+        <div class="col-12 col-md mb-2">
+            <div class="hero-metric text-center h-100">
+                <span class="hero-metric__label">Открытые задачи</span>
+                <div class="hero-metric__value">{{ stats.pending_tasks }}</div>
+            </div>
+        </div>
+        <div class="col-12 col-md mb-2">
+            <div class="hero-metric text-center h-100">
+                <span class="hero-metric__label">На модерации проекты</span>
+                <div class="hero-metric__value">{{ stats.pending_projects|default:"0" }}</div>
+            </div>
+        </div>
+        <div class="col-12 col-md mb-2">
+            <div class="hero-metric text-center h-100">
+                <span class="hero-metric__label">Фотоотчеты</span>
+                <div class="hero-metric__value">{{ stats.photos|length }}</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ── Two Columns: В фокусе & Быстрые действия ── -->
+<div class="row mb-4">
+    <!-- В фокусе -->
+    <div class="col-lg-6 mb-3 mb-lg-0">
+        <div class="ops-card h-100">
+            <span class="ops-eyebrow" style="background: var(--primary-light); color: var(--primary-dark);">
+                <i class="fas fa-bolt"></i> В фокусе
+            </span>
+            <h3>Приоритеты</h3>
+            <div class="ops-list">
+                <a href="{% url 'admin_panel:project_list' %}?status=pending" class="ops-list-item ops-list-item--link">
+                    <span class="d-flex align-items-center"><i class="fas fa-clock text-warning me-2" style="font-size:1.1rem; width:20px;"></i> На модерации проекты</span>
+                    <strong>{{ stats.pending_projects|default:"0" }}</strong>
+                </a>
+                <div class="ops-list-item">
+                    <span class="d-flex align-items-center"><i class="fas fa-tasks text-info me-2" style="font-size:1.1rem; width:20px;"></i> Открытые задачи</span>
+                    <strong>{{ stats.pending_tasks }}</strong>
+                </div>
+                <div class="ops-list-item">
+                    <span class="d-flex align-items-center"><i class="fas fa-camera text-primary me-2" style="font-size:1.1rem; width:20px;"></i> Фото в ленте</span>
+                    <strong>{{ stats.photos|length }}</strong>
+                </div>
+                <div class="ops-list-item">
+                    <span class="d-flex align-items-center"><i class="fas fa-trophy text-success me-2" style="font-size:1.1rem; width:20px;"></i> Топ волонтеров</span>
+                    <strong>{{ top_volunteers|length }}</strong>
+                </div>
+                <a href="{% url 'admin_panel:organizers' %}" class="ops-list-item ops-list-item--link">
+                    <span class="d-flex align-items-center"><i class="fas fa-user-clock text-warning me-2" style="font-size:1.1rem; width:20px;"></i> На модерации организаторы</span>
+                    <strong>{{ stats.pending_organizers|default:"0" }}</strong>
+                </a>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Быстрые действия -->
+    <div class="col-lg-6">
+        <div class="ops-card h-100">
+            <span class="ops-eyebrow" style="background: #d1fae5; color: #065f46;">
+                <i class="fas fa-rocket"></i> Быстрые действия
+            </span>
+            <h3>Навигация</h3>
+            <div class="quick-links mt-3">
+                <a class="quick-link" href="{% url 'admin_panel:project_list' %}">
+                    <span><i class="fas fa-check-circle text-success me-2"></i>Одобрить проекты</span>
+                    <i class="fas fa-chevron-right" style="font-size:0.7rem; color:var(--gray-400);"></i>
+                </a>
+                <a class="quick-link" href="{% url 'admin_panel:volunteers' %}">
+                    <span><i class="fas fa-users text-primary me-2"></i>Волонтеры</span>
+                    <i class="fas fa-chevron-right" style="font-size:0.7rem; color:var(--gray-400);"></i>
+                </a>
+                <a class="quick-link" href="{% url 'admin_panel:task_list' %}">
+                    <span><i class="fas fa-camera text-info me-2"></i>Фотоотчеты</span>
+                    <i class="fas fa-chevron-right" style="font-size:0.7rem; color:var(--gray-400);"></i>
+                </a>
+                <a class="quick-link" href="{% url 'admin_panel:analytics' %}">
+                    <span><i class="fas fa-chart-line text-warning me-2"></i>Полная аналитика</span>
+                    <i class="fas fa-chevron-right" style="font-size:0.7rem; color:var(--gray-400);"></i>
+                </a>
+                <a class="quick-link" href="{% url 'admin_panel:calendar_admin' %}">
+                    <span><i class="fas fa-calendar-alt text-danger me-2"></i>Календарь задач</span>
+                    <i class="fas fa-chevron-right" style="font-size:0.7rem; color:var(--gray-400);"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ── Inline Filter ── -->
+<div class="card mb-4">
+    <div class="card-body py-2 px-3">
+        <form method="GET" action="{% url 'admin_panel:dashboard' %}" class="d-flex flex-wrap align-items-center gap-3 m-0">
+            <div class="d-flex align-items-center gap-2">
+                <label class="form-label m-0 text-muted" style="font-size:0.75rem; font-weight:700; text-transform:uppercase;">От</label>
+                <input type="date" name="date_from" class="form-control form-control-sm" value="{{ date_from|date:'Y-m-d' }}" style="width: 140px;">
+            </div>
+            <div class="d-flex align-items-center gap-2">
+                <label class="form-label m-0 text-muted" style="font-size:0.75rem; font-weight:700; text-transform:uppercase;">До</label>
+                <input type="date" name="date_to" class="form-control form-control-sm" value="{{ date_to|date:'Y-m-d' }}" style="width: 140px;">
+            </div>
+            <div class="d-flex align-items-center gap-2">
+                <label class="form-label m-0 text-muted" style="font-size:0.75rem; font-weight:700; text-transform:uppercase;">Период</label>
+                <select name="period" class="form-select form-select-sm" style="width: 140px;" onchange="this.form.submit()">
+                    <option value="week" {% if period == 'week' %}selected{% endif %}>7 дней</option>
+                    <option value="month" {% if period == 'month' %}selected{% endif %}>30 дней</option>
+                    <option value="year" {% if period == 'year' %}selected{% endif %}>Год</option>
+                </select>
+            </div>
+            <button type="submit" class="btn btn-primary btn-sm px-4 ms-auto" style="border-radius: 6px;">
+                <i class="fas fa-filter me-2"></i>Применить
+            </button>
+        </form>
+    </div>
+</div>
+
+<!-- ── Charts ── -->
+<section class="dashboard-section">
+    <div class="dashboard-section-head">
+        <div>
+            <h2>Состояние проектов и задач</h2>
+            <p>Быстрый снимок текущей воронки: что уже опубликовано, что ждёт реакции и где есть нагрузка.</p>
+        </div>
+        <span class="dashboard-section-pill">
+            <i class="fas fa-chart-pie"></i>
+            Живые графики
+        </span>
+    </div>
+
+    <div class="dashboard-chart-grid">
+        <div class="card chart-card chart-card--project" id="recent-photos">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <div>
+                    <h6><i class="fas fa-project-diagram me-2"></i>Статусы проектов</h6>
+                    <small>Распределение проектов по состояниям</small>
+                </div>
+                <div class="dropdown">
+                    <button class="btn btn-sm btn-outline-light dropdown-toggle" type="button"
+                        data-bs-toggle="dropdown"><i class="fas fa-ellipsis-v"></i></button>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li><a class="dropdown-item" href="{% url 'admin_panel:project_list' %}"><i
+                                    class="fas fa-list me-2"></i>Все проекты</a></li>
+                        <li><a class="dropdown-item" href="{% url 'admin_panel:analytics' %}"><i
+                                    class="fas fa-chart-line me-2"></i>Аналитика</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="chart-area chart-area--compact">
+                    <canvas id="projectChart"></canvas>
+                    <div class="chart-empty-note" id="projectChartEmpty">Нет данных за период</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card chart-card chart-card--task">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <div>
+                    <h6><i class="fas fa-tasks me-2"></i>Статусы задач</h6>
+                    <small>Где задачи сейчас находятся в работе</small>
+                </div>
+                <div class="dropdown">
+                    <button class="btn btn-sm btn-outline-light dropdown-toggle" type="button"
+                        data-bs-toggle="dropdown"><i class="fas fa-ellipsis-v"></i></button>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li><a class="dropdown-item" href="{% url 'admin_panel:task_list' %}"><i
+                                    class="fas fa-list me-2"></i>Все задачи</a></li>
+                        <li><a class="dropdown-item" href="{% url 'admin_panel:analytics' %}"><i
+                                    class="fas fa-chart-line me-2"></i>Аналитика</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="chart-area chart-area--compact">
+                    <canvas id="taskChart"></canvas>
+                    <div class="chart-empty-note" id="taskChartEmpty">Нет данных за период</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ── Activity & Leaderboard ── -->
+<section class="dashboard-section">
+    <div class="dashboard-section-head">
+        <div>
+            <h2>Темп активности</h2>
+            <p>Динамика выполненных задач и лидеры, которые двигают платформу вперёд.</p>
+        </div>
+        <span class="dashboard-section-pill">
+            <i class="fas fa-bolt"></i>
+            {% if period == 'week' %}7 дней{% elif period == 'month' %}30 дней{% else %}Год{% endif %}
+        </span>
+    </div>
+
+    <div class="dashboard-flow-grid">
+        <div class="card chart-card chart-card--activity">
+            <div class="card-header">
+                <h6><i class="fas fa-chart-line me-2"></i>Активность волонтеров</h6>
+                <small>Выполненные задачи по дням</small>
+            </div>
+            <div class="card-body">
+                <div class="chart-area">
+                    <canvas id="activityChart"></canvas>
+                    <div class="chart-empty-note" id="activityChartEmpty">Нет активности за период</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card leaderboard-card">
+            <div class="card-header text-white"
+                style="background:linear-gradient(135deg,var(--gray-900),#1e40af); border-radius: var(--radius-lg) var(--radius-lg) 0 0; padding: 1rem 1.25rem; border:none;">
+                <h6 class="m-0"><i class="fas fa-trophy me-2"></i>Таблица лидеров</h6>
+            </div>
+            <div class="card-body p-0">
+                {% if top_volunteers %}
+                <ul class="list-group list-group-flush">
+                    {% for volunteer in top_volunteers %}
+                    <li class="list-group-item p-0">
+                        <a href="{% url 'admin_panel:volunteer_analytics' volunteer.id %}"
+                           class="d-flex justify-content-between align-items-center px-3 py-3 text-decoration-none">
+                            <div class="d-flex align-items-center">
+                                <div class="me-2"
+                                    style="width:30px; height:30px; border-radius:50%; background:var(--primary); display:flex; align-items:center; justify-content:center; color:white; font-weight:800; font-size:0.78rem;">
+                                    {{ forloop.counter }}
+                                </div>
+                                <span>{% firstof volunteer.get_full_name volunteer.name volunteer.username volunteer.email "Без имени" %}</span>
+                            </div>
+                            <span class="badge d-inline-flex align-items-center justify-content-center" title="Открыть мини-страницу волонтера" aria-label="Открыть мини-страницу волонтера">
+                                <i class="fas fa-arrow-right" style="font-size:0.7rem;"></i>
+                            </span>
+                        </a>
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <div class="text-center py-4">
+                    <i class="fas fa-trophy fa-2x mb-2" style="color:var(--gray-300);"></i>
+                    <p style="color:var(--gray-400); font-size:0.85rem;">Нет данных за период</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ── Map ── -->
+<section class="dashboard-section dashboard-map-section">
+    <div class="dashboard-section-head">
+        <div>
+            <h2>Карта активности</h2>
+            <p>Проекты на карте, города и суммарная вовлечённость волонтёров. Если у проекта есть 2GIS-ссылка, она остаётся доступной в popup.</p>
+        </div>
+        <span class="dashboard-section-pill">
+            <i class="fas fa-location-dot"></i>
+            География проектов
+        </span>
+    </div>
+
+    <div class="card chart-card map-card">
+        <div class="card-header">
+            <h6><i class="fas fa-map-marked-alt me-2"></i>Интерактивная карта</h6>
+            <small>Фильтруйте по статусу и городу</small>
+        </div>
+        <div class="card-body">
+            <div class="map-controls">
+                <div class="control-group">
+                    <label>Статус</label>
+                    <select id="statusFilter" class="form-select form-select-sm" onchange="loadMapData()"
+                        style="width:140px;">
+                        <option value="approved">Одобренные</option>
+                        <option value="pending">Ожидающие</option>
+                        <option value="">Все</option>
+                    </select>
+                </div>
+                <div class="control-group">
+                    <label>Город</label>
+                    <input type="text" id="cityFilter" class="form-control form-control-sm" placeholder="Все"
+                        onchange="loadMapData()" onkeypress="if(event.key==='Enter') loadMapData()"
+                        style="width:160px;">
+                </div>
+                <button class="control-btn" onclick="loadMapData()">
+                    <i class="fas fa-sync me-1"></i>Обновить
+                </button>
+            </div>
+
+            <div class="map-shell">
+                <div id="map"></div>
+                <div class="map-loading" id="mapLoading">
+                    <i class="fas fa-circle-notch fa-spin"></i>
+                    Обновляем карту
+                </div>
+                <div class="stats-overlay">
+                    <div class="stat-item-map">
+                        <div class="stat-label-map">Проектов</div>
+                        <div class="stat-value-map" id="totalProjects">0</div>
+                    </div>
+                    <div class="stat-item-map">
+                        <div class="stat-label-map">Городов</div>
+                        <div class="stat-value-map" id="totalCities">0</div>
+                    </div>
+                    <div class="stat-item-map">
+                        <div class="stat-label-map">Волонтеров</div>
+                        <div class="stat-value-map" id="totalVolunteers">0</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+    <!-- ── Photos ── -->
+    <div class="row">
+        <div class="col-xl-12">
+            <div class="card chart-card mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h6><i class="fas fa-camera me-2"></i>Последние фотоотчеты</h6>
+                    <a href="{% url 'admin_panel:task_list' %}" class="btn btn-sm btn-outline-light">
+                        Все отчеты <i class="fas fa-arrow-right ms-1"></i>
+                    </a>
+                </div>
+                <div class="card-body">
+                    {% if stats.photos %}
+                    <div class="row">
+                        {% for photo in stats.photos %}
+                        <div class="col-md-4 mb-3">
+                            <div class="card photo-card h-100">
+                                {% if photo.image %}
+                                <img src="{{ photo.image.url }}" class="card-img-top" alt="Photo">
+                                {% endif %}
+                                <div class="card-body">
+                                    <h6 class="card-title mb-2" style="font-size:0.9rem;">{{ photo.project.title|truncatechars:30 }}</h6>
+                                    <p class="card-text small mb-2" style="color:var(--gray-500);">
+                                        <i class="fas fa-user me-1"></i> {{ photo.volunteer.username }}<br>
+                                        <i class="fas fa-clock me-1"></i> {{ photo.uploaded_at|date:"d.m.Y H:i" }}
+                                    </p>
+                                    <span
+                                        class="badge bg-{% if photo.status == 'approved' %}success{% elif photo.status == 'rejected' %}danger{% else %}warning{% endif %} rounded-pill">
+                                        {{ photo.get_status_display }}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-camera fa-3x mb-2" style="color:var(--gray-300);"></i>
+                        <p style="color:var(--gray-400); font-weight:600;">Нет фотоотчетов</p>
+                        <p style="color:var(--gray-400); font-size:0.8rem;">Появятся после выполнения задач</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const isMobile = () => window.matchMedia('(max-width: 767px)').matches;
+        const chartFont = "'Plus Jakarta Sans', Arial, sans-serif";
+
+        const palette = {
+            blue: '#2563eb',
+            sky: '#06b6d4',
+            green: '#10b981',
+            amber: '#f59e0b',
+            red: '#ef4444',
+            slate: '#64748b',
+            violet: '#8b5cf6',
+        };
+
+        const projectStatusLabels = {
+            pending: 'Ожидает',
+            approved: 'Одобрено',
+            rejected: 'Отклонено',
+        };
+
+        const taskStatusLabels = {
+            open: 'Открыто',
+            pending: 'Открыто',
+            in_progress: 'В работе',
+            under_review: 'На проверке',
+            completed: 'Выполнено',
+            failed: 'Не выполнено',
+            closed: 'Закрыто',
+            archived: 'В архиве',
+        };
+
+        function parseJsonData(raw) {
+            try {
+                const parsed = JSON.parse(raw || '[]');
+                return Array.isArray(parsed) ? parsed : [];
+            } catch (error) {
+                console.warn('Dashboard chart data parse error:', error);
+                return [];
+            }
+        }
+
+        function showEmpty(canvasId, noteId) {
+            const canvas = document.getElementById(canvasId);
+            const note = document.getElementById(noteId);
+            if (canvas) canvas.style.display = 'none';
+            if (note) note.style.display = 'flex';
+        }
+
+        function chartTooltip() {
+            return {
+                backgroundColor: '#fff',
+                titleColor: '#0f172a',
+                bodyColor: '#475569',
+                borderColor: '#e2e8f0',
+                borderWidth: 1,
+                padding: 12,
+                displayColors: true,
+                titleFont: { family: chartFont, weight: 800 },
+                bodyFont: { family: chartFont, weight: 700 },
+                callbacks: {
+                    label: ctx => {
+                        const value = Number(ctx.raw || 0);
+                        const total = ctx.dataset.data.reduce((sum, next) => sum + Number(next || 0), 0);
+                        const percent = total ? Math.round((value / total) * 100) : 0;
+                        return `${ctx.label}: ${value} (${percent}%)`;
+                    }
+                }
+            };
+        }
+
+        function createDoughnutChart(canvasId, emptyId, data, labelsMap, colors) {
+            const canvas = document.getElementById(canvasId);
+            if (!canvas || typeof Chart === 'undefined') return;
+
+            const prepared = data
+                .map(item => ({
+                    label: labelsMap[item.status] || item.status || 'Без статуса',
+                    value: Number(item.count || 0),
+                }))
+                .filter(item => item.value > 0);
+
+            if (!prepared.length) {
+                showEmpty(canvasId, emptyId);
+                return;
+            }
+
+            new Chart(canvas.getContext('2d'), {
+                type: 'doughnut',
+                data: {
+                    labels: prepared.map(item => item.label),
+                    datasets: [{
+                        data: prepared.map(item => item.value),
+                        backgroundColor: prepared.map((_, index) => colors[index % colors.length]),
+                        hoverBackgroundColor: prepared.map((_, index) => colors[index % colors.length]),
+                        borderWidth: isMobile() ? 3 : 4,
+                        borderColor: '#fff',
+                        hoverOffset: 10,
+                    }],
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '68%',
+                    animation: { duration: 950, easing: 'easeOutQuart' },
+                    plugins: {
+                        legend: {
+                            position: isMobile() ? 'bottom' : 'right',
+                            labels: {
+                                padding: 16,
+                                font: { size: 12, family: chartFont, weight: 700 },
+                                color: '#475569',
+                                usePointStyle: true,
+                                pointStyle: 'circle',
+                            }
+                        },
+                        tooltip: chartTooltip(),
+                    },
+                },
+            });
+        }
+
+        const projectStatsData = parseJsonData('{{ project_stats|escapejs }}');
+        createDoughnutChart(
+            'projectChart',
+            'projectChartEmpty',
+            projectStatsData,
+            projectStatusLabels,
+            [palette.blue, palette.green, palette.red]
+        );
+
+        const taskStatsData = parseJsonData('{{ task_stats|escapejs }}');
+        createDoughnutChart(
+            'taskChart',
+            'taskChartEmpty',
+            taskStatsData,
+            taskStatusLabels,
+            [palette.sky, palette.amber, palette.green, palette.violet, palette.red, palette.slate]
+        );
+
+        const activityCanvas = document.getElementById('activityChart');
+        const activityStatsData = parseJsonData('{{ activity_stats|escapejs }}');
+        const activityTotal = activityStatsData.reduce((sum, item) => sum + Number(item.count || 0), 0);
+
+        if (activityCanvas && typeof Chart !== 'undefined') {
+            if (!activityStatsData.length || activityTotal === 0) {
+                showEmpty('activityChart', 'activityChartEmpty');
+            } else {
+                const ctx = activityCanvas.getContext('2d');
+                const gradient = ctx.createLinearGradient(0, 0, 0, 320);
+                gradient.addColorStop(0, 'rgba(37,99,235,0.34)');
+                gradient.addColorStop(0.55, 'rgba(37,99,235,0.12)');
+                gradient.addColorStop(1, 'rgba(37,99,235,0)');
+
+                new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: activityStatsData.map(item => item.day),
+                        datasets: [{
+                            label: 'Выполненные задачи',
+                            data: activityStatsData.map(item => Number(item.count || 0)),
+                            borderColor: palette.blue,
+                            backgroundColor: gradient,
+                            borderWidth: 3,
+                            pointRadius: 5,
+                            pointHoverRadius: 7,
+                            pointBackgroundColor: '#fff',
+                            pointBorderColor: palette.blue,
+                            pointBorderWidth: 3,
+                            fill: true,
+                            tension: 0.42,
+                        }],
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        animation: { duration: 1000, easing: 'easeOutQuart' },
+                        scales: {
+                            x: {
+                                grid: { display: false },
+                                ticks: {
+                                    maxTicksLimit: isMobile() ? 4 : 7,
+                                    color: '#64748b',
+                                    font: { family: chartFont, weight: 700 },
+                                }
+                            },
+                            y: {
+                                beginAtZero: true,
+                                ticks: {
+                                    precision: 0,
+                                    maxTicksLimit: 5,
+                                    padding: 10,
+                                    color: '#64748b',
+                                    font: { family: chartFont, weight: 700 },
+                                },
+                                grid: { color: '#edf2f7', drawBorder: false }
+                            },
+                        },
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                backgroundColor: '#fff',
+                                titleColor: '#0f172a',
+                                bodyColor: '#475569',
+                                borderColor: '#e2e8f0',
+                                borderWidth: 1,
+                                padding: 12,
+                                displayColors: false,
+                                callbacks: { label: ctx => `Задач: ${ctx.raw}` }
+                            },
+                        },
+                    },
+                });
+            }
+        }
+
+        // ── Interactive Map ──
+        let interactiveMap;
+        let mapMarkers = [];
+
+        function escapeHtml(value) {
+            return String(value ?? '')
+                .replaceAll('&', '&amp;')
+                .replaceAll('<', '&lt;')
+                .replaceAll('>', '&gt;')
+                .replaceAll('"', '&quot;')
+                .replaceAll("'", '&#039;');
+        }
+
+        function setMapStats(projects = 0, cities = 0, volunteers = 0) {
+            document.getElementById('totalProjects').textContent = projects;
+            document.getElementById('totalCities').textContent = cities;
+            document.getElementById('totalVolunteers').textContent = volunteers;
+        }
+
+        function initInteractiveMap() {
+            if (!document.getElementById('map') || typeof L === 'undefined') return;
+            interactiveMap = L.map('map', {
+                zoomControl: true,
+                scrollWheelZoom: true,
+            }).setView([43.238949, 76.889709], 11);
+
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+                attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
+                maxZoom: 19
+            }).addTo(interactiveMap);
+
+            setTimeout(() => interactiveMap.invalidateSize(), 150);
+            loadMapData();
+        }
+
+        window.loadMapData = async function loadMapData() {
+            if (!interactiveMap) return;
+
+            const status = document.getElementById('statusFilter')?.value || '';
+            const city = document.getElementById('cityFilter')?.value || '';
+            const mapLoading = document.getElementById('mapLoading');
+            mapLoading?.classList.add('is-visible');
+
+            try {
+                const params = new URLSearchParams();
+                if (status) params.set('status', status);
+                if (city) params.set('city', city);
+
+                const response = await fetch(`/custom-admin/api/v1/map/projects-web/?${params.toString()}`);
+                if (!response.ok) throw new Error(`Map API ${response.status}`);
+                const data = await response.json();
+
+                mapMarkers.forEach(marker => interactiveMap.removeLayer(marker));
+                mapMarkers = [];
+
+                let totalVolunteers = 0;
+                const cities = new Set();
+                const bounds = [];
+                const features = Array.isArray(data.features) ? data.features : [];
+
+                if (!features.length) {
+                    setMapStats(0, 0, 0);
+                    interactiveMap.setView([43.238949, 76.889709], 11);
+                    return;
+                }
+
+                features.forEach(feature => {
+                    const coords = feature.geometry?.coordinates || [];
+                    const props = feature.properties || {};
+                    const lat = Number(coords[1]);
+                    const lng = Number(coords[0]);
+                    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+
+                    const volunteerCount = Number(props.volunteers_count || 0);
+                    const tasksCount = Number(props.tasks_count || 0);
+                    const activity = volunteerCount + tasksCount;
+                    const markerSize = 34 + Math.min(activity * 5, 28);
+
+                    let markerColor = palette.green;
+                    let shadowColor = 'rgba(16,185,129,0.46)';
+                    let statusClass = '';
+
+                    if (props.status === 'pending') {
+                        markerColor = palette.amber;
+                        shadowColor = 'rgba(245,158,11,0.48)';
+                        statusClass = 'pending';
+                    } else if (props.status === 'rejected') {
+                        markerColor = palette.red;
+                        shadowColor = 'rgba(239,68,68,0.48)';
+                        statusClass = 'rejected';
+                    }
+
+                    const pulseClass = activity > 2 ? 'marker-pulse' : '';
+                    const glowSize = Math.min(activity * 6, 34);
+                    const customIcon = L.divIcon({
+                        className: 'custom-div-icon',
+                        html: `<div class="custom-marker ${statusClass} ${pulseClass}" style="
+                            background: radial-gradient(circle, ${markerColor} 0%, ${markerColor}dd 58%, ${markerColor}88 100%);
+                            width:${markerSize}px; height:${markerSize}px;
+                            border:4px solid white;
+                            box-shadow: 0 0 ${glowSize}px ${shadowColor}, 0 8px 20px rgba(15,23,42,0.28);
+                            font-size:${Math.max(12, Math.min(markerSize / 3, 18))}px;
+                        ">${volunteerCount}</div>`,
+                        iconSize: [markerSize, markerSize],
+                        iconAnchor: [markerSize / 2, markerSize / 2]
+                    });
+
+                    const marker = L.marker([lat, lng], { icon: customIcon }).addTo(interactiveMap);
+                    const statusText = projectStatusLabels[props.status] || 'Неизвестно';
+                    const description = escapeHtml(props.description || '');
+                    const shortDescription = description
+                        ? `<div class="popup-info" style="color:#64748b; margin-top:8px;">${description.substring(0, 150)}${description.length > 150 ? '...' : ''}</div>`
+                        : '';
+
+                    marker.bindPopup(`
+                        <div>
+                            <div class="popup-title">${escapeHtml(props.title || 'Проект')}</div>
+                            <div class="popup-info"><strong>Город:</strong> ${escapeHtml(props.city || 'Не указан')}</div>
+                            <div class="popup-info"><strong>Статус:</strong> ${statusText}</div>
+                            <div class="popup-info"><strong>Волонтеров:</strong> ${volunteerCount}</div>
+                            <div class="popup-info"><strong>Задач:</strong> ${tasksCount}</div>
+                            <div class="popup-info"><strong>Организатор:</strong> ${escapeHtml(props.creator?.name || 'Не указан')}</div>
+                            ${shortDescription}
+                        </div>
+                    `);
+
+                    if (props.gis2_url || props.address) {
+                        marker.on('popupopen', () => {
+                            const popupElement = marker.getPopup()?.getElement();
+                            const popupContainer = popupElement?.querySelector('.leaflet-popup-content > div');
+                            if (!popupContainer) return;
+
+                            if (props.address && !popupContainer.querySelector('.popup-address')) {
+                                const addressRow = document.createElement('div');
+                                addressRow.className = 'popup-info popup-address';
+                                const strong = document.createElement('strong');
+                                strong.textContent = 'Адрес: ';
+                                addressRow.appendChild(strong);
+                                addressRow.append(document.createTextNode(props.address));
+                                popupContainer.appendChild(addressRow);
+                            }
+
+                            if (props.gis2_url && !popupContainer.querySelector('.popup-actions')) {
+                                const actionsRow = document.createElement('div');
+                                actionsRow.className = 'popup-actions';
+                                const link = document.createElement('a');
+                                link.className = 'popup-link-btn';
+                                link.href = props.gis2_url;
+                                link.target = '_blank';
+                                link.rel = 'noopener noreferrer';
+                                link.textContent = 'Открыть в 2GIS';
+                                actionsRow.appendChild(link);
+                                popupContainer.appendChild(actionsRow);
+                            }
+                        });
+                    }
+
+                    mapMarkers.push(marker);
+                    bounds.push([lat, lng]);
+                    totalVolunteers += volunteerCount;
+                    if (props.city) cities.add(props.city);
+                });
+
+                setMapStats(mapMarkers.length, cities.size, totalVolunteers);
+
+                if (bounds.length === 1) {
+                    interactiveMap.setView(bounds[0], 13);
+                } else if (bounds.length > 1) {
+                    interactiveMap.fitBounds(bounds, { padding: isMobile() ? [24, 24] : [56, 56] });
+                }
+                setTimeout(() => interactiveMap.invalidateSize(), 100);
+            } catch (error) {
+                console.error('Error loading map:', error);
+                setMapStats(0, 0, 0);
+            } finally {
+                mapLoading?.classList.remove('is-visible');
+            }
+        };
+
+        initInteractiveMap();
+
+        // Auto-submit date inputs
+        document.querySelectorAll('input[type="date"]').forEach(input => {
+            input.addEventListener('change', function () { this.form.submit(); });
+        });
+
+        // ── Global Search ──
+        const searchInput = document.getElementById('globalSearchInput');
+        const searchResults = document.getElementById('searchResults');
+        const searchSpinner = document.getElementById('searchSpinner');
+        let searchTimeout;
+
+        function performSearch(query) {
+            clearTimeout(searchTimeout);
+            if (!query || query.length < 2) {
+                searchResults.style.display = 'none';
+                return;
+            }
+            searchSpinner.style.display = 'block';
+            searchTimeout = setTimeout(async () => {
+                try {
+                    const response = await fetch(`/custom-admin/api/v1/search/global/?q=${encodeURIComponent(query)}&type=all`);
+                    const data = await response.json();
+                    displaySearchResults(data);
+                    searchSpinner.style.display = 'none';
+                } catch (error) {
+                    searchSpinner.style.display = 'none';
+                    searchResults.querySelector('.search-results-content').innerHTML = '<div class="search-no-results"><i class="fas fa-exclamation-circle"></i><p>Ошибка поиска</p></div>';
+                    searchResults.style.display = 'block';
+                }
+            }, 300);
+        }
+
+        function displaySearchResults(data) {
+            const resultsContent = searchResults.querySelector('.search-results-content');
+            let html = '';
+            const total = ((data.users && data.users.length) || 0) + ((data.projects && data.projects.length) || 0) + ((data.tasks && data.tasks.length) || 0);
+
+            if (total === 0) {
+                html = `<div class="search-no-results"><i class="fas fa-search"></i><p>Ничего не найдено</p></div>`;
+            } else {
+                if (data.users && data.users.length > 0) {
+                    html += '<div class="search-section"><div class="search-section-title"><i class="fas fa-users me-2"></i>Пользователи</div>';
+                    data.users.forEach(user => {
+                        const roleText = user.role === 'volunteer' ? 'Волонтер' : 'Организатор';
+                        const roleBadge = user.role === 'volunteer' ? 'badge-volunteer' : 'badge-organizer';
+                        html += `<div class="search-result-item" onclick="window.location.href='/custom-admin/${user.role === 'volunteer' ? 'volunteers' : 'organizers'}/${user.id}/'">
+                            <div class="search-result-icon user"><i class="fas fa-user"></i></div>
+                            <div class="search-result-info">
+                                <div class="search-result-title">${user.name || user.username}</div>
+                                <div class="search-result-subtitle">${user.email}</div>
+                            </div>
+                            <span class="search-result-badge ${roleBadge}">${roleText}</span>
+                        </div>`;
+                    });
+                    html += '</div>';
+                }
+                if (data.projects && data.projects.length > 0) {
+                    html += '<div class="search-section"><div class="search-section-title"><i class="fas fa-project-diagram me-2"></i>Проекты</div>';
+                    data.projects.forEach(project => {
+                        const sm = { 'approved': { text: 'Одобрен', class: 'badge-approved' }, 'pending': { text: 'Ожидает', class: 'badge-pending' }, 'rejected': { text: 'Отклонен', class: 'badge-pending' } };
+                        const s = sm[project.status] || { text: '-', class: 'badge-pending' };
+                        html += `<div class="search-result-item" onclick="window.location.href='/custom-admin/projects/${project.id}/'">
+                            <div class="search-result-icon project"><i class="fas fa-project-diagram"></i></div>
+                            <div class="search-result-info">
+                                <div class="search-result-title">${project.title}</div>
+                                <div class="search-result-subtitle">${project.city}</div>
+                            </div>
+                            <span class="search-result-badge ${s.class}">${s.text}</span>
+                        </div>`;
+                    });
+                    html += '</div>';
+                }
+                if (data.tasks && data.tasks.length > 0) {
+                    html += '<div class="search-section"><div class="search-section-title"><i class="fas fa-tasks me-2"></i>Задачи</div>';
+                    data.tasks.forEach(task => {
+                        const sm = {
+                            'open': { text: 'Открыто', class: 'badge-pending' },
+                            'pending': { text: 'Открыто', class: 'badge-pending' },
+                            'in_progress': { text: 'В работе', class: 'badge-pending' },
+                            'under_review': { text: 'На проверке', class: 'badge-pending' },
+                            'completed': { text: 'Выполнено', class: 'badge-completed' },
+                            'closed': { text: 'Закрыто', class: 'badge-completed' },
+                            'archived': { text: 'В архиве', class: 'badge-completed' },
+                            'failed': { text: 'Не выполнено', class: 'badge-pending' }
+                        };
+                        const s = sm[task.status] || { text: '-', class: 'badge-pending' };
+                        html += `<div class="search-result-item" onclick="window.location.href='/custom-admin/tasks/?project=${task.project.id}'">
+                            <div class="search-result-icon task"><i class="fas fa-clipboard-check"></i></div>
+                            <div class="search-result-info">
+                                <div class="search-result-title">${task.text.substring(0, 80)}${task.text.length > 80 ? '...' : ''}</div>
+                                <div class="search-result-subtitle">Проект: ${task.project.title}</div>
+                            </div>
+                            <span class="search-result-badge ${s.class}">${s.text}</span>
+                        </div>`;
+                    });
+                    html += '</div>';
+                }
+                if (total > 5) {
+                    html += `<div class="search-view-all"><span>Показаны первые 5 результатов из ${total}</span></div>`;
+                }
+            }
+            resultsContent.innerHTML = html;
+            searchResults.style.display = 'block';
+        }
+
+        if (searchInput) {
+            const searchContainer = document.getElementById('searchContainer');
+            searchInput.addEventListener('input', e => performSearch(e.target.value.trim()));
+            searchInput.addEventListener('keydown', e => { if (e.key === 'Escape') { searchResults.style.display = 'none'; searchInput.value = ''; searchInput.blur(); } });
+            document.addEventListener('click', e => { if (searchContainer && !searchContainer.contains(e.target)) searchResults.style.display = 'none'; });
+        }
+    });
+</script>
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const animatedCards = document.querySelectorAll('.ops-card, .context-card, .stat-card, .chart-card, .leaderboard-card');
+        animatedCards.forEach((card, index) => {
+            setTimeout(() => card.classList.add('card-visible'), 90 * index);
+        });
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>{{ subject }}</title>
+</head>
+<body>
+    <h2>Обновление по тикету #{{ ticket.id }}</h2>
+    
+    <p>Здравствуйте, {{ user.name|default:user.username }}!</p>
+    
+    <p>Статус вашего тикета был обновлен:</p>
+    
+    <ul>
+        <li><strong>ID тикета:</strong> #{{ ticket.id }}</li>
+        <li><strong>Статус:</strong> {{ ticket.get_status_display }}</li>
+        <li><strong>Дата обновления:</strong> {{ ticket.updated_at|date:"d.m.Y H:i" }}</li>
+    </ul>
+    
+    {% if ticket.admin_response %}
+    <p><strong>Ответ администратора:</strong></p>
+    <blockquote>{{ ticket.admin_response }}</blockquote>
+    {% endif %}
+    
+    <p>Вы можете отслеживать статус вашего тикета в личном кабинете на платформе BirQadam.</p>
+    
+    <p>С уважением,<br>
+    Команда BirQadam</p>
+</body>
+</html>

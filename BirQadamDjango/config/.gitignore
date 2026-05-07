@@ -1,0 +1,12 @@
+# Конфигурационные файлы с секретами
+# Эти файлы не должны попадать в git
+
+firebase-service-account.json
+*.json
+*.key
+*.pem
+*.cert
+
+# Но оставляем README
+!README.md
+

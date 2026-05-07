@@ -1,0 +1,1 @@
+import{K as e}from"./index-Clirt0S8.js";async function s(){return(await e.get("/api/web/volunteer/stats/")).data}async function r(t=6){const{data:a}=await e.get("/api/web/volunteer/activity/",{params:{months:t}});return a}export{r as a,s as f};
