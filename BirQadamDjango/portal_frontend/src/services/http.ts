@@ -1,9 +1,9 @@
 import axios from 'axios';
 
-// ✅ PRODUCTION: VITE_API_BASE_URL должен быть задан через переменную окружения
-// В development можно задать в .env файле или через vite.config.ts
-// Для production используйте переменную окружения или production URL
-const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+// In production prefer VITE_API_BASE_URL; fallback to current origin.
+// In local development fallback to local Django.
+const apiBaseUrl = import.meta.env.VITE_API_BASE_URL
+  || (import.meta.env.PROD ? window.location.origin : 'http://localhost:8000');
 
 export const httpClient = axios.create({
   baseURL: apiBaseUrl,
