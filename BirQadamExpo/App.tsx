@@ -1,8 +1,15 @@
 import React, { useEffect, useState, type ComponentType } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import * as Notifications from 'expo-notifications';
-import { ActivityIndicator, Platform, StyleSheet, View } from 'react-native';
+import * as SplashScreen from 'expo-splash-screen';
+import { Platform, StyleSheet, View, LogBox } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+
+LogBox.ignoreLogs([
+  'Network Error',
+  'Network request failed',
+  '[Dashboard] Error loading dashboard',
+]);
 
 import { useAuthStore } from './src/store/authStore';
 import { useThemeStore } from './src/store/themeStore';
@@ -11,6 +18,14 @@ import { OnboardingStorage } from './src/utils/storage';
 import { I18nProvider } from './src/locales/i18n';
 import { navigateFromRoot } from './src/navigation/navigationRef';
 import { handleNotificationNavigation } from './src/utils/volunteerNotifications';
+import { OfflineScreen } from './src/components/OfflineScreen';
+import { ToastProvider } from './src/components/Toast';
+import { AnimatedSplash } from './src/components/AnimatedSplash';
+
+SplashScreen.preventAutoHideAsync().catch(() => undefined);
+
+// Минимальная длительность нашего кастомного сплэша, чтобы успели сыграть анимации
+const SPLASH_MIN_DURATION_MS = 1600;
 
 type AppNavigatorComponent = ComponentType;
 type OnboardingComponent = ComponentType<{ onComplete: () => void }>;
@@ -28,12 +43,31 @@ export default function App() {
   const { loadUser } = useAuthStore();
   const { loadTheme, mode } = useThemeStore();
   const [isLoading, setIsLoading] = useState(true);
+  const [splashVisible, setSplashVisible] = useState(true);
+  const [splashMounted, setSplashMounted] = useState(true);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [AppNavigator, setAppNavigator] = useState<AppNavigatorComponent | null>(null);
   const [OnboardingScreen, setOnboardingScreen] = useState<OnboardingComponent | null>(null);
 
   useEffect(() => {
-    void initializeApp();
+    const startedAt = Date.now();
+    void initializeApp().finally(() => {
+      const elapsed = Date.now() - startedAt;
+      const remaining = Math.max(0, SPLASH_MIN_DURATION_MS - elapsed);
+
+      // После успешной инициализации кадр уже отрендерился с AnimatedSplash.
+      // Два RAF — чтобы первый был commit layout, второй реальная отрисовка;
+      // иначе при hideNative() на мгновение «просвечивает» фон без оверлея.
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          SplashScreen.hideAsync().catch(() => undefined);
+        });
+      });
+
+      setTimeout(() => {
+        setSplashVisible(false);
+      }, remaining);
+    });
   }, []);
 
   useEffect(() => {
@@ -92,19 +126,30 @@ export default function App() {
   return (
     <I18nProvider initialLang="ru">
       <SafeAreaProvider>
+        <ToastProvider>
         <View style={[styles.container, { backgroundColor: appColors.background }]}>
           {isLoading ? (
-            <View style={[styles.loadingContainer, { backgroundColor: appColors.background }]}>
-              <ActivityIndicator size="large" color={appColors.primary} />
-            </View>
+            <View style={[styles.loadingContainer, { backgroundColor: appColors.background }]} />
           ) : showOnboarding && OnboardingScreen ? (
             <OnboardingScreen onComplete={handleOnboardingComplete} />
           ) : AppNavigator ? (
             <AppNavigator />
           ) : null}
+
+          {splashMounted ? (
+            <AnimatedSplash
+              visible={splashVisible}
+              onFinish={() => setSplashMounted(false)}
+            />
+          ) : null}
+
+          {/* Пока сплэш на экране — не монтируем Modal: иначе на iOS может оказаться поверх оверлея */}
+          {!splashMounted ? <OfflineScreen /> : null}
+
           {/* iOS: тёмные иконки на светлом фоне; в тёмной теме — светлые */}
           <StatusBar style={mode === 'dark' ? 'light' : 'dark'} />
         </View>
+        </ToastProvider>
       </SafeAreaProvider>
     </I18nProvider>
   );

@@ -167,14 +167,6 @@ export const useTutorial = (
 
     if (tutorialStep < steps.length - 1) {
       const nextStep = tutorialStep + 1;
-      const defaultCoords = {
-        x: 20,
-        y: nextStep === 0 ? 50 : nextStep === 1 ? 130 : nextStep === 2 ? 300 : nextStep === 3 ? 450 : 600,
-        width: 350,
-        height: nextStep === 0 ? 100 : nextStep === 1 ? 150 : 100,
-      };
-
-      setHighlightedElement(defaultCoords);
       setTutorialStep(nextStep);
       setIsProcessingNext(false);
       nextTutorialStepRef.current = false;
@@ -254,14 +246,15 @@ export const useTutorial = (
       console.log(`📍 Tutorial step ${tutorialStep + 1}: ${step.id}`);
     }
 
-    const defaultCoords = {
-      x: 20,
-      y: tutorialStep === 0 ? 50 : tutorialStep === 1 ? 130 : tutorialStep === 2 ? 300 : tutorialStep === 3 ? 450 : 50,
-      width: 350,
-      height: tutorialStep === 0 ? 100 : tutorialStep === 1 ? 150 : tutorialStep === 2 ? 100 : tutorialStep === 3 ? 100 : 100,
-    };
-
-    setHighlightedElement(defaultCoords);
+    if (!highlightedElement) {
+      const defaultCoords = {
+        x: 20,
+        y: tutorialStep === 0 ? 50 : tutorialStep === 1 ? 130 : tutorialStep === 2 ? 300 : tutorialStep === 3 ? 450 : 50,
+        width: 350,
+        height: tutorialStep === 0 ? 100 : tutorialStep === 1 ? 150 : tutorialStep === 2 ? 100 : tutorialStep === 3 ? 100 : 100,
+      };
+      setHighlightedElement(defaultCoords);
+    }
 
     if (nextTutorialStepRef.current) {
       nextTutorialStepRef.current = false;
@@ -282,7 +275,7 @@ export const useTutorial = (
           }, 500);
         }
       }
-    }, 300);
+    }, 500);
 
     return () => {
       clearTimeout(timeoutId);

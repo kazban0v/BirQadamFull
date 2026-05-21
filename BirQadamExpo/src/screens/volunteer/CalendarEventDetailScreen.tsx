@@ -1,6 +1,5 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import {
-  Alert,
   Image,
   Linking,
   Modal,
@@ -14,6 +13,7 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
+import { useToast } from '../../components/Toast';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { RouteProp, useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
@@ -184,6 +184,7 @@ const buildShareMessage = (
 
 export const CalendarEventDetailScreen: React.FC = () => {
   const { t, language } = useTranslation();
+  const toast = useToast();
   const localeTag = language === 'en' ? 'en-US' : language === 'kk' ? 'kk-KZ' : 'ru-RU';
   const navigation = useNavigation<any>();
   const route = useRoute<CalendarEventDetailRoute>();
@@ -238,9 +239,9 @@ export const CalendarEventDetailScreen: React.FC = () => {
         message: buildShareMessage(event, t, localeTag),
       });
     } catch {
-      Alert.alert(t('calendareventdetail.s_14'), t('calendareventdetail.s_15'));
+      toast.error(t('calendareventdetail.s_15'));
     }
-  }, [event, t, localeTag]);
+  }, [event, t, localeTag, toast]);
 
   const handleOpenMap = useCallback(() => {
     const { project_gis2_url, project_latitude, project_longitude, project_address, location } = event;
@@ -264,8 +265,8 @@ export const CalendarEventDetailScreen: React.FC = () => {
       return;
     }
 
-    Alert.alert(t('calendareventdetail.s_16'), t('calendareventdetail.s_17'));
-  }, [event]);
+    toast.info(t('calendareventdetail.s_17'));
+  }, [event, toast]);
 
   const handleToggleReminder = useCallback(async () => {
     setReminderLoading(true);
@@ -278,11 +279,11 @@ export const CalendarEventDetailScreen: React.FC = () => {
         setReminderEnabled(true);
       }
     } catch (error: unknown) {
-      Alert.alert(t('calendareventdetail.s_19'), getAxiosErrorMessage(error, t('calendareventdetail.s_18')));
+      toast.error(getAxiosErrorMessage(error, t('calendareventdetail.s_18')));
     } finally {
       setReminderLoading(false);
     }
-  }, [event, reminderEnabled]);
+  }, [event, reminderEnabled, toast, t]);
 
   const openProject = useCallback(() => {
     if (!event.project_id) {

@@ -110,7 +110,7 @@ export const CustomTabBar: React.FC<CustomTabBarProps> = ({ state, descriptors, 
               <View style={styles.tabContent}>
                 <Ionicons
                   name={iconName}
-                  size={22}
+                  size={isFocused ? 26 : 22}
                   color={isFocused ? appColors.white : 'rgba(226,232,240,0.74)'}
                 />
                 {isFocused && (
@@ -138,11 +138,11 @@ const styles = StyleSheet.create({
     backgroundColor: appColors.primary,
     borderRadius: 32,
     height: 64,
-    shadowColor: appColors.black,
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.35,
-    shadowRadius: 24,
-    elevation: 12,
+    shadowColor: appColors.textSoft,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
+    elevation: 8,
     position: 'relative',
   },
   slidingPillContainer: {

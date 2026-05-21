@@ -36,7 +36,7 @@ services:
       context: ../portal_frontend
       dockerfile: Dockerfile
       args:
-        VITE_API_BASE_URL: https://birqadam.almau.edu.kz
+        VITE_API_BASE_URL: https://cleanup.almau.edu.kz/
     container_name: birqadam_frontend
     ports:
-      - "127.0.0.1:4172:4173"
+      - "4172:4173"

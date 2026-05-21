@@ -1,7 +1,7 @@
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 
-const PRODUCTION_API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL?.trim() || '';
+const PRODUCTION_API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL?.trim() || 'https://cleanup.almau.edu.kz';
 const DEV_API_PORT = '8000';
 export const VOLUNTEER_FALLBACK_IMAGE_URL =
   process.env.EXPO_PUBLIC_FALLBACK_IMAGE_URL || 'https://images.unsplash.com/photo-1559027615-cd4628902d4a?auto=format&fit=crop&w=1200&q=80';
@@ -107,11 +107,7 @@ export const getApiBaseUrl = (): string => {
     return trimTrailingSlash(envUrl);
   }
 
-  if (!__DEV__) {
-    return PRODUCTION_API_BASE_URL;
-  }
-
-  return getLocalDevApiBaseUrl() ?? PRODUCTION_API_BASE_URL;
+  return trimTrailingSlash(PRODUCTION_API_BASE_URL);
 };
 
 const buildApiBaseUrlCandidates = (): string[] => {

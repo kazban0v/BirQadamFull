@@ -136,11 +136,12 @@ export const ProfileInsightDeck: React.FC<ProfileInsightDeckProps> = ({
               activeOpacity={0.9}
               onPress={activeAction.onPress}
             >
-              <Text style={styles.primaryButtonText}>{activeAction.ctaLabel}</Text>
+              <Text style={styles.primaryButtonText} numberOfLines={1}>{activeAction.ctaLabel}</Text>
               <Ionicons
                 name={activeAction.ctaIcon || 'arrow-forward'}
-                size={18}
+                size={16}
                 color={appColors.white}
+                style={{ flexShrink: 0 }}
               />
             </TouchableOpacity>
 
@@ -280,26 +281,26 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    flex: 1,
-    minHeight: 60,
+    flex: 3,
+    minHeight: 56,
     borderRadius: 18,
-    paddingVertical: 15,
-    paddingHorizontal: 18,
+    paddingVertical: 13,
+    paddingHorizontal: 16,
   },
   primaryButtonText: {
     flexShrink: 1,
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '800',
     color: appColors.white,
-    marginRight: 8,
+    marginRight: 6,
     textAlign: 'center',
   },
   secondaryButton: {
-    flex: 1,
-    marginLeft: 10,
-    minHeight: 60,
-    paddingHorizontal: 18,
-    paddingVertical: 15,
+    flex: 2,
+    marginLeft: 8,
+    minHeight: 56,
+    paddingHorizontal: 12,
+    paddingVertical: 13,
     borderRadius: 18,
     backgroundColor: appColors.surfaceSoft,
     borderWidth: 1,
@@ -308,7 +309,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   secondaryButtonText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '700',
     color: appColors.textSecondary,
     textAlign: 'center',

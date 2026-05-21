@@ -125,7 +125,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         verificationEmail: null,
       });
     } catch (error: unknown) {
-      console.error('[AUTH] Verification error:', (error as { response?: { data?: unknown } })?.response?.data);
+      console.warn('[AUTH] Verification error:', (error as { response?: { data?: unknown } })?.response?.data);
       const errorMessage = getAxiosErrorMessage(error, 'Ошибка подтверждения');
       set({ isLoading: false, error: errorMessage });
       throw new Error(errorMessage);
@@ -156,7 +156,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         verificationEmail: null,
       });
     } catch (error: unknown) {
-      console.error(
+      console.warn(
         '[AUTH] Cancel registration error:',
         (error as { response?: { data?: unknown } })?.response?.data
       );
@@ -206,7 +206,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     try {
       await authAPI.logout();
     } catch (error) {
-      console.error('Logout error:', error);
+      console.warn('Logout error:', error);
     } finally {
       await authStorage.removeItem(USER_KEY);
       await AsyncStorage.multiRemove(['auth_token', 'refresh_token', 'sessionid']);
@@ -250,7 +250,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         isAuthenticated: false,
       });
     } catch (error) {
-      console.error('Load user error:', error);
+      console.warn('Load user error:', error);
     }
   },
 

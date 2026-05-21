@@ -117,7 +117,11 @@ export const useDashboard = () => {
     } catch (err) {
       const error = err instanceof Error ? err : new Error('Unknown error');
       if (__DEV__) {
-        console.error('❌ [Dashboard] Error loading dashboard:', error);
+        if (error.message.includes('Network Error')) {
+          console.warn('⚠️ [Dashboard] Network error loading dashboard');
+        } else {
+          console.error('❌ [Dashboard] Error loading dashboard:', error);
+        }
       }
       setError(error);
       throw error;

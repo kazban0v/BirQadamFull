@@ -3402,35 +3402,249 @@ def activity_map(request: HttpRequest) -> HttpResponse:
 
 @login_required
 def calendar_admin(request: HttpRequest) -> HttpResponse:
-    """📅 Страница календаря событий для администратора"""
-    from api.models import Event
-    
-    # Получить все события (не удаленные)
-    events = Event.objects.filter(is_deleted=False).select_related('creator', 'project', 'task').prefetch_related('participants').order_by('start_date', 'start_time')
-    
-    # Статистика по событиям
-    upcoming_events = events.filter(start_date__gte=timezone.now().date()).count()
-    today_events = events.filter(start_date=timezone.now().date()).count()
+    """📅 Страница календаря событий для администратора.
+
+    Источники событий (синхронно с мобильным календарём
+    /api/web/volunteer/calendar/):
+      • Project.start_date / Project.end_date — старт / завершение проектов
+      • Task.start_date / Task.deadline_date — старт / дедлайн задач
+      • Event — ручные события из админки (если есть)
+    """
+    from api.models import Event, Project, Task
+
+    today = timezone.now().date()
+
+    def _safe_image_url(field):
+        if not field:
+            return None
+        try:
+            return field.url
+        except (ValueError, AttributeError):
+            return None
+
+    def _project_url(project):
+        try:
+            return reverse('admin_panel:project_detail', args=[project.id])
+        except Exception:
+            return None
 
     events_data: list[dict[str, Any]] = []
-    for event in events:
+
+    # ── 1. Старт и завершение проектов ────────────────────────────────────
+    projects = (
+        Project.objects
+        .filter(is_deleted=False, status='approved')
+        .select_related('creator')
+    )
+    for project in projects:
+        cover = _safe_image_url(getattr(project, 'cover_image', None))
+        project_url = _project_url(project)
+        creator_name = (
+            project.creator.get_full_name()
+            or getattr(project.creator, 'username', '')
+            or ''
+        ) if project.creator_id else ''
+        creator_username = getattr(project.creator, 'username', '') if project.creator_id else ''
+        project_type_display = project.get_volunteer_type_display() if project.volunteer_type else None
+        project_city = project.city or None
+        project_address = project.address or None
+        project_gis2_url = project.gis2_url or None
+
+        if project.start_date:
+            events_data.append({
+                'id': f'project-{project.id}-start',
+                'date': project.start_date.isoformat(),
+                'title': f'🚀 Старт: {project.title}',
+                'subtitle': project.title,
+                'description': project.description or '',
+                'type': 'project_start',
+                'type_display': 'Старт проекта',
+                'source_type': 'project',
+                'source_id': project.id,
+                'start_time': None,
+                'end_time': None,
+                'end_date': project.end_date.isoformat() if project.end_date else None,
+                'is_all_day': True,
+                'visibility': 'public',
+                'visibility_display': 'Публичное',
+                'location': project_address or project_city or '',
+                'status': project.status,
+                'creator_username': creator_username,
+                'creator_name': creator_name,
+                'participants_count': 0,
+                'project_id': project.id,
+                'project_title': project.title,
+                'project_city': project_city,
+                'project_type': project_type_display,
+                'project_address': project_address,
+                'project_gis2_url': project_gis2_url,
+                'project_latitude': project.latitude,
+                'project_longitude': project.longitude,
+                'project_url': project_url,
+                'task_id': None,
+                'task_title': None,
+                'task_url': None,
+                'hero_image': cover,
+            })
+
+        if project.end_date and project.end_date != project.start_date:
+            events_data.append({
+                'id': f'project-{project.id}-end',
+                'date': project.end_date.isoformat(),
+                'title': f'🏁 Завершение: {project.title}',
+                'subtitle': project.title,
+                'description': project.description or '',
+                'type': 'project_end',
+                'type_display': 'Завершение проекта',
+                'source_type': 'project',
+                'source_id': project.id,
+                'start_time': None,
+                'end_time': None,
+                'end_date': None,
+                'is_all_day': True,
+                'visibility': 'public',
+                'visibility_display': 'Публичное',
+                'location': project_address or project_city or '',
+                'status': project.status,
+                'creator_username': creator_username,
+                'creator_name': creator_name,
+                'participants_count': 0,
+                'project_id': project.id,
+                'project_title': project.title,
+                'project_city': project_city,
+                'project_type': project_type_display,
+                'project_address': project_address,
+                'project_gis2_url': project_gis2_url,
+                'project_latitude': project.latitude,
+                'project_longitude': project.longitude,
+                'project_url': project_url,
+                'task_id': None,
+                'task_title': None,
+                'task_url': None,
+                'hero_image': cover,
+            })
+
+    # ── 2. Старт и дедлайн задач ──────────────────────────────────────────
+    tasks = (
+        Task.objects
+        .filter(is_deleted=False, status='open')
+        .select_related('project', 'project__creator', 'creator')
+    )
+    for task in tasks:
+        project = task.project
+        task_cover = _safe_image_url(getattr(task, 'task_image', None))
+        project_cover = _safe_image_url(getattr(project, 'cover_image', None)) if project else None
+        hero_image = task_cover or project_cover
+        creator_user = task.creator or (project.creator if project else None)
+        creator_name = (
+            (creator_user.get_full_name() if creator_user else '')
+            or (getattr(creator_user, 'username', '') if creator_user else '')
+            or ''
+        )
+        creator_username = getattr(creator_user, 'username', '') if creator_user else ''
+
+        project_id = project.id if project else None
+        project_title = project.title if project else None
+        project_city = project.city if project and project.city else None
+        project_type_display = project.get_volunteer_type_display() if project and project.volunteer_type else None
+        project_address = project.address if project and project.address else None
+        project_gis2_url = project.gis2_url if project and project.gis2_url else None
+        project_latitude = project.latitude if project else None
+        project_longitude = project.longitude if project else None
+        project_url = _project_url(project) if project else None
+        task_text = task.text or ''
+        task_url = f'/custom-admin/tasks/?task_id={task.id}'
+
+        if task.start_date:
+            events_data.append({
+                'id': f'task-{task.id}-start',
+                'date': task.start_date.isoformat(),
+                'title': f'▶️ {task_text[:60]}',
+                'subtitle': project_title,
+                'description': task_text,
+                'type': 'task_start',
+                'type_display': 'Старт задачи',
+                'source_type': 'task',
+                'source_id': task.id,
+                'start_time': None,
+                'end_time': None,
+                'end_date': task.deadline_date.isoformat() if task.deadline_date else None,
+                'is_all_day': True,
+                'visibility': 'public',
+                'visibility_display': 'Публичное',
+                'location': project_address or project_city or '',
+                'status': task.status,
+                'creator_username': creator_username,
+                'creator_name': creator_name,
+                'participants_count': 0,
+                'project_id': project_id,
+                'project_title': project_title,
+                'project_city': project_city,
+                'project_type': project_type_display,
+                'project_address': project_address,
+                'project_gis2_url': project_gis2_url,
+                'project_latitude': project_latitude,
+                'project_longitude': project_longitude,
+                'project_url': project_url,
+                'task_id': task.id,
+                'task_title': task_text[:120],
+                'task_url': task_url,
+                'hero_image': hero_image,
+            })
+
+        if task.deadline_date and task.deadline_date != task.start_date:
+            events_data.append({
+                'id': f'task-{task.id}-deadline',
+                'date': task.deadline_date.isoformat(),
+                'title': f'⏰ Дедлайн: {task_text[:50]}',
+                'subtitle': project_title,
+                'description': task_text,
+                'type': 'task_deadline',
+                'type_display': 'Дедлайн задачи',
+                'source_type': 'task',
+                'source_id': task.id,
+                'start_time': None,
+                'end_time': None,
+                'end_date': None,
+                'is_all_day': True,
+                'visibility': 'public',
+                'visibility_display': 'Публичное',
+                'location': project_address or project_city or '',
+                'status': task.status,
+                'creator_username': creator_username,
+                'creator_name': creator_name,
+                'participants_count': 0,
+                'project_id': project_id,
+                'project_title': project_title,
+                'project_city': project_city,
+                'project_type': project_type_display,
+                'project_address': project_address,
+                'project_gis2_url': project_gis2_url,
+                'project_latitude': project_latitude,
+                'project_longitude': project_longitude,
+                'project_url': project_url,
+                'task_id': task.id,
+                'task_title': task_text[:120],
+                'task_url': task_url,
+                'hero_image': hero_image,
+            })
+
+    # ── 3. Ручные события из админки (если есть) ─────────────────────────
+    manual_events = (
+        Event.objects
+        .filter(is_deleted=False)
+        .select_related('creator', 'project', 'task')
+        .prefetch_related('participants')
+    )
+    for event in manual_events:
         project = event.project
         task = event.task
-        hero_image = None
-
-        if task and getattr(task, 'task_image', None):
-            try:
-                hero_image = task.task_image.url
-            except ValueError:
-                hero_image = None
-        elif project and getattr(project, 'cover_image', None):
-            try:
-                hero_image = project.cover_image.url
-            except ValueError:
-                hero_image = None
-
+        hero_image = (
+            _safe_image_url(getattr(task, 'task_image', None))
+            or _safe_image_url(getattr(project, 'cover_image', None))
+        )
         events_data.append({
-            'id': event.id,
+            'id': f'event-{event.id}',
             'date': event.start_date.isoformat(),
             'title': event.title,
             'subtitle': (
@@ -3462,18 +3676,23 @@ def calendar_admin(request: HttpRequest) -> HttpResponse:
             'project_gis2_url': project.gis2_url if project and project.gis2_url else None,
             'project_latitude': project.latitude if project else None,
             'project_longitude': project.longitude if project else None,
-            'project_url': reverse('admin_panel:project_detail', args=[project.id]) if project else None,
+            'project_url': _project_url(project) if project else None,
             'task_id': task.id if task else None,
             'task_title': task.text[:120] if task else None,
             'task_url': f'/custom-admin/tasks/?task_id={task.id}' if task else None,
             'hero_image': hero_image,
         })
-    
-    print(f"📅 Calendar Admin: {events.count()} events found")  # Debug
-    
+
+    events_data.sort(key=lambda e: (e['date'], e['start_time'] or ''))
+
+    upcoming_events = sum(1 for e in events_data if e['date'] >= today.isoformat())
+    today_events = sum(1 for e in events_data if e['date'] == today.isoformat())
+
+    print(f"📅 Calendar Admin: {len(events_data)} events found (projects+tasks+manual)")
+
     return render(request, 'admin_panel/calendar.html', {
         'active_page': 'calendar',
-        'events': events,
+        'events': events_data,
         'events_data': events_data,
         'upcoming_events': upcoming_events,
         'today_events': today_events,

@@ -7,9 +7,9 @@ import {
   TouchableOpacity,
   Image,
   ActivityIndicator,
-  Alert,
   Linking,
 } from 'react-native';
+import { useToast } from '../../components/Toast';
 import { Ionicons } from '@expo/vector-icons';
 import { volunteerAPI } from '../../services/api';
 import { Header } from '../../components/Header';
@@ -17,6 +17,7 @@ import { normalizeImageUrl } from '../../utils/network';
 import { getAxiosErrorMessage } from '../../utils/apiErrorMessage';
 import { appColors } from '../../theme';
 import { useTranslation } from "../../locales/i18n";
+import { ModerationMenu } from '../../components/ModerationMenu';
 
 interface RouteParams {
   organizerId: number;
@@ -55,6 +56,7 @@ export const OrganizerProfileScreen = ({
   route,
 }: OrganizerProfileScreenProps) => {
     const { t } = useTranslation();
+  const toast = useToast();
   const { organizerId } = route.params;
   const [organizer, setOrganizer] = useState<OrganizerPortfolio | null>(null);
   const [loading, setLoading] = useState(true);
@@ -67,9 +69,8 @@ export const OrganizerProfileScreen = ({
     } catch (error: unknown) {
       console.error('Error loading organizer profile:', error);
       const errorMessage = getAxiosErrorMessage(error, t('organizerprofile.s_0'));
-      Alert.alert(t('organizerprofile.s_1'), errorMessage, [
-        { text: 'OK', onPress: () => navigation.goBack() },
-      ]);
+      toast.error(errorMessage);
+      navigation.goBack();
     } finally {
       setLoading(false);
     }
@@ -82,7 +83,7 @@ export const OrganizerProfileScreen = ({
   const callPhone = () => {
     const phone = organizer?.contact_phone || organizer?.phone_number;
     if (!phone) {
-      Alert.alert(t('organizerprofile.s_2'), t('organizerprofile.s_3'));
+      toast.info(t('organizerprofile.s_3'));
       return;
     }
     Linking.openURL(`tel:${phone}`);
@@ -91,7 +92,7 @@ export const OrganizerProfileScreen = ({
   const sendEmail = () => {
     const email = organizer?.contact_email || organizer?.email;
     if (!email) {
-      Alert.alert(t('organizerprofile.s_4'), t('organizerprofile.s_5'));
+      toast.info(t('organizerprofile.s_5'));
       return;
     }
     Linking.openURL(`mailto:${email}`);
@@ -99,7 +100,7 @@ export const OrganizerProfileScreen = ({
 
   const openTelegram = async () => {
     if (!organizer?.contact_telegram) {
-      Alert.alert(t('organizerprofile.s_6'), t('organizerprofile.s_7'));
+      toast.info(t('organizerprofile.s_7'));
       return;
     }
     
@@ -110,7 +111,7 @@ export const OrganizerProfileScreen = ({
     if (supported) {
       Linking.openURL(url);
     } else {
-      Alert.alert(t('organizerprofile.s_8'), t('organizerprofile.s_9'));
+      toast.error(t('organizerprofile.s_9'));
     }
   };
 
@@ -141,7 +142,17 @@ export const OrganizerProfileScreen = ({
 
   return (
     <View style={styles.container}>
-      <Header title={t('organizerprofile.s_12')} showBack />
+      <Header 
+        title={t('organizerprofile.s_12')} 
+        showBack 
+        rightElement={
+          <ModerationMenu 
+            targetUserId={organizerId}
+            targetName={organizer.full_name || organizer.username}
+            contentType="user_profile"
+          />
+        }
+      />
       
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         {/* Header Image */}

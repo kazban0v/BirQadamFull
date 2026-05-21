@@ -488,3 +488,22 @@ class VolunteerProjectCatalogSerializer(serializers.Serializer):
     cover_image_url = serializers.URLField(allow_null=True, allow_blank=True, read_only=True)
     created_at = serializers.DateTimeField(allow_null=True)
 
+
+from api.support.models import Block, Report
+
+class BlockSerializer(serializers.ModelSerializer):
+    blocked_user_id = serializers.IntegerField(source='blocked.id', read_only=True)
+    blocked_username = serializers.CharField(source='blocked.username', read_only=True)
+    blocked_name = serializers.CharField(source='blocked.name', read_only=True)
+    
+    class Meta:
+        model = Block
+        fields = ['id', 'blocked_user_id', 'blocked_username', 'blocked_name', 'created_at']
+
+
+class ReportSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Report
+        fields = ['id', 'reported_user', 'content_type', 'content_id', 'reason', 'details', 'status', 'created_at']
+        read_only_fields = ['id', 'status', 'created_at']
+

@@ -11,12 +11,12 @@ import {
   ActivityIndicator,
   Image,
   Modal,
-  Alert,
   Pressable,
   useWindowDimensions,
   Animated,
   Easing,
 } from 'react-native';
+import { useToast } from '../../components/Toast';
 import { useRoute, useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -26,6 +26,7 @@ import { volunteerAPI } from '../../services/api';
 import { getAxiosErrorMessage, getAxiosErrorResponse } from '../../utils/apiErrorMessage';
 import { useAuthStore } from '../../store/authStore';
 import { useTranslation } from "../../locales/i18n";
+import { ModerationMenu } from '../../components/ModerationMenu';
 
 interface ChatMessage {
   id: number;
@@ -166,6 +167,16 @@ const MessageBubble = ({
                 source={{ uri: item.image_url ?? undefined }}
                 style={[styles.messageImage, { width: imageSize, height: imageSize }]}
                 resizeMode="cover"
+                onError={(e) => {
+                  if (__DEV__) {
+                    console.warn('[Chat] Image load failed:', item.image_url, e.nativeEvent?.error);
+                  }
+                }}
+                onLoad={() => {
+                  if (__DEV__) {
+                    console.log('[Chat] Image loaded:', item.image_url);
+                  }
+                }}
               />
             ) : null}
 
@@ -198,6 +209,17 @@ const MessageBubble = ({
                   color={item.is_read ? appColors.primaryDark : 'rgba(0,0,0,0.28)'}
                   style={styles.readIcon}
                 />
+              )}
+              {!isMe && (
+                <View style={{ marginLeft: 4, marginTop: -4, marginBottom: -4 }}>
+                  <ModerationMenu 
+                    targetUserId={item.sender_id}
+                    targetName={item.sender_name}
+                    contentType="chat_message"
+                    contentId={item.id}
+                    iconColor={appColors.textMuted}
+                  />
+                </View>
               )}
             </View>
           </View>
@@ -310,6 +332,7 @@ export const ChatDetailScreen = () => {
   const { width: screenWidth } = useWindowDimensions();
   const { chatId, chatTitle, chatType } = route.params;
   const { t } = useTranslation();
+  const toast = useToast();
 
   const { user } = useAuthStore();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -443,7 +466,20 @@ export const ChatDetailScreen = () => {
     if (chatUnavailable) return;
     try {
       const response = await volunteerAPI.getChatMessages(chatId);
-      setMessages((response.data.messages || []).reverse());
+      const rawMessages = (response.data.messages || []).reverse();
+      if (__DEV__) {
+        const withMedia = rawMessages.filter((m: ChatMessage) => m.image_url || m.file_url || m.message_type === 'photo' || m.message_type === 'image');
+        if (withMedia.length > 0) {
+          console.log('[Chat] Messages with media:', withMedia.map((m: ChatMessage) => ({
+            id: m.id,
+            type: m.message_type,
+            image_url: m.image_url,
+            file_url: m.file_url,
+            text: m.text,
+          })));
+        }
+      }
+      setMessages(rawMessages);
       setErrorMessage('');
       await volunteerAPI.markMessagesRead(chatId);
     } catch (error: unknown) {
@@ -483,7 +519,18 @@ export const ChatDetailScreen = () => {
           } as any);
         }
         if (text.trim()) formData.append('text', text.trim());
-        await volunteerAPI.sendMessage(chatId, formData);
+        if (__DEV__) {
+          console.log('[Chat] Sending image:', {
+            uri: attachment.uri,
+            name: attachment.name,
+            mimeType: attachment.mimeType,
+            platform: Platform.OS,
+          });
+        }
+        const sendRes = await volunteerAPI.sendMessage(chatId, formData);
+        if (__DEV__) {
+          console.log('[Chat] Send response:', sendRes.data);
+        }
         clearAttachment();
       } else {
         await volunteerAPI.sendMessage(chatId, text.trim());
@@ -492,7 +539,7 @@ export const ChatDetailScreen = () => {
       setErrorMessage('');
       await fetchMessages();
     } catch (error: unknown) {
-      Alert.alert(t('chatdetail.s_4'), getAxiosErrorMessage(error, t('chatdetail.s_5')));
+      toast.error(getAxiosErrorMessage(error, t('chatdetail.s_5')));
     } finally {
       setSending(false);
     }
@@ -536,7 +583,7 @@ export const ChatDetailScreen = () => {
 
       const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (!permission.granted) {
-        Alert.alert(t('chatdetail.s_6'), t('chatdetail.s_7'));
+        toast.warning(t('chatdetail.s_7'));
         return;
       }
 
@@ -561,7 +608,7 @@ export const ChatDetailScreen = () => {
       });
     } catch (error) {
       console.error('Image picker error:', error);
-      Alert.alert(t('chatdetail.s_8'), t('chatdetail.s_9'));
+      toast.error(t('chatdetail.s_9'));
     }
   };
 
@@ -624,7 +671,6 @@ export const ChatDetailScreen = () => {
 
   return (
     <View style={styles.container}>
-[object Object]
       <Animated.View
         style={[
           styles.header,
@@ -654,7 +700,6 @@ export const ChatDetailScreen = () => {
         </TouchableOpacity>
       </Animated.View>
 
-[object Object]
       {messageFilter !== 'all' && (
         <Animated.View
           style={[
@@ -675,7 +720,6 @@ export const ChatDetailScreen = () => {
         </Animated.View>
       )}
 
-[object Object]
       {errorMessage ? (
         <Animated.View
           style={[
@@ -691,7 +735,6 @@ export const ChatDetailScreen = () => {
         </Animated.View>
       ) : null}
 
-[object Object]
       {loading ? (
         <ActivityIndicator style={styles.loader} size="large" color={appColors.primary} />
       ) : chatUnavailable ? (
@@ -724,7 +767,6 @@ export const ChatDetailScreen = () => {
         />
       )}
 
-[object Object]
       {!chatUnavailable && attachment && (
         <Animated.View
           style={[
@@ -753,7 +795,6 @@ export const ChatDetailScreen = () => {
         </Animated.View>
       )}
 
-[object Object]
       {!chatUnavailable && (
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -791,7 +832,6 @@ export const ChatDetailScreen = () => {
         </KeyboardAvoidingView>
       )}
 
-[object Object]
       <Modal visible={showHeaderMenu} transparent animationType="none" onRequestClose={closeHeaderMenu}>
         <Pressable style={styles.modalOverlay} onPress={closeHeaderMenu}>
           <Animated.View style={[styles.modalCard, menuSlide(headerMenuAnim)]}>
@@ -848,7 +888,6 @@ export const ChatDetailScreen = () => {
         </Pressable>
       </Modal>
 
-[object Object]
       <Modal visible={showAttachmentMenu} transparent animationType="none" onRequestClose={() => closeAttachMenu()}>
         <Pressable style={styles.modalOverlay} onPress={() => closeAttachMenu()}>
           <Animated.View style={[styles.modalCard, menuSlide(attachMenuAnim)]}>

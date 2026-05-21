@@ -10,7 +10,7 @@ from api.models import (
     DeviceToken, NotificationTemplate, BulkNotification, NotificationRecipient,
     UserSearchFilter, Event, GeofenceReminder, Chat, Message, ChatMember,
     PinnedMessage, TypingStatus, VerificationCode,
-    SupportTicket
+    SupportTicket, Block, Report
 )
 
 # Отменяем регистрацию стандартной модели User Django, если она была зарегистрирована
@@ -138,6 +138,38 @@ class SupportTicketAdmin(admin.ModelAdmin):
         if obj:  # Редактирование существующего объекта
             return self.readonly_fields
         return ()  # При создании нового объекта не делаем поля только для чтения
+
+
+@admin.register(Block)
+class BlockAdmin(admin.ModelAdmin):
+    list_display = ['id', 'blocker', 'blocked', 'created_at']
+    list_filter = ['created_at']
+    search_fields = ['blocker__username', 'blocked__username']
+    readonly_fields = ['id', 'created_at']
+    autocomplete_fields = ['blocker', 'blocked']
+
+
+@admin.register(Report)
+class ReportAdmin(admin.ModelAdmin):
+    list_display = ['id', 'reporter', 'reported_user', 'content_type', 'status', 'created_at']
+    list_filter = ['status', 'content_type', 'created_at']
+    search_fields = ['reporter__username', 'reported_user__username', 'reason', 'details']
+    readonly_fields = ['id', 'created_at', 'updated_at']
+    autocomplete_fields = ['reporter', 'reported_user']
+    
+    actions = ['mark_as_reviewed', 'mark_as_resolved', 'mark_as_dismissed']
+    
+    def mark_as_reviewed(self, request, queryset):
+        queryset.update(status='reviewed')
+    mark_as_reviewed.short_description = "Отметить как 'Рассмотрено'"
+    
+    def mark_as_resolved(self, request, queryset):
+        queryset.update(status='resolved')
+    mark_as_resolved.short_description = "Отметить как 'Решено'"
+    
+    def mark_as_dismissed(self, request, queryset):
+        queryset.update(status='dismissed')
+    mark_as_dismissed.short_description = "Отметить как 'Отклонено'"
 
 
 # ============================================================================

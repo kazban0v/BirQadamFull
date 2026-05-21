@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   Dimensions,
   LayoutRectangle,
+  Easing,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { appColors } from '../../theme';
@@ -49,28 +50,19 @@ export const TutorialOverlay: React.FC<TutorialOverlayProps> = React.memo(({
 }) => {
   const { t } = useTranslation();
 
-  if (!visible) {
-    return null;
-  }
-
-  // Проверяем валидность шага
-  if (currentStep < 0 || currentStep >= steps.length) {
-    if (__DEV__) {
-      console.warn(`Invalid tutorial step: ${currentStep}, max: ${steps.length - 1}`);
-    }
-    return null;
-  }
+  // Инициализируем анимационные значения нулями (или любыми начальными), они обновятся в useEffect
+  const animTop = useRef(new Animated.Value(0)).current;
+  const animLeft = useRef(new Animated.Value(0)).current;
+  const animWidth = useRef(new Animated.Value(0)).current;
+  const animHeight = useRef(new Animated.Value(0)).current;
+  const animTooltipY = useRef(new Animated.Value(0)).current;
+  const animTooltipX = useRef(new Animated.Value(0)).current;
 
   const currentStepData = steps[currentStep];
 
-  if (!currentStepData) {
-    if (__DEV__) {
-      console.warn(`Current step is null for step ${currentStep}`);
-    }
-    return null;
-  }
-
-  // Если элемент еще не измерен, используем дефолтные координаты для показа подсказки
+  // Вычисляем координаты, если шаг валиден
+  const isValidStep = visible && currentStep >= 0 && currentStep < steps.length && !!currentStepData;
+  
   const defaultCoords = {
     x: 20,
     y: currentStep === 0 ? 50 : currentStep === 1 ? 130 : currentStep === 2 ? 300 : currentStep === 3 ? 450 : 50,
@@ -84,21 +76,53 @@ export const TutorialOverlay: React.FC<TutorialOverlayProps> = React.memo(({
   const screenHeight = Dimensions.get('window').height;
   const isTop = false; // Все подсказки всегда снизу
 
-  // Вычисляем позицию подсказки
   const tooltipHeight = 200; // Примерная высота подсказки с кнопками
   const tooltipWidth = 300;
 
-  let tooltipY: number;
-  let tooltipX: number;
+  let tooltipY = 0;
+  let tooltipX = 0;
 
-  if (isTop) {
-    // Подсказка над элементом (не используется, но оставлено для совместимости)
-    tooltipY = Math.max(20, y - tooltipHeight - 10);
-    tooltipX = Math.max(20, Math.min(x - 20, screenWidth - tooltipWidth - 20));
-  } else {
-    // Подсказка под элементом
-    tooltipY = Math.min(screenHeight - tooltipHeight - 20, y + height + 10);
-    tooltipX = Math.max(20, Math.min(x - 20, screenWidth - tooltipWidth - 20));
+  if (isValidStep) {
+    if (isTop) {
+      tooltipY = Math.max(20, y - tooltipHeight - 10);
+      tooltipX = Math.max(20, Math.min(x - 20, screenWidth - tooltipWidth - 20));
+    } else {
+      tooltipY = Math.min(screenHeight - tooltipHeight - 20, y + height + 10);
+      tooltipX = Math.max(20, Math.min(x - 20, screenWidth - tooltipWidth - 20));
+    }
+  }
+
+  // Анимация при изменении координат
+  useEffect(() => {
+    if (isValidStep) {
+      Animated.parallel([
+        Animated.spring(animTop, { toValue: y - 4, useNativeDriver: false, friction: 12, tension: 50 }),
+        Animated.spring(animLeft, { toValue: x - 4, useNativeDriver: false, friction: 12, tension: 50 }),
+        Animated.spring(animWidth, { toValue: width + 8, useNativeDriver: false, friction: 12, tension: 50 }),
+        Animated.spring(animHeight, { toValue: height + 8, useNativeDriver: false, friction: 12, tension: 50 }),
+        Animated.spring(animTooltipY, { toValue: tooltipY, useNativeDriver: false, friction: 12, tension: 50 }),
+        Animated.spring(animTooltipX, { toValue: tooltipX, useNativeDriver: false, friction: 12, tension: 50 }),
+      ]).start();
+    }
+  }, [x, y, width, height, tooltipX, tooltipY, isValidStep]);
+
+  if (!visible) {
+    return null;
+  }
+
+  // Проверяем валидность шага
+  if (currentStep < 0 || currentStep >= steps.length) {
+    if (__DEV__) {
+      console.warn(`Invalid tutorial step: ${currentStep}, max: ${steps.length - 1}`);
+    }
+    return null;
+  }
+
+  if (!currentStepData) {
+    if (__DEV__) {
+      console.warn(`Current step is null for step ${currentStep}`);
+    }
+    return null;
   }
 
   if (__DEV__) {
@@ -136,37 +160,41 @@ export const TutorialOverlay: React.FC<TutorialOverlayProps> = React.memo(({
           style={[
             styles.tutorialHighlight,
             {
-              top: y - 4,
-              left: x - 4,
-              width: width + 8,
-              height: height + 8,
+              top: animTop,
+              left: animLeft,
+              width: animWidth,
+              height: animHeight,
             },
           ]}
           pointerEvents="none"
         />
 
         {/* Всплывающая подсказка */}
-        <TouchableOpacity
-          activeOpacity={1}
+        <Animated.View
           style={[
             styles.tutorialTooltip,
             {
-              top: tooltipY,
-              left: tooltipX,
+              top: animTooltipY,
+              left: animTooltipX,
             },
           ]}
-          onPress={(e) => e.stopPropagation()}
+          pointerEvents="auto"
         >
-          {/* Стрелка */}
-          <View
-            style={[
-              styles.tutorialArrow,
-              isTop ? styles.tutorialArrowBottom : styles.tutorialArrowTop,
-              {
-                left: Math.min(Math.max(x + width / 2 - 10, 20), screenWidth - 60),
-              },
-            ]}
-          />
+          <TouchableOpacity
+            activeOpacity={1}
+            style={{ flex: 1 }}
+            onPress={(e) => e.stopPropagation()}
+          >
+            {/* Стрелка */}
+            <View
+              style={[
+                styles.tutorialArrow,
+                isTop ? styles.tutorialArrowBottom : styles.tutorialArrowTop,
+                {
+                  left: Math.min(Math.max(x + width / 2 - 10, 20), screenWidth - 60),
+                },
+              ]}
+            />
 
           {/* Контент подсказки */}
           <View style={styles.tutorialTooltipContent}>
@@ -232,7 +260,8 @@ export const TutorialOverlay: React.FC<TutorialOverlayProps> = React.memo(({
               </TouchableOpacity>
             </View>
           </View>
-        </TouchableOpacity>
+          </TouchableOpacity>
+        </Animated.View>
       </View>
     </Modal>
   );

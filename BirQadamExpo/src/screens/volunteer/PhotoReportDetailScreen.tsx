@@ -1,7 +1,6 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Image,
   Modal,
   ScrollView,
@@ -13,6 +12,7 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
+import { useToast } from '../../components/Toast';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { RouteProp, useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
@@ -24,7 +24,9 @@ import type { PhotoReport, Task } from '../../types';
 import { normalizeImageUrl } from '../../utils/network';
 import { getAxiosErrorMessage } from '../../utils/apiErrorMessage';
 import { appColors } from '../../theme';
+import { EmptyState } from '../../components/EmptyState';
 import { useTranslation } from "../../locales/i18n";
+import { ModerationMenu } from '../../components/ModerationMenu';
 
 type RootStackParamList = {
   PhotoReportDetail: { taskId: number };
@@ -139,6 +141,7 @@ const renderStars = (rating: number) => {
 
 export const PhotoReportDetailScreen: React.FC = () => {
   const { t } = useTranslation();
+  const toast = useToast();
   const navigation = useNavigation<NavigationProps>();
   const route = useRoute<RouteProps>();
   const { taskId } = route.params;
@@ -180,22 +183,13 @@ export const PhotoReportDetailScreen: React.FC = () => {
       setReports(reportsData);
 
       if (!reportsData.length) {
-        Alert.alert(t('photoreportdetail.s_13'), t('photoreportdetail.s_14'), [
-          {
-            text: t('photoreportdetail.s_15'),
-            onPress: () => navigation.goBack(),
-          },
-        ]);
+        toast.info(t('photoreportdetail.s_14'));
+        navigation.goBack();
       }
     } catch (error: unknown) {
       const errorMessage = getAxiosErrorMessage(error, t('photoreportdetail.s_16'));
-
-      Alert.alert(t('photoreportdetail.s_17'), errorMessage, [
-        {
-          text: t('photoreportdetail.s_18'),
-          onPress: () => navigation.goBack(),
-        },
-      ]);
+      toast.error(errorMessage);
+      navigation.goBack();
     } finally {
       setLoading(false);
     }
@@ -231,9 +225,9 @@ export const PhotoReportDetailScreen: React.FC = () => {
         message: shareMessage,
       });
     } catch {
-      Alert.alert(t('photoreportdetail.s_21'), t('photoreportdetail.s_22'));
+      toast.error(t('photoreportdetail.s_22'));
     }
-  }, [latestReport, submittedLabel, task?.title, t]);
+  }, [latestReport, submittedLabel, task?.title, t, toast]);
 
   const openImagePreview = useCallback(() => {
     if (!heroImageUrl) {
@@ -258,8 +252,7 @@ export const PhotoReportDetailScreen: React.FC = () => {
   if (!latestReport) {
     return (
       <View style={styles.center}>
-        <Ionicons name="document-text-outline" size={48} color={appColors.textSoft} />
-        <Text style={styles.emptyTitle}>{t('photoreportdetail.s_23')}</Text>
+        <EmptyState icon="document-text-outline" title={t('photoreportdetail.s_23')} size="sm" />
       </View>
     );
   }
@@ -278,9 +271,15 @@ export const PhotoReportDetailScreen: React.FC = () => {
 
         <Text style={[styles.headerTitle, isCompact && styles.headerTitleCompact]}>{t('photoreportdetail.s_24')}</Text>
 
-        <TouchableOpacity style={styles.headerButton} onPress={handleShare}>
-          <Ionicons name="share-social-outline" size={22} color={appColors.text} />
-        </TouchableOpacity>
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <TouchableOpacity style={styles.headerButton} onPress={handleShare}>
+            <Ionicons name="share-social-outline" size={22} color={appColors.text} />
+          </TouchableOpacity>
+          <ModerationMenu
+            contentType="photo_report"
+            contentId={latestReport.id}
+          />
+        </View>
       </View>
 
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
@@ -464,12 +463,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: appColors.surface,
-  },
-  emptyTitle: {
-    marginTop: 12,
-    fontSize: 16,
-    fontWeight: '600',
-    color: appColors.textMuted,
   },
   header: {
     flexDirection: 'row',

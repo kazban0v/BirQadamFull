@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Image } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Image, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import type { Project } from '../../types';
 import { getVolunteerTypeLabel, getVolunteerTypeColor, normalizeImageUrl } from '../../utils/projectUtils';
@@ -124,15 +124,27 @@ export const ProjectCard: React.FC<ProjectCardProps> = React.memo(({
 
         <View style={styles.projectFooter}>
           <View style={styles.projectStats}>
-            <Ionicons name="people-outline" size={14} color={appColors.textMuted} />
-            <Text style={styles.projectStatsText}>
-              {project.active_members || 0} {t('projectcard.s_2')}</Text>
+            <View style={styles.projectStatIconWrap}>
+              <Ionicons name="people-outline" size={14} color={appColors.textMuted} />
+            </View>
+            <Text
+              style={styles.projectStatsText}
+              includeFontPadding={Platform.OS === 'android' ? false : undefined}
+            >
+              {project.active_members || 0} {t('projectcard.s_2')}
+            </Text>
           </View>
 
           <View style={styles.projectStats}>
-            <Ionicons name="flag-outline" size={14} color={appColors.textMuted} />
-            <Text style={styles.projectStatsText}>
-              {project.tasks_count || 0} {t('projectcard.s_3')}</Text>
+            <View style={styles.projectStatIconWrap}>
+              <Ionicons name="flag-outline" size={14} color={appColors.textMuted} />
+            </View>
+            <Text
+              style={styles.projectStatsText}
+              includeFontPadding={Platform.OS === 'android' ? false : undefined}
+            >
+              {project.tasks_count || 0} {t('projectcard.s_3')}
+            </Text>
           </View>
         </View>
 
@@ -239,11 +251,22 @@ const styles = StyleSheet.create({
   projectStats: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 6,
+    flex: 1,
+    minWidth: 0,
+  },
+  projectStatIconWrap: {
+    width: 18,
+    height: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   projectStatsText: {
     fontSize: 13,
+    lineHeight: 17,
     color: appColors.textMuted,
+    flex: 1,
+    textAlignVertical: 'center',
   },
   joinButton: {
     backgroundColor: appColors.primary,

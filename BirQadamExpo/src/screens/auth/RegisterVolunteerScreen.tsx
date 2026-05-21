@@ -10,6 +10,7 @@ import {
   Alert,
   Dimensions,
 } from 'react-native';
+import { useToast } from '../../components/Toast';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Button } from '../../components/Button';
@@ -30,6 +31,7 @@ export const RegisterVolunteerScreen: React.FC<RegisterVolunteerScreenProps> = (
   navigation,
 }) => {
     const { t } = useTranslation();
+  const toast = useToast();
   const [formData, setFormData] = useState({
     name: '',
     phone_number: '',
@@ -104,7 +106,7 @@ export const RegisterVolunteerScreen: React.FC<RegisterVolunteerScreenProps> = (
               await useAuthStore.getState().cancelRegistration(verificationEmail || formData.email);
               navigation.goBack();
             } catch (err: unknown) {
-              Alert.alert(t('registervolunteer.s_11'), getAxiosErrorMessage(err, t('registervolunteer.s_12')));
+              toast.error(getAxiosErrorMessage(err, t('registervolunteer.s_12')));
             }
           },
         },

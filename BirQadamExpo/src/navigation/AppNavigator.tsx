@@ -31,8 +31,10 @@ import { VolunteerHelpScreen } from '../screens/volunteer/HelpScreen';
 import { PrivacyPolicyScreen } from '../screens/volunteer/PrivacyPolicyScreen';
 import { AboutAppScreen } from '../screens/volunteer/AboutAppScreen';
 import { VolunteerAchievementsScreen } from '../screens/volunteer/AchievementsScreen';
+import { VolunteerActivityScreen } from '../screens/volunteer/ActivityScreen';
 import { ChatsScreen } from '../screens/volunteer/ChatsScreen';
 import { ChatDetailScreen } from '../screens/volunteer/ChatDetailScreen';
+import { BlockedUsersScreen } from '../screens/volunteer/BlockedUsersScreen';
 import { CustomTabBar } from './CustomTabBar';
 import { useAuthStore } from '../store/authStore';
 import { useThemeStore } from '../store/themeStore';
@@ -74,7 +76,9 @@ export type MainStackParamList = {
   PrivacyPolicy: undefined;
   AboutApp: undefined;
   VolunteerAchievements: undefined;
+  VolunteerActivity: undefined;
   ChatDetail: { chatId: number, chatTitle: string, chatType: string };
+  BlockedUsers: undefined;
 };
 
 export type OnboardingStackParamList = {
@@ -178,7 +182,10 @@ const MainStack = () => {
       component={VolunteerProjectsScreen}
       options={{
         ...defaultHeaderOptions,
-        title: t('appnavigator.s_0'),
+        title: '',
+        headerBackTitle: '',
+        headerBackButtonDisplayMode: 'minimal',
+        headerStyle: { backgroundColor: appColors.surfaceSoft },
       }}
     />
     <Stack.Screen
@@ -215,6 +222,7 @@ const MainStack = () => {
         title: '',
         headerBackTitle: '',
         headerBackButtonDisplayMode: 'minimal',
+        headerStyle: { backgroundColor: appColors.surfaceSoft },
       }}
     />
     <Stack.Screen
@@ -223,7 +231,8 @@ const MainStack = () => {
       options={{
         ...defaultHeaderOptions,
         title: t('appnavigator.s_1'),
-        headerBackTitle: t('appnavigator.s_2'),
+        headerBackTitle: '',
+        headerBackButtonDisplayMode: 'minimal',
       }}
     />
     <Stack.Screen
@@ -246,7 +255,25 @@ const MainStack = () => {
       name="VolunteerAchievements"
       component={VolunteerAchievementsScreen}
     />
+    <Stack.Screen
+      name="VolunteerActivity"
+      component={VolunteerActivityScreen}
+      options={{
+        ...defaultHeaderOptions,
+        title: t('activity.s_0'),
+        headerBackButtonDisplayMode: 'minimal',
+      }}
+    />
     <Stack.Screen name="ChatDetail" component={ChatDetailScreen} />
+    <Stack.Screen 
+      name="BlockedUsers" 
+      component={BlockedUsersScreen} 
+      options={{
+        ...defaultHeaderOptions,
+        title: 'Заблокированные пользователи',
+        headerBackButtonDisplayMode: 'minimal',
+      }}
+    />
   </Stack.Navigator>
   );
 };

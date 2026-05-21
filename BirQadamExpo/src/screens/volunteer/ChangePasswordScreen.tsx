@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import {
-  Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -10,6 +9,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { useToast } from '../../components/Toast';
 import { Ionicons } from '@expo/vector-icons';
 
 import { Button } from '../../components/Button';
@@ -26,6 +26,7 @@ interface ChangePasswordScreenProps {
 
 export const ChangePasswordScreen: React.FC<ChangePasswordScreenProps> = ({ navigation }) => {
     const { t } = useTranslation();
+  const toast = useToast();
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -80,12 +81,8 @@ export const ChangePasswordScreen: React.FC<ChangePasswordScreenProps> = ({ navi
 
     try {
       await authAPI.changePassword(currentPassword, newPassword);
-      Alert.alert(t('changepassword.s_6'), t('changepassword.s_7'), [
-        {
-          text: 'OK',
-          onPress: () => navigation.goBack(),
-        },
-      ]);
+      toast.success(t('changepassword.s_7'));
+      navigation.goBack();
     } catch (error: unknown) {
       const errorMessage = getAxiosErrorMessage(error, t('changepassword.s_8'));
       setRequestError(errorMessage);

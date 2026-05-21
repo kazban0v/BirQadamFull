@@ -7,7 +7,6 @@ import {
   TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
-  Alert,
   Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -15,19 +14,17 @@ import { Ionicons } from '@expo/vector-icons';
 import { Button } from '../../components/Button';
 import { Input } from '../../components/Input';
 import { useAuthStore } from '../../store/authStore';
-import { OnboardingStorage } from '../../utils/storage';
 import { appColors } from '../../theme';
 import { useTranslation } from "../../locales/i18n";
 
-const { width, height } = Dimensions.get('window');
+const { width } = Dimensions.get('window');
 const isSmallDevice = width < 375;
 
 interface LoginScreenProps {
   navigation: any;
-  onShowOnboarding?: () => void;
 }
 
-export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation, onShowOnboarding }) => {
+export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
     const { t } = useTranslation();
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
@@ -60,24 +57,6 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation, onShowOnbo
     } catch (err) {
       // Ошибка уже установлена в store
     }
-  };
-
-  const handleResetOnboarding = async () => {
-    Alert.alert(
-      t('login.s_2'),
-      t('login.s_3'),
-      [
-        { text: t('login.s_4'), style: 'cancel' },
-        {
-          text: t('login.s_5'),
-          style: 'destructive',
-          onPress: async () => {
-            await OnboardingStorage.reset();
-            Alert.alert(t('login.s_6'), t('login.s_7'));
-          },
-        },
-      ]
-    );
   };
 
   return (
@@ -167,16 +146,6 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation, onShowOnbo
             <Text style={styles.registerLinkText}>{t('login.s_16')}</Text>
           </TouchableOpacity>
         </View>
-        
-        {/* Debug: Reset Onboarding Button */}
-        {__DEV__ && (
-          <View style={styles.debugContainer}>
-            <TouchableOpacity onPress={handleResetOnboarding} style={styles.debugButton}>
-              <Ionicons name="refresh" size={16} color={appColors.textMuted} />
-              <Text style={styles.debugText}>{t('login.s_17')}</Text>
-            </TouchableOpacity>
-          </View>
-        )}
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -257,23 +226,5 @@ const styles = StyleSheet.create({
     fontSize: isSmallDevice ? 12 : 14,
     color: appColors.primary,
     fontWeight: '600',
-  },
-  debugContainer: {
-    marginTop: isSmallDevice ? 16 : 24,
-    paddingHorizontal: 16,
-    borderTopWidth: 1,
-    borderColor: appColors.border,
-    paddingTop: 16,
-  },
-  debugButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 12,
-  },
-  debugText: {
-    fontSize: isSmallDevice ? 12 : 14,
-    color: appColors.textMuted,
-    marginLeft: 8,
   },
 });

@@ -12,6 +12,7 @@ import {
   Platform,
   useWindowDimensions,
 } from 'react-native';
+import { useToast } from '../../components/Toast';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -24,11 +25,14 @@ import { resolveVolunteerTaskHeroImageUrl } from '../../utils/network';
 import { getAxiosErrorMessage } from '../../utils/apiErrorMessage';
 import { syncVolunteerLocalNotifications } from '../../utils/volunteerNotifications';
 import { appColors } from '../../theme';
+import { EmptyState } from '../../components/EmptyState';
 import { useTranslation } from "../../locales/i18n";
+import { SkeletonTasksList } from '../../components/skeleton/screens/SkeletonTasksList';
 
 type RootStackParamList = {
   VolunteerTaskDetail: { taskId: number };
   SubmitPhotoReport: { taskId: number };
+  VolunteerProjects: undefined;
 };
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
@@ -125,6 +129,7 @@ const getFilterCount = (tasks: Task[], filter: TaskFilter): number =>
 
 export const VolunteerTasksScreen: React.FC = () => {
   const { t } = useTranslation();
+  const toast = useToast();
   const navigation = useNavigation<NavigationProp>();
   const { width } = useWindowDimensions();
   const isCompact = width < 390;
@@ -132,6 +137,7 @@ export const VolunteerTasksScreen: React.FC = () => {
   const lastTaskMutation = useTaskSyncStore((state) => state.lastMutation);
   const publishTaskMutation = useTaskSyncStore((state) => state.publishTaskMutation);
   const hasLoadedTasksRef = useRef(false);
+  const scrollRef = useRef<ScrollView>(null);
 
   const [tasks, setTasks] = useState<Task[]>([]);
   const [refreshing, setRefreshing] = useState(false);
@@ -210,7 +216,7 @@ export const VolunteerTasksScreen: React.FC = () => {
       }
     } catch (error: unknown) {
       console.error('Error loading tasks:', error);
-      Alert.alert(t('tasks.s_9'), getAxiosErrorMessage(error, t('tasks.s_10')));
+      toast.error(getAxiosErrorMessage(error, t('tasks.s_10')));
       if (showLoader) {
         setTasks([]);
       }
@@ -223,6 +229,7 @@ export const VolunteerTasksScreen: React.FC = () => {
 
   useFocusEffect(
     useCallback(() => {
+      scrollRef.current?.scrollTo({ y: 0, animated: false });
       loadTasks(!hasLoadedTasksRef.current);
       hasLoadedTasksRef.current = true;
     }, [loadTasks])
@@ -272,11 +279,11 @@ export const VolunteerTasksScreen: React.FC = () => {
                   can_upload_photo: true,
                 },
               });
-              Alert.alert(t('tasks.s_15'), t('tasks.s_16'));
+              toast.success(t('tasks.s_16'));
               await loadTasks(false);
             } catch (error: unknown) {
               const errorMsg = getAxiosErrorMessage(error, t('tasks.s_17'));
-              Alert.alert(t('tasks.s_18'), errorMsg);
+              toast.error(errorMsg);
             }
           },
         },
@@ -305,11 +312,11 @@ export const VolunteerTasksScreen: React.FC = () => {
                   can_upload_photo: false,
                 },
               });
-              Alert.alert(t('tasks.s_23'));
+              toast.success(t('tasks.s_23'));
               await loadTasks(false);
             } catch (error: unknown) {
               const errorMsg = getAxiosErrorMessage(error, t('tasks.s_24'));
-              Alert.alert(t('tasks.s_25'), errorMsg);
+              toast.error(errorMsg);
             }
           },
         },
@@ -336,11 +343,11 @@ export const VolunteerTasksScreen: React.FC = () => {
                   can_upload_photo: false,
                 },
               });
-              Alert.alert(t('tasks.s_30'), t('tasks.s_31'));
+              toast.success(t('tasks.s_31'));
               await loadTasks(false);
             } catch (error: unknown) {
               const errorMsg = getAxiosErrorMessage(error, t('tasks.s_32'));
-              Alert.alert(t('tasks.s_33'), errorMsg);
+              toast.error(errorMsg);
             }
           },
         },
@@ -581,13 +588,7 @@ export const VolunteerTasksScreen: React.FC = () => {
   };
 
   if (loading) {
-    return (
-      <SafeAreaView style={styles.safeArea} edges={['top']}>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={appColors.primary} />
-        </View>
-      </SafeAreaView>
-    );
+    return <SkeletonTasksList />;
   }
 
   const emptyDescription =
@@ -604,7 +605,7 @@ export const VolunteerTasksScreen: React.FC = () => {
           <Text style={[styles.backHomeButtonText, isCompact && styles.backHomeButtonTextCompact]}>{t('tasks.s_57')}</Text>
         </TouchableOpacity>
         <Text style={[styles.headerTitle, isCompact && styles.headerTitleCompact]}>{t('tasks.s_59')}</Text>
-        <TouchableOpacity style={styles.headerActionButton} onPress={() => Alert.alert(t('tasks.s_59'), t('tasks.s_60'))}>
+        <TouchableOpacity style={styles.headerActionButton} onPress={() => toast.info(t('tasks.s_60'))}>
           <Ionicons name="notifications-outline" size={24} color="#F8FAFC" />
         </TouchableOpacity>
       </View>
@@ -662,6 +663,7 @@ export const VolunteerTasksScreen: React.FC = () => {
       </ScrollView>
 
       <ScrollView
+        ref={scrollRef}
         style={styles.scrollView}
         contentContainerStyle={[styles.scrollContent, isCompact && styles.scrollContentCompact]}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
@@ -669,20 +671,17 @@ export const VolunteerTasksScreen: React.FC = () => {
         {filteredTasks.length > 0 ? (
           filteredTasks.map((task) => <TaskCard key={task.id} task={task} />)
         ) : (
-          <View style={[styles.emptyState, isCompact && styles.emptyStateCompact]}>
-            <View style={styles.emptyIllustration}>
-              <Ionicons name="clipboard-outline" size={80} color={appColors.primary} />
-            </View>
-            <Text style={styles.emptyTitle}>{t('tasks.s_62')}</Text>
-            <Text style={styles.emptyText}>{emptyDescription}</Text>
-            <TouchableOpacity
-              style={styles.browseButton}
-              onPress={() => Alert.alert(t('tasks.s_63'), t('tasks.s_64'))}
-            >
-              <Ionicons name="compass-outline" size={20} color={appColors.white} />
-              <Text style={styles.browseButtonText}>{t('tasks.s_65')}</Text>
-            </TouchableOpacity>
-          </View>
+          <EmptyState
+            icon="clipboard-outline"
+            title={t('tasks.s_62')}
+            description={emptyDescription}
+            size="lg"
+            action={{
+              label: t('tasks.s_65'),
+              icon: 'compass-outline',
+              onPress: () => navigation.navigate('VolunteerProjects'),
+            }}
+          />
         )}
       </ScrollView>
       </View>
@@ -691,9 +690,9 @@ export const VolunteerTasksScreen: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: appColors.background },
+  safeArea: { flex: 1, backgroundColor: appColors.surface },
   container: { flex: 1, backgroundColor: appColors.background },
-  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: appColors.background },
+  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: appColors.surface },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -891,27 +890,4 @@ const styles = StyleSheet.create({
   filterTabActiveArchive: { borderBottomWidth: 2, borderBottomColor: appColors.textMuted },
   filterTabTextArchive: { color: appColors.textMuted },
   filterCountArchive: { backgroundColor: appColors.textMuted },
-  emptyState: { alignItems: 'center', paddingVertical: 80, paddingHorizontal: 32 },
-  emptyStateCompact: { paddingHorizontal: 20, paddingVertical: 56 },
-  emptyIllustration: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: appColors.primarySurface,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 24,
-  },
-  emptyTitle: { fontSize: 20, fontWeight: '700', color: appColors.text, marginBottom: 8 },
-  emptyText: { fontSize: 14, color: appColors.textMuted, textAlign: 'center', lineHeight: 22, marginBottom: 24 },
-  browseButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: appColors.primary,
-    paddingHorizontal: 24,
-    paddingVertical: 14,
-    borderRadius: 12,
-    gap: 8,
-  },
-  browseButtonText: { fontSize: 16, fontWeight: '700', color: appColors.white },
 });

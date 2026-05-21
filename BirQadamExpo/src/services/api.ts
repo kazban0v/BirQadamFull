@@ -23,6 +23,32 @@ type AppAxiosRequestConfig = InternalAxiosRequestConfig & {
 const isFormDataPayload = (value: unknown): value is FormData =>
   typeof FormData !== 'undefined' && value instanceof FormData;
 
+/**
+ * iOS ATS blocks http:// images. Backend currently returns http:// media URLs
+ * because USE_X_FORWARDED_PROTO is not set on the server. Force-upgrade
+ * any http://<api-host> URL in response payloads to https://.
+ */
+const upgradeHttpToHttps = (value: unknown): unknown => {
+  if (typeof value === 'string') {
+    if (value.startsWith('http://')) {
+      return 'https://' + value.slice('http://'.length);
+    }
+    return value;
+  }
+  if (Array.isArray(value)) {
+    return value.map(upgradeHttpToHttps);
+  }
+  if (value && typeof value === 'object') {
+    const obj = value as Record<string, unknown>;
+    const next: Record<string, unknown> = {};
+    for (const key of Object.keys(obj)) {
+      next[key] = upgradeHttpToHttps(obj[key]);
+    }
+    return next;
+  }
+  return value;
+};
+
 const isAuthenticationFailure = (status?: number, data?: unknown) => {
   if (status !== 403) {
     return false;
@@ -195,6 +221,10 @@ api.interceptors.response.use(
       console.log('📥 [API] Response:', response.status, response.config.url);
     }
 
+    if (response.data && typeof response.data === 'object') {
+      response.data = upgradeHttpToHttps(response.data);
+    }
+
     const csrfToken = response.headers['x-csrftoken'];
     if (csrfToken) {
       await AsyncStorage.setItem('csrftoken', csrfToken);
@@ -217,14 +247,14 @@ api.interceptors.response.use(
     const originalConfig = error.config as AppAxiosRequestConfig | undefined;
 
     if (__DEV__) {
-      console.error('❌ [API] Response error:', error.message);
+      console.warn('[API] Response error:', error.message);
       if (error.response) {
-        console.error('   Status:', error.response.status);
-        console.error('   Data:', error.response.data);
+        console.warn('   Status:', error.response.status);
+        console.warn('   Data:', error.response.data);
       } else if (error.request) {
-        console.error('   No response received. Check network connection.');
-        console.error('   URL:', error.config?.url);
-        console.error('   Base URL:', error.config?.baseURL);
+        console.warn('   No response received. Check network connection.');
+        console.warn('   URL:', error.config?.url);
+        console.warn('   Base URL:', error.config?.baseURL);
       }
     }
 
@@ -404,6 +434,14 @@ export const volunteerAPI = {
       typeof message === 'string' ? { text: message } : message
     ),
   markMessagesRead: (chatId: number) => api.post(`/api/web/volunteer/chats/${chatId}/read/`),
+};
+
+export const moderationAPI = {
+  blockUser: (blockedUserId: number) => api.post('/api/web/blocks/', { blocked_user_id: blockedUserId }),
+  unblockUser: (blockId: number) => api.delete(`/api/web/blocks/${blockId}/`),
+  getBlockedUsers: () => api.get('/api/web/blocks/'),
+  reportContent: (data: { reported_user_id?: number; content_type: string; content_id?: number; reason: string; details?: string }) => 
+    api.post('/api/web/reports/', data),
 };
 
 export default api;

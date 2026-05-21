@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   RefreshControl,
@@ -16,7 +16,9 @@ import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { volunteerAPI } from '../../services/api';
 import type { CalendarEvent } from '../../types';
 import { appColors } from '../../theme';
+import { EmptyState } from '../../components/EmptyState';
 import { useTranslation } from "../../locales/i18n";
+import { SkeletonCalendar } from '../../components/skeleton/screens/SkeletonCalendar';
 
 type CalendarEventGroup = {
   key: string;
@@ -265,6 +267,7 @@ export const VolunteerCalendarScreen: React.FC = () => {
 
   const monthKey = useMemo(() => formatMonthKey(displayMonth), [displayMonth]);
   const weekdayLabels = useMemo(() => getWeekdayLabels(t), [t]);
+  const scrollRef = useRef<ScrollView>(null);
 
   const loadCalendarEvents = useCallback(
     async (showRefresh = false) => {
@@ -302,6 +305,7 @@ export const VolunteerCalendarScreen: React.FC = () => {
 
   useFocusEffect(
     useCallback(() => {
+      scrollRef.current?.scrollTo({ y: 0, animated: false });
       loadCalendarEvents();
     }, [loadCalendarEvents])
   );
@@ -360,17 +364,13 @@ export const VolunteerCalendarScreen: React.FC = () => {
   );
 
   if (loading) {
-    return (
-      <SafeAreaView style={styles.loadingScreen} edges={['top', 'left', 'right', 'bottom']}>
-        <ActivityIndicator size="large" color={appColors.primary} />
-        <Text style={styles.loadingText}>{t('calendar.s_22')}</Text>
-      </SafeAreaView>
-    );
+    return <SkeletonCalendar />;
   }
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
       <ScrollView
+        ref={scrollRef}
         style={styles.screen}
         contentContainerStyle={styles.content}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => loadCalendarEvents(true)} tintColor="#10B981" />}
@@ -584,11 +584,13 @@ export const VolunteerCalendarScreen: React.FC = () => {
             );
           })
         ) : (
-          <View style={styles.emptyCard}>
-            <Ionicons name="calendar-clear-outline" size={28} color={appColors.textMuted} />
-            <Text style={styles.emptyTitle}>{t('calendar.s_28')}</Text>
-            <Text style={styles.emptyText}>{t('calendar.s_29')}</Text>
-          </View>
+          <EmptyState
+            icon="calendar-clear-outline"
+            title={t('calendar.s_28')}
+            description={t('calendar.s_29')}
+            size="sm"
+            variant="card"
+          />
         )}
       </ScrollView>
     </SafeAreaView>
@@ -598,7 +600,7 @@ export const VolunteerCalendarScreen: React.FC = () => {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: appColors.background,
+    backgroundColor: appColors.surface,
   },
   screen: {
     flex: 1,
@@ -612,7 +614,7 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: appColors.background,
+    backgroundColor: appColors.surface,
   },
   loadingText: {
     marginTop: 12,
@@ -965,26 +967,5 @@ const styles = StyleSheet.create({
   statusBadgeText: {
     fontSize: 11,
     fontWeight: '700',
-  },
-  emptyCard: {
-    alignItems: 'center',
-    backgroundColor: appColors.surface,
-    borderRadius: 24,
-    padding: 24,
-    borderWidth: 1,
-    borderColor: appColors.border,
-  },
-  emptyTitle: {
-    marginTop: 12,
-    marginBottom: 8,
-    fontSize: 18,
-    fontWeight: '800',
-    color: appColors.text,
-  },
-  emptyText: {
-    textAlign: 'center',
-    fontSize: 14,
-    lineHeight: 21,
-    color: appColors.textMuted,
   },
 });

@@ -319,3 +319,64 @@ class GeofenceReminder(models.Model):
             return self.event.title
         return self.title or "Локация"
 
+
+class Block(models.Model):
+    """Блокировка пользователей"""
+    blocker = models.ForeignKey('api.User', on_delete=models.CASCADE, related_name='blocks_created', verbose_name='Кто заблокировал')
+    blocked = models.ForeignKey('api.User', on_delete=models.CASCADE, related_name='blocked_by', verbose_name='Кого заблокировали')
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='Дата блокировки')
+
+    class Meta:
+        verbose_name = 'Блокировка'
+        verbose_name_plural = 'Блокировки'
+        unique_together = ['blocker', 'blocked']
+        ordering = ['-created_at']
+
+    def __str__(self) -> str:
+        return f"{self.blocker.username} заблокировал {self.blocked.username}"
+
+
+class Report(models.Model):
+    """Жалоба на пользователя или контент"""
+    STATUS_CHOICES = (
+        ('pending', 'Ожидает рассмотрения'),
+        ('reviewed', 'Рассмотрено'),
+        ('resolved', 'Решено (Приняты меры)'),
+        ('dismissed', 'Отклонено'),
+    )
+
+    CONTENT_TYPE_CHOICES = (
+        ('user_profile', 'Профиль пользователя'),
+        ('chat_message', 'Сообщение в чате'),
+        ('photo_report', 'Фотоотчет'),
+        ('project', 'Проект'),
+    )
+
+    reporter = models.ForeignKey('api.User', on_delete=models.CASCADE, related_name='reports_submitted', verbose_name='Кто пожаловался')
+    reported_user = models.ForeignKey('api.User', on_delete=models.CASCADE, related_name='reports_received', null=True, blank=True, verbose_name='На кого пожаловались')
+    
+    content_type = models.CharField(max_length=50, choices=CONTENT_TYPE_CHOICES, verbose_name='Тип контента')
+    content_id = models.PositiveIntegerField(null=True, blank=True, verbose_name='ID контента')
+    
+    reason = models.CharField(max_length=255, verbose_name='Причина')
+    details = models.TextField(blank=True, verbose_name='Детали')
+    
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending', verbose_name='Статус')
+    admin_notes = models.TextField(blank=True, verbose_name='Заметки администратора')
+    
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='Дата создания')
+    updated_at = models.DateTimeField(auto_now=True, verbose_name='Дата обновления')
+
+    class Meta:
+        verbose_name = 'Жалоба'
+        verbose_name_plural = 'Жалобы'
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['status', 'created_at']),
+            models.Index(fields=['content_type', 'content_id']),
+        ]
+
+    def __str__(self) -> str:
+        target = self.reported_user.username if self.reported_user else f"{self.content_type} #{self.content_id}"
+        return f"Жалоба от {self.reporter.username} на {target}"
+

@@ -29,6 +29,10 @@ export type AppColorPalette = {
   overlay: string;
   white: string;
   black: string;
+  /** Баннеры предупреждений (TF и т.п.) */
+  bannerWarningBg: string;
+  bannerWarningBorder: string;
+  bannerWarningText: string;
 };
 
 export const appThemePalettes: Record<AppThemeMode, AppColorPalette> = {
@@ -59,6 +63,9 @@ export const appThemePalettes: Record<AppThemeMode, AppColorPalette> = {
     overlay: 'rgba(15, 23, 42, 0.45)',
     white: '#FFFFFF',
     black: '#000000',
+    bannerWarningBg: '#FEF3C7',
+    bannerWarningBorder: '#FDE68A',
+    bannerWarningText: '#92400E',
   },
   dark: {
     background: '#000000',
@@ -87,6 +94,9 @@ export const appThemePalettes: Record<AppThemeMode, AppColorPalette> = {
     overlay: 'rgba(0, 0, 0, 0.82)',
     white: '#FFFFFF',
     black: '#000000',
+    bannerWarningBg: '#422006',
+    bannerWarningBorder: '#78350F',
+    bannerWarningText: '#FCD34D',
   },
 };
 
@@ -121,3 +131,13 @@ export const getAppNavigationTheme = (mode: AppThemeMode = currentThemeMode): Th
 };
 
 export const appNavigationTheme = getAppNavigationTheme();
+
+export {
+  appRadius,
+  appSpace,
+  appTypography,
+  appMotion,
+  projectTypeVisual,
+  getProjectTypeVisual,
+  type ProjectTypeGlyph,
+} from './tokens';

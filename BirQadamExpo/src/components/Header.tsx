@@ -11,6 +11,7 @@ interface HeaderProps {
   showBack?: boolean;
   rightIcon?: keyof typeof Ionicons.glyphMap;
   onRightIconPress?: () => void;
+  rightElement?: React.ReactNode;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -18,6 +19,7 @@ export const Header: React.FC<HeaderProps> = ({
   showBack = false,
   rightIcon,
   onRightIconPress,
+  rightElement,
 }) => {
   const navigation = useNavigation();
 
@@ -32,11 +34,14 @@ export const Header: React.FC<HeaderProps> = ({
           )}
           <Text style={styles.title}>{title}</Text>
         </View>
-        {rightIcon && (
-          <TouchableOpacity onPress={onRightIconPress} style={styles.rightButton}>
-            <Ionicons name={rightIcon} size={24} color={appColors.text} />
-          </TouchableOpacity>
-        )}
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          {rightIcon && (
+            <TouchableOpacity onPress={onRightIconPress} style={styles.rightButton}>
+              <Ionicons name={rightIcon} size={24} color={appColors.text} />
+            </TouchableOpacity>
+          )}
+          {rightElement}
+        </View>
       </View>
     </SafeAreaView>
   );

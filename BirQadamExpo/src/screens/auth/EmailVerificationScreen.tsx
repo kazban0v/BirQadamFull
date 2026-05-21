@@ -10,6 +10,7 @@ import {
   Platform,
   Dimensions,
 } from 'react-native';
+import { useToast } from '../../components/Toast';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Button } from '../../components/Button';
@@ -32,6 +33,7 @@ export const EmailVerificationScreen: React.FC<EmailVerificationScreenProps> = (
   route,
 }) => {
     const { t } = useTranslation();
+  const toast = useToast();
   const email = route.params?.email || '';
   const [code, setCode] = useState('');
   const [errors, setErrors] = useState<{ code?: string }>({});
@@ -60,7 +62,7 @@ export const EmailVerificationScreen: React.FC<EmailVerificationScreenProps> = (
       await verifyEmail(email, code);
       // После успешного подтверждения пользователь автоматически входит
     } catch (err) {
-      console.error('[EmailVerification] Verify error:', err);
+      console.warn('[EmailVerification] Verify error:', err);
       // Ошибка уже установлена в store
     }
   };
@@ -68,9 +70,9 @@ export const EmailVerificationScreen: React.FC<EmailVerificationScreenProps> = (
   const handleResendCode = async () => {
     try {
       await resendVerificationCode(email);
-      Alert.alert(t('emailverification.s_2'), t('emailverification.s_3'));
+      toast.success(t('emailverification.s_3'));
     } catch (err: unknown) {
-      Alert.alert(t('emailverification.s_4'), getAxiosErrorMessage(err, t('emailverification.s_5')));
+      toast.error(getAxiosErrorMessage(err, t('emailverification.s_5')));
     }
   };
 
@@ -91,7 +93,7 @@ export const EmailVerificationScreen: React.FC<EmailVerificationScreenProps> = (
               navigation.navigate('Login');
             } catch (err: unknown) {
               console.error('[EmailVerification] Cancel error:', err);
-              Alert.alert(t('emailverification.s_10'), getAxiosErrorMessage(err, t('emailverification.s_11')));
+              toast.error(getAxiosErrorMessage(err, t('emailverification.s_11')));
             }
           },
         },

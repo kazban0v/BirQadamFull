@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Image,
   KeyboardAvoidingView,
   Platform,
@@ -13,6 +12,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { useToast } from '../../components/Toast';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
@@ -95,6 +95,7 @@ const isTaskExpired = (task: Pick<Task, 'status' | 'end_date' | 'end_time' | 'is
 
 export const SubmitPhotoReportScreen: React.FC = () => {
     const { t } = useTranslation();
+  const toast = useToast();
   const navigation = useNavigation<NavigationProps>();
   const route = useRoute<RouteProps>();
   const { taskId } = route.params;
@@ -136,12 +137,8 @@ export const SubmitPhotoReportScreen: React.FC = () => {
     } catch (error: unknown) {
       const errorMessage = getAxiosErrorMessage(error, t('submitphotoreport.s_0'));
 
-      Alert.alert(t('submitphotoreport.s_1'), errorMessage, [
-        {
-          text: t('submitphotoreport.s_2'),
-          onPress: () => navigation.goBack(),
-        },
-      ]);
+      toast.error(errorMessage);
+      navigation.goBack();
     } finally {
       setLoading(false);
     }
@@ -153,12 +150,8 @@ export const SubmitPhotoReportScreen: React.FC = () => {
 
   useEffect(() => {
     if (!loading && task && !canUploadForTask) {
-      Alert.alert(t('submitphotoreport.s_3'), t('submitphotoreport.s_4'), [
-        {
-          text: t('submitphotoreport.s_5'),
-          onPress: () => navigation.goBack(),
-        },
-      ]);
+      toast.warning(t('submitphotoreport.s_4'));
+      navigation.goBack();
     }
   }, [canUploadForTask, loading, navigation, task]);
 
@@ -177,7 +170,7 @@ export const SubmitPhotoReportScreen: React.FC = () => {
         }
 
         if (asset.fileSize && asset.fileSize > MAX_FILE_SIZE_BYTES) {
-          Alert.alert(t('submitphotoreport.s_6'), t('submitphotoreport.s_7'));
+          toast.warning(t('submitphotoreport.s_7'));
           continue;
         }
 
@@ -191,13 +184,13 @@ export const SubmitPhotoReportScreen: React.FC = () => {
 
   const handlePickFromLibrary = useCallback(async () => {
     if (selectedPhotos.length >= MAX_PHOTOS) {
-      Alert.alert(t('submitphotoreport.s_8'), t('submitphotoreport.s_40', { max: MAX_PHOTOS }));
+      toast.warning(t('submitphotoreport.s_40', { max: MAX_PHOTOS }));
       return;
     }
 
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
-      Alert.alert(t('submitphotoreport.s_9'), t('submitphotoreport.s_10'));
+      toast.warning(t('submitphotoreport.s_10'));
       return;
     }
 
@@ -217,13 +210,13 @@ export const SubmitPhotoReportScreen: React.FC = () => {
 
   const handleTakePhoto = useCallback(async () => {
     if (selectedPhotos.length >= MAX_PHOTOS) {
-      Alert.alert(t('submitphotoreport.s_11'), t('submitphotoreport.s_40', { max: MAX_PHOTOS }));
+      toast.warning(t('submitphotoreport.s_40', { max: MAX_PHOTOS }));
       return;
     }
 
     const permission = await ImagePicker.requestCameraPermissionsAsync();
     if (!permission.granted) {
-      Alert.alert(t('submitphotoreport.s_12'), t('submitphotoreport.s_13'));
+      toast.warning(t('submitphotoreport.s_13'));
       return;
     }
 
@@ -251,12 +244,12 @@ export const SubmitPhotoReportScreen: React.FC = () => {
     }
 
     if (!selectedPhotos.length) {
-      Alert.alert(t('submitphotoreport.s_14'), t('submitphotoreport.s_15'));
+      toast.warning(t('submitphotoreport.s_15'));
       return;
     }
 
     if (isTaskExpired(task)) {
-      Alert.alert(t('submitphotoreport.s_16'), t('submitphotoreport.s_17'));
+      toast.warning(t('submitphotoreport.s_17'));
       return;
     }
 
@@ -289,22 +282,11 @@ export const SubmitPhotoReportScreen: React.FC = () => {
         },
       });
 
-      Alert.alert(
-        t('submitphotoreport.s_18'),
-        task.status === 'revision'
-          ? t('submitphotoreport.s_19')
-          : t('submitphotoreport.s_20'),
-        [
-          {
-            text: 'OK',
-            onPress: () => navigation.goBack(),
-          },
-        ]
-      );
+      toast.success(task.status === 'revision' ? t('submitphotoreport.s_19') : t('submitphotoreport.s_20'));
+      navigation.goBack();
     } catch (error: unknown) {
       const errorMessage = getAxiosErrorMessage(error, t('submitphotoreport.s_21'));
-
-      Alert.alert(t('submitphotoreport.s_22'), errorMessage);
+      toast.error(errorMessage);
     } finally {
       setSubmitting(false);
     }
@@ -355,9 +337,12 @@ export const SubmitPhotoReportScreen: React.FC = () => {
       >
         <View style={styles.card}>
           <Text style={styles.cardLabel}>{t('submitphotoreport.s_24')}</Text>
-          <Text style={styles.taskTitle}>{task.title || task.description || t('submitphotoreport.s_25')}</Text>
-          <Text style={styles.taskSubtitle}>
-            {t('submitphotoreport.s_26')}</Text>
+          <Text style={styles.taskTitle} numberOfLines={4}>
+            {[task.title, task.description].map((chunk) => chunk?.trim()).find(Boolean) || t('submitphotoreport.s_26')}
+          </Text>
+          {task.project_title?.trim() ? (
+            <Text style={styles.taskSubtitle} numberOfLines={2}>{task.project_title.trim()}</Text>
+          ) : null}
         </View>
 
         {task.status === 'revision' && (
@@ -374,7 +359,9 @@ export const SubmitPhotoReportScreen: React.FC = () => {
 
         <View style={styles.card}>
           <Text style={styles.sectionTitle}>{t('submitphotoreport.s_29')}</Text>
-          <Text style={styles.sectionHint}>{t('submitphotoreport.s_30')}</Text>
+          <Text style={styles.sectionHint}>
+            {t('submitphotoreport.s_30', { max: MAX_PHOTOS })}
+          </Text>
 
           <View style={styles.actionsRow}>
             <TouchableOpacity style={styles.secondaryAction} onPress={handlePickFromLibrary}>

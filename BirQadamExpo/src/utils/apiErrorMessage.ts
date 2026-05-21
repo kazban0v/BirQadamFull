@@ -75,18 +75,42 @@ export function getApiErrorMessage(data: unknown, fallback = 'Произошла
  * Сообщение для catch вокруг axios: учитывает response.data и сетевые ошибки.
  */
 export function getAxiosErrorMessage(error: unknown, fallback: string): string {
+  let responseStatus: number | undefined;
+
   if (error && typeof error === 'object' && 'response' in error) {
-    const response = (error as { response?: { data?: unknown; statusText?: string } }).response;
+    const response = (
+      error as { response?: { data?: unknown; statusText?: string; status?: number } }
+    ).response;
+    responseStatus = response?.status;
+
     if (response?.data !== undefined) {
-      return getApiErrorMessage(response.data, fallback);
+      const extracted = getApiErrorMessage(response.data, '');
+      if (extracted.trim()) {
+        return extracted;
+      }
     }
     if (typeof response?.statusText === 'string' && response.statusText.trim()) {
       return response.statusText.trim();
     }
+    if (
+      fallback.trim() &&
+      responseStatus !== undefined &&
+      responseStatus >= 400 &&
+      responseStatus < 600
+    ) {
+      return fallback;
+    }
   }
 
   if (error instanceof Error && error.message.trim()) {
-    return error.message;
+    const m = error.message.trim();
+    if (/axioserror|^request failed|network error/i.test(m)) {
+      return fallback;
+    }
+    if (responseStatus != null && responseStatus >= 400) {
+      return fallback;
+    }
+    return m;
   }
 
   return fallback;

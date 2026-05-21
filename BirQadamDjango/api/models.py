@@ -59,6 +59,8 @@ from api.support.models import (
     FeedbackMessage,
     UserSearchFilter,
     GeofenceReminder,
+    Block,
+    Report,
 )
 
 # Экспорт всех моделей для обратной совместимости
@@ -97,4 +99,6 @@ __all__ = [
     'FeedbackMessage',
     'UserSearchFilter',
     'GeofenceReminder',
+    'Block',
+    'Report',
 ]

@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -7,7 +7,6 @@ import {
   TouchableOpacity,
   Image,
   ActivityIndicator,
-  Alert,
   Linking,
   Share,
   Modal,
@@ -18,6 +17,7 @@ import {
   Platform,
   useWindowDimensions,
 } from 'react-native';
+import { useToast } from '../../components/Toast';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -25,7 +25,8 @@ import { volunteerAPI } from '../../services/api';
 import type { Project } from '../../types';
 import { normalizeImageUrl } from '../../utils/network';
 import { getAxiosErrorMessage, getAxiosErrorResponse } from '../../utils/apiErrorMessage';
-import { appColors } from '../../theme';
+import { hapticLight, hapticSuccess } from '../../utils/haptics';
+import { appColors, getProjectTypeVisual } from '../../theme';
 import { useTranslation } from "../../locales/i18n";
 import { ProjectCoverPlaceholder } from '../../components/dashboard/ProjectCoverPlaceholder';
 
@@ -45,6 +46,7 @@ export const VolunteerProjectDetailScreen = ({
   route,
 }: ProjectDetailScreenProps) => {
     const { t } = useTranslation();
+  const toast = useToast();
   const { projectId } = route.params;
   const insets = useSafeAreaInsets();
   const { width: screenWidth, height: screenHeight } = useWindowDimensions();
@@ -54,6 +56,7 @@ export const VolunteerProjectDetailScreen = ({
   const [joining, setJoining] = useState(false);
   const [leaving, setLeaving] = useState(false);
   const [imageLoading, setImageLoading] = useState(true);
+  const [coverLoadFailed, setCoverLoadFailed] = useState(false);
   const [showAllParticipants, setShowAllParticipants] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [trustFactor, setTrustFactor] = useState<number | null>(null);
@@ -130,7 +133,7 @@ export const VolunteerProjectDetailScreen = ({
       console.error('Error loading project detail:', error);
       const errorMessage = getAxiosErrorMessage(error, t('projectdetail.s_0'));
       if (!isRefresh) {
-        Alert.alert(t('projectdetail.s_1'), errorMessage);
+        toast.error(errorMessage);
       }
     } finally {
       setLoading(false);
@@ -168,29 +171,56 @@ export const VolunteerProjectDetailScreen = ({
   }, [project, joining, isButtonPressed]);
 
   useEffect(() => {
+    setCoverLoadFailed(false);
+    setImageLoading(true);
+  }, [project?.id, project?.cover_image_url]);
+
+  useEffect(() => {
     fadeAnim.setValue(0);
     slideAnim.setValue(30);
     buttonScale.setValue(1);
     buttonPulse.setValue(1);
     setIsButtonPressed(false);
-    
+
     loadProjectDetail();
   }, [projectId]);
 
+  /** Актуальный TF перед join — иначе null даёт проход модалке и сырое Axios на бэкенде при TF 0 */
+  const refreshTrustFactor = useCallback(async (): Promise<number | null> => {
+    try {
+      const profileResponse = await volunteerAPI.getProfile();
+      const raw = profileResponse.data?.trust_factor as unknown;
+      let tf: number | null = null;
+      if (typeof raw === 'number' && !Number.isNaN(raw)) tf = raw;
+      else if (typeof raw === 'string' && raw.trim() !== '') {
+        const n = Number(raw);
+        if (!Number.isNaN(n)) tf = n;
+      }
+      if (tf !== null) setTrustFactor(tf);
+      return tf;
+    } catch {
+      return null;
+    }
+  }, []);
 
   const handleJoin = async () => {
     if (!project) return;
 
     if (project.joined) {
-      Alert.alert(t('projectdetail.s_2'), t('projectdetail.s_3'));
+      toast.info(t('projectdetail.s_3'));
       return;
     }
 
-    if (trustFactor !== null && trustFactor <= 0) {
-      Alert.alert(
-        t('projectdetail.s_4'),
-        t('projectdetail.s_5')
-      );
+    let tf = trustFactor;
+    if (tf === null) {
+      tf = await refreshTrustFactor();
+      if (tf === null) {
+        toast.warning(t('projectdetail.s_88'));
+        return;
+      }
+    }
+    if (tf <= 0) {
+      toast.warning(t('projectdetail.s_5'));
       return;
     }
 
@@ -217,6 +247,19 @@ export const VolunteerProjectDetailScreen = ({
   const confirmJoin = async () => {
     if (!project) return;
 
+    let tf = trustFactor;
+    if (tf === null) tf = await refreshTrustFactor();
+    if (tf === null) {
+      setShowJoinConfirm(false);
+      toast.warning(t('projectdetail.s_88'));
+      return;
+    }
+    if (tf <= 0) {
+      setShowJoinConfirm(false);
+      toast.warning(t('projectdetail.s_5'));
+      return;
+    }
+
     setJoining(true);
     try {
       const response = await volunteerAPI.joinProject(project.id);
@@ -231,8 +274,9 @@ export const VolunteerProjectDetailScreen = ({
       
       // Показываем кастомное модальное окно успеха
       setShowJoinSuccess(true);
-      
+
       // Перезагружаем данные проекта для получения актуальной информации
+      hapticSuccess();
       await loadProjectDetail(true);
     } catch (error: unknown) {
       console.error('Error joining project:', error);
@@ -241,15 +285,12 @@ export const VolunteerProjectDetailScreen = ({
 
       if (res?.status === 403 || res?.status === 400) {
         if (res.data?.trust_factor !== undefined) {
-          Alert.alert(
-            t('projectdetail.s_7'),
-            `Ваш Trust Factor: ${String(res.data.trust_factor)}. ${errorMessage}`
-          );
+          toast.error(`Ваш Trust Factor: ${String(res.data.trust_factor)}. ${errorMessage}`);
         } else {
-          Alert.alert(t('projectdetail.s_8'), errorMessage);
+          toast.error(errorMessage);
         }
       } else {
-        Alert.alert(t('projectdetail.s_9'), errorMessage);
+        toast.error(errorMessage);
       }
     } finally {
       setJoining(false);
@@ -269,7 +310,7 @@ export const VolunteerProjectDetailScreen = ({
   
   const confirmLeave = async () => {
     if (!project || !leaveReason.trim()) {
-      Alert.alert(t('projectdetail.s_10'), t('projectdetail.s_11'));
+      toast.warning(t('projectdetail.s_11'));
       return;
     }
 
@@ -301,7 +342,7 @@ export const VolunteerProjectDetailScreen = ({
     } catch (error: unknown) {
       console.error('Error leaving project:', error);
       const errorMessage = getAxiosErrorMessage(error, t('projectdetail.s_13'));
-      Alert.alert(t('projectdetail.s_14'), errorMessage);
+      toast.error(errorMessage);
     } finally {
       setLeaving(false);
     }
@@ -314,7 +355,7 @@ export const VolunteerProjectDetailScreen = ({
       if (supported) {
         Linking.openURL(gis2Url);
       } else {
-        Alert.alert(t('projectdetail.s_15'), t('projectdetail.s_16'));
+        toast.info(t('projectdetail.s_16'));
       }
       return;
     }
@@ -332,12 +373,12 @@ export const VolunteerProjectDetailScreen = ({
       return;
     }
     
-    Alert.alert(t('projectdetail.s_17'), t('projectdetail.s_18'));
+    toast.info(t('projectdetail.s_18'));
   };
 
   const callPhone = () => {
     if (!project?.contact_phone) {
-      Alert.alert(t('projectdetail.s_19'), t('projectdetail.s_20'));
+      toast.info(t('projectdetail.s_20'));
       return;
     }
     Linking.openURL(`tel:${project.contact_phone}`);
@@ -345,7 +386,7 @@ export const VolunteerProjectDetailScreen = ({
 
   const sendEmail = () => {
     if (!project?.contact_email) {
-      Alert.alert(t('projectdetail.s_21'), t('projectdetail.s_22'));
+      toast.info(t('projectdetail.s_22'));
       return;
     }
     Linking.openURL(`mailto:${project.contact_email}`);
@@ -353,7 +394,7 @@ export const VolunteerProjectDetailScreen = ({
 
   const openTelegram = async () => {
     if (!project?.contact_telegram) {
-      Alert.alert(t('projectdetail.s_23'), t('projectdetail.s_24'));
+      toast.info(t('projectdetail.s_24'));
       return;
     }
     
@@ -364,13 +405,13 @@ export const VolunteerProjectDetailScreen = ({
     if (supported) {
       Linking.openURL(url);
     } else {
-      Alert.alert(t('projectdetail.s_25'), t('projectdetail.s_26'));
+      toast.error(t('projectdetail.s_26'));
     }
   };
 
   const openWebsite = async () => {
     if (!project?.info_url) {
-      Alert.alert(t('projectdetail.s_27'), t('projectdetail.s_28'));
+      toast.info(t('projectdetail.s_28'));
       return;
     }
     
@@ -378,13 +419,13 @@ export const VolunteerProjectDetailScreen = ({
     if (supported) {
       Linking.openURL(project.info_url);
     } else {
-      Alert.alert(t('projectdetail.s_29'), t('projectdetail.s_30'));
+      toast.error(t('projectdetail.s_30'));
     }
   };
 
   const openOrganizerProfile = () => {
     if (!project?.organizer_id) {
-      Alert.alert(t('projectdetail.s_31'), t('projectdetail.s_32'));
+      toast.info(t('projectdetail.s_32'));
       return;
     }
     
@@ -419,7 +460,7 @@ export const VolunteerProjectDetailScreen = ({
         console.log(t('projectdetail.s_35'));
       }
     } catch (error: unknown) {
-      Alert.alert(t('projectdetail.s_36'), getAxiosErrorMessage(error, t('projectdetail.s_37')));
+      toast.error(getAxiosErrorMessage(error, t('projectdetail.s_37')));
       console.error('Error sharing project:', error);
     }
   };
@@ -436,20 +477,6 @@ export const VolunteerProjectDetailScreen = ({
         return type.toUpperCase();
     }
   };
-
-  const getVolunteerTypeColor = (type: string): string => {
-    switch (type) {
-      case 'social':
-        return appColors.primary;
-      case 'environmental':
-        return appColors.primary;
-      case 'cultural':
-        return '#8B5CF6';
-      default:
-        return appColors.textMuted;
-    }
-  };
-
   const formatDate = (dateStr: string | null): string => {
     if (!dateStr) return '';
     const date = new Date(dateStr);
@@ -485,8 +512,10 @@ export const VolunteerProjectDetailScreen = ({
   }
 
   const typeLabel = getVolunteerTypeLabel(project.volunteer_type);
-  const typeColor = getVolunteerTypeColor(project.volunteer_type);
-  
+  const typeColor = getProjectTypeVisual(project.volunteer_type).color;
+  const coverUri = normalizeImageUrl(project.cover_image_url);
+  const showCoverImage = !!coverUri && !coverLoadFailed;
+
   const currentTF = trustFactor !== null ? trustFactor : 0;
   const newTF = Math.max(0, currentTF - 5);
 
@@ -499,14 +528,14 @@ export const VolunteerProjectDetailScreen = ({
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            tintColor="#10B981"
+            tintColor={appColors.primary}
             colors={[appColors.primary]}
           />
         }
       >
         {/* Header Image */}
         <View style={styles.imageContainer}>
-          {normalizeImageUrl(project.cover_image_url) ? (
+          {showCoverImage ? (
             <View style={styles.projectImageContainer}>
               {imageLoading && (
                 <View style={[styles.projectImage, styles.imagePlaceholder]}>
@@ -517,14 +546,15 @@ export const VolunteerProjectDetailScreen = ({
                   <ActivityIndicator size="large" color={appColors.primary} />
                 </View>
               )}
-              <Image 
-                source={{ uri: normalizeImageUrl(project.cover_image_url) }} 
+              <Image
+                source={{ uri: coverUri! }}
                 style={[styles.projectImage, imageLoading && styles.imageHidden]}
                 resizeMode="cover"
                 onLoadStart={() => setImageLoading(true)}
                 onLoadEnd={() => setImageLoading(false)}
                 onError={(error) => {
                   console.error('Error loading project image:', error);
+                  setCoverLoadFailed(true);
                   setImageLoading(false);
                 }}
               />
@@ -777,23 +807,33 @@ export const VolunteerProjectDetailScreen = ({
         transparent={true}
         onRequestClose={() => setShowLeaveWarning(false)}
       >
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          style={styles.modalKeyboardView}
+        <View
+          style={[
+            styles.warningModalOverlay,
+            {
+              paddingTop: Math.max(insets.top + 8, 16),
+              paddingBottom: Math.max(insets.bottom + 16, 20),
+              paddingHorizontal: 16,
+            },
+          ]}
         >
-          <View style={styles.warningModalOverlay}>
-            <ScrollView
-              contentContainerStyle={styles.warningModalScrollContent}
-              showsVerticalScrollIndicator={false}
-              keyboardShouldPersistTaps="handled"
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            bounces={false}
+            style={{
+              maxHeight: screenHeight - Math.max(insets.top + insets.bottom, 24) - 48,
+              width: '100%',
+            }}
+            contentContainerStyle={styles.warningModalScrollContent}
+          >
+            <View
+              style={[
+                styles.warningModalContent,
+                isCompactProjectModal && styles.warningModalContentCompact,
+                { width: Math.min(screenWidth - 32, 440), alignSelf: 'center' },
+              ]}
             >
-              <View
-                style={[
-                  styles.warningModalContent,
-                  isCompactProjectModal && styles.warningModalContentCompact,
-                  { maxHeight: screenHeight * (isCompactProjectModal ? 0.88 : 0.82) },
-                ]}
-              >
                 <TouchableOpacity
                   onPress={() => setShowLeaveWarning(false)}
                   style={styles.warningModalCloseButton}
@@ -875,8 +915,7 @@ export const VolunteerProjectDetailScreen = ({
                 </View>
               </View>
             </ScrollView>
-          </View>
-        </KeyboardAvoidingView>
+        </View>
       </Modal>
       
       {/* Join Confirmation Modal */}
@@ -884,7 +923,10 @@ export const VolunteerProjectDetailScreen = ({
         visible={showJoinConfirm}
         animationType="fade"
         transparent={true}
-        onRequestClose={() => setShowJoinConfirm(false)}
+        onRequestClose={() => {
+          hapticLight();
+          setShowJoinConfirm(false);
+        }}
       >
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -929,7 +971,10 @@ export const VolunteerProjectDetailScreen = ({
                 <View style={styles.confirmButtons}>
                   <TouchableOpacity
                     style={[styles.confirmButton, styles.confirmButtonCancel]}
-                    onPress={() => setShowJoinConfirm(false)}
+                    onPress={() => {
+                      hapticLight();
+                      setShowJoinConfirm(false);
+                    }}
                   >
                     <Text 
                       style={styles.confirmButtonCancelText}
@@ -991,7 +1036,14 @@ export const VolunteerProjectDetailScreen = ({
             <TouchableOpacity
               activeOpacity={1}
               onPress={(e) => e.stopPropagation()}
-              style={styles.leaveReasonModalContent}
+              style={[
+                styles.leaveReasonModalContent,
+                {
+                  width: screenWidth,
+                  maxHeight: Math.min(screenHeight * 0.92, screenHeight - insets.top - 24),
+                  paddingBottom: Math.max(insets.bottom, 12),
+                },
+              ]}
             >
               <View style={styles.modalHandle} />
               
@@ -1721,32 +1773,31 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.6)',
     justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
   },
   warningModalScrollContent: {
     flexGrow: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: 20,
+    paddingVertical: 4,
+    paddingHorizontal: 0,
   },
   warningModalContent: {
     backgroundColor: appColors.surface,
     borderRadius: 24,
     padding: 20,
-    width: '94%',
-    maxWidth: '94%',
+    width: '100%',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.2,
     shadowRadius: 16,
     elevation: 10,
+    overflow: 'visible',
+    paddingBottom: 22,
   },
   warningModalContentCompact: {
-    width: '100%',
-    maxWidth: 380,
     padding: 16,
     borderRadius: 22,
+    paddingBottom: 20,
   },
   warningModalCloseButton: {
     position: 'absolute',
@@ -2025,7 +2076,7 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     width: '100%',
-    maxWidth: '100%',
+    alignSelf: 'stretch',
   },
   modalHandle: {
     width: 40,
@@ -2067,7 +2118,9 @@ const styles = StyleSheet.create({
   leaveModalButtons: {
     flexDirection: 'row',
     gap: 12,
-    paddingBottom: 20,
+    paddingTop: 4,
+    paddingBottom: 8,
+    marginBottom: 4,
   },
   leaveModalButton: {
     flex: 1,

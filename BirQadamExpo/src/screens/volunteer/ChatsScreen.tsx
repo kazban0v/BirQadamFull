@@ -24,6 +24,7 @@ import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { MainStackParamList, VolunteerTabsParamList } from '../../navigation/AppNavigator';
 import { appColors } from '../../theme';
+import { EmptyState } from '../../components/EmptyState';
 import { volunteerAPI } from '../../services/api';
 import { useTranslation } from "../../locales/i18n";
 
@@ -321,6 +322,7 @@ export const ChatsScreen = () => {
   const menuAnim = useRef(new Animated.Value(0)).current;
   const searchFocusAnim = useRef(new Animated.Value(0)).current;
   const headerAnim = useRef(new Animated.Value(0)).current;
+  const flatListRef = useRef<FlatList>(null);
 
   useEffect(() => {
     Animated.timing(headerAnim, {
@@ -368,6 +370,7 @@ export const ChatsScreen = () => {
 
   useFocusEffect(
     useCallback(() => {
+      flatListRef.current?.scrollToOffset({ offset: 0, animated: false });
       let isActive = true;
       const loadData = () => {
         if (isActive) fetchChats();
@@ -405,26 +408,18 @@ export const ChatsScreen = () => {
   const renderEmptyState = () => {
     const isFiltered = Boolean(normalizedQuery) || showUnreadOnly || activeFilter !== 'all';
     return (
-      <View style={styles.emptyContainer}>
-        <View style={styles.emptyIconContainer}>
-          <Ionicons name={isFiltered ? 'search' : 'chatbubbles'} size={64} color={appColors.primary} />
-        </View>
-        <Text style={styles.emptyTitle}>{isFiltered ? t('chats.s_3') : t('chats.s_4')}</Text>
-        <Text style={styles.emptySubtitle}>
-          {isFiltered
-            ? t('chats.s_5')
-            : t('chats.s_6')}
-        </Text>
-        <TouchableOpacity
-          style={styles.exploreButton}
-          onPress={() => {
+      <EmptyState
+        icon={isFiltered ? 'search' : 'chatbubbles-outline'}
+        title={isFiltered ? t('chats.s_3') : t('chats.s_4')}
+        description={isFiltered ? t('chats.s_5') : t('chats.s_6')}
+        action={{
+          label: isFiltered ? t('chats.s_7') : t('chats.s_8'),
+          onPress: () => {
             if (isFiltered) { setSearchQuery(''); setShowUnreadOnly(false); setActiveFilter('all'); return; }
             navigation.navigate('HomeTab');
-          }}
-        >
-          <Text style={styles.exploreButtonText}>{isFiltered ? t('chats.s_7') : t('chats.s_8')}</Text>
-        </TouchableOpacity>
-      </View>
+          },
+        }}
+      />
     );
   };
 
@@ -504,6 +499,7 @@ export const ChatsScreen = () => {
         </View>
       ) : (
         <FlatList
+          ref={flatListRef}
           data={filteredChats}
           keyExtractor={(item) => item.id.toString()}
           renderItem={({ item, index }) => (
@@ -577,7 +573,7 @@ export const ChatsScreen = () => {
 
 // ─── Styles ──────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: appColors.background },
+  container: { flex: 1, backgroundColor: appColors.surface },
 
   // Header
   header: {
@@ -675,7 +671,7 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: appColors.borderSoft,
-    backgroundColor: appColors.background,
+    backgroundColor: appColors.surface,
   },
   avatarContainer: { position: 'relative', marginRight: 14 },
   avatar: { width: 54, height: 54, borderRadius: 27 },
@@ -693,7 +689,7 @@ const styles = StyleSheet.create({
     borderRadius: 7,
     backgroundColor: appColors.primary,
     borderWidth: 2,
-    borderColor: appColors.background,
+    borderColor: appColors.surface,
   },
   chatInfo: { flex: 1 },
   chatHeader: {
@@ -731,38 +727,6 @@ const styles = StyleSheet.create({
   skeletonTimestamp: { height: 12, width: 38, borderRadius: 6, backgroundColor: appColors.borderSoft },
   skeletonMessage: { height: 13, width: '80%', borderRadius: 6, backgroundColor: appColors.borderSoft, marginTop: 8 },
 
-  // Empty
-  emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 40,
-    marginTop: 40,
-  },
-  emptyIconContainer: {
-    width: 110,
-    height: 110,
-    borderRadius: 55,
-    backgroundColor: appColors.primary + '15',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 22,
-  },
-  emptyTitle: { fontSize: 21, fontWeight: '700', color: appColors.text, marginBottom: 10 },
-  emptySubtitle: {
-    fontSize: 14.5,
-    color: appColors.textMuted,
-    textAlign: 'center',
-    lineHeight: 22,
-    marginBottom: 28,
-  },
-  exploreButton: {
-    backgroundColor: appColors.primary,
-    paddingHorizontal: 28,
-    paddingVertical: 13,
-    borderRadius: 12,
-  },
-  exploreButtonText: { color: '#fff', fontSize: 15, fontWeight: '600' },
 
   // Menu
   menuOverlay: {

@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  Alert,
   Modal,
   RefreshControl,
   ScrollView,
@@ -11,12 +10,16 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { useToast } from '../../components/Toast';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { volunteerAPI } from '../../services/api';
 import { getAxiosErrorMessage, getAxiosErrorResponse } from '../../utils/apiErrorMessage';
 import { appColors } from '../../theme';
+import { useThemeStore } from '../../store/themeStore';
+import { hapticLight } from '../../utils/haptics';
+import { EmptyState } from '../../components/EmptyState';
 import type { Notification, Project, Task } from '../../types';
 import {
   DEFAULT_NOTIFICATION_PREFERENCES,
@@ -157,6 +160,8 @@ export const VolunteerNotificationsScreen: React.FC<VolunteerNotificationsScreen
   navigation,
 }) => {
   const { t } = useTranslation();
+  const toast = useToast();
+  const isDarkTheme = useThemeStore((state) => state.isDarkTheme);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const [filter, setFilter] = useState<'all' | 'unread'>('all');
@@ -236,14 +241,11 @@ export const VolunteerNotificationsScreen: React.FC<VolunteerNotificationsScreen
             normalizeProjectsPayload(projectsResponse.data)
           );
         } else {
-          Alert.alert(
-            t('notifications.s_12'),
-            t('notifications.s_13')
-          );
+          toast.warning(t('notifications.s_13'));
         }
       } catch (error: unknown) {
         setPreferences(preferences);
-        Alert.alert(t('notifications.s_14'), getAxiosErrorMessage(error, t('notifications.s_15')));
+        toast.error(getAxiosErrorMessage(error, t('notifications.s_15')));
       } finally {
         setIsSavingPreferences(false);
       }
@@ -283,9 +285,9 @@ export const VolunteerNotificationsScreen: React.FC<VolunteerNotificationsScreen
   const getStatusColor = (notification: Notification) => {
     const type = notification.notification_type || '';
     if (type === 'task_assigned') return appColors.primary;
-    if (type === 'project_update') return '#558b2f';
+    if (type === 'project_update') return appColors.primary;
     if (type === 'joined_project') return appColors.primary;
-    if (isUnread(notification)) return '#558b2f';
+    if (isUnread(notification)) return appColors.primary;
     return appColors.textMuted;
   };
 
@@ -305,7 +307,7 @@ export const VolunteerNotificationsScreen: React.FC<VolunteerNotificationsScreen
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
-      <StatusBar barStyle="dark-content" backgroundColor="#f4f7f2" />
+      <StatusBar barStyle={isDarkTheme ? 'light-content' : 'dark-content'} backgroundColor={appColors.background} />
 
       <View style={styles.header}>
         <View style={styles.headerLeft}>
@@ -314,7 +316,7 @@ export const VolunteerNotificationsScreen: React.FC<VolunteerNotificationsScreen
             style={styles.backBtn}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
-            <Ionicons name="chevron-back" size={28} color="#1b2a1b" />
+            <Ionicons name="chevron-back" size={28} color={appColors.text} />
           </TouchableOpacity>
           <View>
             <Text style={styles.headerTitle}>{t('notifications.s_24')}</Text>
@@ -324,11 +326,11 @@ export const VolunteerNotificationsScreen: React.FC<VolunteerNotificationsScreen
 
         <View style={styles.headerActions}>
           <TouchableOpacity onPress={() => setIsSettingsVisible(true)} style={styles.headerIconBtn}>
-            <Ionicons name="settings-outline" size={20} color="#558b2f" />
+            <Ionicons name="settings-outline" size={20} color={appColors.primary} />
           </TouchableOpacity>
           {unreadCount > 0 ? (
             <TouchableOpacity onPress={markAllAsRead} style={styles.headerIconBtn}>
-              <Ionicons name="checkmark-done" size={20} color="#558b2f" />
+              <Ionicons name="checkmark-done" size={20} color={appColors.primary} />
             </TouchableOpacity>
           ) : null}
         </View>
@@ -372,22 +374,16 @@ export const VolunteerNotificationsScreen: React.FC<VolunteerNotificationsScreen
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#558b2f" colors={['#558b2f']} />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={appColors.primary} colors={[appColors.primary]} />
         }
         showsVerticalScrollIndicator={false}
       >
         {filteredNotifications.length === 0 ? (
-          <View style={styles.emptyState}>
-            <View style={styles.emptyIconContainer}>
-              <Ionicons name="notifications-off-outline" size={48} color="#558b2f" />
-            </View>
-            <Text style={styles.emptyTitle}>{t('notifications.s_28')}</Text>
-            <Text style={styles.emptyDesc}>
-              {filter === 'unread'
-                ? t('notifications.s_29')
-                : t('notifications.s_30')}
-            </Text>
-          </View>
+          <EmptyState
+            icon="notifications-off-outline"
+            title={t('notifications.s_28')}
+            description={filter === 'unread' ? t('notifications.s_29') : t('notifications.s_30')}
+          />
         ) : (
           filteredNotifications.map((item) => {
             const unread = isUnread(item);
@@ -446,7 +442,13 @@ export const VolunteerNotificationsScreen: React.FC<VolunteerNotificationsScreen
                 </View>
               </View>
 
-              <TouchableOpacity style={styles.modalCloseBtn} onPress={() => setIsSettingsVisible(false)}>
+              <TouchableOpacity
+                style={styles.modalCloseBtn}
+                onPress={() => {
+                  hapticLight();
+                  setIsSettingsVisible(false);
+                }}
+              >
                 <Ionicons name="close" size={22} color={appColors.textMuted} />
               </TouchableOpacity>
             </View>
@@ -485,7 +487,7 @@ export const VolunteerNotificationsScreen: React.FC<VolunteerNotificationsScreen
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#f4f7f2',
+    backgroundColor: appColors.background,
   },
   header: {
     flexDirection: 'row',
@@ -506,12 +508,12 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 24,
     fontWeight: '800',
-    color: '#1b2a1b',
+    color: appColors.text,
     letterSpacing: -0.5,
   },
   headerSub: {
     fontSize: 12,
-    color: '#558b2f',
+    color: appColors.primary,
     fontWeight: '600',
     marginTop: -2,
   },
@@ -546,18 +548,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 100,
-    backgroundColor: '#e8f0e3',
+    backgroundColor: appColors.primarySurface,
   },
   filterBtnActive: {
-    backgroundColor: '#558b2f',
+    backgroundColor: appColors.primary,
   },
   filterBtnText: {
     fontSize: 14,
-    color: '#558b2f',
+    color: appColors.primary,
     fontWeight: '600',
   },
   filterBtnTextActive: {
-    color: '#fff',
+    color: appColors.white,
   },
   filterBadge: {
     borderRadius: 10,
@@ -572,17 +574,17 @@ const styles = StyleSheet.create({
     backgroundColor: appColors.surface,
   },
   filterBadgeInactive: {
-    backgroundColor: '#558b2f',
+    backgroundColor: appColors.primary,
   },
   filterBadgeText: {
     fontSize: 11,
     fontWeight: '900',
   },
   filterBadgeTextActive: {
-    color: '#558b2f',
+    color: appColors.primary,
   },
   filterBadgeTextInactive: {
-    color: '#fff',
+    color: appColors.white,
   },
   scroll: {
     flex: 1,
@@ -607,9 +609,9 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   cardUnread: {
-    backgroundColor: '#fafff7',
+    backgroundColor: appColors.primarySurface,
     borderWidth: 1,
-    borderColor: 'rgba(85,139,47,0.1)',
+    borderColor: appColors.border,
   },
   unreadBar: {
     position: 'absolute',
@@ -617,7 +619,7 @@ const styles = StyleSheet.create({
     top: 0,
     bottom: 0,
     width: 4,
-    backgroundColor: '#558b2f',
+    backgroundColor: appColors.primary,
   },
   iconContainer: {
     width: 42,
@@ -633,12 +635,12 @@ const styles = StyleSheet.create({
   cardSubject: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#1b2a1b',
+    color: appColors.text,
     marginBottom: 4,
   },
   cardMessage: {
     fontSize: 13,
-    color: '#4b5563',
+    color: appColors.textSecondary,
     lineHeight: 18,
     marginBottom: 8,
   },
@@ -649,53 +651,26 @@ const styles = StyleSheet.create({
   },
   projectText: {
     fontSize: 11,
-    color: '#558b2f',
+    color: appColors.primary,
     fontWeight: '600',
     flex: 1,
     marginRight: 8,
   },
   cardTime: {
     fontSize: 11,
-    color: '#9ba3af',
+    color: appColors.textMuted,
   },
   unreadDot: {
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: '#558b2f',
+    backgroundColor: appColors.primary,
     marginLeft: 6,
     marginTop: 4,
   },
-  emptyState: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 100,
-    paddingHorizontal: 40,
-  },
-  emptyIconContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: '#e8f0e3',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 20,
-  },
-  emptyTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#1b2a1b',
-    marginBottom: 8,
-  },
-  emptyDesc: {
-    fontSize: 14,
-    color: '#6b7280',
-    textAlign: 'center',
-    lineHeight: 20,
-  },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(15, 23, 42, 0.38)',
+    backgroundColor: appColors.overlay,
     justifyContent: 'flex-start',
     paddingTop: 90,
     paddingHorizontal: 16,
@@ -739,13 +714,13 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 17,
     fontWeight: '800',
-    color: '#1b2a1b',
+    color: appColors.text,
     marginBottom: 3,
   },
   modalSubtitle: {
     fontSize: 13,
     lineHeight: 18,
-    color: '#6b7280',
+    color: appColors.textMuted,
   },
   modalCloseBtn: {
     width: 36,
@@ -787,12 +762,12 @@ const styles = StyleSheet.create({
   settingsRowTitle: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#1b2a1b',
+    color: appColors.text,
     marginBottom: 2,
   },
   settingsRowDescription: {
     fontSize: 12,
     lineHeight: 17,
-    color: '#6b7280',
+    color: appColors.textMuted,
   },
 });

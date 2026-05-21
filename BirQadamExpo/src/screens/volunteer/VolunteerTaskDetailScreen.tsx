@@ -5,7 +5,6 @@ import {
   StyleSheet,
   ScrollView,
   ActivityIndicator,
-  Alert,
   Image,
   TouchableOpacity,
   StatusBar,
@@ -17,6 +16,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { appColors } from '../../theme';
+import { useToast } from '../../components/Toast';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -29,6 +29,7 @@ import type { Task } from '../../types';
 import { normalizeImageUrl, VOLUNTEER_FALLBACK_IMAGE_URL } from '../../utils/network';
 import { getAxiosErrorMessage } from '../../utils/apiErrorMessage';
 import { useTranslation } from "../../locales/i18n";
+import { SkeletonTaskDetail } from '../../components/skeleton/screens/SkeletonTaskDetail';
 
 type RootStackParamList = {
   VolunteerTaskDetail: { taskId: number };
@@ -253,6 +254,7 @@ export const VolunteerTaskDetailScreen: React.FC = () => {
   const route = useRoute<RouteProps>();
   const navigation = useNavigation<any>();
   const { t, language } = useTranslation();
+  const toast = useToast();
   const localeTag = language === 'en' ? 'en-US' : language === 'kk' ? 'kk-KZ' : 'ru-RU';
   const { taskId } = route.params;
   const lastTaskMutation = useTaskSyncStore((state) => state.lastMutation);
@@ -337,7 +339,7 @@ export const VolunteerTaskDetailScreen: React.FC = () => {
       LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
       setTask(response.data);
     } catch (error: unknown) {
-      Alert.alert(t('volunteertaskdetail.s_0'), getAxiosErrorMessage(error, t('volunteertaskdetail.s_1')));
+      toast.error(getAxiosErrorMessage(error, t('volunteertaskdetail.s_1')));
       console.error('Error fetching task detail:', error);
     } finally {
       setLoading(false);
@@ -389,11 +391,11 @@ export const VolunteerTaskDetailScreen: React.FC = () => {
         reason: 'accepted',
         changes: acceptedChanges,
       });
-      Alert.alert(t('volunteertaskdetail.s_2'), t('volunteertaskdetail.s_3'));
+      toast.success(t('volunteertaskdetail.s_3'));
       fetchTaskDetail();
     } catch (error: unknown) {
       const errorMsg = getAxiosErrorMessage(error, t('volunteertaskdetail.s_4'));
-      Alert.alert(t('volunteertaskdetail.s_5'), errorMsg);
+      toast.error(errorMsg);
     }
   };
 
@@ -409,11 +411,11 @@ export const VolunteerTaskDetailScreen: React.FC = () => {
           can_upload_photo: false,
         },
       });
-      Alert.alert(t('volunteertaskdetail.s_6'), t('volunteertaskdetail.s_7'));
+      toast.success(t('volunteertaskdetail.s_7'));
       navigation.goBack();
     } catch (error: unknown) {
       const errorMsg = getAxiosErrorMessage(error, t('volunteertaskdetail.s_8'));
-      Alert.alert(t('volunteertaskdetail.s_9'), errorMsg);
+      toast.error(errorMsg);
     }
   };
 
@@ -435,7 +437,7 @@ export const VolunteerTaskDetailScreen: React.FC = () => {
       );
 
       if (!projectChat) {
-        Alert.alert(t('volunteertaskdetail.s_10'), t('volunteertaskdetail.s_11'));
+        toast.info(t('volunteertaskdetail.s_11'));
         return;
       }
 
@@ -446,16 +448,12 @@ export const VolunteerTaskDetailScreen: React.FC = () => {
       });
     } catch (error) {
       console.error('Error opening task chat:', error);
-      Alert.alert(t('volunteertaskdetail.s_13'), t('volunteertaskdetail.s_14'));
+      toast.error(t('volunteertaskdetail.s_14'));
     }
   };
 
   if (loading) {
-    return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" color={appColors.primary} />
-      </View>
-    );
+    return <SkeletonTaskDetail />;
   }
 
   if (!task) {
@@ -528,6 +526,14 @@ export const VolunteerTaskDetailScreen: React.FC = () => {
     !isExpired;
   const uploadButtonText = isRevisionTask ? t('volunteertaskdetail.s_17') : t('volunteertaskdetail.s_18');
   const organizerAvatar = normalizeImageUrl(task.creator_avatar);
+  /** Оценка организатора по фотоотчёту (приходит с API); без «fallback 5». */
+  const organizerPhotoRating =
+    typeof task.rating === 'number' &&
+    Number.isFinite(task.rating) &&
+    task.rating >= 1 &&
+    task.rating <= 5
+      ? Math.round(task.rating)
+      : null;
 
   // Formatting dates and times
   const formatDate = (dateString?: string) => {
@@ -932,7 +938,9 @@ export const VolunteerTaskDetailScreen: React.FC = () => {
                   ]}
                 >
                   {isCompletedTask
-                    ? t('volunteertaskdetail.s_68', { rating: task.rating || 5 })
+                    ? organizerPhotoRating !== null
+                      ? t('volunteertaskdetail.s_68', { rating: String(organizerPhotoRating) })
+                      : t('volunteertaskdetail.s_72')
                     : isRevisionTask ? t('volunteertaskdetail.s_49')
                     : t('volunteertaskdetail.s_50')}
                 </Text>
@@ -940,8 +948,8 @@ export const VolunteerTaskDetailScreen: React.FC = () => {
                   <Text style={[styles.timelineSubtitle, { color: '#D97706', marginTop: 2 }]} numberOfLines={2}>
                     {t('volunteertaskdetail.s_51')}{task.rejection_reason || t('volunteertaskdetail.s_52')}
                   </Text>
-                ) : isCompletedTask ? (
-                  renderStars(task.rating || 5)
+                ) : isCompletedTask && organizerPhotoRating !== null ? (
+                  renderStars(organizerPhotoRating)
                 ) : null}
               </View>
             </Animated.View>

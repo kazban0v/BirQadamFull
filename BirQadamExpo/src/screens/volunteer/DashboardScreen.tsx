@@ -15,7 +15,7 @@ import {
   Animated,
   LayoutRectangle,
   FlatList,
-  Alert,
+
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
@@ -34,14 +34,27 @@ import { ProjectCoverPlaceholder } from '../../components/dashboard/ProjectCover
 import { TutorialOverlay, type TutorialStep } from '../../components/dashboard/TutorialOverlay';
 import { SkeletonHeader } from '../../components/dashboard/Skeleton/SkeletonHeader';
 import { SkeletonProjectCard } from '../../components/dashboard/Skeleton/SkeletonProjectCard';
+import { SkeletonBox } from '../../components/skeleton/SkeletonBox';
 import { LeaveProjectReasonModal } from '../../components/projects/LeaveProjectReasonModal';
 import { useTutorial } from '../../hooks/useTutorial';
 import { getVolunteerTypeLabel, getVolunteerTypeColor, normalizeImageUrl, getSortLabel } from '../../utils/projectUtils';
 import { formatFilteredProjectsCount } from '../../utils/formatFilteredProjectsCount';
 import { getAxiosErrorMessage, getAxiosErrorResponse } from '../../utils/apiErrorMessage';
+import { computeRecommendedProjectsForYou } from '../../utils/recommendedProjectsForYou';
+import {
+  loadVolunteerInterests,
+  saveVolunteerInterests,
+  type VolunteerInterestTunePayload,
+  type VolunteerInterestsState,
+  defaultVolunteerInterestsState,
+  hasForYouTuneActive,
+} from '../../utils/volunteerInterestsStorage';
 import { useAuthStore } from '../../store/authStore';
 import { appColors } from '../../theme';
+import { EmptyState } from '../../components/EmptyState';
 import { useTranslation } from "../../locales/i18n";
+import { useToast } from '../../components/Toast';
+import { VolunteerInterestsSheet } from '../../components/dashboard/VolunteerInterestsSheet';
 
 interface VolunteerDashboardScreenProps {
   navigation: any;
@@ -51,7 +64,12 @@ export const VolunteerDashboardScreen: React.FC<VolunteerDashboardScreenProps> =
   navigation,
 }) => {
   const { t, language } = useTranslation();
+  const toast = useToast();
   const { width: screenWidth, height: screenHeight } = useWindowDimensions();
+  const recommendedCardWidth = useMemo(
+    () => Math.min(272, Math.max(212, Math.round(screenWidth * 0.58))),
+    [screenWidth],
+  );
   const isCompactTrustFactorModal = screenWidth <= 400;
   const isNarrowTrustFactorModal = screenWidth <= 390;
   const hasLoadedDashboardRef = useRef(false);
@@ -60,6 +78,24 @@ export const VolunteerDashboardScreen: React.FC<VolunteerDashboardScreenProps> =
   // Используем hooks для данных
   const { loading, refreshing, data, loadDashboard } = useDashboard();
   const { favoriteProjects, toggleFavorite } = useFavorites();
+
+  const [interestState, setInterestState] = useState<VolunteerInterestsState>(() => defaultVolunteerInterestsState());
+  const [interestsHydrated, setInterestsHydrated] = useState(false);
+  const [showInterestSheet, setShowInterestSheet] = useState(false);
+
+  useFocusEffect(
+    useCallback(() => {
+      let active = true;
+      void loadVolunteerInterests().then((stored) => {
+        if (!active) return;
+        setInterestState(stored);
+        setInterestsHydrated(true);
+      });
+      return () => {
+        active = false;
+      };
+    }, []),
+  );
 
   // Объединяем profile данные
   const profile = useMemo(() => ({
@@ -122,34 +158,35 @@ export const VolunteerDashboardScreen: React.FC<VolunteerDashboardScreenProps> =
   const trustFactorRef = useRef<View>(null);
   const statsRef = useRef<View>(null);
   const searchRef = useRef<View>(null);
+  const scrollRef = useRef<ScrollView>(null);
 
   // Шаги туториала
   const tutorialSteps: TutorialStep[] = useMemo(() => [
     {
       id: 'header',
       title: t('dashboard.s_1'),
-      description: t('dashboard.s_2'),
+      description: 'Здесь отображается ваш профиль и уведомления.',
       ref: headerRef,
       position: 'bottom' as const,
     },
     {
       id: 'trustFactor',
       title: 'Trust Factor',
-      description: t('dashboard.s_3'),
+      description: 'Показывает вашу надёжность. Выполняйте задачи и получайте баллы.',
       ref: trustFactorRef,
       position: 'bottom' as const,
     },
     {
       id: 'stats',
       title: t('dashboard.s_4'),
-      description: t('dashboard.s_5'),
+      description: 'Отслеживайте свой прогресс, достижения и проекты.',
       ref: statsRef,
       position: 'bottom' as const,
     },
     {
       id: 'search',
       title: t('dashboard.s_6'),
-      description: t('dashboard.s_7'),
+      description: 'Используйте поиск и фильтры, чтобы найти подходящие активности.',
       ref: searchRef,
       position: 'bottom' as const,
     },
@@ -172,6 +209,65 @@ export const VolunteerDashboardScreen: React.FC<VolunteerDashboardScreenProps> =
     autoStart: true,
     startDelay: 1500,
   });
+
+  // Прокрутка только при переходе на шаги которые находятся ниже
+  const prevTutorialStepRef = useRef(-1);
+  useEffect(() => {
+    if (!showTutorial) return;
+    // Не скролим при первом открытии и для верхних шагов
+    if (prevTutorialStepRef.current !== tutorialStep && tutorialStep >= 2) {
+      const scrollOffsets = [0, 0, 80, 300];
+      const offset = scrollOffsets[tutorialStep] || 0;
+      scrollRef.current?.scrollTo({ y: offset, animated: true });
+    }
+    prevTutorialStepRef.current = tutorialStep;
+  }, [tutorialStep, showTutorial]);
+
+  const interestPromptBootstrapRef = useRef(false);
+
+  useEffect(() => {
+    if (
+      interestPromptBootstrapRef.current ||
+      !interestsHydrated ||
+      loading ||
+      !data ||
+      showTutorial ||
+      interestState.promptCompleted
+    ) {
+      return undefined;
+    }
+    const tid = setTimeout(() => {
+      if (interestPromptBootstrapRef.current) return;
+      interestPromptBootstrapRef.current = true;
+      setShowInterestSheet(true);
+    }, 2800);
+    return () => clearTimeout(tid);
+  }, [interestsHydrated, loading, data, showTutorial, interestState.promptCompleted]);
+
+  const handleInterestLater = useCallback(() => {
+    setInterestState((prev) => {
+      const next: VolunteerInterestsState = { ...prev, promptCompleted: true };
+      void saveVolunteerInterests(next);
+      return next;
+    });
+    setShowInterestSheet(false);
+  }, []);
+
+  const handleInterestSave = useCallback((payload: VolunteerInterestTunePayload) => {
+    const next: VolunteerInterestsState = {
+      selectedIds: payload.selectedIds,
+      projectTimingPreference: payload.projectTimingPreference,
+      teamSizePreference: payload.teamSizePreference,
+      promptCompleted: true,
+    };
+    setInterestState(next);
+    void saveVolunteerInterests(next);
+    setShowInterestSheet(false);
+  }, []);
+
+  const handleOpenInterestTune = useCallback(() => {
+    setShowInterestSheet(true);
+  }, []);
 
   // Infinite scroll состояние
   const [displayedProjectsCount, setDisplayedProjectsCount] = useState<number>(10); // Начальное количество
@@ -211,27 +307,14 @@ export const VolunteerDashboardScreen: React.FC<VolunteerDashboardScreenProps> =
   }).current;
 
   // Shimmer анимация для скелетона
-  const skeletonAnim = useRef(new Animated.Value(0)).current;
-  useEffect(() => {
-    const loop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(skeletonAnim, { toValue: 1, duration: 850, useNativeDriver: true }),
-        Animated.timing(skeletonAnim, { toValue: 0, duration: 850, useNativeDriver: true }),
-      ])
-    );
-    loop.start();
-    return () => loop.stop();
-  }, [skeletonAnim]);
+
 
   // функции для запуска анимации обновление данных в приложение "Главная страница"
 
   // Открытие модального окна присоединения
   const handleJoinPress = useCallback((project: Project) => {
     if (profile.trustFactor <= 0) {
-      Alert.alert(
-        t('dashboard.s_8'),
-        t('dashboard.s_9')
-      );
+      toast.warning(t('dashboard.s_9'));
       return;
     }
 
@@ -262,12 +345,9 @@ export const VolunteerDashboardScreen: React.FC<VolunteerDashboardScreenProps> =
       const tf = res?.data?.trust_factor;
 
       if (tf !== undefined) {
-        Alert.alert(
-          t('dashboard.s_11'),
-          t('dashboard.s_89', { tf: String(tf), message: errorMessage })
-        );
+        toast.error(t('dashboard.s_89', { tf: String(tf), message: errorMessage }));
       } else {
-        Alert.alert(t('dashboard.s_12'), errorMessage);
+        toast.error(errorMessage);
       }
 
       if (__DEV__) {
@@ -284,7 +364,7 @@ export const VolunteerDashboardScreen: React.FC<VolunteerDashboardScreenProps> =
     const trimmedReason = leaveReason.trim();
 
     if (!trimmedReason) {
-      Alert.alert(t('dashboard.s_13'), t('dashboard.s_14'));
+      toast.warning(t('dashboard.s_14'));
       return;
     }
 
@@ -298,7 +378,7 @@ export const VolunteerDashboardScreen: React.FC<VolunteerDashboardScreenProps> =
     } catch (error: unknown) {
       const errorMessage = getAxiosErrorMessage(error, t('dashboard.s_15'));
 
-      Alert.alert(t('dashboard.s_16'), errorMessage);
+      toast.error(errorMessage);
 
       if (__DEV__) {
         console.error('Error leaving project:', error);
@@ -375,6 +455,8 @@ export const VolunteerDashboardScreen: React.FC<VolunteerDashboardScreenProps> =
 
   useFocusEffect(
     useCallback(() => {
+      // Сбрасываем позицию скролла при возврате на экран
+      scrollRef.current?.scrollTo({ y: 0, animated: false });
       void loadDashboard(hasLoadedDashboardRef.current).catch(() => undefined);
       hasLoadedDashboardRef.current = true;
     }, [loadDashboard])
@@ -525,106 +607,28 @@ export const VolunteerDashboardScreen: React.FC<VolunteerDashboardScreenProps> =
     return filteredProjects.filter(p => favoriteProjects.includes(p.id));
   }, [filteredProjects, favoriteProjects]);
 
-  // Получение рекомендаций на основе истории пользователя
-  const recommendedProjects = useMemo(() => {
-    // Проекты, в которых пользователь участвовал
-    const joinedProjects = projects.filter(p => p.joined);
+  // Получение рекомендаций (локальные интересы + история / популярное)
+  const recommendedProjects = useMemo(
+    () =>
+      computeRecommendedProjectsForYou({
+        projects,
+        filteredProjects,
+        favoriteProjectIds: favoriteProjects,
+        localInterests: interestState.selectedIds,
+        projectTimingPreference: interestState.projectTimingPreference,
+        teamSizePreference: interestState.teamSizePreference,
+      }),
+    [
+      projects,
+      filteredProjects,
+      favoriteProjects,
+      interestState.selectedIds,
+      interestState.projectTimingPreference,
+      interestState.teamSizePreference,
+    ],
+  );
 
-    // Если нет истории участия, возвращаем популярные проекты
-    if (joinedProjects.length === 0) {
-      return filteredProjects
-        .filter(p => !p.joined)
-        .sort((a, b) => (b.active_members || 0) - (a.active_members || 0))
-        .slice(0, 6);
-    }
-
-    // Собираем предпочтения пользователя
-    const preferredTypes: string[] = [];
-    const preferredTags: string[] = [];
-    const preferredCities: string[] = [];
-
-    joinedProjects.forEach(project => {
-      // Типы проектов
-      if (project.volunteer_type && !preferredTypes.includes(project.volunteer_type)) {
-        preferredTypes.push(project.volunteer_type);
-      }
-
-      // Теги
-      if (project.tags && Array.isArray(project.tags)) {
-        project.tags.forEach(tag => {
-          if (!preferredTags.includes(tag)) {
-            preferredTags.push(tag);
-          }
-        });
-      }
-
-      // Города
-      if (project.city && !preferredCities.includes(project.city)) {
-        preferredCities.push(project.city);
-      }
-    });
-
-    // Также учитываем избранные проекты
-    const favoriteProjectsData = projects.filter(p => favoriteProjects.includes(p.id));
-    favoriteProjectsData.forEach(project => {
-      if (project.volunteer_type && !preferredTypes.includes(project.volunteer_type)) {
-        preferredTypes.push(project.volunteer_type);
-      }
-      if (project.tags && Array.isArray(project.tags)) {
-        project.tags.forEach(tag => {
-          if (!preferredTags.includes(tag)) {
-            preferredTags.push(tag);
-          }
-        });
-      }
-    });
-
-    // Ранжируем проекты по релевантности
-    const scoredProjects = projects
-      .filter(p => !p.joined) // Только проекты, в которых не участвуем
-      .map(project => {
-        let score = 0;
-
-        // Совпадение типа проекта (+3 балла)
-        if (project.volunteer_type && preferredTypes.includes(project.volunteer_type)) {
-          score += 3;
-        }
-
-        // Совпадение тегов (+2 балла за каждый тег)
-        if (project.tags && Array.isArray(project.tags)) {
-          project.tags.forEach(tag => {
-            if (preferredTags.includes(tag)) {
-              score += 2;
-            }
-          });
-        }
-
-        // Совпадение города (+1 балл)
-        if (project.city && preferredCities.includes(project.city)) {
-          score += 1;
-        }
-
-        // Популярность (+0.5 балла за каждые 10 участников)
-        score += (project.active_members || 0) / 20;
-
-        return { project, score };
-      })
-      .filter(item => item.score > 0) // Только проекты с положительным score
-      .sort((a, b) => b.score - a.score)
-      .map(item => item.project)
-      .slice(0, 6); // Максимум 6 рекомендаций
-
-    // Если рекомендаций мало, добавляем популярные проекты
-    if (scoredProjects.length < 6) {
-      const popular = projects
-        .filter(p => !p.joined && !scoredProjects.find(sp => sp.id === p.id))
-        .sort((a, b) => (b.active_members || 0) - (a.active_members || 0))
-        .slice(0, 6 - scoredProjects.length);
-      return [...scoredProjects, ...popular];
-    }
-
-    return scoredProjects;
-  }, [projects, favoriteProjects, filteredProjects]);
+  const forYouSubtitle = hasForYouTuneActive(interestState) ? t('dashboard.s_97') : t('dashboard.s_36');
 
   // Количество проектов, в которых участвует пользователь
   const joinedProjectsCount = useMemo(() => {
@@ -664,7 +668,6 @@ export const VolunteerDashboardScreen: React.FC<VolunteerDashboardScreenProps> =
   );
 
   // Skeleton компоненты теперь в отдельных файлах
-  const skeletonOpacity = skeletonAnim.interpolate({ inputRange: [0, 1], outputRange: [0.45, 1] });
   const SkeletonScreen = () => (
     <View style={styles.container}>
       <ScrollView
@@ -673,22 +676,40 @@ export const VolunteerDashboardScreen: React.FC<VolunteerDashboardScreenProps> =
         showsVerticalScrollIndicator={false}
         scrollEnabled={false}
       >
-        <Animated.View style={{ opacity: skeletonOpacity }}>
-          <SkeletonHeader />
-          {/* Skeleton Trust Factor placeholder */}
-          <View style={styles.skeletonTrustFactorBlock} />
-          {/* Skeleton Stats Row */}
-          <View style={styles.skeletonStatsRow}>
-            {[1, 2, 3].map((i) => (
-              <View key={i} style={styles.skeletonStatCard} />
+        <SkeletonHeader />
+        {/* Skeleton Trust Factor placeholder */}
+        <SkeletonBox style={styles.skeletonTrustFactorBlock} />
+        {/* Skeleton Stats Row */}
+        <View style={styles.skeletonStatsRow}>
+          {[1, 2, 3].map((i) => (
+            <SkeletonBox key={i} style={styles.skeletonStatCard} />
+          ))}
+        </View>
+        <View style={styles.skeletonForYouWrap}>
+          <SkeletonBox height={14} borderRadius={6} width={160} />
+          <SkeletonBox height={11} borderRadius={4} width={220} style={{ marginTop: 8 }} />
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.skeletonForYouScroll}
+            scrollEnabled={false}
+          >
+            {[1, 2, 3].map((key) => (
+              <SkeletonBox
+                key={key}
+                height={208}
+                borderRadius={16}
+                width={recommendedCardWidth}
+                style={{ marginRight: 12 }}
+              />
             ))}
-          </View>
-          <View style={{ marginHorizontal: 20, marginTop: 24 }}>
-            {[1, 2, 3].map((i) => (
-              <SkeletonProjectCard key={i} />
-            ))}
-          </View>
-        </Animated.View>
+          </ScrollView>
+        </View>
+        <View style={{ marginHorizontal: 20, marginTop: 24 }}>
+          {[1, 2, 3].map((i) => (
+            <SkeletonProjectCard key={i} />
+          ))}
+        </View>
       </ScrollView>
     </View>
   );
@@ -700,6 +721,7 @@ export const VolunteerDashboardScreen: React.FC<VolunteerDashboardScreenProps> =
   return (
     <View style={styles.container}>
       <ScrollView
+        ref={scrollRef}
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         refreshControl={
@@ -979,14 +1001,30 @@ export const VolunteerDashboardScreen: React.FC<VolunteerDashboardScreenProps> =
         {/* Recommended Projects */}
         {recommendedProjects.length > 0 && (
           <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <View style={styles.sectionHeaderLeft}>
-                <Ionicons name="sparkles" size={20} color={appColors.primary} style={{ marginRight: 8 }} />
-                <Text style={styles.sectionTitle}>{t('dashboard.s_35')}</Text>
+            <View style={styles.sectionHeaderRecommended}>
+              <View style={styles.sectionHeaderRecommendedLeft}>
+                <View style={styles.forYouTitleIconWrap}>
+                  <Ionicons name="sparkles" size={17} color={appColors.primary} />
+                </View>
+                <View style={styles.forYouHeadline}>
+                  <Text style={styles.sectionTitle} numberOfLines={1}>{t('dashboard.s_35')}</Text>
+                  <Text style={styles.sectionSubtitleRecommended} numberOfLines={2}>{forYouSubtitle}</Text>
+                </View>
               </View>
+              {interestsHydrated ? (
+                <TouchableOpacity
+                  onPress={handleOpenInterestTune}
+                  hitSlop={{ top: 10, bottom: 10, left: 8, right: 8 }}
+                  style={styles.tuneInterestsBtn}
+                  accessibilityRole="button"
+                  accessibilityLabel={t('dashboard.s_98')}
+                  activeOpacity={0.82}
+                >
+                  <Ionicons name="options-outline" size={17} color={appColors.primary} />
+                  <Text style={styles.tuneInterestsBtnText} numberOfLines={1}>{t('dashboard.s_98')}</Text>
+                </TouchableOpacity>
+              ) : null}
             </View>
-            <Text style={styles.sectionSubtitle}>
-              {t('dashboard.s_36')}</Text>
 
             <ScrollView
               horizontal
@@ -994,7 +1032,10 @@ export const VolunteerDashboardScreen: React.FC<VolunteerDashboardScreenProps> =
               contentContainerStyle={styles.recommendedProjectsScroll}
             >
               {recommendedProjects.map((project) => (
-                <View key={project.id} style={styles.recommendedProjectCard}>
+                <View
+                  key={project.id}
+                  style={[styles.recommendedProjectCard, { width: recommendedCardWidth }]}
+                >
                   <TouchableOpacity
                     style={styles.recommendedProjectCardInner}
                     onPress={() => navigation.navigate('VolunteerProjectDetail', { projectId: project.id })}
@@ -1054,8 +1095,8 @@ export const VolunteerDashboardScreen: React.FC<VolunteerDashboardScreenProps> =
         <View
           style={styles.section}
         >
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>{t('dashboard.s_39')}</Text>
+          <View style={[styles.sectionHeader, { alignItems: 'flex-start' }]}>
+            <Text style={[styles.sectionTitle, { flex: 1, marginRight: 16 }]}>{t('dashboard.s_39')}</Text>
             <View style={styles.sectionHeaderRight}>
               <TouchableOpacity
                 style={styles.viewModeButton}
@@ -1102,13 +1143,12 @@ export const VolunteerDashboardScreen: React.FC<VolunteerDashboardScreenProps> =
           )}
 
           {filteredProjects.length === 0 && (
-            <View style={styles.emptyState}>
-              <View style={styles.emptyStateIconCircle}>
-                <Ionicons name="folder-open-outline" size={36} color={appColors.primary} />
-              </View>
-              <Text style={styles.emptyText}>{t('dashboard.s_44')}</Text>
-              <Text style={styles.emptySubText}>{t('dashboard.s_45')}</Text>
-            </View>
+            <EmptyState
+              icon="folder-open-outline"
+              title={t('dashboard.s_44')}
+              description={t('dashboard.s_45')}
+              size="sm"
+            />
           )}
 
           {/* Индикатор загрузки дополнительных проектов */}
@@ -1616,6 +1656,46 @@ export const VolunteerDashboardScreen: React.FC<VolunteerDashboardScreenProps> =
         </KeyboardAvoidingView>
       </Modal>
 
+      <VolunteerInterestsSheet
+        visible={showInterestSheet}
+        onLater={handleInterestLater}
+        onSave={handleInterestSave}
+        initialTune={{
+          selectedIds: interestState.selectedIds,
+          projectTimingPreference: interestState.projectTimingPreference,
+          teamSizePreference: interestState.teamSizePreference,
+        }}
+        labels={{
+          social: t('dashboard.s_31'),
+          environmental: t('dashboard.s_32'),
+          cultural: t('dashboard.s_33'),
+        }}
+        titleDirections={t('dashboard.s_91')}
+        subtitleDirections={t('dashboard.s_92')}
+        titleTiming={t('dashboard.s_102')}
+        subtitleTiming={t('dashboard.s_103')}
+        labelTimingAny={t('dashboard.s_104')}
+        labelTimingSoon={t('dashboard.s_105')}
+        labelTimingOngoing={t('dashboard.s_106')}
+        titleTeam={t('dashboard.s_107')}
+        subtitleTeam={t('dashboard.s_108')}
+        labelTeamAny={t('dashboard.s_109')}
+        labelTeamSmall={t('dashboard.s_110')}
+        labelTeamLarge={t('dashboard.s_111')}
+        wizardProgressLabel={(stepIdx, totalSteps) =>
+          t('dashboard.s_113', {
+            step: stepIdx + 1,
+            total: totalSteps,
+          })
+        }
+        laterLabel={t('dashboard.s_94')}
+        nextLabel={t('dashboard.s_114')}
+        backLabel={t('dashboard.s_115')}
+        saveLabel={t('dashboard.s_95')}
+        toggleHint={t('dashboard.s_96')}
+        selectOptionHint={t('dashboard.s_116')}
+      />
+
       <LeaveProjectReasonModal
         visible={showLeaveModal}
         projectTitle={selectedProject?.title}
@@ -1756,10 +1836,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   filterScroll: {
-    marginTop: 20,
+    marginTop: 10,
   },
   filterContainer: {
     paddingHorizontal: 20,
+    paddingVertical: 10,
     gap: 8,
   },
   filterPill: {
@@ -1922,32 +2003,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: appColors.textMuted,
     fontWeight: '500',
-  },
-  emptyState: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 56,
-    gap: 8,
-  },
-  emptyStateIconCircle: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    backgroundColor: appColors.primarySurface,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  emptyText: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: appColors.text,
-    marginTop: 4,
-  },
-  emptySubText: {
-    fontSize: 13,
-    color: appColors.textSoft,
-    fontWeight: '400',
   },
   // Modal Styles
   modalKeyboardView: {
@@ -2526,7 +2581,74 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 2,
   },
+  skeletonForYouWrap: {
+    marginHorizontal: 20,
+    marginTop: 8,
+    marginBottom: 4,
+  },
+  skeletonForYouScroll: {
+    paddingVertical: 12,
+    paddingRight: 8,
+    alignItems: 'stretch',
+  },
   // Recommended Projects Styles
+  sectionHeaderRecommended: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: 10,
+    marginBottom: 12,
+    paddingHorizontal: 4,
+  },
+  sectionHeaderRecommendedLeft: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    flex: 1,
+    minWidth: 0,
+  },
+  forYouTitleIconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    backgroundColor: appColors.primarySurface,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 10,
+    marginTop: 2,
+  },
+  forYouHeadline: {
+    flex: 1,
+    minWidth: 0,
+  },
+  sectionSubtitleRecommended: {
+    fontSize: 13,
+    lineHeight: 18,
+    color: appColors.textMuted,
+    fontWeight: '500',
+    marginTop: 4,
+  },
+  tuneInterestsBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    borderRadius: 12,
+    backgroundColor: appColors.primarySurface,
+    borderWidth: 1,
+    borderColor: appColors.primarySurfaceStrong,
+    alignSelf: 'flex-start',
+    flexShrink: 0,
+    maxWidth: 130,
+  },
+  tuneInterestsBtnText: {
+    flexShrink: 1,
+    fontSize: 11,
+    fontWeight: '800',
+    color: appColors.primaryDark,
+    letterSpacing: 0.2,
+  },
+
   sectionHeaderLeft: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -2539,12 +2661,12 @@ const styles = StyleSheet.create({
   },
   recommendedProjectsScroll: {
     paddingRight: 20,
+    paddingBottom: 20,
+    paddingTop: 4,
   },
   recommendedProjectCard: {
-    width: 200,
     backgroundColor: appColors.surface,
     borderRadius: 16,
-    overflow: 'hidden',
     marginRight: 12,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
@@ -2554,6 +2676,8 @@ const styles = StyleSheet.create({
   },
   recommendedProjectCardInner: {
     position: 'relative',
+    borderRadius: 16,
+    overflow: 'hidden',
   },
   recommendedProjectImage: {
     width: '100%',

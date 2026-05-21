@@ -9,8 +9,8 @@ import {
   ActivityIndicator,
   Dimensions,
   Modal,
-  Alert,
   Pressable,
+  Platform,
 } from 'react-native';
 import { Calendar, LocaleConfig } from 'react-native-calendars';
 
@@ -35,9 +35,50 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Header } from '../../components/Header';
 import { volunteerAPI } from '../../services/api';
-import type { VolunteerStats, VolunteerAchievement, VolunteerActivity } from '../../types';
+import type { VolunteerStats, VolunteerAchievement, VolunteerActivity, Task, PhotoReport } from '../../types';
 import { appColors } from '../../theme';
+import { EmptyState } from '../../components/EmptyState';
 import { useTranslation } from "../../locales/i18n";
+
+// ── Activity timeline helpers ──────────────────────────────────────────────
+type ActivityEventType = 'task_completed' | 'photo_approved' | 'photo_rejected' | 'photo_pending';
+interface ActivityEvent {
+  id: string;
+  type: ActivityEventType;
+  date: string;
+  title: string;
+  subtitle?: string;
+  meta?: string;
+  taskId?: number;
+}
+const ACTIVITY_EVENT_CONFIG: Record<ActivityEventType, { icon: keyof typeof Ionicons.glyphMap; color: string; surface: string }> = {
+  task_completed: { icon: 'checkmark-circle', color: appColors.primary, surface: appColors.primarySurface },
+  photo_approved:  { icon: 'camera',          color: appColors.primary, surface: appColors.primarySurface },
+  photo_rejected:  { icon: 'close-circle',    color: appColors.danger,  surface: appColors.dangerSurface  },
+  photo_pending:   { icon: 'time-outline',    color: appColors.warning, surface: appColors.warningSurface },
+};
+const parseActivityDate = (s: string): Date => { const d = new Date(s); return isNaN(d.getTime()) ? new Date(0) : d; };
+const buildActivityEvents = (tasks: Task[], photos: PhotoReport[]): ActivityEvent[] => {
+  const events: ActivityEvent[] = [];
+  for (const task of tasks) {
+    if (task.status === 'completed' || task.status === 'under_review') {
+      const date = task.photo_moderated_at || task.photo_uploaded_at || task.end_date || task.created_at;
+      if (!date) continue;
+      events.push({ id: `task-${task.id}`, type: 'task_completed', date, title: task.title, subtitle: task.project_title, meta: task.reward_points ? `+${task.reward_points} pts` : undefined, taskId: task.id });
+    }
+  }
+  for (const report of photos) {
+    const date = report.moderated_at || report.uploaded_at || report.created_at;
+    if (!date) continue;
+    const type: ActivityEventType = report.status === 'approved' ? 'photo_approved' : report.status === 'rejected' ? 'photo_rejected' : 'photo_pending';
+    events.push({ id: `photo-${report.id}`, type, date, title: report.task_text || `Фотоотчёт #${report.id}`, subtitle: report.project_title, meta: report.rating ? `★ ${report.rating}` : undefined, taskId: report.task_id });
+  }
+  return events.sort((a, b) => parseActivityDate(b.date).getTime() - parseActivityDate(a.date).getTime());
+};
+
+/** Первая порция строк таймлайна; дальше — «Показать ещё». */
+const ACTIVITY_TIMELINE_INITIAL = 8;
+const ACTIVITY_TIMELINE_PAGE = 8;
 
 interface VolunteerAchievementsScreenProps {
   navigation: any;
@@ -161,6 +202,18 @@ export const VolunteerAchievementsScreen: React.FC<VolunteerAchievementsScreenPr
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<FilterType>('all');
+  const [activityEvents, setActivityEvents] = useState<ActivityEvent[]>([]);
+  const [activityVisibleCount, setActivityVisibleCount] = useState(ACTIVITY_TIMELINE_INITIAL);
+
+  useEffect(() => {
+    setActivityVisibleCount(ACTIVITY_TIMELINE_INITIAL);
+  }, [activityEvents]);
+
+  const displayedActivityEvents = useMemo(
+    () => activityEvents.slice(0, activityVisibleCount),
+    [activityEvents, activityVisibleCount],
+  );
+  const hasMoreActivity = activityVisibleCount < activityEvents.length;
 
   useEffect(() => {
     configureAchievementsLocale(t, language);
@@ -177,6 +230,18 @@ export const VolunteerAchievementsScreen: React.FC<VolunteerAchievementsScreenPr
       ]);
       setStats(statsRes.data);
       setActivity(activityRes.data);
+
+      // Загружаем таймлайн с паузой чтобы не бить rate limit
+      await new Promise<void>((resolve) => setTimeout(resolve, 400));
+      const [tasksRes, photosRes] = await Promise.all([
+        volunteerAPI.getTasks(),
+        volunteerAPI.getPhotoReports(),
+      ]);
+      const rawTasks = tasksRes.data;
+      const tasks: Task[] = Array.isArray(rawTasks) ? rawTasks : (rawTasks?.tasks ?? rawTasks?.results ?? []);
+      const rawPhotos = photosRes.data;
+      const photos: PhotoReport[] = Array.isArray(rawPhotos) ? rawPhotos : (rawPhotos?.photo_reports ?? rawPhotos?.photos ?? rawPhotos?.results ?? []);
+      setActivityEvents(buildActivityEvents(tasks, photos));
     } catch (error) {
       console.error('Error loading stats/achievements:', error);
     }
@@ -519,6 +584,141 @@ export const VolunteerAchievementsScreen: React.FC<VolunteerAchievementsScreenPr
           </View>
         )}
 
+        {/* ACTIVITY TIMELINE */}
+        <View style={styles.activitySection}>
+          <View style={styles.activityHeader}>
+            <View style={styles.activityHeaderLeft}>
+              <View style={styles.activityHeaderIcon}>
+                <Ionicons name="pulse" size={20} color={appColors.primaryDark} />
+              </View>
+              <View style={{ flex: 1, flexShrink: 1 }}>
+                <Text style={styles.activitySectionTitle}>{t('activity.s_0')}</Text>
+                {activityEvents.length > 0 ? (
+                  <View style={styles.activityHeaderMeta}>
+                    <View style={styles.activityCountPill}>
+                      <Text style={styles.activityCountPillText}>{activityEvents.length}</Text>
+                    </View>
+                    <Text style={styles.activitySectionSub}>{t('activity.s_1')}</Text>
+                  </View>
+                ) : null}
+              </View>
+            </View>
+          </View>
+
+          {activityEvents.length === 0 ? (
+            <View style={styles.activityEmpty}>
+              <View style={styles.activityEmptyIcon}>
+                <Ionicons name="time-outline" size={28} color={appColors.textMuted} />
+              </View>
+              <Text style={styles.activityEmptyTitle}>{t('activity.s_9')}</Text>
+              <Text style={styles.activityEmptyDesc}>{t('activity.s_10')}</Text>
+            </View>
+          ) : (
+            <>
+              <View style={styles.activityList}>
+                {displayedActivityEvents.map((event, index) => {
+                  const cfg = ACTIVITY_EVENT_CONFIG[event.type];
+                  const isLast = index === displayedActivityEvents.length - 1;
+                  const label =
+                    event.type === 'task_completed'
+                      ? t('activity.s_2')
+                      : event.type === 'photo_approved'
+                        ? t('activity.s_3')
+                        : event.type === 'photo_rejected'
+                          ? t('activity.s_4')
+                          : t('activity.s_5');
+                  const dateStr = parseActivityDate(event.date).toLocaleDateString(dateLocaleTag, {
+                    day: 'numeric',
+                    month: 'short',
+                  });
+                  return (
+                    <View key={event.id} style={styles.activityRow}>
+                      {/* Left: line + dot */}
+                      <View style={styles.activityLeft}>
+                        <View style={[styles.activityDotOuter, { borderColor: cfg.color + '30' }]}>
+                          <View style={[styles.activityDotInner, { backgroundColor: cfg.color }]}>
+                            <Ionicons name={cfg.icon} size={11} color="#fff" />
+                          </View>
+                        </View>
+                        {!isLast && <View style={styles.activityLine} />}
+                      </View>
+
+                      {/* Card */}
+                      <View style={[styles.activityCard, { backgroundColor: cfg.surface }]}>
+                        <View style={styles.activityCardTop}>
+                          <View style={[styles.activityTypePill, { backgroundColor: cfg.color + '18' }]}>
+                            <Ionicons name={cfg.icon} size={11} color={cfg.color} style={{ marginRight: 4 }} />
+                            <Text style={[styles.activityTypePillText, { color: cfg.color }]}>{label}</Text>
+                          </View>
+                          <Text style={styles.activityDateText}>{dateStr}</Text>
+                        </View>
+                        <Text style={styles.activityCardTitle} numberOfLines={2}>
+                          {event.title}
+                        </Text>
+                        {event.subtitle || event.meta ? (
+                          <View style={styles.activityCardBottom}>
+                            {event.subtitle ? (
+                              <View style={styles.activitySubRow}>
+                                <Ionicons name="folder-outline" size={11} color={appColors.textMuted} />
+                                <Text style={styles.activitySubText} numberOfLines={1}>
+                                  {event.subtitle}
+                                </Text>
+                              </View>
+                            ) : null}
+                            {event.meta ? (
+                              <Text style={[styles.activityMetaText, { color: cfg.color }]}>{event.meta}</Text>
+                            ) : null}
+                          </View>
+                        ) : null}
+                      </View>
+                    </View>
+                  );
+                })}
+              </View>
+              {hasMoreActivity ? (
+                <View style={styles.activityShowMoreWrap}>
+                  <LinearGradient
+                    pointerEvents="none"
+                    colors={['rgba(148,163,184,0)', 'rgba(203,213,225,0.35)']}
+                    style={styles.activityShowMoreFadeTop}
+                  />
+                  <TouchableOpacity
+                    activeOpacity={0.9}
+                    onPress={() =>
+                      setActivityVisibleCount((c) => Math.min(c + ACTIVITY_TIMELINE_PAGE, activityEvents.length))
+                    }
+                    style={styles.activityShowMoreTouchable}
+                    accessibilityRole="button"
+                    accessibilityLabel={t('activity.s_11')}
+                  >
+                    <LinearGradient
+                      colors={[appColors.primarySurfaceStrong, appColors.primarySurface]}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                      style={styles.activityShowMoreGradient}
+                    >
+                      <View style={styles.activityShowMoreRow}>
+                        <View style={styles.activityShowMoreIconRing}>
+                          <Ionicons name="chevron-down" size={17} color={appColors.primaryDark} />
+                        </View>
+                        <Text style={styles.activityShowMoreBtnText}>{t('activity.s_11')}</Text>
+                      </View>
+                    </LinearGradient>
+                  </TouchableOpacity>
+                  <View style={styles.activityShowMoreHintPill}>
+                    <Text style={styles.activityShowMoreHint}>
+                      {t('activity.s_12', {
+                        shown: String(displayedActivityEvents.length),
+                        total: String(activityEvents.length),
+                      })}
+                    </Text>
+                  </View>
+                </View>
+              ) : null}
+            </>
+          )}
+        </View>
+
         {/* ACHIEVEMENT FILTERS */}
         <Text style={[styles.chartTitle, { marginHorizontal: 16, marginTop: 24, marginBottom: 12 }]}>{t('achievements.s_79')}</Text>
         <View style={styles.achieveFilterRow}>
@@ -547,10 +747,7 @@ export const VolunteerAchievementsScreen: React.FC<VolunteerAchievementsScreenPr
 
         <View style={{ paddingHorizontal: 16 }}>
           {sortedAchievements.length === 0 ? (
-            <View style={styles.emptyState}>
-              <Ionicons name="trophy-outline" size={64} color={appColors.textSoft} />
-              <Text style={styles.emptyText}>{t('achievements.s_83')}</Text>
-            </View>
+            <EmptyState icon="trophy-outline" title={t('achievements.s_83')} />
           ) : (
             sortedAchievements.map((achievement) => (
               <AchievementCard key={achievement.id} achievement={achievement} />
@@ -1158,17 +1355,6 @@ const styles = StyleSheet.create({
     height: '100%',
     borderRadius: 3,
   },
-  emptyState: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 60,
-  },
-  emptyText: {
-    fontSize: 16,
-    color: appColors.textSoft,
-    fontWeight: '600',
-    marginTop: 16,
-  },
 
   // ── Modal base ──
   modalOverlay: {
@@ -1383,5 +1569,313 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     elevation: 12,
     zIndex: 2,
+  },
+
+  // ── Activity timeline section ──
+  activitySection: {
+    marginHorizontal: 16,
+    backgroundColor: appColors.surface,
+    borderRadius: 24,
+    padding: 22,
+    marginBottom: 14,
+    borderWidth: 1,
+    borderColor: appColors.border,
+    ...(Platform.OS === 'ios'
+      ? {
+          shadowColor: '#0F172A',
+          shadowOffset: { width: 0, height: 6 },
+          shadowOpacity: 0.06,
+          shadowRadius: 16,
+        }
+      : { elevation: 2 }),
+  },
+  activityHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    marginBottom: 18,
+  },
+  activityHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 14,
+    flexShrink: 1,
+  },
+  activityHeaderIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: appColors.primarySurface,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(16, 185, 129, 0.22)',
+    ...(Platform.OS === 'ios'
+      ? {
+          shadowColor: '#10B981',
+          shadowOffset: { width: 0, height: 3 },
+          shadowOpacity: 0.22,
+          shadowRadius: 7,
+        }
+      : { elevation: 3 }),
+  },
+  activitySectionTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: appColors.text,
+    lineHeight: 23,
+    letterSpacing: -0.4,
+  },
+  activityHeaderMeta: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    marginTop: 10,
+  },
+  activityCountPill: {
+    flexShrink: 0,
+    minWidth: 34,
+    height: 30,
+    paddingHorizontal: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 15,
+    backgroundColor: appColors.primarySurfaceStrong,
+    borderWidth: 1,
+    borderColor: 'rgba(16, 185, 129, 0.35)',
+  },
+  activityCountPillText: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: appColors.primaryDark,
+    letterSpacing: -0.4,
+  },
+  activitySectionSub: {
+    flex: 1,
+    flexShrink: 1,
+    fontSize: 12,
+    color: appColors.textMuted,
+    fontWeight: '600',
+    lineHeight: 16,
+  },
+  activityEmpty: {
+    alignItems: 'center',
+    paddingVertical: 32,
+    gap: 10,
+  },
+  activityEmptyIcon: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: appColors.surfaceSoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 4,
+  },
+  activityEmptyTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: appColors.textSecondary,
+  },
+  activityEmptyDesc: {
+    fontSize: 13,
+    color: appColors.textMuted,
+    textAlign: 'center',
+    lineHeight: 18,
+  },
+  activityList: {
+    gap: 0,
+    marginTop: 2,
+  },
+  activityRow: {
+    flexDirection: 'row',
+    marginBottom: 10,
+  },
+  activityLeft: {
+    alignItems: 'center',
+    width: 38,
+    marginRight: 10,
+  },
+  activityDotOuter: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    borderWidth: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: appColors.surface,
+    zIndex: 1,
+    ...(Platform.OS === 'ios'
+      ? {
+          shadowColor: '#64748B',
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.13,
+          shadowRadius: 4,
+        }
+      : { elevation: 1 }),
+  },
+  activityDotInner: {
+    width: 23,
+    height: 23,
+    borderRadius: 11.5,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  activityLine: {
+    flex: 1,
+    width: 3,
+    marginTop: 3,
+    marginBottom: -2,
+    borderRadius: 2,
+    backgroundColor: 'rgba(203, 213, 225, 0.7)',
+  },
+  activityCard: {
+    flex: 1,
+    borderRadius: 18,
+    padding: 14,
+    marginBottom: 0,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: appColors.borderSoft,
+    ...(Platform.OS === 'ios'
+      ? {
+          shadowColor: '#64748B',
+          shadowOffset: { width: 0, height: 5 },
+          shadowOpacity: 0.08,
+          shadowRadius: 12,
+        }
+      : { elevation: 2 }),
+  },
+  activityCardTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+    gap: 8,
+  },
+  activityTypePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 999,
+    flexShrink: 1,
+    maxWidth: '78%',
+  },
+  activityTypePillText: {
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.15,
+    flexShrink: 1,
+  },
+  activityDateText: {
+    fontSize: 11,
+    color: appColors.textMuted,
+    fontWeight: '700',
+    flexShrink: 0,
+    opacity: 0.92,
+  },
+  activityCardTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: appColors.text,
+    lineHeight: 21,
+    marginBottom: 6,
+    letterSpacing: -0.25,
+  },
+  activityCardBottom: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  activitySubRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    flex: 1,
+  },
+  activitySubText: {
+    fontSize: 12,
+    color: appColors.textMuted,
+    flex: 1,
+  },
+  activityMetaText: {
+    fontSize: 12,
+    fontWeight: '700',
+    marginLeft: 8,
+  },
+  activityShowMoreWrap: {
+    marginTop: 10,
+    marginHorizontal: -2,
+    alignItems: 'stretch',
+    gap: 14,
+    paddingBottom: 2,
+  },
+  activityShowMoreFadeTop: {
+    height: 22,
+    width: '100%',
+    opacity: 1,
+    marginBottom: -4,
+    borderRadius: 6,
+    overflow: 'hidden',
+  },
+  activityShowMoreTouchable: {
+    borderRadius: 18,
+    overflow: 'hidden',
+    ...(Platform.OS === 'ios'
+      ? {
+          shadowColor: '#059669',
+          shadowOffset: { width: 0, height: 5 },
+          shadowOpacity: 0.2,
+          shadowRadius: 12,
+        }
+      : { elevation: 3 }),
+  },
+  activityShowMoreGradient: {
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: 'rgba(16, 185, 129, 0.32)',
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+  },
+  activityShowMoreRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+  },
+  activityShowMoreIconRing: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: appColors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(16, 185, 129, 0.4)',
+    opacity: 0.96,
+  },
+  activityShowMoreBtnText: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: appColors.primaryDark,
+    letterSpacing: -0.15,
+  },
+  activityShowMoreHintPill: {
+    alignSelf: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 999,
+    backgroundColor: appColors.surfaceSoft,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: appColors.borderSoft,
+    maxWidth: '100%',
+  },
+  activityShowMoreHint: {
+    fontSize: 12,
+    color: appColors.textMuted,
+    fontWeight: '600',
+    textAlign: 'center',
+    letterSpacing: -0.1,
+    lineHeight: 16,
   },
 });

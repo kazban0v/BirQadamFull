@@ -3557,7 +3557,11 @@ class VolunteerChatMessagesAPIView(APIView):
         limit = int(request.query_params.get('limit', 50))
         offset = int(request.query_params.get('offset', 0))
         
-        messages_qs = chat.messages.filter(is_deleted=False).select_related('sender').order_by('-created_at')[offset:offset + limit]
+        # Получаем список ID заблокированных пользователей
+        from api.support.models import Block
+        blocked_user_ids = Block.objects.filter(blocker=request.user).values_list('blocked_id', flat=True)
+        
+        messages_qs = chat.messages.filter(is_deleted=False).exclude(sender_id__in=blocked_user_ids).select_related('sender').order_by('-created_at')[offset:offset + limit]
         
         # Also mark these fetched messages as read if unread
         unread_messages = [msg for msg in messages_qs if not msg.is_read and msg.sender != request.user]
@@ -3660,4 +3664,96 @@ urlpatterns += [
     path('volunteer/chats/<int:chat_id>/messages/', VolunteerChatMessagesAPIView.as_view(), name='volunteer_chat_messages'),
     path('volunteer/chats/<int:chat_id>/send/', VolunteerSendMessageAPIView.as_view(), name='volunteer_send_message'),
     path('volunteer/chats/<int:chat_id>/read/', VolunteerMarkMessagesReadAPIView.as_view(), name='volunteer_mark_messages_read'),
+]
+
+# ============================================================================
+# МОДЕРАЦИЯ И БЕЗОПАСНОСТЬ (БЛОКИРОВКИ И ЖАЛОБЫ)
+# ============================================================================
+
+from api.serializers.web_portal import BlockSerializer, ReportSerializer
+from api.support.models import Block, Report
+
+@method_decorator(csrf_exempt, name='dispatch')
+class BlockListCreateAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+    authentication_classes = (CsrfExemptSessionAuthentication,)
+
+    def get(self, request, *args, **kwargs):
+        blocks = Block.objects.filter(blocker=request.user)
+        serializer = BlockSerializer(blocks, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def post(self, request, *args, **kwargs):
+        blocked_user_id = request.data.get('blocked_user_id')
+        if not blocked_user_id:
+            return Response({'error': 'blocked_user_id is required'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        if int(blocked_user_id) == request.user.id:
+            return Response({'error': 'You cannot block yourself'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            blocked_user = User.objects.get(id=blocked_user_id)
+        except User.DoesNotExist:
+            return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        block, created = Block.objects.get_or_create(blocker=request.user, blocked=blocked_user)
+        
+        if created:
+            # Скрываем все сообщения в чатах
+            pass
+
+        serializer = BlockSerializer(block)
+        return Response(serializer.data, status=status.HTTP_201_CREATED if created else status.HTTP_200_OK)
+
+@method_decorator(csrf_exempt, name='dispatch')
+class BlockDestroyAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+    authentication_classes = (CsrfExemptSessionAuthentication,)
+
+    def delete(self, request, pk, *args, **kwargs):
+        try:
+            block = Block.objects.get(id=pk, blocker=request.user)
+            block.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        except Block.DoesNotExist:
+            return Response({'error': 'Block not found'}, status=status.HTTP_404_NOT_FOUND)
+
+@method_decorator(csrf_exempt, name='dispatch')
+class ReportCreateAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+    authentication_classes = (CsrfExemptSessionAuthentication,)
+
+    def post(self, request, *args, **kwargs):
+        reported_user_id = request.data.get('reported_user_id')
+        content_type = request.data.get('content_type')
+        content_id = request.data.get('content_id')
+        reason = request.data.get('reason')
+        details = request.data.get('details', '')
+
+        if not content_type or not reason:
+            return Response({'error': 'content_type and reason are required'}, status=status.HTTP_400_BAD_REQUEST)
+
+        reported_user = None
+        if reported_user_id:
+            try:
+                reported_user = User.objects.get(id=reported_user_id)
+            except User.DoesNotExist:
+                return Response({'error': 'Reported user not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        report = Report.objects.create(
+            reporter=request.user,
+            reported_user=reported_user,
+            content_type=content_type,
+            content_id=content_id,
+            reason=reason,
+            details=details
+        )
+        
+        serializer = ReportSerializer(report)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+urlpatterns += [
+    path('blocks/', BlockListCreateAPIView.as_view(), name='blocks_list_create'),
+    path('blocks/<int:pk>/', BlockDestroyAPIView.as_view(), name='block_destroy'),
+    path('reports/', ReportCreateAPIView.as_view(), name='report_create'),
 ]

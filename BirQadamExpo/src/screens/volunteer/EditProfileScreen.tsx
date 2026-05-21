@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import {
-  Alert,
   KeyboardAvoidingView,
   Platform,
   SafeAreaView,
@@ -11,6 +10,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { useToast } from '../../components/Toast';
 import { Ionicons } from '@expo/vector-icons';
 
 import { Button } from '../../components/Button';
@@ -25,6 +25,7 @@ interface EditProfileScreenProps {
 
 export const EditProfileScreen: React.FC<EditProfileScreenProps> = ({ navigation }) => {
     const { t } = useTranslation();
+  const toast = useToast();
   const user = useAuthStore((state) => state.user);
   const updateProfile = useAuthStore((state) => state.updateProfile);
   const isLoading = useAuthStore((state) => state.isLoading);
@@ -76,12 +77,8 @@ export const EditProfileScreen: React.FC<EditProfileScreenProps> = ({ navigation
         phone_number: phoneNumber.trim(),
       });
 
-      Alert.alert(t('editprofile.s_2'), t('editprofile.s_3'), [
-        {
-          text: 'OK',
-          onPress: () => navigation.goBack(),
-        },
-      ]);
+      toast.success(t('editprofile.s_3'));
+      navigation.goBack();
     } catch {
       // Ошибка уже отображается из store
     }

@@ -14,6 +14,7 @@ import {
   Platform,
   DevSettings,
 } from 'react-native';
+import { useToast } from '../../components/Toast';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -242,6 +243,7 @@ export const VolunteerProfileScreen: React.FC<VolunteerProfileScreenProps> = ({
   navigation,
 }) => {
   const { t, language } = useTranslation();
+  const toast = useToast();
   const insets = useSafeAreaInsets();
   const { user, logout, updateProfile } = useAuthStore();
   const { isDarkTheme, toggleTheme } = useThemeStore();
@@ -251,6 +253,7 @@ export const VolunteerProfileScreen: React.FC<VolunteerProfileScreenProps> = ({
   const [isActionContextLoading, setIsActionContextLoading] = useState(true);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [avatarCacheKey, setAvatarCacheKey] = useState(0);
+  const [localAvatarUri, setLocalAvatarUri] = useState<string | null>(null);
   const [activeMetricInfo, setActiveMetricInfo] = useState<MetricInfoKey | null>(null);
   const [devNotificationMode, setDevNotificationMode] = useState(false);
   const [isSendingDebugNotification, setIsSendingDebugNotification] = useState(false);
@@ -462,40 +465,46 @@ export const VolunteerProfileScreen: React.FC<VolunteerProfileScreenProps> = ({
     setIsActionContextLoading(true);
 
     try {
-      const [profileResult, projectsResult, tasksResult] = await Promise.allSettled([
-        volunteerAPI.getProfile(),
-        volunteerAPI.getProjects(),
-        volunteerAPI.getTasks(),
-      ]);
-
-      if (profileResult.status === 'fulfilled') {
-        setProfileData(profileResult.value.data);
-      } else {
-        console.error('Error fetching profile:', profileResult.reason);
+      // 1. Профиль — самые важные данные, загружаем первым
+      try {
+        const profileRes = await volunteerAPI.getProfile();
+        setProfileData(profileRes.data);
+      } catch (err) {
+        console.error('Error fetching profile:', err);
       }
 
-      if (projectsResult.status === 'fulfilled') {
-        setProjectsContext(normalizeProjectsPayload(projectsResult.value.data));
-      } else {
-        console.error('Error fetching projects for profile action card:', projectsResult.reason);
+      // 2. Небольшая пауза чтобы не бить rate limit
+      await new Promise<void>((resolve) => setTimeout(resolve, 350));
+
+      // 3. Проекты для карточки действий
+      try {
+        const projectsRes = await volunteerAPI.getProjects();
+        setProjectsContext(normalizeProjectsPayload(projectsRes.data));
+      } catch (err) {
+        console.error('Error fetching projects for profile action card:', err);
         setProjectsContext([]);
       }
 
-      if (tasksResult.status === 'fulfilled') {
-        setTasksContext(normalizeTasksPayload(tasksResult.value.data, t));
-      } else {
-        console.error('Error fetching tasks for profile action card:', tasksResult.reason);
+      // 4. Пауза перед последним запросом
+      await new Promise<void>((resolve) => setTimeout(resolve, 350));
+
+      // 5. Задачи для карточки действий
+      try {
+        const tasksRes = await volunteerAPI.getTasks();
+        setTasksContext(normalizeTasksPayload(tasksRes.data, t));
+      } catch (err) {
+        console.error('Error fetching tasks for profile action card:', err);
         setTasksContext([]);
       }
     } finally {
       setIsActionContextLoading(false);
     }
-  }, []);
+  }, [t]);
 
   const pickImage = async () => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
-      Alert.alert(t('profile.s_20'), t('profile.s_21'));
+      toast.warning(t('profile.s_21'));
       return;
     }
 
@@ -512,9 +521,11 @@ export const VolunteerProfileScreen: React.FC<VolunteerProfileScreenProps> = ({
 
     const selectedImage = result.assets[0];
     if (selectedImage.fileSize && selectedImage.fileSize > MAX_AVATAR_SIZE_BYTES) {
-      Alert.alert(t('profile.s_22'), t('profile.s_23'));
+      toast.warning(t('profile.s_23'));
       return;
     }
+
+    setLocalAvatarUri(selectedImage.uri);
 
     const formData = new FormData();
     const fileName = getAvatarFileName(selectedImage);
@@ -528,7 +539,7 @@ export const VolunteerProfileScreen: React.FC<VolunteerProfileScreenProps> = ({
         const file = new File([blob], fileName, { type: mimeType });
         formData.append('avatar', file);
       } catch (e) {
-        Alert.alert(t('profile.s_24'), t('profile.s_25'));
+        toast.error(t('profile.s_25'));
         return;
       }
     } else {
@@ -545,9 +556,11 @@ export const VolunteerProfileScreen: React.FC<VolunteerProfileScreenProps> = ({
       await updateProfile(formData);
       await fetchProfile();
       setAvatarCacheKey(Date.now());
-      Alert.alert(t('profile.s_26'), t('profile.s_27'));
+      setLocalAvatarUri(null);
+      toast.success(t('profile.s_27'));
     } catch (error: unknown) {
-      Alert.alert(t('profile.s_28'), getAxiosErrorMessage(error, t('profile.s_29')));
+      setLocalAvatarUri(null);
+      toast.error(getAxiosErrorMessage(error, t('profile.s_29')));
     } finally {
       setIsUploadingAvatar(false);
     }
@@ -569,7 +582,7 @@ export const VolunteerProfileScreen: React.FC<VolunteerProfileScreenProps> = ({
   }, []);
 
   const showInDevelopmentAlert = (featureName: string) => {
-    Alert.alert(t('profile.s_34'), formatFeatureInDevelopmentMessage(featureName));
+    toast.info(formatFeatureInDevelopmentMessage(featureName));
   };
 
   const reloadApp = useCallback(() => {
@@ -578,7 +591,7 @@ export const VolunteerProfileScreen: React.FC<VolunteerProfileScreenProps> = ({
       return;
     }
 
-    Alert.alert(t('profile.s_35'), t('profile.s_36'));
+    toast.info(t('profile.s_36'));
   }, []);
 
   const handleThemeToggle = useCallback(
@@ -587,7 +600,7 @@ export const VolunteerProfileScreen: React.FC<VolunteerProfileScreenProps> = ({
         await toggleTheme(enabled);
         reloadApp();
       } catch (error) {
-        Alert.alert(t('profile.s_37'), t('profile.s_38'));
+        toast.error(t('profile.s_38'));
       }
     },
     [reloadApp, toggleTheme]
@@ -612,14 +625,9 @@ export const VolunteerProfileScreen: React.FC<VolunteerProfileScreenProps> = ({
         await setDevNotificationModeEnabled(enabled);
         setDevNotificationMode(enabled);
         await syncVolunteerLocalNotifications(tasksContext, projectsContext);
-        Alert.alert(
-          t('profile.s_39'),
-          enabled
-            ? t('profile.s_40')
-            : t('profile.s_41')
-        );
+        toast.success(enabled ? t('profile.s_40') : t('profile.s_41'));
       } catch (error) {
-        Alert.alert(t('profile.s_42'), t('profile.s_43'));
+        toast.error(t('profile.s_43'));
       }
     },
     [projectsContext, tasksContext]
@@ -630,13 +638,13 @@ export const VolunteerProfileScreen: React.FC<VolunteerProfileScreenProps> = ({
       setIsSendingDebugNotification(true);
       const success = await sendDebugNotification();
       if (!success) {
-        Alert.alert(t('profile.s_44'), t('profile.s_45'));
+        toast.error(t('profile.s_45'));
         return;
       }
 
-      Alert.alert(t('profile.s_46'), t('profile.s_47'));
+      toast.success(t('profile.s_47'));
     } catch (error) {
-      Alert.alert(t('profile.s_48'), t('profile.s_49'));
+      toast.error(t('profile.s_49'));
     } finally {
       setIsSendingDebugNotification(false);
     }
@@ -677,6 +685,9 @@ export const VolunteerProfileScreen: React.FC<VolunteerProfileScreenProps> = ({
         break;
       case 'link_telegram':
         showInDevelopmentAlert(t('profile.s_55'));
+        break;
+      case 'blocked_users':
+        navigation.navigate('BlockedUsers' as never);
         break;
       default:
         console.log('Menu item pressed:', id);
@@ -1270,6 +1281,7 @@ export const VolunteerProfileScreen: React.FC<VolunteerProfileScreenProps> = ({
   return (
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       <ScrollView
+        style={{ flex: 1, backgroundColor: appColors.background }}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={[styles.scrollContent, { paddingBottom: 40 + insets.bottom }]}
       >
@@ -1294,24 +1306,37 @@ export const VolunteerProfileScreen: React.FC<VolunteerProfileScreenProps> = ({
           <View style={styles.profileInfo}>
             <View style={styles.avatarWrapper}>
               <View style={styles.avatarContainer}>
-                {profileData?.avatar ? (
+                {localAvatarUri ? (
+                  <Image
+                    source={{ uri: localAvatarUri }}
+                    style={styles.avatarImage}
+                    resizeMode="cover"
+                  />
+                ) : profileData?.avatar ? (
                   <Image
                     key={avatarUri || normalizedAvatarUri || 'profile-avatar'}
-                    source={{ uri: avatarUri || normalizedAvatarUri || profileData.avatar, cache: 'reload' }}
+                    source={{ uri: avatarUri || normalizedAvatarUri || profileData.avatar }}
                     style={styles.avatarImage}
+                    resizeMode="cover"
                   />
                 ) : (
                   <View style={styles.placeholderAvatar}>
                     <Ionicons name="person" size={50} color={appColors.white} />
                   </View>
                 )}
-              </View>
-              <TouchableOpacity style={styles.editButton} onPress={pickImage} disabled={isUploadingAvatar}>
-                {isUploadingAvatar ? (
-                  <ActivityIndicator size="small" color={appColors.primary} />
-                ) : (
-                  <Ionicons name="pencil" size={16} color={appColors.primary} />
+                {isUploadingAvatar && (
+                  <View style={styles.avatarUploadingOverlay}>
+                    <ActivityIndicator size="small" color={appColors.white} />
+                  </View>
                 )}
+              </View>
+              <TouchableOpacity
+                style={styles.editButton}
+                onPress={pickImage}
+                disabled={isUploadingAvatar}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="pencil" size={14} color={appColors.primary} />
               </TouchableOpacity>
             </View>
 
@@ -1494,6 +1519,17 @@ export const VolunteerProfileScreen: React.FC<VolunteerProfileScreenProps> = ({
             </TouchableOpacity>
           </View>
 
+          <Text style={styles.menuSectionTitle}>Безопасность</Text>
+          <View style={styles.menuContainer}>
+            <TouchableOpacity style={[styles.menuItem, { borderBottomWidth: 0 }]} onPress={() => onMenuItemPress('blocked_users')}>
+              <View style={styles.menuItemLeft}>
+                <Ionicons name="shield-half-outline" size={22} color={appColors.textMuted} />
+                <Text style={styles.menuItemText}>Заблокированные пользователи</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color={appColors.textMuted} />
+            </TouchableOpacity>
+          </View>
+
           {/* Logout Button */}
           <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
             <Ionicons name="log-out-outline" size={22} color={appColors.danger} />
@@ -1579,8 +1615,8 @@ export const VolunteerProfileScreen: React.FC<VolunteerProfileScreenProps> = ({
               <Text style={styles.metricModalDescription}>{metricInfo?.description}</Text>
 
               <View style={styles.metricModalInfoBox}>
-                {metricInfo?.facts.map((fact) => (
-                  <View key={fact} style={styles.metricModalInfoRow}>
+                {metricInfo?.facts.map((fact, index) => (
+                  <View key={`${index}-${fact}`} style={styles.metricModalInfoRow}>
                     <Ionicons name="checkmark-circle" size={18} color={appColors.primary} />
                     <Text style={styles.metricModalInfoText}>{fact}</Text>
                   </View>
@@ -1608,7 +1644,7 @@ export const VolunteerProfileScreen: React.FC<VolunteerProfileScreenProps> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: appColors.background,
+    backgroundColor: appColors.primary,
   },
   scrollContent: {
     paddingBottom: 40,
@@ -1639,18 +1675,19 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   avatarWrapper: {
-    position: 'relative',
+    width: 116,
+    height: 116,
     marginBottom: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   avatarContainer: {
     width: 110,
     height: 110,
     borderRadius: 55,
     backgroundColor: 'rgba(255,255,255,0.2)',
-    borderWidth: 4,
-    borderColor: 'rgba(255,255,255,0.4)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    borderWidth: 3,
+    borderColor: 'rgba(255,255,255,0.55)',
     overflow: 'hidden',
   },
   placeholderAvatar: {
@@ -1664,19 +1701,27 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
   },
+  avatarUploadingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.35)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   editButton: {
     position: 'absolute',
-    right: 0,
-    top: 5,
+    right: 2,
+    bottom: 2,
     backgroundColor: appColors.surface,
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
     justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: 2,
+    borderColor: appColors.primary,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
+    shadowOpacity: 0.18,
     shadowRadius: 4,
     elevation: 4,
   },
