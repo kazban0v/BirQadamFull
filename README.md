@@ -11,7 +11,7 @@
 [![Python](https://img.shields.io/badge/Python-3.12-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 
-[![Live Demo](https://img.shields.io/badge/🌐_Боевой_сервер-cleanup.almau.edu.kz-10B981?style=for-the-badge)](https://cleanup.almau.edu.kz)
+[![Live Demo](https://img.shields.io/badge/🌐_Открыть_сайт-birqadam.almau.edu.kz-10B981?style=for-the-badge)](https://birqadam.almau.edu.kz)
 [![Branch](https://img.shields.io/badge/branch-feature%2Fupdates-F59E0B?style=for-the-badge&logo=git&logoColor=white)](https://github.com/kazban0v/BirQadamFull/tree/feature/updates)
 
 ---
@@ -81,6 +81,18 @@
 
 ---
 
+## 📸 Скриншоты приложения
+
+| Дашборд | Проекты | Чат |
+|:---:|:---:|:---:|
+| <img src="docs/screenshots/screen_dashboard.png" width="180"/> | <img src="docs/screenshots/screen_projects.png" width="180"/> | <img src="docs/screenshots/screen_chat.png" width="180"/> |
+
+| Профиль | Достижения | Фотоотчёт |
+|:---:|:---:|:---:|
+| <img src="docs/screenshots/screen_profile.png" width="180"/> | <img src="docs/screenshots/screen_achievements.png" width="180"/> | <img src="docs/screenshots/screen_photo_report.png" width="180"/> |
+
+---
+
 ## 🗂️ Структура проекта
 
 ```
@@ -96,8 +108,7 @@ BirQadamFull/
 │   ├── telegram_bot/           # Telegram-бот для организаторов
 │   ├── shared/                 # AI-сервисы, email, уведомления
 │   ├── portal_frontend/        # Веб-интерфейс организатора
-│   ├── admin_panel/            # Кастомная admin-панель
-│   └── docker-compose.yml      # Docker конфигурация
+│   └── admin_panel/            # Кастомная admin-панель
 │
 └── 📁 BirQadamExpo/            # Mobile App (React Native + Expo)
     ├── src/
@@ -114,20 +125,6 @@ BirQadamFull/
     │   └── locales/            # i18n (ru, kk, en)
     └── package.json
 ```
-
----
-
-## 📸 Скриншоты приложения
-
-| Дашборд | Проекты | Чат |
-|:---:|:---:|:---:|
-| ![Dashboard](https://via.placeholder.com/180x360/0A1628/10B981?text=Dashboard) | ![Projects](https://via.placeholder.com/180x360/0A1628/10B981?text=Projects) | ![Chat](https://via.placeholder.com/180x360/0A1628/10B981?text=Chat) |
-
-| Профиль | Достижения | Фотоотчёт |
-|:---:|:---:|:---:|
-| ![Profile](https://via.placeholder.com/180x360/0A1628/10B981?text=Profile) | ![Achievements](https://via.placeholder.com/180x360/0A1628/10B981?text=Achievements) | ![Photo](https://via.placeholder.com/180x360/0A1628/10B981?text=Photo+Report) |
-
-> 💡 *Скриншоты будут добавлены после деплоя в TestFlight*
 
 ---
 
@@ -175,7 +172,6 @@ cd BirQadamFull/BirQadamExpo
 npm install
 
 # 3. Настроить URL бэкенда (опционально)
-# Создайте файл .env:
 echo "EXPO_PUBLIC_API_BASE_URL=http://YOUR_LOCAL_IP:8000" > .env
 
 # 4. Запустить Metro Bundler
@@ -208,40 +204,6 @@ npx expo start
 | ![TypeScript](https://img.shields.io/badge/-TypeScript-3178C6?logo=typescript&logoColor=white) | 5.x | Типизация |
 | ![Zustand](https://img.shields.io/badge/-Zustand-FF6B2B?logo=react) | 5.x | Управление состоянием |
 | ![Axios](https://img.shields.io/badge/-Axios-5A29E4?logo=axios&logoColor=white) | — | HTTP-клиент |
-
----
-
-## 🛡️ Модерация контента (App Store Compliance)
-
-Проект соответствует **требованиям Apple App Store** для приложений с пользовательским контентом:
-
-```
-✅ Блокировка пользователей       — POST /api/web/blocks/
-✅ Разблокировка                  — DELETE /api/web/blocks/<id>/
-✅ Список заблокированных         — GET /api/web/blocks/
-✅ Жалобы на контент              — POST /api/web/reports/
-✅ Панель модератора (Admin)       — /admin/
-✅ Фильтрация контента на бэкенде — автоматически в чатах
-```
-
-**Кнопки "Пожаловаться" и "Заблокировать" доступны в:**
-- 💬 Чат — на каждом чужом сообщении
-- 👤 Профиль организатора
-- 📸 Просмотр фотоотчёта
-- ⚙️ Профиль → Безопасность → Заблокированные пользователи
-
----
-
-## 🌐 Деплой (Production)
-
-Сервер: **[cleanup.almau.edu.kz](https://cleanup.almau.edu.kz)**
-
-```bash
-# На сервере (после git pull):
-docker-compose up -d --build
-docker-compose exec web python manage.py migrate
-docker-compose exec web python manage.py collectstatic --noinput
-```
 
 ---
 
@@ -279,7 +241,7 @@ DB_PORT=5432
 # Django
 SECRET_KEY=your_secret_key
 DEBUG=False
-ALLOWED_HOSTS=cleanup.almau.edu.kz,localhost
+ALLOWED_HOSTS=birqadam.almau.edu.kz,localhost
 
 # Telegram Bot
 TELEGRAM_BOT_TOKEN=your_bot_token
@@ -329,7 +291,7 @@ git push origin feature/your-feature-name
 📂 20+ экранов в мобильном приложении
 🔗 100+ REST API эндпоинтов
 🌍 3 языка интерфейса (RU, KZ, EN)
-🛡️ Полная система модерации (App Store compliant)
+🛡️ Полная система модерации
 📱 iOS + Android совместимость
 🐳 Docker-ready деплой
 ```
@@ -348,7 +310,7 @@ git push origin feature/your-feature-name
 **Сделано с ❤️ для волонтёров Казахстана**
 
 [![GitHub](https://img.shields.io/badge/GitHub-kazban0v-181717?style=for-the-badge&logo=github)](https://github.com/kazban0v/BirQadamFull)
-[![Live](https://img.shields.io/badge/🌐_Открыть_сайт-cleanup.almau.edu.kz-10B981?style=for-the-badge)](https://cleanup.almau.edu.kz)
+[![Live](https://img.shields.io/badge/🌐_Открыть_сайт-birqadam.almau.edu.kz-10B981?style=for-the-badge)](https://birqadam.almau.edu.kz)
 
 *"Один шаг к лучшему миру начинается с BirQadam"* 🌿
 
