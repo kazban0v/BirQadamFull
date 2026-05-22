@@ -1,4 +1,7 @@
 export const ru = {
+  "splash": {
+    "tagline": "Один шаг — большие перемены"
+  },
   "appnavigator": {
     "s_0": "Проекты",
     "s_1": "Центр помощи",

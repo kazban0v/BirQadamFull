@@ -2279,4 +2279,4 @@ const closeViewDialog = () => {
   .detail-stats-bar { flex-direction: column; }
   .project-detail { max-height: 100vh; border-radius: 0 !important; }
 }
-</style>
+</style>

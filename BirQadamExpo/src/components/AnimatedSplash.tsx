@@ -1,302 +1,393 @@
+/**
+ * AnimatedSplash.tsx
+ *
+ * SETUP:
+ *   npx expo install expo-haptics
+ *   npx expo install @expo-google-fonts/plus-jakarta-sans expo-font
+ *
+ * NATIVE SPLASH MATCH (app.json):
+ *   "splash": { "image": "./assets/splash-screen.png",
+ *               "resizeMode": "contain", "backgroundColor": "#ffffff" }
+ *   splash-screen.png — белый фон, лист по центру, тот же размер что iconCard.
+ */
+
 import React, { useEffect, useRef } from 'react';
 import {
   Animated,
+  Dimensions,
   Easing,
   Image,
+  Platform,
   StyleSheet,
-  Text,
   View,
+  Text,
   type ImageSourcePropType,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { appColors } from '../theme';
+import * as Haptics from 'expo-haptics';
+import {
+  useFonts,
+  PlusJakartaSans_300Light,
+  PlusJakartaSans_800ExtraBold,
+} from '@expo-google-fonts/plus-jakarta-sans';
+import { useTranslation } from '../locales/i18n';
+
+// ─── Config ───────────────────────────────────────────────────────────────────
+
+const MIN_DISPLAY_MS = 2800;
+const SCREEN_WIDTH = Dimensions.get('window').width;
+
+const LEAF: ImageSourcePropType = require('../../assets/splash-leaf.png');
+
+// ─── Component ────────────────────────────────────────────────────────────────
 
 type AnimatedSplashProps = {
   visible: boolean;
   onFinish?: () => void;
 };
 
-const LEAF: ImageSourcePropType = require('../../assets/splash-leaf.png');
-
 export function AnimatedSplash({ visible, onFinish }: AnimatedSplashProps) {
-  // Лист стартует уже в финальной позиции — это та же картинка, что показывает нативный сплэш,
-  // поэтому при подмене не должно быть «прыжка». Анимация листа — едва заметное «дыхание».
-  const leafScale = useRef(new Animated.Value(1)).current;
-  const leafOpacity = useRef(new Animated.Value(1)).current;
-  const leafRotate = useRef(new Animated.Value(1)).current;
-  const titleTranslate = useRef(new Animated.Value(18)).current;
-  const titleOpacity = useRef(new Animated.Value(0)).current;
-  const taglineOpacity = useRef(new Animated.Value(0)).current;
-  const ringScale = useRef(new Animated.Value(0.4)).current;
-  const ringOpacity = useRef(new Animated.Value(0)).current;
-  const containerOpacity = useRef(new Animated.Value(1)).current;
+  const { t } = useTranslation();
 
-  useEffect(() => {
-    Animated.parallel([
-      Animated.sequence([
-        Animated.timing(leafScale, {
-          toValue: 1.06,
-          duration: 600,
-          easing: Easing.out(Easing.cubic),
-          useNativeDriver: true,
-        }),
-        Animated.timing(leafScale, {
-          toValue: 1,
-          duration: 600,
-          easing: Easing.inOut(Easing.cubic),
-          useNativeDriver: true,
-        }),
-      ]),
-      Animated.sequence([
-        Animated.delay(180),
-        Animated.parallel([
-          Animated.timing(ringOpacity, {
-            toValue: 1,
-            duration: 240,
-            useNativeDriver: true,
-          }),
-          Animated.timing(ringScale, {
-            toValue: 1.4,
-            duration: 1100,
-            easing: Easing.out(Easing.quad),
-            useNativeDriver: true,
-          }),
-          Animated.timing(ringOpacity, {
-            toValue: 0,
-            duration: 1100,
-            delay: 240,
-            useNativeDriver: true,
-          }),
-        ]),
-      ]),
-      Animated.sequence([
-        Animated.delay(320),
-        Animated.parallel([
-          Animated.timing(titleOpacity, {
-            toValue: 1,
-            duration: 520,
-            useNativeDriver: true,
-          }),
-          Animated.timing(titleTranslate, {
-            toValue: 0,
-            duration: 620,
-            easing: Easing.out(Easing.cubic),
-            useNativeDriver: true,
-          }),
-        ]),
-      ]),
-      Animated.sequence([
-        Animated.delay(560),
-        Animated.timing(taglineOpacity, {
-          toValue: 1,
-          duration: 520,
-          useNativeDriver: true,
-        }),
-      ]),
-    ]).start();
-  }, [leafScale, ringOpacity, ringScale, titleOpacity, titleTranslate, taglineOpacity]);
-
-  useEffect(() => {
-    if (visible) {
-      return;
-    }
-
-    Animated.timing(containerOpacity, {
-      toValue: 0,
-      duration: 420,
-      easing: Easing.out(Easing.cubic),
-      useNativeDriver: true,
-    }).start(({ finished }) => {
-      if (finished) {
-        onFinish?.();
-      }
-    });
-  }, [visible, containerOpacity, onFinish]);
-
-  const rotate = leafRotate.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['0deg', '0deg'],
+  const [fontsLoaded] = useFonts({
+    PlusJakartaSans_300Light,
+    PlusJakartaSans_800ExtraBold,
   });
 
+  // Min-display gate
+  const minTimeElapsed = useRef(false);
+  const pendingHide = useRef(false);
+
+  // Animated values
+  const containerOpacity = useRef(new Animated.Value(1)).current;
+  const iconScale = useRef(new Animated.Value(0.5)).current;
+  const iconOpacity = useRef(new Animated.Value(0)).current;
+  const leafFloat = useRef(new Animated.Value(0)).current;
+  const ring1Scale = useRef(new Animated.Value(1)).current;
+  const ring1Opacity = useRef(new Animated.Value(0)).current;
+  const ring2Scale = useRef(new Animated.Value(1)).current;
+  const ring2Opacity = useRef(new Animated.Value(0)).current;
+  const titleTranslate = useRef(new Animated.Value(24)).current;
+  const titleOpacity = useRef(new Animated.Value(0)).current;
+  const taglineOpacity = useRef(new Animated.Value(0)).current;
+  const taglineTranslate = useRef(new Animated.Value(16)).current;
+  const blobOpacity = useRef(new Animated.Value(0)).current;
+  const exitIconTranslate = useRef(new Animated.Value(0)).current;
+  const exitIconScale = useRef(new Animated.Value(1)).current;
+
+  // Progress bar — useNativeDriver:false (animates width)
+  const progressWidth = useRef(new Animated.Value(0)).current;
+
+  // ── Exit ──────────────────────────────────────────────────────────────────
+  const startHide = () => {
+    if (Platform.OS === 'ios') {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => { });
+    }
+    Animated.parallel([
+      Animated.timing(exitIconTranslate, {
+        toValue: -28,
+        duration: 480,
+        easing: Easing.in(Easing.cubic),
+        useNativeDriver: true,
+      }),
+      Animated.timing(exitIconScale, {
+        toValue: 0.88,
+        duration: 480,
+        easing: Easing.in(Easing.cubic),
+        useNativeDriver: true,
+      }),
+      Animated.timing(containerOpacity, {
+        toValue: 0,
+        duration: 580,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+    ]).start(({ finished }) => {
+      if (finished) onFinish?.();
+    });
+  };
+
+  // ── Entry ─────────────────────────────────────────────────────────────────
+  useEffect(() => {
+    Animated.timing(blobOpacity, { toValue: 1, duration: 700, useNativeDriver: true }).start();
+
+    Animated.sequence([
+      Animated.delay(80),
+      Animated.parallel([
+        Animated.timing(iconOpacity, { toValue: 1, duration: 180, useNativeDriver: true }),
+        Animated.spring(iconScale, { toValue: 1, tension: 65, friction: 7, useNativeDriver: true }),
+      ]),
+    ]).start();
+
+    Animated.sequence([
+      Animated.delay(380),
+      Animated.loop(
+        Animated.sequence([
+          Animated.parallel([
+            Animated.timing(ring1Opacity, { toValue: 0.55, duration: 180, useNativeDriver: true }),
+            Animated.timing(ring1Scale, { toValue: 1, duration: 0, useNativeDriver: true }),
+          ]),
+          Animated.parallel([
+            Animated.timing(ring1Scale, { toValue: 2.1, duration: 1000, easing: Easing.out(Easing.quad), useNativeDriver: true }),
+            Animated.timing(ring1Opacity, { toValue: 0, duration: 1000, useNativeDriver: true }),
+          ]),
+          Animated.delay(300),
+        ]),
+        { iterations: 3 }
+      ),
+    ]).start();
+
+    Animated.sequence([
+      Animated.delay(680),
+      Animated.loop(
+        Animated.sequence([
+          Animated.parallel([
+            Animated.timing(ring2Opacity, { toValue: 0.35, duration: 180, useNativeDriver: true }),
+            Animated.timing(ring2Scale, { toValue: 1, duration: 0, useNativeDriver: true }),
+          ]),
+          Animated.parallel([
+            Animated.timing(ring2Scale, { toValue: 2.3, duration: 1100, easing: Easing.out(Easing.quad), useNativeDriver: true }),
+            Animated.timing(ring2Opacity, { toValue: 0, duration: 1100, useNativeDriver: true }),
+          ]),
+          Animated.delay(200),
+        ]),
+        { iterations: 3 }
+      ),
+    ]).start();
+
+    Animated.sequence([
+      Animated.delay(460),
+      Animated.parallel([
+        Animated.timing(titleOpacity, { toValue: 1, duration: 500, useNativeDriver: true }),
+        Animated.timing(titleTranslate, { toValue: 0, duration: 580, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+      ]),
+    ]).start();
+
+    Animated.sequence([
+      Animated.delay(660),
+      Animated.parallel([
+        Animated.timing(taglineOpacity, { toValue: 1, duration: 460, useNativeDriver: true }),
+        Animated.timing(taglineTranslate, { toValue: 0, duration: 540, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+      ]),
+    ]).start();
+
+    Animated.sequence([
+      Animated.delay(780),
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(leafFloat, { toValue: -7, duration: 1900, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+          Animated.timing(leafFloat, { toValue: 0, duration: 1900, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+        ])
+      ),
+    ]).start();
+
+    // Progress bar
+    Animated.timing(progressWidth, {
+      toValue: SCREEN_WIDTH,
+      duration: MIN_DISPLAY_MS - 200,
+      easing: Easing.out(Easing.quad),
+      useNativeDriver: false,
+    }).start();
+
+    // Minimum display timer
+    const timer = setTimeout(() => {
+      minTimeElapsed.current = true;
+      if (pendingHide.current) startHide();
+    }, MIN_DISPLAY_MS);
+
+    return () => clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    if (visible) return;
+    if (minTimeElapsed.current) {
+      startHide();
+    } else {
+      pendingHide.current = true;
+    }
+  }, [visible]);
+
   return (
-    <Animated.View pointerEvents={visible ? 'auto' : 'none'} style={[styles.root, { opacity: containerOpacity }]}>
-      <LinearGradient
-        colors={['#FFFFFF', '#ECFDF5', '#D1FAE5']}
-        locations={[0, 0.55, 1]}
-        start={{ x: 0.5, y: 0 }}
-        end={{ x: 0.5, y: 1 }}
-        style={StyleSheet.absoluteFill}
-      />
+    <Animated.View
+      pointerEvents={visible ? 'auto' : 'none'}
+      style={[styles.root, { opacity: containerOpacity }]}
+    >
+      <Animated.View style={[styles.blobTopRight, { opacity: blobOpacity }]} />
 
       <View style={styles.center}>
-        <View style={styles.leafWrap}>
+        {/* Icon + ripple */}
+        <View style={styles.iconArea}>
+          <Animated.View style={[styles.rippleRing, {
+            opacity: ring1Opacity, transform: [{ scale: ring1Scale }],
+          }]} />
+          <Animated.View style={[styles.rippleRing, styles.rippleRing2, {
+            opacity: ring2Opacity, transform: [{ scale: ring2Scale }],
+          }]} />
+
+          {/*
+           * iconCard фон WHITE — PNG-фон листа сливается с карточкой.
+           * Зелёный характер передаётся через тень и border.
+           */}
           <Animated.View
-            style={[
-              styles.glowRing,
-              {
-                opacity: ringOpacity,
-                transform: [{ scale: ringScale }],
-              },
-            ]}
-          />
-          <Animated.View
-            style={[
-              styles.glowRing,
-              styles.glowRingInner,
-              {
-                opacity: ringOpacity,
-                transform: [{ scale: Animated.multiply(ringScale, 0.8) }],
-              },
-            ]}
-          />
-          <Animated.Image
-            source={LEAF}
-            resizeMode="contain"
-            style={[
-              styles.leaf,
-              {
-                opacity: leafOpacity,
-                transform: [{ scale: leafScale }, { rotate }],
-              },
-            ]}
-          />
+            style={[styles.iconCard, {
+              opacity: iconOpacity,
+              transform: [
+                { scale: Animated.multiply(iconScale, exitIconScale) },
+                { translateY: Animated.add(leafFloat, exitIconTranslate) },
+              ],
+            }]}
+          >
+            <Image source={LEAF} resizeMode="contain" style={styles.leaf} />
+          </Animated.View>
         </View>
 
-        <Animated.Text
-          style={[
-            styles.title,
-            {
-              opacity: titleOpacity,
-              transform: [{ translateY: titleTranslate }],
-            },
-          ]}
-        >
-          BirQadam
+        {/* Title */}
+        <Animated.View style={{
+          opacity: titleOpacity,
+          transform: [{ translateY: titleTranslate }],
+          alignItems: 'center',
+        }}>
+          <Text style={[
+            styles.titleBir,
+            fontsLoaded && { fontFamily: 'PlusJakartaSans_300Light' },
+          ]}>Bir</Text>
+          <Text style={[
+            styles.titleQadam,
+            fontsLoaded && { fontFamily: 'PlusJakartaSans_800ExtraBold' },
+          ]}>Qadam</Text>
+        </Animated.View>
+
+        {/* Tagline */}
+        <Animated.Text style={[styles.tagline, {
+          opacity: taglineOpacity,
+          transform: [{ translateY: taglineTranslate }],
+        }]}>
+          {t('splash.tagline')}
         </Animated.Text>
 
-        <Animated.Text style={[styles.tagline, { opacity: taglineOpacity }]}>
-          Бір қадам — үлкен өзгеріс
-        </Animated.Text>
+        {/* Accent pill */}
+        <Animated.View style={[styles.accentPill, { opacity: taglineOpacity }]}>
+          <LinearGradient
+            colors={['#10B981', '#059669']}
+            style={styles.pillGradient}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+          />
+        </Animated.View>
       </View>
 
-      <Animated.View style={[styles.footer, { opacity: taglineOpacity }]}>
-        <View style={styles.dots}>
-          <Dot delay={0} />
-          <Dot delay={160} />
-          <Dot delay={320} />
-        </View>
-      </Animated.View>
+      {/* Progress bar */}
+      <View style={styles.progressTrack}>
+        <Animated.View style={[styles.progressFill, { width: progressWidth }]} />
+      </View>
     </Animated.View>
   );
 }
 
-function Dot({ delay }: { delay: number }) {
-  const scale = useRef(new Animated.Value(0.6)).current;
-  const opacity = useRef(new Animated.Value(0.35)).current;
-
-  useEffect(() => {
-    const loop = Animated.loop(
-      Animated.sequence([
-        Animated.delay(delay),
-        Animated.parallel([
-          Animated.timing(scale, {
-            toValue: 1,
-            duration: 420,
-            easing: Easing.out(Easing.cubic),
-            useNativeDriver: true,
-          }),
-          Animated.timing(opacity, {
-            toValue: 1,
-            duration: 420,
-            useNativeDriver: true,
-          }),
-        ]),
-        Animated.parallel([
-          Animated.timing(scale, {
-            toValue: 0.6,
-            duration: 420,
-            easing: Easing.in(Easing.cubic),
-            useNativeDriver: true,
-          }),
-          Animated.timing(opacity, {
-            toValue: 0.35,
-            duration: 420,
-            useNativeDriver: true,
-          }),
-        ]),
-      ])
-    );
-
-    loop.start();
-    return () => loop.stop();
-  }, [delay, scale, opacity]);
-
-  return <Animated.View style={[styles.dot, { opacity, transform: [{ scale }] }]} />;
-}
+// ─── Styles ───────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
   root: {
     ...StyleSheet.absoluteFillObject,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: '#FFFFFF',
     zIndex: 999,
+  },
+  blobTopRight: {
+    position: 'absolute',
+    top: -100,
+    right: -100,
+    width: 300,
+    height: 300,
+    borderRadius: 150,
+    backgroundColor: 'rgba(16, 185, 129, 0.07)',
   },
   center: {
     alignItems: 'center',
-    justifyContent: 'center',
     paddingHorizontal: 32,
   },
-  leafWrap: {
-    width: 200,
-    height: 200,
+  iconArea: {
+    width: 190,
+    height: 190,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 28,
+    marginBottom: 38,
   },
-  glowRing: {
+  rippleRing: {
     position: 'absolute',
-    width: 200,
-    height: 200,
-    borderRadius: 100,
+    width: 148,
+    height: 148,
+    borderRadius: 74,
     borderWidth: 1.5,
-    borderColor: 'rgba(16, 185, 129, 0.35)',
-    backgroundColor: 'rgba(16, 185, 129, 0.08)',
+    borderColor: 'rgba(16, 185, 129, 0.3)',
   },
-  glowRingInner: {
-    borderColor: 'rgba(16, 185, 129, 0.45)',
-    backgroundColor: 'rgba(16, 185, 129, 0.12)',
+  rippleRing2: {
+    borderColor: 'rgba(16, 185, 129, 0.18)',
+  },
+  iconCard: {
+    width: 124,
+    height: 124,
+    borderRadius: 34,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#10B981',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.2,
+    shadowRadius: 22,
+    elevation: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(16, 185, 129, 0.12)',
   },
   leaf: {
-    width: 160,
-    height: 160,
+    width: 88,
+    height: 88,
   },
-  title: {
-    fontSize: 38,
+  titleBir: {
+    fontSize: 48,
+    fontWeight: '300',
+    color: '#1A1A2E',
+    letterSpacing: 2,
+    lineHeight: 52,
+  },
+  titleQadam: {
+    fontSize: 48,
     fontWeight: '800',
-    color: appColors.primaryDark,
+    color: '#059669',
     letterSpacing: 0.5,
+    lineHeight: 54,
+    marginTop: -4,
   },
   tagline: {
-    marginTop: 12,
+    marginTop: 14,
     fontSize: 14,
-    color: appColors.textMuted,
-    letterSpacing: 0.3,
+    fontWeight: '400',
+    color: '#9CA3AF',
+    letterSpacing: 0.4,
     textAlign: 'center',
   },
-  footer: {
+  accentPill: {
+    marginTop: 20,
+    width: 40,
+    height: 3,
+    borderRadius: 2,
+    overflow: 'hidden',
+  },
+  pillGradient: {
+    flex: 1,
+  },
+  progressTrack: {
     position: 'absolute',
-    bottom: 64,
-    alignItems: 'center',
-    width: '100%',
+    bottom: 52,
+    left: 0,
+    width: SCREEN_WIDTH,
+    height: 2,
+    backgroundColor: 'rgba(16, 185, 129, 0.12)',
   },
-  dots: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  dot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: appColors.primary,
+  progressFill: {
+    height: 2,
+    borderRadius: 1,
+    backgroundColor: '#10B981',
   },
 });

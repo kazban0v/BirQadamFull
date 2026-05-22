@@ -19,8 +19,9 @@ import { I18nProvider } from './src/locales/i18n';
 import { navigateFromRoot } from './src/navigation/navigationRef';
 import { handleNotificationNavigation } from './src/utils/volunteerNotifications';
 import { OfflineScreen } from './src/components/OfflineScreen';
-import { ToastProvider } from './src/components/Toast';
+import { ToastProvider, useToast } from './src/components/Toast';
 import { AnimatedSplash } from './src/components/AnimatedSplash';
+import { ErrorBoundary } from './src/components/ErrorBoundary';
 
 SplashScreen.preventAutoHideAsync().catch(() => undefined);
 
@@ -29,6 +30,40 @@ const SPLASH_MIN_DURATION_MS = 1600;
 
 type AppNavigatorComponent = ComponentType;
 type OnboardingComponent = ComponentType<{ onComplete: () => void }>;
+
+// ─── Глобальный обработчик ошибок ─────────────────────────────────────────────
+// Перехватывает любые непойманные JS-ошибки и показывает красный Toast
+// вместо дефолтного красного оверлея React Native.
+let _globalToastError: ((msg: string) => void) | null = null;
+const _pendingErrors: string[] = [];
+
+if (typeof ErrorUtils !== 'undefined') {
+  const prevHandler = ErrorUtils.getGlobalHandler();
+  ErrorUtils.setGlobalHandler((error: Error, isFatal?: boolean) => {
+    const msg = error?.message || 'Произошла непредвиденная ошибка';
+    if (_globalToastError) {
+      _globalToastError(isFatal ? `Критическая ошибка: ${msg}` : msg);
+    } else {
+      _pendingErrors.push(isFatal ? `Критическая ошибка: ${msg}` : msg);
+    }
+    // Вызываем предыдущий обработчик только для фатальных ошибок
+    if (isFatal && prevHandler) {
+      prevHandler(error, isFatal);
+    }
+  });
+}
+
+// Компонент-регистратор Toast-колбека для глобального обработчика
+function GlobalErrorBridge() {
+  const { error: showError } = useToast();
+  useEffect(() => {
+    _globalToastError = showError;
+    // Показать все ошибки, накопившиеся до монтирования
+    _pendingErrors.splice(0).forEach((msg) => showError(msg));
+    return () => { _globalToastError = null; };
+  }, [showError]);
+  return null;
+}
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -126,30 +161,33 @@ export default function App() {
   return (
     <I18nProvider initialLang="ru">
       <SafeAreaProvider>
-        <ToastProvider>
-        <View style={[styles.container, { backgroundColor: appColors.background }]}>
-          {isLoading ? (
-            <View style={[styles.loadingContainer, { backgroundColor: appColors.background }]} />
-          ) : showOnboarding && OnboardingScreen ? (
-            <OnboardingScreen onComplete={handleOnboardingComplete} />
-          ) : AppNavigator ? (
-            <AppNavigator />
-          ) : null}
+        <ErrorBoundary>
+          <ToastProvider>
+            <GlobalErrorBridge />
+            <View style={[styles.container, { backgroundColor: appColors.background }]}>
+              {isLoading ? (
+                <View style={[styles.loadingContainer, { backgroundColor: appColors.background }]} />
+              ) : showOnboarding && OnboardingScreen ? (
+                <OnboardingScreen onComplete={handleOnboardingComplete} />
+              ) : AppNavigator ? (
+                <AppNavigator />
+              ) : null}
 
-          {splashMounted ? (
-            <AnimatedSplash
-              visible={splashVisible}
-              onFinish={() => setSplashMounted(false)}
-            />
-          ) : null}
+              {splashMounted ? (
+                <AnimatedSplash
+                  visible={splashVisible}
+                  onFinish={() => setSplashMounted(false)}
+                />
+              ) : null}
 
-          {/* Пока сплэш на экране — не монтируем Modal: иначе на iOS может оказаться поверх оверлея */}
-          {!splashMounted ? <OfflineScreen /> : null}
+              {/* Пока сплэш на экране — не монтируем Modal: иначе на iOS может оказаться поверх оверлея */}
+              {!splashMounted ? <OfflineScreen /> : null}
 
-          {/* iOS: тёмные иконки на светлом фоне; в тёмной теме — светлые */}
-          <StatusBar style={mode === 'dark' ? 'light' : 'dark'} />
-        </View>
-        </ToastProvider>
+              {/* iOS: тёмные иконки на светлом фоне; в тёмной теме — светлые */}
+              <StatusBar style={mode === 'dark' ? 'light' : 'dark'} />
+            </View>
+          </ToastProvider>
+        </ErrorBoundary>
       </SafeAreaProvider>
     </I18nProvider>
   );

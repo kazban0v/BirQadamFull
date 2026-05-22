@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { appColors, appRadius, appSpace, appTypography } from '../../theme';
 import { useModerationStore } from '../../store/moderationStore';
+import { useToast } from '../../components/Toast';
 
 interface BlockedUsersScreenProps {
   navigation: any;
@@ -12,6 +13,7 @@ interface BlockedUsersScreenProps {
 export function BlockedUsersScreen({ navigation }: BlockedUsersScreenProps) {
   const { fetchBlockedUsers, unblockUser, isLoading } = useModerationStore();
   const [blocks, setBlocks] = React.useState<any[]>([]);
+  const toast = useToast();
 
   useEffect(() => {
     loadBlocks();
@@ -23,7 +25,7 @@ export function BlockedUsersScreen({ navigation }: BlockedUsersScreenProps) {
       const response = await moderationAPI.getBlockedUsers();
       setBlocks(response.data);
     } catch (error) {
-      console.error('Failed to load blocks', error);
+      toast.error('Не удалось загрузить список заблокированных пользователей.');
     }
   };
 
@@ -31,8 +33,9 @@ export function BlockedUsersScreen({ navigation }: BlockedUsersScreenProps) {
     try {
       await unblockUser(blockId, userId);
       setBlocks(blocks.filter((b) => b.id !== blockId));
+      toast.success('Пользователь разблокирован.');
     } catch (error) {
-      console.error('Failed to unblock', error);
+      toast.error('Не удалось разблокировать пользователя.');
     }
   };
 

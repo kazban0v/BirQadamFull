@@ -1,4 +1,7 @@
 export const en = {
+  "splash": {
+    "tagline": "One step — big changes"
+  },
   "appnavigator": {
     "s_0": "Projects",
     "s_1": "Help Center",

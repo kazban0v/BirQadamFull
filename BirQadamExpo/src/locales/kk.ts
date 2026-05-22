@@ -1,4 +1,7 @@
 export const kk = {
+  "splash": {
+    "tagline": "Бір қадам — үлкен өзгеріс"
+  },
   "appnavigator": {
     "s_0": "Жобалар",
     "s_1": "Анықтама орталығы",

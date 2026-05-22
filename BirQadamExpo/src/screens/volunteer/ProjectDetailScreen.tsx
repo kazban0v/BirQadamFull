@@ -29,6 +29,7 @@ import { hapticLight, hapticSuccess } from '../../utils/haptics';
 import { appColors, getProjectTypeVisual } from '../../theme';
 import { useTranslation } from "../../locales/i18n";
 import { ProjectCoverPlaceholder } from '../../components/dashboard/ProjectCoverPlaceholder';
+import { ModerationMenu } from '../../components/ModerationMenu';
 
 interface RouteParams {
   projectId: number;
@@ -573,6 +574,14 @@ export const VolunteerProjectDetailScreen = ({
           <TouchableOpacity style={[styles.shareButton, { top: Math.max(50, insets.top + 10) }]} onPress={shareProject}>
             <Ionicons name="share-outline" size={24} color={appColors.text} />
           </TouchableOpacity>
+
+          <View style={[styles.moderationButton, { top: Math.max(50, insets.top + 10) }]}>
+            <ModerationMenu
+              contentType="project"
+              contentId={project.id}
+              iconColor={appColors.text}
+            />
+          </View>
         </View>
 
         {/* Content */}
@@ -1399,6 +1408,22 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 50,
     right: 20,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: appColors.surface,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  moderationButton: {
+    position: 'absolute',
+    top: 50,
+    right: 70,
     width: 40,
     height: 40,
     borderRadius: 20,

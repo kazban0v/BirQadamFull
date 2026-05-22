@@ -11,6 +11,7 @@ import {
   Text,
   TouchableOpacity,
   View,
+  Modal,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -43,10 +44,10 @@ const ToastContext = createContext<ToastContextValue | null>(null);
 // ─── Config ───────────────────────────────────────────────────────────────────
 
 const TOAST_CONFIG: Record<ToastType, { icon: keyof typeof Ionicons.glyphMap; bg: string; iconColor: string }> = {
-  success: { icon: 'checkmark-circle',   bg: '#1C3A2F', iconColor: '#34D399' },
-  error:   { icon: 'close-circle',       bg: '#3A1C1C', iconColor: '#F87171' },
-  info:    { icon: 'information-circle', bg: '#1C2A3A', iconColor: '#60A5FA' },
-  warning: { icon: 'warning',            bg: '#3A2E1C', iconColor: '#FCD34D' },
+  success: { icon: 'checkmark-circle', bg: '#1C3A2F', iconColor: '#34D399' },
+  error: { icon: 'close-circle', bg: '#3A1C1C', iconColor: '#F87171' },
+  info: { icon: 'information-circle', bg: '#1C2A3A', iconColor: '#60A5FA' },
+  warning: { icon: 'warning', bg: '#3A2E1C', iconColor: '#FCD34D' },
 };
 
 // ─── Single Toast component ───────────────────────────────────────────────────
@@ -120,8 +121,8 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   }, [dismiss]);
 
   const success = useCallback((msg: string, dur?: number) => show(msg, 'success', dur), [show]);
-  const error   = useCallback((msg: string, dur?: number) => show(msg, 'error',   dur), [show]);
-  const info    = useCallback((msg: string, dur?: number) => show(msg, 'info',    dur), [show]);
+  const error = useCallback((msg: string, dur?: number) => show(msg, 'error', dur), [show]);
+  const info = useCallback((msg: string, dur?: number) => show(msg, 'info', dur), [show]);
   const warning = useCallback((msg: string, dur?: number) => show(msg, 'warning', dur), [show]);
 
   return (
@@ -158,6 +159,7 @@ const styles = StyleSheet.create({
     right: 16,
     gap: 8,
     zIndex: 9999,
+    elevation: 99,
   },
   toast: {
     flexDirection: 'row',

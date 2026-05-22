@@ -15,6 +15,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { appColors, appRadius, appSpace, appTypography } from '../theme';
 import { useModerationStore } from '../store/moderationStore';
+import { useToast } from './Toast';
 
 interface ModerationMenuProps {
   targetUserId?: number;
@@ -45,8 +46,10 @@ export function ModerationMenu({
   const [selectedReason, setSelectedReason] = useState<string | null>(null);
   const [details, setDetails] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isBlockedLocally, setIsBlockedLocally] = useState(false);
 
   const { blockUser, reportContent } = useModerationStore();
+  const toast = useToast();
 
   const handleBlock = () => {
     if (!targetUserId) return;
@@ -62,6 +65,7 @@ export function ModerationMenu({
           onPress: async () => {
             try {
               await blockUser(targetUserId);
+              setIsBlockedLocally(true);
               Alert.alert('Успешно', 'Пользователь заблокирован.');
             } catch (error) {
               Alert.alert('Ошибка', 'Не удалось заблокировать пользователя.');
@@ -74,7 +78,7 @@ export function ModerationMenu({
 
   const handleReportSubmit = async () => {
     if (!selectedReason) {
-      Alert.alert('Внимание', 'Выберите причину жалобы');
+      toast.warning('Выберите причину жалобы');
       return;
     }
     
@@ -88,7 +92,7 @@ export function ModerationMenu({
         details: details,
       });
       setReportModalVisible(false);
-      Alert.alert('Спасибо', 'Ваша жалоба отправлена модераторам.');
+      Alert.alert('Спасибо!', 'Жалоба отправлена модераторам.');
       setSelectedReason(null);
       setDetails('');
     } catch (error) {
@@ -124,9 +128,20 @@ export function ModerationMenu({
                 </TouchableOpacity>
 
                 {targetUserId && (
-                  <TouchableOpacity style={styles.menuItem} onPress={handleBlock}>
+                  <TouchableOpacity
+                    style={[styles.menuItem, isBlockedLocally && { opacity: 0.5 }]}
+                    onPress={() => {
+                      if (!isBlockedLocally) {
+                        setMenuVisible(false);
+                        handleBlock();
+                      }
+                    }}
+                    disabled={isBlockedLocally}
+                  >
                     <Ionicons name="ban-outline" size={24} color={appColors.textSecondary} />
-                    <Text style={styles.menuText}>Заблокировать пользователя</Text>
+                    <Text style={styles.menuText}>
+                      {isBlockedLocally ? 'Пользователь заблокирован' : 'Заблокировать пользователя'}
+                    </Text>
                   </TouchableOpacity>
                 )}
               </View>

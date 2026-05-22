@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   Linking,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useToast } from '../../components/Toast';
 import { Ionicons } from '@expo/vector-icons';
 import { volunteerAPI } from '../../services/api';
@@ -16,8 +17,10 @@ import { Header } from '../../components/Header';
 import { normalizeImageUrl } from '../../utils/network';
 import { getAxiosErrorMessage } from '../../utils/apiErrorMessage';
 import { appColors } from '../../theme';
-import { useTranslation } from "../../locales/i18n";
+import { useTranslation } from '../../locales/i18n';
 import { ModerationMenu } from '../../components/ModerationMenu';
+
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 interface RouteParams {
   organizerId: number;
@@ -51,11 +54,37 @@ interface OrganizerPortfolio {
   phone_number?: string;
 }
 
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+const getInitials = (name: string): string => {
+  const parts = name.trim().split(' ').filter(Boolean);
+  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return 'ОР';
+};
+
+const AVATAR_GRADIENTS: [string, string][] = [
+  ['#10B981', '#059669'],
+  ['#3B82F6', '#1D4ED8'],
+  ['#8B5CF6', '#6D28D9'],
+  ['#F59E0B', '#D97706'],
+  ['#EF4444', '#B91C1C'],
+  ['#06B6D4', '#0E7490'],
+];
+
+const getGradient = (name: string): [string, string] => {
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  return AVATAR_GRADIENTS[Math.abs(hash) % AVATAR_GRADIENTS.length];
+};
+
+// ─── Component ────────────────────────────────────────────────────────────────
+
 export const OrganizerProfileScreen = ({
   navigation,
   route,
 }: OrganizerProfileScreenProps) => {
-    const { t } = useTranslation();
+  const { t } = useTranslation();
   const toast = useToast();
   const { organizerId } = route.params;
   const [organizer, setOrganizer] = useState<OrganizerPortfolio | null>(null);
@@ -67,7 +96,6 @@ export const OrganizerProfileScreen = ({
       const response = await volunteerAPI.getPublicOrganizerPortfolio(organizerId);
       setOrganizer(response.data);
     } catch (error: unknown) {
-      console.error('Error loading organizer profile:', error);
       const errorMessage = getAxiosErrorMessage(error, t('organizerprofile.s_0'));
       toast.error(errorMessage);
       navigation.goBack();
@@ -82,40 +110,24 @@ export const OrganizerProfileScreen = ({
 
   const callPhone = () => {
     const phone = organizer?.contact_phone || organizer?.phone_number;
-    if (!phone) {
-      toast.info(t('organizerprofile.s_3'));
-      return;
-    }
+    if (!phone) { toast.info(t('organizerprofile.s_3')); return; }
     Linking.openURL(`tel:${phone}`);
   };
 
   const sendEmail = () => {
     const email = organizer?.contact_email || organizer?.email;
-    if (!email) {
-      toast.info(t('organizerprofile.s_5'));
-      return;
-    }
+    if (!email) { toast.info(t('organizerprofile.s_5')); return; }
     Linking.openURL(`mailto:${email}`);
   };
 
   const openTelegram = async () => {
-    if (!organizer?.contact_telegram) {
-      toast.info(t('organizerprofile.s_7'));
-      return;
-    }
-    
+    if (!organizer?.contact_telegram) { toast.info(t('organizerprofile.s_7')); return; }
     const username = organizer.contact_telegram.replace('@', '');
     const url = `https://t.me/${username}`;
-    
     const supported = await Linking.canOpenURL(url);
-    if (supported) {
-      Linking.openURL(url);
-    } else {
-      toast.error(t('organizerprofile.s_9'));
-    }
+    if (supported) Linking.openURL(url);
+    else toast.error(t('organizerprofile.s_9'));
   };
-
-  // Функция для нормализации URL изображений
 
   if (loading) {
     return (
@@ -130,165 +142,223 @@ export const OrganizerProfileScreen = ({
       <View style={styles.errorContainer}>
         <Ionicons name="alert-circle-outline" size={64} color={appColors.textSoft} />
         <Text style={styles.errorText}>{t('organizerprofile.s_10')}</Text>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-        >
+        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
           <Text style={styles.backButtonText}>{t('organizerprofile.s_11')}</Text>
         </TouchableOpacity>
       </View>
     );
   }
 
+  const displayName = organizer.full_name || organizer.username;
+  const photoUrl = normalizeImageUrl(organizer.portfolio?.portfolio_photo_url);
+  const hasPhoto = Boolean(photoUrl);
+  const hasContacts = Boolean(
+    organizer.contact_phone || organizer.phone_number ||
+    organizer.contact_email || organizer.email ||
+    organizer.contact_telegram
+  );
+  const hasProfile = Boolean(
+    organizer.portfolio?.bio ||
+    organizer.portfolio?.age ||
+    organizer.portfolio?.work_experience_years ||
+    organizer.organization_name ||
+    hasContacts
+  );
+  const gradient = getGradient(displayName);
+  const initials = getInitials(displayName);
+
   return (
     <View style={styles.container}>
-      <Header 
-        title={t('organizerprofile.s_12')} 
-        showBack 
+      <Header
+        title={t('organizerprofile.s_12')}
+        showBack
         rightElement={
-          <ModerationMenu 
+          <ModerationMenu
             targetUserId={organizerId}
-            targetName={organizer.full_name || organizer.username}
+            targetName={displayName}
             contentType="user_profile"
           />
         }
       />
-      
+
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        {/* Header Image */}
-        <View style={styles.imageContainer}>
-          {normalizeImageUrl(organizer.portfolio?.portfolio_photo_url) ? (
-            <Image 
-              source={{ uri: normalizeImageUrl(organizer.portfolio?.portfolio_photo_url) }} 
-              style={styles.profileImage}
-              resizeMode="cover"
-              onError={(error) => {
-                console.error('Error loading organizer image:', error);
-              }}
+
+        {/* ── HERO: Случай 2 — есть фото ──────────────────────── */}
+        {hasPhoto ? (
+          <View style={styles.heroContainer}>
+            <Image source={{ uri: photoUrl! }} style={styles.heroImage} resizeMode="cover" />
+            {/* Градиент снизу */}
+            <LinearGradient
+              colors={['transparent', 'rgba(0,0,0,0.75)']}
+              style={styles.heroGradient}
             />
-          ) : (
-            <View style={[styles.profileImage, styles.imagePlaceholder]}>
-              <Ionicons name="business-outline" size={64} color={appColors.textSoft} />
+            {/* Имя + орг поверх фото */}
+            <View style={styles.heroOverlay}>
+              {hasContacts && (
+                <View style={styles.verifiedBadge}>
+                  <Ionicons name="checkmark-circle" size={14} color="#10B981" />
+                  <Text style={styles.verifiedText}>Верифицирован</Text>
+                </View>
+              )}
+              <Text style={styles.heroName}>{displayName}</Text>
+              {organizer.organization_name && (
+                <View style={styles.heroOrgRow}>
+                  <Ionicons name="business-outline" size={14} color="rgba(255,255,255,0.75)" />
+                  <Text style={styles.heroOrg}>{organizer.organization_name}</Text>
+                </View>
+              )}
             </View>
-          )}
-        </View>
-
-        {/* Content */}
-        <View style={styles.content}>
-          {/* Name and Organization */}
-          <View style={styles.nameSection}>
-            <Text style={styles.organizerName}>
-              {organizer.full_name || organizer.username}
-            </Text>
-            {organizer.organization_name && (
-              <Text style={styles.organizationName}>
-                {organizer.organization_name}
-              </Text>
-            )}
           </View>
+        ) : (
+          /* ── HERO: Случай 1 — нет фото, градиент + инициалы ── */
+          <LinearGradient
+            colors={gradient}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.heroContainer}
+          >
+            {/* Декоративные круги */}
+            <View style={[styles.decorCircle, styles.decorCircle1]} />
+            <View style={[styles.decorCircle, styles.decorCircle2]} />
 
-          {/* Portfolio Info */}
-          {(organizer.portfolio?.age || organizer.portfolio?.gender_display || organizer.portfolio?.work_experience_years) && (
-            <View style={styles.portfolioInfoContainer}>
-              {organizer.portfolio?.age && (
-                <View style={[styles.portfolioInfoItem, { marginBottom: 12 }]}>
-                  <View style={styles.portfolioInfoIcon}>
-                    <Ionicons name="calendar-outline" size={18} color={appColors.primary} />
-                  </View>
-                  <View style={styles.portfolioInfoContent}>
-                    <Text style={styles.portfolioInfoLabel}>{t('organizerprofile.s_13')}</Text>
-                    <Text style={styles.portfolioInfoValue}>
-                      {organizer.portfolio.age} {organizer.portfolio.age === 1 ? t('organizerprofile.s_14') : organizer.portfolio.age < 5 ? t('organizerprofile.s_15') : t('organizerprofile.s_16')}
-                    </Text>
-                  </View>
+            <View style={styles.heroOverlay}>
+              <View style={styles.initialsCircle}>
+                <Text style={styles.initialsText}>{initials}</Text>
+              </View>
+              <Text style={styles.heroName}>{displayName}</Text>
+              {organizer.organization_name ? (
+                <View style={styles.heroOrgRow}>
+                  <Ionicons name="business-outline" size={14} color="rgba(255,255,255,0.75)" />
+                  <Text style={styles.heroOrg}>{organizer.organization_name}</Text>
+                </View>
+              ) : null}
+              {!hasProfile && (
+                <View style={styles.emptyBadge}>
+                  <Ionicons name="information-circle-outline" size={14} color="rgba(255,255,255,0.6)" />
+                  <Text style={styles.emptyBadgeText}>Профиль не заполнен</Text>
                 </View>
               )}
-              
-              {organizer.portfolio?.gender_display && (
-                <View style={[styles.portfolioInfoItem, { marginBottom: 12 }]}>
-                  <View style={styles.portfolioInfoIcon}>
-                    <Ionicons name="person-outline" size={18} color={appColors.primary} />
-                  </View>
-                  <View style={styles.portfolioInfoContent}>
-                    <Text style={styles.portfolioInfoLabel}>{t('organizerprofile.s_17')}</Text>
-                    <Text style={styles.portfolioInfoValue}>
-                      {organizer.portfolio.gender_display}
-                    </Text>
-                  </View>
-                </View>
-              )}
-              
-              {organizer.portfolio?.work_experience_years && (
-                <View style={styles.portfolioInfoItem}>
-                  <View style={styles.portfolioInfoIcon}>
-                    <Ionicons name="briefcase-outline" size={18} color={appColors.primary} />
-                  </View>
-                  <View style={styles.portfolioInfoContent}>
-                    <Text style={styles.portfolioInfoLabel}>{t('organizerprofile.s_18')}</Text>
-                    <Text style={styles.portfolioInfoValue}>
-                      {organizer.portfolio.work_experience_years} {organizer.portfolio.work_experience_years === 1 ? t('organizerprofile.s_19') : organizer.portfolio.work_experience_years < 5 ? t('organizerprofile.s_20') : t('organizerprofile.s_21')}
-                    </Text>
-                  </View>
-                </View>
+            </View>
+          </LinearGradient>
+        )}
+
+        {/* ── КОНТЕНТ ──────────────────────────────────────────── */}
+        <View style={styles.content}>
+
+          {/* Имя (только если нет фото — тогда имя уже в hero) */}
+          {!hasPhoto && hasProfile && (
+            <View style={styles.nameSection}>
+              <Text style={styles.organizerName}>{displayName}</Text>
+              {organizer.organization_name && (
+                <Text style={styles.organizationName}>{organizer.organization_name}</Text>
               )}
             </View>
           )}
 
-          {/* Stats */}
+          {/* Статистика-карточки */}
           {organizer.projects_count !== undefined && (
-            <View style={styles.statsContainer}>
-              <View style={styles.statItem}>
+            <View style={styles.statsRow}>
+              <View style={styles.statCard}>
                 <Text style={styles.statValue}>{organizer.projects_count}</Text>
                 <Text style={styles.statLabel}>{t('organizerprofile.s_22')}</Text>
               </View>
+              {organizer.portfolio?.work_experience_years ? (
+                <View style={styles.statCard}>
+                  <Text style={styles.statValue}>{organizer.portfolio.work_experience_years}</Text>
+                  <Text style={styles.statLabel}>лет опыта</Text>
+                </View>
+              ) : null}
             </View>
           )}
 
-          {/* Bio */}
+          {/* Инфо-блок */}
+          {(organizer.portfolio?.age || organizer.portfolio?.gender_display) && (
+            <View style={styles.infoCard}>
+              {organizer.portfolio?.age && (
+                <View style={styles.infoRow}>
+                  <View style={styles.infoIconWrap}>
+                    <Ionicons name="calendar-outline" size={18} color={appColors.primary} />
+                  </View>
+                  <View>
+                    <Text style={styles.infoLabel}>{t('organizerprofile.s_13')}</Text>
+                    <Text style={styles.infoValue}>
+                      {organizer.portfolio.age}{' '}
+                      {organizer.portfolio.age === 1
+                        ? t('organizerprofile.s_14')
+                        : organizer.portfolio.age < 5
+                        ? t('organizerprofile.s_15')
+                        : t('organizerprofile.s_16')}
+                    </Text>
+                  </View>
+                </View>
+              )}
+              {organizer.portfolio?.gender_display && (
+                <View style={styles.infoRow}>
+                  <View style={styles.infoIconWrap}>
+                    <Ionicons name="person-outline" size={18} color={appColors.primary} />
+                  </View>
+                  <View>
+                    <Text style={styles.infoLabel}>{t('organizerprofile.s_17')}</Text>
+                    <Text style={styles.infoValue}>{organizer.portfolio.gender_display}</Text>
+                  </View>
+                </View>
+              )}
+            </View>
+          )}
+
+          {/* О себе */}
           {organizer.portfolio?.bio && (
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>{t('organizerprofile.s_23')}</Text>
-              <Text style={styles.bioText}>{organizer.portfolio.bio}</Text>
+              <View style={styles.bioCard}>
+                <Text style={styles.bioText}>{organizer.portfolio.bio}</Text>
+              </View>
             </View>
           )}
 
-          {/* Contacts */}
-          {(organizer.contact_phone || organizer.phone_number || organizer.contact_email || organizer.email || organizer.contact_telegram) && (
+          {/* Контакты */}
+          {hasContacts && (
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>{t('organizerprofile.s_24')}</Text>
-              <View style={styles.contactsGrid}>
+              <View style={styles.contactsRow}>
                 {(organizer.contact_phone || organizer.phone_number) && (
-                  <TouchableOpacity style={styles.contactButton} onPress={callPhone}>
-                    <View style={styles.contactIcon}>
+                  <TouchableOpacity style={styles.contactBtn} onPress={callPhone}>
+                    <View style={[styles.contactIconWrap, { backgroundColor: '#ECFDF5' }]}>
                       <Ionicons name="call-outline" size={20} color={appColors.primary} />
                     </View>
+                    <Text style={styles.contactLabel}>Позвонить</Text>
                   </TouchableOpacity>
                 )}
                 {(organizer.contact_email || organizer.email) && (
-                  <TouchableOpacity style={styles.contactButton} onPress={sendEmail}>
-                    <View style={styles.contactIcon}>
-                      <Ionicons name="mail-outline" size={20} color={appColors.primary} />
+                  <TouchableOpacity style={styles.contactBtn} onPress={sendEmail}>
+                    <View style={[styles.contactIconWrap, { backgroundColor: '#EFF6FF' }]}>
+                      <Ionicons name="mail-outline" size={20} color="#3B82F6" />
                     </View>
+                    <Text style={styles.contactLabel}>Email</Text>
                   </TouchableOpacity>
                 )}
                 {organizer.contact_telegram && (
-                  <TouchableOpacity style={styles.contactButton} onPress={openTelegram}>
-                    <View style={styles.contactIcon}>
-                      <Ionicons name="send-outline" size={20} color={appColors.primary} />
+                  <TouchableOpacity style={styles.contactBtn} onPress={openTelegram}>
+                    <View style={[styles.contactIconWrap, { backgroundColor: '#E0F2FE' }]}>
+                      <Ionicons name="send-outline" size={20} color="#0088CC" />
                     </View>
+                    <Text style={styles.contactLabel}>Telegram</Text>
                   </TouchableOpacity>
                 )}
               </View>
             </View>
           )}
 
-          {/* Spacer */}
-          <View style={styles.spacer} />
+          <View style={{ height: 100 }} />
         </View>
       </ScrollView>
     </View>
   );
 };
+
+// ─── Styles ───────────────────────────────────────────────────────────────────
+
+const HERO_HEIGHT = 240;
 
 const styles = StyleSheet.create({
   container: {
@@ -313,6 +383,7 @@ const styles = StyleSheet.create({
     color: appColors.textSoft,
     marginTop: 16,
     marginBottom: 24,
+    textAlign: 'center',
   },
   backButton: {
     paddingHorizontal: 24,
@@ -325,132 +396,258 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: appColors.white,
   },
-  scrollView: {
-    flex: 1,
+  scrollView: { flex: 1 },
+
+  // ── Hero ────────────────────────────────────────────────
+  heroContainer: {
+    height: HERO_HEIGHT,
+    overflow: 'hidden',
+    position: 'relative',
   },
-  imageContainer: {
-    height: 200,
-    backgroundColor: appColors.surfaceMuted,
-  },
-  profileImage: {
+  heroImage: {
     width: '100%',
     height: '100%',
-    backgroundColor: appColors.surfaceMuted,
+    position: 'absolute',
   },
-  imagePlaceholder: {
+  heroGradient: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: HERO_HEIGHT * 0.65,
+  },
+  heroOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    padding: 20,
+    alignItems: 'flex-start',
+  },
+  heroName: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    marginBottom: 4,
+    textShadowColor: 'rgba(0,0,0,0.4)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
+  },
+  heroOrgRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
+  heroOrg: {
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.82)',
+    fontWeight: '500',
+  },
+  verifiedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(16,185,129,0.18)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 20,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(16,185,129,0.35)',
+  },
+  verifiedText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#10B981',
+  },
+  // Декоративные круги для плейсхолдера
+  decorCircle: {
+    position: 'absolute',
+    borderRadius: 999,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+  },
+  decorCircle1: {
+    width: 180,
+    height: 180,
+    top: -50,
+    right: -40,
+  },
+  decorCircle2: {
+    width: 120,
+    height: 120,
+    bottom: -20,
+    left: -30,
+  },
+  initialsCircle: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: 'rgba(255,255,255,0.2)',
     justifyContent: 'center',
     alignItems: 'center',
+    marginBottom: 12,
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.35)',
   },
+  initialsText: {
+    fontSize: 28,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: 1,
+  },
+  emptyBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    marginTop: 8,
+    backgroundColor: 'rgba(0,0,0,0.2)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 20,
+  },
+  emptyBadgeText: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.65)',
+    fontWeight: '500',
+  },
+
+  // ── Контент ─────────────────────────────────────────────
   content: {
     padding: 20,
+    backgroundColor: appColors.background,
+    flex: 1,
   },
   nameSection: {
-    marginBottom: 20,
+    marginBottom: 16,
   },
   organizerName: {
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: '800',
     color: appColors.text,
     marginBottom: 4,
   },
   organizationName: {
-    fontSize: 16,
+    fontSize: 15,
     color: appColors.primary,
     fontWeight: '600',
   },
-  portfolioInfoContainer: {
-    marginBottom: 24,
-    padding: 16,
-    backgroundColor: appColors.background,
-    borderRadius: 16,
+  // Статистика
+  statsRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 20,
   },
-  portfolioInfoItem: {
+  statCard: {
+    flex: 1,
+    backgroundColor: appColors.surface,
+    borderRadius: 16,
+    padding: 16,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  statValue: {
+    fontSize: 28,
+    fontWeight: '800',
+    color: appColors.primary,
+    marginBottom: 2,
+  },
+  statLabel: {
+    fontSize: 12,
+    color: appColors.textMuted,
+    textAlign: 'center',
+  },
+  // Инфо-блок
+  infoCard: {
+    backgroundColor: appColors.surface,
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 20,
+    gap: 14,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  infoRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 12,
   },
-  portfolioInfoIcon: {
+  infoIconWrap: {
     width: 40,
     height: 40,
     borderRadius: 12,
     backgroundColor: appColors.primarySurface,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
   },
-  portfolioInfoContent: {
-    flex: 1,
-  },
-  portfolioInfoLabel: {
-    fontSize: 12,
+  infoLabel: {
+    fontSize: 11,
     color: appColors.textMuted,
     fontWeight: '500',
-    marginBottom: 2,
     textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 2,
   },
-  portfolioInfoValue: {
+  infoValue: {
     fontSize: 15,
     color: appColors.text,
     fontWeight: '600',
   },
-  statsContainer: {
-    flexDirection: 'row',
-    marginBottom: 24,
-    paddingVertical: 16,
-    borderTopWidth: 1,
-    borderBottomWidth: 1,
-    borderColor: appColors.border,
-  },
-  statItem: {
-    alignItems: 'center',
-    marginRight: 32,
-  },
-  statValue: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: appColors.primary,
-    marginBottom: 4,
-  },
-  statLabel: {
-    fontSize: 13,
-    color: appColors.textMuted,
-  },
+  // Секции
   section: {
-    marginTop: 24,
+    marginBottom: 20,
   },
   sectionTitle: {
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: '700',
     color: appColors.text,
     marginBottom: 12,
   },
+  bioCard: {
+    backgroundColor: appColors.surface,
+    borderRadius: 16,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
   bioText: {
     fontSize: 14,
-    color: appColors.textMuted,
+    color: appColors.textSecondary,
     lineHeight: 22,
   },
-  experienceText: {
-    fontSize: 14,
+  // Контакты
+  contactsRow: {
+    flexDirection: 'row',
+    gap: 16,
+  },
+  contactBtn: {
+    alignItems: 'center',
+    gap: 8,
+  },
+  contactIconWrap: {
+    width: 56,
+    height: 56,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  contactLabel: {
+    fontSize: 12,
     color: appColors.textMuted,
     fontWeight: '500',
   },
-  contactsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-  },
-  contactButton: {
-    // Убрали flex: 1, чтобы кнопки не растягивались
-  },
-  contactIcon: {
-    width: 56,
-    height: 56,
-    borderRadius: 16,
-    backgroundColor: appColors.primarySurface,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  spacer: {
-    height: 100,
-  },
 });
-
