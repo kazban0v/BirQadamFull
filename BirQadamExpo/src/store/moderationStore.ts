@@ -7,6 +7,13 @@ interface ModerationState {
   fetchBlockedUsers: () => Promise<void>;
   blockUser: (userId: number) => Promise<void>;
   unblockUser: (blockId: number, userId: number) => Promise<void>;
+  reportContent: (data: {
+    reported_user_id?: number;
+    content_type: string;
+    content_id?: number;
+    reason: string;
+    details?: string;
+  }) => Promise<void>;
 }
 
 export const useModerationStore = create<ModerationState>((set, get) => ({
@@ -45,6 +52,15 @@ export const useModerationStore = create<ModerationState>((set, get) => ({
       }));
     } catch (error) {
       console.error('Failed to unblock user', error);
+      throw error;
+    }
+  },
+
+  reportContent: async (data) => {
+    try {
+      await moderationAPI.reportContent(data);
+    } catch (error) {
+      console.error('Failed to report content', error);
       throw error;
     }
   },
