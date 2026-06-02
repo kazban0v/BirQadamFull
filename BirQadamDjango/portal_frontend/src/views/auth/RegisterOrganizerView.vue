@@ -226,10 +226,14 @@ const STEPS = [
           <div class="form-icon-wrap">
             <v-icon size="22" color="white">mdi-domain</v-icon>
           </div>
-          <div>
+          <div style="flex:1">
             <h1 class="form-title">Регистрация организатора</h1>
             <p class="form-subtitle">Шаг {{ step }} из {{ stepsTotal }}</p>
           </div>
+          <RouterLink to="/instructions" class="instr-link" title="Инструкция по заполнению">
+            <v-icon size="15">mdi-help-circle-outline</v-icon>
+            Инструкция
+          </RouterLink>
         </div>
 
         <!-- Степпер -->
@@ -804,6 +808,25 @@ const STEPS = [
   transition: color 0.15s, background 0.15s;
 }
 .eye-btn:hover { color: rgba(0,0,0,0.6); background: rgba(0,0,0,0.06); }
+
+/* Инструкция */
+.instr-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex-shrink: 0;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #2e7d32;
+  text-decoration: none;
+  padding: 5px 11px;
+  border-radius: 20px;
+  background: #f1f8e9;
+  border: 1px solid rgba(46,125,50,0.2);
+  transition: background 0.15s, color 0.15s;
+  white-space: nowrap;
+}
+.instr-link:hover { background: #c8e6c9; color: #1b5e20; }
 
 /* Notice */
 .info-notice {

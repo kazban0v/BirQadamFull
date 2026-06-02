@@ -1,4 +1,624 @@
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch, watchEffect, nextTick } from 'vue';
 import { useRouter } from 'vue-router';
@@ -322,6 +942,15 @@ const quickActions = [
     bg: 'rgba(57, 73, 171, 0.1)',
     to: '/volunteer/photo-reports',
     tag: 'Отчёты',
+  },
+  {
+    title: 'Достижения',
+    description: 'Просматривайте свои награды, рейтинг и уровни.',
+    icon: 'mdi-trophy-outline',
+    accent: '#e65100',
+    bg: 'rgba(230, 81, 0, 0.1)',
+    to: '/volunteer/achievements',
+    tag: 'Награды',
   },
   {
     title: 'Профиль',
@@ -696,10 +1325,10 @@ async function handleTaskAction(action: 'accept' | 'decline' | 'complete', task:
           Кабинет волонтёра
             </div>
         <h1 class="hero__title">
-          Присоединяйтесь к проектам,<br />выполняйте задачи и развивайтесь
+          Привет, {{ volunteerName }}! 👋
             </h1>
         <p class="hero__sub">
-          Весь инструментарий в одном месте — синхронизировано с Telegram-ботом.
+          Присоединяйтесь к проектам, выполняйте задачи и развивайтесь. Весь инструментарий в одном месте.
             </p>
         <div class="hero__btns">
           <button class="hero__btn hero__btn--solid" @click="navigate('/volunteer/projects')">
@@ -783,6 +1412,41 @@ async function handleTaskAction(action: 'accept' | 'decline' | 'complete', task:
           </div>
           <div class="step-card__title">{{ step.title }}</div>
           <p class="step-card__desc">{{ step.description }}</p>
+          
+          <!-- Кнопка действия для активного шага -->
+          <div v-if="step.isCurrent && step.status === 'active'" class="step-card__action mt-2">
+            <v-btn
+              v-if="step.key === 'profile'"
+              color="primary"
+              variant="flat"
+              size="small"
+              class="text-none w-100 font-weight-bold"
+              @click="navigate('/volunteer/profile')"
+            >
+              Заполнить
+            </v-btn>
+            <v-btn
+              v-else-if="step.key === 'project'"
+              color="primary"
+              variant="flat"
+              size="small"
+              class="text-none w-100 font-weight-bold"
+              @click="navigate('/volunteer/projects')"
+            >
+              Найти проект
+            </v-btn>
+            <v-btn
+              v-else-if="step.key === 'report'"
+              color="primary"
+              variant="flat"
+              size="small"
+              class="text-none w-100 font-weight-bold"
+              @click="navigate('/volunteer/tasks')"
+            >
+              К задачам
+            </v-btn>
+          </div>
+
           <div v-if="step.isCurrent && step.status === 'active'" class="step-card__now">
             <span class="step-card__now-dot"></span>
             Сейчас
@@ -791,9 +1455,68 @@ async function handleTaskAction(action: 'accept' | 'decline' | 'complete', task:
       </div>
     </div>
 
+    <!-- ─── Как работает BirQadam ─── -->
+    <div class="section-card">
+      <div class="onboarding-top">
+        <div>
+          <div class="status-pill" style="color: #00897b; background: rgba(0,137,123,0.1); border-color: rgba(0,137,123,0.2);">
+            <v-icon icon="mdi-help-circle-outline" size="13" />
+            Инструкция
+          </div>
+          <h2 class="card-title mt-2">Как работает платформа BirQadam</h2>
+          <p class="card-sub">Простой цикл волонтерства от выбора проекта до получения наград.</p>
+        </div>
+      </div>
+      
+      <div class="info-row">
+        <div class="info-tile" style="background: rgba(139, 195, 74, 0.05); border: 1px solid rgba(139, 195, 74, 0.1);">
+          <div class="info-tile__icon" style="color: #558b2f; background: rgba(139, 195, 74, 0.15);">
+            <v-icon icon="mdi-magnify" size="22" />
+          </div>
+          <div class="info-tile__title">1. Найдите проект</div>
+          <p class="info-tile__text">
+            Перейдите в раздел проектов, изучите доступные инициативы в вашем городе или онлайн и подайте заявку.
+          </p>
+        </div>
+
+        <div class="info-tile" style="background: rgba(0, 137, 123, 0.05); border: 1px solid rgba(0, 137, 123, 0.1);">
+          <div class="info-tile__icon" style="color: #00695c; background: rgba(0, 137, 123, 0.15);">
+            <v-icon icon="mdi-clipboard-text-play-outline" size="22" />
+          </div>
+          <div class="info-tile__title">2. Выполняйте задачи</div>
+          <p class="info-tile__text">
+            После одобрения организатором, вы увидите доступные задачи проекта. Выбирайте их и приступайте к делу.
+          </p>
+        </div>
+
+        <div class="info-tile" style="background: rgba(57, 73, 171, 0.05); border: 1px solid rgba(57, 73, 171, 0.1);">
+          <div class="info-tile__icon" style="color: #283593; background: rgba(57, 73, 171, 0.15);">
+            <v-icon icon="mdi-camera-outline" size="22" />
+          </div>
+          <div class="info-tile__title">3. Отправьте отчет</div>
+          <p class="info-tile__text">
+            Подтвердите выполненное задание, загрузив фотографии и комментарий прямо в личном кабинете.
+          </p>
+        </div>
+
+        <div class="info-tile" style="background: rgba(230, 81, 0, 0.05); border: 1px solid rgba(230, 81, 0, 0.1);">
+          <div class="info-tile__icon" style="color: #bf360c; background: rgba(230, 81, 0, 0.15);">
+            <v-icon icon="mdi-trophy-outline" size="22" />
+          </div>
+          <div class="info-tile__title">4. Получайте рейтинг</div>
+          <p class="info-tile__text">
+            Организаторы одобрят отчет, и вы получите баллы XP, которые повышают ваш уровень и открывают достижения!
+          </p>
+        </div>
+      </div>
+    </div>
+
     <!-- ─── Stats ─── -->
     <div class="stats-grid">
-        <div class="stat-card stat-card--primary">
+        <div 
+          class="stat-card stat-card--primary stat-card--clickable" 
+          @click="navigate('/volunteer/achievements')"
+        >
           <div class="stat-card__icon">
           <v-icon icon="mdi-star-circle" size="28" />
           </div>
@@ -804,7 +1527,7 @@ async function handleTaskAction(action: 'accept' | 'decline' | 'complete', task:
             </div>
             <template v-else>
               <div class="stat-card__value">{{ stats?.rating ?? 0 }}</div>
-            <div class="stat-card__hint">Уровень {{ stats?.level ?? 1 }}</div>
+            <div class="stat-card__hint">Уровень {{ stats?.level ?? 1 }} · Награды</div>
             </template>
           </div>
         </div>
@@ -838,36 +1561,6 @@ async function handleTaskAction(action: 'accept' | 'decline' | 'complete', task:
             <div class="stat-card__hint">Новых сообщений</div>
           </div>
         </div>
-    </div>
-
-    <!-- ─── How it works ─── -->
-    <div class="section-card">
-      <div class="section-card__row">
-            <div>
-          <h2 class="card-title">Как работает кабинет</h2>
-          <p class="card-sub">Синхронизировано с Telegram-ботом</p>
-              </div>
-        <div class="bot-badge">
-          <v-icon icon="mdi-robot-outline" size="15" />
-          Telegram бот
-              </div>
-      </div>
-
-      <div class="info-row">
-        <div
-          v-for="card in infoCards"
-          :key="card.title"
-          class="info-tile"
-          :style="{ background: card.bg }"
-        >
-          <div class="info-tile__icon">
-            <v-img v-if="card.iconSrc" :src="card.iconSrc" width="22" height="22" />
-            <v-icon v-else :icon="card.icon" size="22" :style="{ color: card.accent }" />
-          </div>
-          <div class="info-tile__title">{{ card.title }}</div>
-          <p class="info-tile__text">{{ card.text }}</p>
-        </div>
-      </div>
     </div>
 
     <!-- ─── Quick actions ─── -->
@@ -1217,7 +1910,7 @@ async function handleTaskAction(action: 'accept' | 'decline' | 'complete', task:
             variant="tonal"
             class="mb-4"
           >
-            Чтобы отправить фото, возьмите задачу в работу в Telegram боте.
+            Прикрепите фото-отчет по выполненной задаче.
           </v-alert>
 
           <v-file-input
@@ -1757,6 +2450,16 @@ async function handleTaskAction(action: 'accept' | 'decline' | 'complete', task:
   border-radius: 16px;
   color: #fff;
   box-shadow: 0 8px 20px rgba(0,0,0,0.08);
+}
+
+.stat-card--clickable {
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.stat-card--clickable:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 24px rgba(139, 195, 74, 0.24);
 }
 
 .stat-card--primary {

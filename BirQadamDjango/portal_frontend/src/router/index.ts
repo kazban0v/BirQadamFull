@@ -43,6 +43,11 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/legal/TermsOfUseView.vue'),
       },
       {
+        path: 'instructions',
+        name: 'instructions',
+        component: () => import('@/views/InstructionsView.vue'),
+      },
+      {
         path: ':pathMatch(.*)*',
         name: 'not-found',
         component: () => import('@/views/NotFoundView.vue'),
@@ -164,6 +169,9 @@ const routes: RouteRecordRaw[] = [
 export const router = createRouter({
   history: createWebHistory('/portal/'),
   routes,
+  scrollBehavior() {
+    return { top: 0, left: 0 };
+  },
 });
 
 router.beforeEach(async (to, from, next) => {

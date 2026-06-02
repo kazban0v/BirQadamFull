@@ -3757,3 +3757,65 @@ urlpatterns += [
     path('blocks/<int:pk>/', BlockDestroyAPIView.as_view(), name='block_destroy'),
     path('reports/', ReportCreateAPIView.as_view(), name='report_create'),
 ]
+
+
+# ─────────────────────────────────────────────
+#  PUBLIC STATS  (no authentication required)
+# ─────────────────────────────────────────────
+
+@method_decorator(csrf_exempt, name='dispatch')
+class PublicPlatformStatsAPIView(APIView):
+    """
+    Публичная статистика платформы для главной страницы.
+    Не требует авторизации.
+
+    GET /api/web/public/stats/
+    {
+      "volunteers":   <int>,   # активные волонтёры
+      "funds":        <int>,   # зарегистрированные фонды/организаторы
+      "tasks_done":   <int>,   # выполненных заданий
+      "days_since":   <int>    # дней с запуска проекта
+    }
+    """
+    permission_classes = [AllowAny]
+    authentication_classes = (CsrfExemptSessionAuthentication,)
+
+    # Дата запуска платформы — меняйте на реальную при необходимости
+    LAUNCH_DATE = timezone.make_aware(datetime(2022, 1, 1))
+
+    def get(self, request, *args, **kwargs):
+        try:
+            volunteers = User.objects.filter(
+                role='volunteer',
+                is_active=True,
+            ).count()
+
+            funds = User.objects.filter(
+                role='organizer',
+                organizer_status='approved',
+                is_active=True,
+            ).count()
+
+            tasks_done = Task.objects.filter(status='completed').count()
+
+            days_since = max(0, (timezone.now() - self.LAUNCH_DATE).days)
+
+            return Response({
+                'volunteers': volunteers,
+                'funds': funds,
+                'tasks_done': tasks_done,
+                'days_since': days_since,
+            }, status=status.HTTP_200_OK)
+
+        except Exception as exc:
+            logger.exception('[PublicPlatformStats] Unexpected error: %s', exc)
+            return Response(
+                {'detail': 'Не удалось загрузить статистику.'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+
+urlpatterns += [
+    path('public/stats/', PublicPlatformStatsAPIView.as_view(), name='public_platform_stats'),
+]
+

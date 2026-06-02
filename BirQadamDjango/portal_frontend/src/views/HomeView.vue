@@ -2,6 +2,7 @@
 import { onMounted, ref, computed, nextTick } from 'vue';
 import { RouterLink } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
+import StatsStrip from '@/components/StatsStrip.vue';
 
 // Types
 interface FAQ {
@@ -17,10 +18,10 @@ const isLoading = ref(false);
 // FAQ
 const openFaq = ref<number | null>(null);
 const faqs: FAQ[] = [
-  { q: 'Как связать аккаунт из Telegram с веб-порталом?', a: 'После регистрации на сайте откройте бот BirQadam в Telegram и введите команду /link. Следуйте инструкциям — займёт меньше минуты.' },
+  { q: 'Как связать аккаунт из мобильного приложения с веб-порталом?', a: 'После регистрации на сайте войдите в мобильное приложение BirQadam с теми же данными. Вся ваша статистика и задачи синхронизируются автоматически.' },
   { q: 'Нужно ли проходить повторную модерацию?', a: 'Если вы уже подтверждены в системе, повторная модерация не требуется. Новые организаторы проходят проверку один раз.' },
-  { q: 'Можно ли управлять проектами с телефона?', a: 'Да. Все действия в Telegram-боте автоматически отображаются в веб-кабинете и наоборот.' },
-  { q: 'Куда поступают фотоотчёты?', a: 'Фото сохраняются в общей базе данных. При одобрении организатором волонтёры получают уведомления в Telegram.' },
+  { q: 'Можно ли управлять проектами с телефона?', a: 'Да. Все действия в мобильном приложении автоматически отображаются в веб-кабинете и наоборот.' },
+  { q: 'Куда поступают фотоотчёты?', a: 'Фото сохраняются в общей базе данных. При одобрении организатором волонтёры мгновенно получают уведомления в приложении.' },
 ];
 
 // Computed
@@ -221,6 +222,11 @@ function toggleFaq(index: number, event?: KeyboardEvent) {
     </section>
 
     <!-- ════════════════════════════════
+         PLATFORM STATS STRIP
+    ════════════════════════════════ -->
+    <StatsStrip />
+
+    <!-- ════════════════════════════════
          HOW IT WORKS
     ════════════════════════════════ -->
     <section class="how" style="display: none;">
@@ -251,8 +257,8 @@ function toggleFaq(index: number, event?: KeyboardEvent) {
                 <path d="M20.6 4.1L2.8 10.8c-1.2.5-1.2 1.2-.2 1.5l4.5 1.4 1.7 5.2c.2.6.5.8 1 .8.4 0 .6-.2.9-.5l2.2-2.1 4.5 3.3c.8.5 1.4.2 1.6-.8l2.9-13.7c.3-1.2-.5-1.8-1.3-1.8z"/>
               </svg>
             </div>
-            <h3 class="how-card__title">Свяжите Telegram</h3>
-            <p class="how-card__desc">Введите <code>/link</code> в боте BirQadam. Теперь данные синхронизируются автоматически везде.</p>
+            <h3 class="how-card__title">Скачайте приложение</h3>
+            <p class="how-card__desc">Войдите в мобильное приложение BirQadam. Теперь ваши данные и задачи синхронизируются автоматически везде.</p>
           </div>
 
           <div class="how-card how-card--3">
@@ -363,12 +369,20 @@ function toggleFaq(index: number, event?: KeyboardEvent) {
             Организовывать проект →
           </RouterLink>
           <RouterLink 
-            v-else-if="isOrganizer"
+            v-else-if="isOrganizerRole"
             :to="dashboardRoute" 
             class="cta-btn cta-btn--lime" 
             aria-label="Перейти в кабинет организатора"
           >
             Открыть мой кабинет →
+          </RouterLink>
+          <RouterLink
+            to="/instructions"
+            class="cta-btn cta-btn--instr"
+            aria-label="Инструкция по регистрации"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+            Инструкция
           </RouterLink>
         </div>
 
@@ -577,16 +591,26 @@ function toggleFaq(index: number, event?: KeyboardEvent) {
 }
 .cta-btn--outline-w:hover { background: rgba(255,255,255,0.1); }
 
+.cta-btn--instr {
+  background: rgba(255,255,255,0.12);
+  color: rgba(255,255,255,0.88);
+  border: 1.5px solid rgba(255,255,255,0.25);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.cta-btn--instr:hover { background: rgba(255,255,255,0.22); }
+
 /* ════════════════════════════════════
    HERO
 ════════════════════════════════════ */
 .hero {
   position: relative;
-  min-height: 100vh;
   display: flex;
   align-items: center;
   overflow: hidden;
   background: var(--green);
+  padding: 140px 0 160px; /* Фиксированный padding вместо 100vh — контент всегда виден */
 }
 
 /* Photo collage mosaic */

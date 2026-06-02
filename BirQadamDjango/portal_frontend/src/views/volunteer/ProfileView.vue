@@ -446,52 +446,6 @@ onMounted(() => Promise.all([loadProfile(), loadStats(), loadActivity(), loadTel
           </button>
         </div>
 
-        <!-- Telegram -->
-        <div class="card">
-          <div class="card__head">
-            <div class="card__ico card__ico--tg"><v-icon size="18" color="#2b7abf">mdi-telegram</v-icon></div>
-            <h2 class="card__title">Telegram</h2>
-          </div>
-
-          <div v-if="telegramLoading" class="state-center"><v-progress-circular indeterminate color="#8bc34a" size="28"/></div>
-
-          <template v-else-if="telegramSync">
-            <!-- Linked -->
-            <div v-if="telegramSync.is_linked" class="tg-ok">
-              <div class="tg-ok__row">
-                <v-icon size="16" color="#3d7a1a">mdi-check-circle</v-icon>
-                <span>Аккаунт привязан</span>
-              </div>
-              <div class="tg-ok__id">
-                <v-icon size="12">mdi-identifier</v-icon> ID: {{ telegramSync.telegram_id }}
-              </div>
-            </div>
-
-            <!-- Not linked -->
-            <div v-else class="tg-no">
-              <p class="tg-no__hint">Привяжите Telegram для синхронизации прогресса</p>
-
-              <div v-if="linkCode" class="tg-code">
-                <div class="tg-code__lbl">Код для привязки</div>
-                <div class="tg-code__box">
-                  <span class="tg-code__val">{{ linkCode }}</span>
-                  <button class="tg-code__copy" type="button" @click="copyToClipboard(linkCode)">
-                    <v-icon size="14">mdi-content-copy</v-icon>
-                  </button>
-                </div>
-                <p class="tg-code__hint">Отправьте <b>/link {{ linkCode }}</b> в боте</p>
-                <button class="btn btn--tg" type="button" @click="openTelegramBot">
-                  <v-icon size="15">mdi-telegram</v-icon> Открыть бот
-                </button>
-              </div>
-
-              <button class="btn btn--primary btn--block" type="button" :disabled="telegramLoading" style="margin-top:10px" @click="generateCode">
-                <v-icon size="15">mdi-link</v-icon>
-                {{ linkCode ? 'Обновить код' : 'Получить код' }}
-              </button>
-            </div>
-          </template>
-        </div>
 
       </div>
     </div>

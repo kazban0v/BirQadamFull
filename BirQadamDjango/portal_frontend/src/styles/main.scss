@@ -1,6 +1,6 @@
 @use './variables'as *;
 
-@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
 /* Единый зелёный градиент для v-app-bar, футера и бренд-панелей (портал) */
 :root {
@@ -20,9 +20,11 @@ html,
 body {
     margin: 0;
     padding: 0;
-    font-family: $font-family-base;
+    font-family: 'Inter', sans-serif;
     background-color: #f8ecc4; // BirQadam Background
-    color: #333;
+    color: #1f2937; // Мягкий темный цвет вместо жесткого черного
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
 }
 
 a {

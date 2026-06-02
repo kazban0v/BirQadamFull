@@ -1,0 +1,1241 @@
+<!DOCTYPE html>
+
+<html lang="ru-ru" dir="ltr">
+<head>
+<title>Error: Добавить Проект | BirQadam Admin</title>
+<link rel="stylesheet" href="/static/admin/css/base.css">
+
+  <link rel="stylesheet" href="/static/admin/css/dark_mode.css">
+  <script src="/static/admin/js/theme.js"></script>
+
+
+  <link rel="stylesheet" href="/static/admin/css/nav_sidebar.css">
+  <script src="/static/admin/js/nav_sidebar.js" defer></script>
+
+<link rel="stylesheet" href="/static/admin/css/forms.css">
+
+
+<script src="/admin/jsi18n/"></script>
+<script src="/static/admin/js/vendor/jquery/jquery.min.js"></script>
+<script src="/static/admin/js/calendar.js"></script>
+<script src="/static/admin/js/jquery.init.js"></script>
+<script src="/static/admin/js/admin/DateTimeShortcuts.js"></script>
+<script src="/static/admin/js/core.js"></script>
+<script src="/static/admin/js/admin/RelatedObjectLookups.js"></script>
+<script src="/static/admin/js/actions.js"></script>
+<script src="/static/admin/js/urlify.js"></script>
+<script src="/static/admin/js/prepopulate.js"></script>
+<script src="/static/admin/js/vendor/xregexp/xregexp.min.js"></script>
+
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="/static/admin/css/responsive.css">
+    
+
+<meta name="robots" content="NONE,NOARCHIVE">
+</head>
+
+<body class=" app-api model-project change-form"
+  data-admin-utc-offset="18000">
+<a href="#content-start" class="skip-to-content-link">К основному</a>
+<!-- Container -->
+<div id="container">
+
+    
+    <!-- Header -->
+    
+      <header id="header">
+        <div id="branding">
+        
+<div id="site-name"><a href="/admin/">BirQadam - Администрирование</a></div>
+
+
+        </div>
+        
+        
+        <div id="user-tools">
+            
+                Добро пожаловать,
+                <strong>admin</strong>.
+            
+            
+                
+                    <a href="/">Открыть сайт</a> /
+                
+                
+                    
+                    
+                
+                
+                <a href="/admin/password_change/">Изменить пароль</a> /
+                
+                <form id="logout-form" method="post" action="/admin/logout/">
+                    <input type="hidden" name="csrfmiddlewaretoken" value="RuyG1eTIWiho4ubWFIwtczkG8thnH5g9T4LiLmeR80AMqmIpc8CnE2mUZeBOBdU3">
+                    <button type="submit">Выйти</button>
+                </form>
+                
+<button class="theme-toggle">
+  <span class="visually-hidden theme-label-when-auto">Переключить тему (текущая: выбрана автоматически)</span>
+  <span class="visually-hidden theme-label-when-light">Переключить тему (текущая: светлая)</span>
+  <span class="visually-hidden theme-label-when-dark">Переключить тему (текущая: тёмная)</span>
+  <svg aria-hidden="true" class="theme-icon-when-auto">
+    <use xlink:href="#icon-auto" />
+  </svg>
+  <svg aria-hidden="true" class="theme-icon-when-dark">
+    <use xlink:href="#icon-moon" />
+  </svg>
+  <svg aria-hidden="true" class="theme-icon-when-light">
+    <use xlink:href="#icon-sun" />
+  </svg>
+</button>
+
+            
+        </div>
+        
+        
+        
+      </header>
+    
+    <!-- END Header -->
+    
+      <nav aria-label="Хлебные крошки">
+        
+<div class="breadcrumbs">
+<a href="/admin/">Начало</a>
+&rsaquo; <a href="/admin/api/">Api</a>
+&rsaquo; <a href="/admin/api/project/">Проекты</a>
+&rsaquo; Добавить Проект
+</div>
+
+      </nav>
+    
+    
+
+    <div class="main" id="main">
+      
+        
+          
+<button class="sticky toggle-nav-sidebar" id="toggle-nav-sidebar" aria-label="Переключить навигацию"></button>
+<nav class="sticky" id="nav-sidebar" aria-label="Боковая панель">
+  <input type="search" id="nav-filter"
+         placeholder="Начните печатать для фильтрации..."
+         aria-label="Фильтр элементов навигации">
+  
+
+
+  
+    <div class="app-api module current-app">
+      <table>
+        <caption>
+          <a href="/admin/api/" class="section" title="Модели в приложении Api">Api</a>
+        </caption>
+        <thead class="visually-hidden">
+          <tr>
+            <th scope="col">Model name</th>
+            <th scope="col">Add link</th>
+            <th scope="col">Change or view list link</th>
+          </tr>
+        </thead>
+        
+          
+            <tr class="model-activity">
+              <th scope="row" id="api-activity">
+                
+                  <a href="/admin/api/activity/">Активности</a>
+                
+              </th>
+
+              
+                <td></td>
+              
+
+              
+            </tr>
+          
+        
+          
+            <tr class="model-block">
+              <th scope="row" id="api-block">
+                
+                  <a href="/admin/api/block/">Блокировки</a>
+                
+              </th>
+
+              
+                <td><a href="/admin/api/block/add/" class="addlink" aria-describedby="api-block">Добавить</a></td>
+              
+
+              
+            </tr>
+          
+        
+          
+            <tr class="model-achievement">
+              <th scope="row" id="api-achievement">
+                
+                  <a href="/admin/api/achievement/">Достижения</a>
+                
+              </th>
+
+              
+                <td><a href="/admin/api/achievement/add/" class="addlink" aria-describedby="api-achievement">Добавить</a></td>
+              
+
+              
+            </tr>
+          
+        
+          
+            <tr class="model-userachievement">
+              <th scope="row" id="api-userachievement">
+                
+                  <a href="/admin/api/userachievement/">Достижения пользователей</a>
+                
+              </th>
+
+              
+                <td><a href="/admin/api/userachievement/add/" class="addlink" aria-describedby="api-userachievement">Добавить</a></td>
+              
+
+              
+            </tr>
+          
+        
+          
+            <tr class="model-report">
+              <th scope="row" id="api-report">
+                
+                  <a href="/admin/api/report/">Жалобы</a>
+                
+              </th>
+
+              
+                <td><a href="/admin/api/report/add/" class="addlink" aria-describedby="api-report">Добавить</a></td>
+              
+
+              
+            </tr>
+          
+        
+          
+            <tr class="model-task">
+              <th scope="row" id="api-task">
+                
+                  <a href="/admin/api/task/">Задания</a>
+                
+              </th>
+
+              
+                <td><a href="/admin/api/task/add/" class="addlink" aria-describedby="api-task">Добавить</a></td>
+              
+
+              
+            </tr>
+          
+        
+          
+            <tr class="model-organizerapplication">
+              <th scope="row" id="api-organizerapplication">
+                
+                  <a href="/admin/api/organizerapplication/">Заявки организаторов</a>
+                
+              </th>
+
+              
+                <td><a href="/admin/api/organizerapplication/add/" class="addlink" aria-describedby="api-organizerapplication">Добавить</a></td>
+              
+
+              
+            </tr>
+          
+        
+          
+            <tr class="model-trustfactorhistory">
+              <th scope="row" id="api-trustfactorhistory">
+                
+                  <a href="/admin/api/trustfactorhistory/">История TrustFactor</a>
+                
+              </th>
+
+              
+                <td></td>
+              
+
+              
+            </tr>
+          
+        
+          
+            <tr class="model-verificationcode">
+              <th scope="row" id="api-verificationcode">
+                
+                  <a href="/admin/api/verificationcode/">Коды верификации</a>
+                
+              </th>
+
+              
+                <td><a href="/admin/api/verificationcode/add/" class="addlink" aria-describedby="api-verificationcode">Добавить</a></td>
+              
+
+              
+            </tr>
+          
+        
+          
+            <tr class="model-bulknotification">
+              <th scope="row" id="api-bulknotification">
+                
+                  <a href="/admin/api/bulknotification/">Массовые рассылки</a>
+                
+              </th>
+
+              
+                <td><a href="/admin/api/bulknotification/add/" class="addlink" aria-describedby="api-bulknotification">Добавить</a></td>
+              
+
+              
+            </tr>
+          
+        
+          
+            <tr class="model-taskassignment">
+              <th scope="row" id="api-taskassignment">
+                
+                  <a href="/admin/api/taskassignment/">Назначения заданий</a>
+                
+              </th>
+
+              
+                <td><a href="/admin/api/taskassignment/add/" class="addlink" aria-describedby="api-taskassignment">Добавить</a></td>
+              
+
+              
+            </tr>
+          
+        
+          
+            <tr class="model-user">
+              <th scope="row" id="api-user">
+                
+                  <a href="/admin/api/user/">Пользователи</a>
+                
+              </th>
+
+              
+                <td><a href="/admin/api/user/add/" class="addlink" aria-describedby="api-user">Добавить</a></td>
+              
+
+              
+            </tr>
+          
+        
+          
+            <tr class="model-project current-model">
+              <th scope="row" id="api-project">
+                
+                  <a href="/admin/api/project/" aria-current="page">Проекты</a>
+                
+              </th>
+
+              
+                <td><a href="/admin/api/project/add/" class="addlink" aria-describedby="api-project">Добавить</a></td>
+              
+
+              
+            </tr>
+          
+        
+          
+            <tr class="model-supportticket">
+              <th scope="row" id="api-supportticket">
+                
+                  <a href="/admin/api/supportticket/">Тикеты поддержки</a>
+                
+              </th>
+
+              
+                <td><a href="/admin/api/supportticket/add/" class="addlink" aria-describedby="api-supportticket">Добавить</a></td>
+              
+
+              
+            </tr>
+          
+        
+          
+            <tr class="model-volunteerproject">
+              <th scope="row" id="api-volunteerproject">
+                
+                  <a href="/admin/api/volunteerproject/">Участия волонтёров</a>
+                
+              </th>
+
+              
+                <td><a href="/admin/api/volunteerproject/add/" class="addlink" aria-describedby="api-volunteerproject">Добавить</a></td>
+              
+
+              
+            </tr>
+          
+        
+          
+            <tr class="model-photo">
+              <th scope="row" id="api-photo">
+                
+                  <a href="/admin/api/photo/">Фотоотчёты</a>
+                
+              </th>
+
+              
+                <td><a href="/admin/api/photo/add/" class="addlink" aria-describedby="api-photo">Добавить</a></td>
+              
+
+              
+            </tr>
+          
+        
+          
+            <tr class="model-notificationtemplate">
+              <th scope="row" id="api-notificationtemplate">
+                
+                  <a href="/admin/api/notificationtemplate/">Шаблоны уведомлений</a>
+                
+              </th>
+
+              
+                <td><a href="/admin/api/notificationtemplate/add/" class="addlink" aria-describedby="api-notificationtemplate">Добавить</a></td>
+              
+
+              
+            </tr>
+          
+        
+      </table>
+    </div>
+  
+    <div class="app-auth module">
+      <table>
+        <caption>
+          <a href="/admin/auth/" class="section" title="Модели в приложении Пользователи и группы">Пользователи и группы</a>
+        </caption>
+        <thead class="visually-hidden">
+          <tr>
+            <th scope="col">Model name</th>
+            <th scope="col">Add link</th>
+            <th scope="col">Change or view list link</th>
+          </tr>
+        </thead>
+        
+          
+            <tr class="model-group">
+              <th scope="row" id="auth-group">
+                
+                  <a href="/admin/auth/group/">Группы</a>
+                
+              </th>
+
+              
+                <td><a href="/admin/auth/group/add/" class="addlink" aria-describedby="auth-group">Добавить</a></td>
+              
+
+              
+            </tr>
+          
+        
+      </table>
+    </div>
+  
+    <div class="app-taggit module">
+      <table>
+        <caption>
+          <a href="/admin/taggit/" class="section" title="Модели в приложении Теги">Теги</a>
+        </caption>
+        <thead class="visually-hidden">
+          <tr>
+            <th scope="col">Model name</th>
+            <th scope="col">Add link</th>
+            <th scope="col">Change or view list link</th>
+          </tr>
+        </thead>
+        
+          
+            <tr class="model-tag">
+              <th scope="row" id="taggit-tag">
+                
+                  <a href="/admin/taggit/tag/">Теги</a>
+                
+              </th>
+
+              
+                <td><a href="/admin/taggit/tag/add/" class="addlink" aria-describedby="taggit-tag">Добавить</a></td>
+              
+
+              
+            </tr>
+          
+        
+      </table>
+    </div>
+  
+
+
+</nav>
+
+        
+      
+      <main id="content-start" class="content" tabindex="-1">
+        
+          
+        
+        <!-- Content -->
+        <div id="content" class="colM">
+          
+          <h1>Добавить Проект</h1>
+          
+
+
+          
+          <div id="content-main">
+<form enctype="multipart/form-data" method="post" id="project_form" novalidate><input type="hidden" name="csrfmiddlewaretoken" value="RuyG1eTIWiho4ubWFIwtczkG8thnH5g9T4LiLmeR80AMqmIpc8CnE2mUZeBOBdU3">
+<div>
+
+
+
+
+    <p class="errornote">
+    Пожалуйста, исправьте ошибку ниже.
+    </p>
+    
+
+
+
+
+  <fieldset class="module aligned ">
+    
+    
+    
+        <div class="form-row field-title">
+            
+            
+                <div>
+                    
+                        <div class="flex-container">
+                            
+                                <label class="required" for="id_title">Title:</label>
+                                
+                                    <input type="text" name="title" value="Test Project" class="vTextField" maxlength="255" required id="id_title">
+                                
+                            
+                        </div>
+                    
+                </div>
+            
+            
+        </div>
+    
+        <div class="form-row field-volunteer_type">
+            
+            
+                <div>
+                    
+                        <div class="flex-container">
+                            
+                                <label class="required" for="id_volunteer_type">Тип волонтерства:</label>
+                                
+                                    <select name="volunteer_type" id="id_volunteer_type">
+  <option value="social" selected>Социальная помощь</option>
+
+  <option value="environmental">Экологические проекты</option>
+
+  <option value="cultural">Культурные и развлекательные мероприятия</option>
+
+</select>
+                                
+                            
+                        </div>
+                    
+                </div>
+            
+            
+        </div>
+    
+        <div class="form-row field-description">
+            
+            
+                <div>
+                    
+                        <div class="flex-container">
+                            
+                                <label class="required" for="id_description">Description:</label>
+                                
+                                    <textarea name="description" cols="40" rows="10" class="vLargeTextField" required id="id_description">
+Test</textarea>
+                                
+                            
+                        </div>
+                    
+                </div>
+            
+            
+        </div>
+    
+        <div class="form-row field-city">
+            
+            
+                <div>
+                    
+                        <div class="flex-container">
+                            
+                                <label class="required" for="id_city">City:</label>
+                                
+                                    <input type="text" name="city" value="Алматы" class="vTextField" maxlength="100" required id="id_city">
+                                
+                            
+                        </div>
+                    
+                </div>
+            
+            
+        </div>
+    
+        <div class="form-row field-latitude">
+            
+            
+                <div>
+                    
+                        <div class="flex-container">
+                            
+                                <label for="id_latitude">Latitude:</label>
+                                
+                                    <input type="number" name="latitude" step="any" id="id_latitude">
+                                
+                            
+                        </div>
+                    
+                </div>
+            
+            
+        </div>
+    
+        <div class="form-row field-longitude">
+            
+            
+                <div>
+                    
+                        <div class="flex-container">
+                            
+                                <label for="id_longitude">Longitude:</label>
+                                
+                                    <input type="number" name="longitude" step="any" id="id_longitude">
+                                
+                            
+                        </div>
+                    
+                </div>
+            
+            
+        </div>
+    
+        <div class="form-row field-start_date">
+            
+            
+                <div>
+                    
+                        <div class="flex-container">
+                            
+                                <label for="id_start_date">Start date:</label>
+                                
+                                    <p class="date">
+  <input type="text" name="start_date" class="vDateField" size="10" id="id_start_date">
+
+
+</p>
+                                
+                            
+                        </div>
+                    
+                </div>
+            
+            
+        </div>
+    
+        <div class="form-row field-end_date">
+            
+            
+                <div>
+                    
+                        <div class="flex-container">
+                            
+                                <label for="id_end_date">End date:</label>
+                                
+                                    <p class="date">
+  <input type="text" name="end_date" class="vDateField" size="10" id="id_end_date">
+
+
+</p>
+                                
+                            
+                        </div>
+                    
+                </div>
+            
+            
+        </div>
+    
+        <div class="form-row field-creator">
+            
+            
+                <div>
+                    
+                        <div class="flex-container">
+                            
+                                <label class="required" for="id_creator">Creator:</label>
+                                
+                                    <div class="related-widget-wrapper" data-model-ref="user">
+    <select name="creator" data-context="available-source" required id="id_creator">
+  <option value="">---------</option>
+
+  <option value="13">77017370887 (ID: None, Role: Volunteer)</option>
+
+  <option value="6">77057299029 (ID: None, Role: Volunteer)</option>
+
+  <option value="25">77068066666 (ID: None, Role: Volunteer)</option>
+
+  <option value="9">77083524483 (ID: None, Role: Volunteer)</option>
+
+  <option value="26">77474266148 (ID: None, Role: Volunteer)</option>
+
+  <option value="11">77673639258 (ID: None, Role: Volunteer)</option>
+
+  <option value="8">77714086662 (ID: None, Role: Volunteer)</option>
+
+  <option value="28">77715186968 (ID: None, Role: Volunteer)</option>
+
+  <option value="10">77755197338 (ID: None, Role: Volunteer)</option>
+
+  <option value="23">77773985526 (ID: None, Role: Volunteer)</option>
+
+  <option value="19">77783008398 (ID: None, Role: Volunteer)</option>
+
+  <option value="2">77783049781 (ID: None, Role: Volunteer)</option>
+
+  <option value="1">admin (ID: None, Role: Volunteer)</option>
+
+  <option value="124">ngo_1503_35 (ID: None, Role: Organizer)</option>
+
+  <option value="126">ngo_1680_37 (ID: None, Role: Organizer)</option>
+
+  <option value="94">ngo_1779_5 (ID: None, Role: Organizer)</option>
+
+  <option value="105">ngo_1966_16 (ID: None, Role: Organizer)</option>
+
+  <option value="136">ngo_2023_47 (ID: None, Role: Organizer)</option>
+
+  <option value="110">ngo_2133_21 (ID: None, Role: Organizer)</option>
+
+  <option value="129">ngo_2198_40 (ID: None, Role: Organizer)</option>
+
+  <option value="127">ngo_2469_38 (ID: None, Role: Organizer)</option>
+
+  <option value="91">ngo_2880_2 (ID: None, Role: Organizer)</option>
+
+  <option value="125">ngo_3105_36 (ID: None, Role: Organizer)</option>
+
+  <option value="97">ngo_3367_8 (ID: None, Role: Organizer)</option>
+
+  <option value="137">ngo_3456_48 (ID: None, Role: Organizer)</option>
+
+  <option value="128">ngo_3521_39 (ID: None, Role: Organizer)</option>
+
+  <option value="139">ngo_3959_50 (ID: None, Role: Organizer)</option>
+
+  <option value="106">ngo_4106_17 (ID: None, Role: Organizer)</option>
+
+  <option value="123">ngo_4110_34 (ID: None, Role: Organizer)</option>
+
+  <option value="142">ngo_4167_53 (ID: None, Role: Organizer)</option>
+
+  <option value="101">ngo_4238_12 (ID: None, Role: Organizer)</option>
+
+  <option value="121">ngo_4462_32 (ID: None, Role: Organizer)</option>
+
+  <option value="98">ngo_4619_9 (ID: None, Role: Organizer)</option>
+
+  <option value="103">ngo_4649_14 (ID: None, Role: Organizer)</option>
+
+  <option value="112">ngo_4700_23 (ID: None, Role: Organizer)</option>
+
+  <option value="102">ngo_4752_13 (ID: None, Role: Organizer)</option>
+
+  <option value="109">ngo_5252_20 (ID: None, Role: Organizer)</option>
+
+  <option value="130">ngo_5484_41 (ID: None, Role: Organizer)</option>
+
+  <option value="113">ngo_5661_24 (ID: None, Role: Organizer)</option>
+
+  <option value="135">ngo_6732_46 (ID: None, Role: Organizer)</option>
+
+  <option value="93">ngo_6778_4 (ID: None, Role: Organizer)</option>
+
+  <option value="96">ngo_7047_7 (ID: None, Role: Organizer)</option>
+
+  <option value="133">ngo_7194_44 (ID: None, Role: Organizer)</option>
+
+  <option value="122">ngo_7264_33 (ID: None, Role: Organizer)</option>
+
+  <option value="92">ngo_7270_3 (ID: None, Role: Organizer)</option>
+
+  <option value="111">ngo_7296_22 (ID: None, Role: Organizer)</option>
+
+  <option value="100">ngo_7390_11 (ID: None, Role: Organizer)</option>
+
+  <option value="95">ngo_7447_6 (ID: None, Role: Organizer)</option>
+
+  <option value="116">ngo_7714_27 (ID: None, Role: Organizer)</option>
+
+  <option value="108">ngo_7853_19 (ID: None, Role: Organizer)</option>
+
+  <option value="131">ngo_8022_42 (ID: None, Role: Organizer)</option>
+
+  <option value="117">ngo_8034_28 (ID: None, Role: Organizer)</option>
+
+  <option value="140">ngo_8442_51 (ID: None, Role: Organizer)</option>
+
+  <option value="99">ngo_8804_10 (ID: None, Role: Organizer)</option>
+
+  <option value="119">ngo_8906_30 (ID: None, Role: Organizer)</option>
+
+  <option value="114">ngo_8918_25 (ID: None, Role: Organizer)</option>
+
+  <option value="134">ngo_8919_45 (ID: None, Role: Organizer)</option>
+
+  <option value="90">ngo_8957_1 (ID: None, Role: Organizer)</option>
+
+  <option value="138">ngo_9013_49 (ID: None, Role: Organizer)</option>
+
+  <option value="107">ngo_9126_18 (ID: None, Role: Organizer)</option>
+
+  <option value="104">ngo_9222_15 (ID: None, Role: Organizer)</option>
+
+  <option value="115">ngo_9224_26 (ID: None, Role: Organizer)</option>
+
+  <option value="118">ngo_9397_29 (ID: None, Role: Organizer)</option>
+
+  <option value="141">ngo_9512_52 (ID: None, Role: Organizer)</option>
+
+  <option value="89">ngo_9522_0 (ID: None, Role: Organizer)</option>
+
+  <option value="120">ngo_9582_31 (ID: None, Role: Organizer)</option>
+
+  <option value="132">ngo_9820_43 (ID: None, Role: Organizer)</option>
+
+  <option value="30" selected>user (ID: None, Role: Organizer)</option>
+
+</select>
+    
+        <a class="related-widget-wrapper-link change-related" id="change_id_creator"
+            data-href-template="/admin/api/user/__fk__/change/?_to_field=id&amp;_popup=1"
+            data-popup="yes"
+            title="Изменить выбранный объект типа "Пользователь""><img src="/static/admin/img/icon-changelink.svg" alt="" width="24" height="24"></a><a class="related-widget-wrapper-link add-related" id="add_id_creator"
+            data-popup="yes"
+            href="/admin/api/user/add/?_to_field=id&amp;_popup=1"
+            title="Добавить ещё один объект типа "Пользователь""><img src="/static/admin/img/icon-addlink.svg" alt="" width="24" height="24"></a><a class="related-widget-wrapper-link view-related" id="view_id_creator"
+             data-href-template="/admin/api/user/__fk__/change/?_to_field=id"
+             title="Просмотреть выбранный объект типа "Пользователь""><img src="/static/admin/img/icon-viewlink.svg" alt="" width="24" height="24"></a>
+    
+</div>
+                                
+                            
+                        </div>
+                    
+                </div>
+            
+            
+        </div>
+    
+        <div class="form-row field-status">
+            
+            
+                <div>
+                    
+                        <div class="flex-container">
+                            
+                                <label class="required" for="id_status">Status:</label>
+                                
+                                    <select name="status" id="id_status">
+  <option value="pending">Ожидает проверки</option>
+
+  <option value="approved" selected>Одобрен</option>
+
+  <option value="rejected">Отклонён</option>
+
+</select>
+                                
+                            
+                        </div>
+                    
+                </div>
+            
+            
+        </div>
+    
+        <div class="form-row field-tags">
+            
+            
+                <div>
+                    
+                        <div class="flex-container">
+                            
+                                <label for="id_tags">Теги:</label>
+                                
+                                    <input type="text" name="tags" value="помощь" aria-describedby="id_tags_helptext" id="id_tags">
+                                
+                            
+                        </div>
+                    
+                        <div class="help" id="id_tags_helptext">
+                            <div>Список тегов через запятую.</div>
+                        </div>
+                    
+                </div>
+            
+            
+        </div>
+    
+        <div class="form-row field-address">
+            
+            
+                <div>
+                    
+                        <div class="flex-container">
+                            
+                                <label for="id_address">Address:</label>
+                                
+                                    <input type="text" name="address" value="Казахстан, г. Алматы" class="vTextField" maxlength="255" id="id_address">
+                                
+                            
+                        </div>
+                    
+                </div>
+            
+            
+        </div>
+    
+        <div class="form-row field-contact_person">
+            
+            
+                <div>
+                    
+                        <div class="flex-container">
+                            
+                                <label for="id_contact_person">Contact person:</label>
+                                
+                                    <input type="text" name="contact_person" value="Test NGO" class="vTextField" maxlength="120" id="id_contact_person">
+                                
+                            
+                        </div>
+                    
+                </div>
+            
+            
+        </div>
+    
+        <div class="form-row field-contact_phone">
+            
+            
+                <div>
+                    
+                        <div class="flex-container">
+                            
+                                <label for="id_contact_phone">Contact phone:</label>
+                                
+                                    <input type="text" name="contact_phone" value="+77001234567" class="vTextField" maxlength="30" id="id_contact_phone">
+                                
+                            
+                        </div>
+                    
+                </div>
+            
+            
+        </div>
+    
+        <div class="form-row field-contact_email">
+            
+            
+                <div>
+                    
+                        <div class="flex-container">
+                            
+                                <label for="id_contact_email">Contact email:</label>
+                                
+                                    <input type="email" name="contact_email" value="test@testngo.kz" class="vTextField" maxlength="254" id="id_contact_email">
+                                
+                            
+                        </div>
+                    
+                </div>
+            
+            
+        </div>
+    
+        <div class="form-row field-contact_telegram">
+            
+            
+                <div>
+                    
+                        <div class="flex-container">
+                            
+                                <label for="id_contact_telegram">Contact telegram:</label>
+                                
+                                    <input type="text" name="contact_telegram" class="vTextField" maxlength="150" id="id_contact_telegram">
+                                
+                            
+                        </div>
+                    
+                </div>
+            
+            
+        </div>
+    
+        <div class="form-row field-info_url">
+            
+            
+                <div>
+                    
+                        <div class="flex-container">
+                            
+                                <label for="id_info_url">Info url:</label>
+                                
+                                    <input type="url" name="info_url" class="vURLField" maxlength="200" id="id_info_url">
+                                
+                            
+                        </div>
+                    
+                </div>
+            
+            
+        </div>
+    
+        <div class="form-row field-gis2_url">
+            
+            
+                <div>
+                    
+                        <div class="flex-container">
+                            
+                                <label for="id_gis2_url">Ссылка на 2ГИС:</label>
+                                
+                                    <input type="url" name="gis2_url" class="vURLField" maxlength="500" id="id_gis2_url">
+                                
+                            
+                        </div>
+                    
+                </div>
+            
+            
+        </div>
+    
+        <div class="form-row errors field-cover_image">
+            <ul class="errorlist" id="id_cover_image_error"><li>Загрузите правильное изображение. Файл, который вы загрузили, поврежден или не является изображением.</li></ul>
+            
+                <div>
+                    
+                        <div class="flex-container">
+                            
+                                <label for="id_cover_image">Cover image:</label>
+                                
+                                    <input type="file" name="cover_image" accept="image/*" aria-invalid="true" aria-describedby="id_cover_image_error" id="id_cover_image">
+                                
+                            
+                        </div>
+                    
+                </div>
+            
+            
+        </div>
+    
+        <div class="form-row field-deleted_at">
+            
+            
+                <div>
+                    
+                        <div class="flex-container">
+                            
+                                <label>Deleted at:</label>
+                                
+                                    <p class="datetime">
+  Дата: <input type="text" name="deleted_at_0" class="vDateField" size="10" id="id_deleted_at_0">
+
+<br>
+  Время: <input type="text" name="deleted_at_1" class="vTimeField" size="8" id="id_deleted_at_1">
+
+
+</p>
+                                
+                            
+                        </div>
+                    
+                </div>
+            
+            
+        </div>
+    
+        <div class="form-row field-is_deleted">
+            
+            
+                <div>
+                    
+                        <div class="flex-container checkbox-row">
+                            
+                                <input type="checkbox" name="is_deleted" id="id_is_deleted"><label class="vCheckboxLabel" for="id_is_deleted">Is deleted</label>
+                            
+                        </div>
+                    
+                </div>
+            
+            
+        </div>
+    
+        <div class="form-row field-id">
+            
+            
+                <div>
+                    
+                        <div class="flex-container">
+                            
+                                <label>ID:</label>
+                                
+                                    <div class="readonly">-</div>
+                                
+                            
+                        </div>
+                    
+                </div>
+            
+            
+        </div>
+    
+        <div class="form-row field-created_at">
+            
+            
+                <div>
+                    
+                        <div class="flex-container">
+                            
+                                <label>Created at:</label>
+                                
+                                    <div class="readonly">-</div>
+                                
+                            
+                        </div>
+                    
+                </div>
+            
+            
+        </div>
+    
+        <div class="form-row field-volunteers_count">
+            
+            
+                <div>
+                    
+                        <div class="flex-container">
+                            
+                                <label>Волонтеры:</label>
+                                
+                                    <div class="readonly">-</div>
+                                
+                            
+                        </div>
+                    
+                </div>
+            
+            
+        </div>
+    
+        <div class="form-row field-active_tasks_count">
+            
+            
+                <div>
+                    
+                        <div class="flex-container">
+                            
+                                <label>Активные задачи:</label>
+                                
+                                    <div class="readonly">-</div>
+                                
+                            
+                        </div>
+                    
+                </div>
+            
+            
+        </div>
+    
+    
+</fieldset>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div class="submit-row">
+
+<input type="submit" value="Сохранить" class="default" name="_save">
+
+<input type="submit" value="Сохранить и добавить другой объект" name="_addanother">
+<input type="submit" value="Сохранить и продолжить редактирование" name="_continue">
+
+
+
+</div>
+
+
+
+    <script id="django-admin-form-add-constants"
+            src="/static/admin/js/change_form.js"
+            
+                data-model-name="project"
+            
+            async>
+    </script>
+
+
+
+
+<script id="django-admin-prepopulated-fields-constants"
+        src="/static/admin/js/prepopulate_init.js"
+        data-prepopulated-fields="[]">
+</script>
+
+
+</div>
+</form></div>
+
+          
+          <br class="clear">
+        </div>
+        <!-- END Content -->
+      </main>
+    </div>
+    <footer id="footer"></footer>
+</div>
+<!-- END Container -->
+
+<!-- SVGs -->
+<svg xmlns="http://www.w3.org/2000/svg" class="base-svgs">
+  <symbol viewBox="0 0 24 24" width="1.5rem" height="1.5rem" id="icon-auto"><path d="M0 0h24v24H0z" fill="currentColor"/><path d="M12 22C6.477 22 2 17.523 2 12S6.477 2 12 2s10 4.477 10 10-4.477 10-10 10zm0-2V4a8 8 0 1 0 0 16z"/></symbol>
+  <symbol viewBox="0 0 24 24" width="1.5rem" height="1.5rem" id="icon-moon"><path d="M0 0h24v24H0z" fill="currentColor"/><path d="M10 7a7 7 0 0 0 12 4.9v.1c0 5.523-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2h.1A6.979 6.979 0 0 0 10 7zm-6 5a8 8 0 0 0 15.062 3.762A9 9 0 0 1 8.238 4.938 7.999 7.999 0 0 0 4 12z"/></symbol>
+  <symbol viewBox="0 0 24 24" width="1.5rem" height="1.5rem" id="icon-sun"><path d="M0 0h24v24H0z" fill="currentColor"/><path d="M12 18a6 6 0 1 1 0-12 6 6 0 0 1 0 12zm0-2a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM11 1h2v3h-2V1zm0 19h2v3h-2v-3zM3.515 4.929l1.414-1.414L7.05 5.636 5.636 7.05 3.515 4.93zM16.95 18.364l1.414-1.414 2.121 2.121-1.414 1.414-2.121-2.121zm2.121-14.85l1.414 1.415-2.121 2.121-1.414-1.414 2.121-2.121zM5.636 16.95l1.414 1.414-2.121 2.121-1.414-1.414 2.121-2.121zM23 11v2h-3v-2h3zM4 11v2H1v-2h3z"/></symbol>
+</svg>
+<!-- END SVGs -->
+
+</body>
+</html>

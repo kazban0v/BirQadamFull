@@ -109,3 +109,16 @@ export async function getOrganizerPortfolio(organizerId: number): Promise<Organi
   return data;
 }
 
+// ─── Публичная статистика платформы ───────────────────────────────────────
+
+export interface PlatformStats {
+  volunteers: number;
+  funds: number;
+  tasks_done: number;
+  days_since: number;
+}
+
+export async function fetchPublicStats(): Promise<PlatformStats> {
+  const { data } = await httpClient.get<PlatformStats>(`${WEB_ENDPOINT}/public/stats/`);
+  return data;
+}

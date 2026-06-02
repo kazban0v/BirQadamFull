@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, reactive, ref } from 'vue';
+import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 
 import { useDashboardStore } from '@/stores/dashboard';
@@ -8,6 +8,10 @@ import { fetchVolunteerProjects, joinVolunteerProject, leaveVolunteerProject, fe
 import type { VolunteerProjectCatalogItem } from '@/services/projects';
 import { getProjectChat, getChatMessages, sendMessage, markMessagesRead, type Chat, type ChatMessage } from '@/services/chat';
 import { getOrganizerPortfolio, type OrganizerProfile } from '@/services/webPortal';
+
+import ProjectCard from '@/components/volunteer/ProjectCard.vue';
+import ProjectFilterSidebar from '@/components/volunteer/ProjectFilterSidebar.vue';
+import { formatDate, getFullImageUrl } from '@/utils/formatters';
 
 const dashboardStore = useDashboardStore();
 const authStore = useAuthStore();
@@ -24,6 +28,13 @@ const filter = ref<'all' | 'joined' | 'available'>('all');
 const typeFilter = ref<'all' | 'social' | 'environmental' | 'cultural'>('all');
 const selectedTags = ref<string[]>([]);
 const searchTitle = ref('');
+const cityFilter = ref<string>('all');
+const dateFilter = ref<'all' | 'active' | 'upcoming'>('all');
+const hasTasksFilter = ref(false);
+const viewMode = ref<'grid' | 'list'>('grid');
+const showMobileFilters = ref(false);
+const showAllTags = ref(false);
+const TAGS_PREVIEW_COUNT = 6;
 const snackbar = reactive({
   show: false,
   message: '',
@@ -127,6 +138,32 @@ const availableTags = computed(() => {
   return Array.from(set);
 });
 
+const availableCities = computed(() => {
+  const set = new Set<string>();
+  projects.value.forEach((project) => {
+    if (project.city) set.add(project.city);
+  });
+  return Array.from(set).sort();
+});
+
+const visibleTags = computed(() => {
+  return availableTags.value.slice(0, TAGS_PREVIEW_COUNT);
+});
+
+const activeFiltersCount = computed(() => {
+  let count = 0;
+  if (filter.value !== 'all') count++;
+  if (typeFilter.value !== 'all') count++;
+  if (cityFilter.value !== 'all') count++;
+  if (dateFilter.value !== 'all') count++;
+  if (hasTasksFilter.value) count++;
+  if (selectedTags.value.length) count++;
+  if (searchTitle.value.trim()) count++;
+  return count;
+});
+
+const hasActiveFilters = computed(() => activeFiltersCount.value > 0);
+
 const filteredProjects = computed(() => {
   let list = projects.value;
 
@@ -138,6 +175,29 @@ const filteredProjects = computed(() => {
 
   if (typeFilter.value !== 'all') {
     list = list.filter((project) => project.volunteer_type === typeFilter.value);
+  }
+
+  // Фильтр по городу
+  if (cityFilter.value !== 'all') {
+    list = list.filter((project) => project.city === cityFilter.value);
+  }
+
+  // Фильтр по периоду
+  if (dateFilter.value === 'active') {
+    const today = new Date().toISOString().slice(0, 10);
+    list = list.filter((project) => {
+      const start = project.start_date || '';
+      const end = project.end_date || '';
+      return start <= today && (!end || end >= today);
+    });
+  } else if (dateFilter.value === 'upcoming') {
+    const today = new Date().toISOString().slice(0, 10);
+    list = list.filter((project) => (project.start_date || '') > today);
+  }
+
+  // Фильтр «Есть задачи»
+  if (hasTasksFilter.value) {
+    list = list.filter((project) => project.tasks_count > 0);
   }
 
   if (selectedTags.value.length) {
@@ -158,69 +218,36 @@ const filteredProjects = computed(() => {
   return list;
 });
 
-function formatDate(value: string | null) {
+// Пагинация
+const currentPage = ref(1);
+const itemsPerPage = 6; // Количество проектов на странице
+
+const totalPages = computed(() => {
+  return Math.ceil(filteredProjects.value.length / itemsPerPage);
+});
+
+const paginatedProjects = computed(() => {
+  const start = (currentPage.value - 1) * itemsPerPage;
+  const end = start + itemsPerPage;
+  return filteredProjects.value.slice(start, end);
+});
+
+// Сброс страницы при изменении фильтров
+// Сброс страницы при изменении любого фильтра
+watch([filter, typeFilter, selectedTags, searchTitle, cityFilter, dateFilter, hasTasksFilter], () => {
+  currentPage.value = 1;
+}, { deep: true });
+
+function formatDate(value: string | null): string {
   if (!value) return '—';
-  
-  // Парсим дату как локальную, чтобы избежать проблем с часовыми поясами
-  // Если дата в формате YYYY-MM-DD, добавляем время для локального парсинга
-  let date: Date;
-  if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
-    // Формат YYYY-MM-DD - парсим как локальную дату
-    const [year, month, day] = value.split('-').map(Number);
-    date = new Date(year, month - 1, day);
-  } else {
-    // ISO формат с временем - парсим как есть
-    date = new Date(value);
-  }
-  
+  const date = new Date(value);
   if (Number.isNaN(date.getTime())) return '—';
   return new Intl.DateTimeFormat('ru-RU', {
     day: '2-digit',
-    month: 'long',
+    month: '2-digit',
     year: 'numeric',
   }).format(date);
 }
-
-// Функция для преобразования относительного URL в полный
-const getFullImageUrl = (url: string | null | undefined): string | null => {
-  if (!url) {
-    return null;
-  }
-  
-  try {
-    // Если уже полный URL, проверяем протокол
-    if (url.startsWith('http://') || url.startsWith('https://')) {
-      // Для localhost принудительно используем http (не https)
-      if (url.includes('localhost') || url.includes('127.0.0.1')) {
-        // Заменяем https на http для localhost
-        if (url.startsWith('https://')) {
-          return url.replace('https://', 'http://');
-        }
-        return url;
-      }
-      // Для production всегда используем https
-  if (url.startsWith('http://')) {
-    return url.replace('http://', 'https://');
-  }
-    return url;
-  }
-    
-    // Если относительный путь, определяем базовый URL в зависимости от окружения
-    const isDevelopment = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-    // Для localhost всегда используем http (не https)
-    // В production используем тот же домен, что и для API
-    const baseUrl = isDevelopment 
-      ? `http://${window.location.hostname}:8000`
-      : (import.meta.env.VITE_API_BASE_URL || 'https://cleanup.almau.edu.kz');
-    
-    // Убеждаемся, что путь начинается с /
-    const cleanPath = url.startsWith('/') ? url : `/${url}`;
-    return `${baseUrl}${cleanPath}`;
-  } catch (error) {
-    console.error('[ProjectsView] Error building image URL:', error, url);
-    return null;
-  }
-};
 
 function formatDateTime(value: string | null) {
   if (!value) return '—';
@@ -367,6 +394,16 @@ function toggleTag(tag: string) {
 function clearFilters() {
   searchTitle.value = '';
   selectedTags.value = [];
+}
+
+function clearAllFilters() {
+  searchTitle.value = '';
+  selectedTags.value = [];
+  filter.value = 'all';
+  typeFilter.value = 'all';
+  cityFilter.value = 'all';
+  dateFilter.value = 'all';
+  hasTasksFilter.value = false;
 }
 
 function requestJoin(projectId: number) {
@@ -814,504 +851,636 @@ onUnmounted(() => {
       </div>
     </v-card>
 
-    <!-- Статистика -->
-    <v-row class="ga-4 mb-6">
-      <v-col cols="12" sm="6" md="4" lg="3">
-        <v-card elevation="2" rounded="xl" class="stats-card pa-5" style="background: linear-gradient(135deg, rgba(76, 175, 80, 0.1) 0%, rgba(76, 175, 80, 0.05) 100%); border: 1px solid rgba(76, 175, 80, 0.2);">
-          <div class="d-flex align-center justify-space-between">
-            <div>
-              <div class="text-body-2 text-medium-emphasis mb-2">Всего проектов</div>
-              <div class="text-h4 font-weight-bold text-primary">{{ summary.total_available }}</div>
-            </div>
-            <v-icon icon="mdi-folder-multiple" size="32" class="text-primary" style="opacity: 0.3;" />
-          </div>
-        </v-card>
-      </v-col>
-      <v-col cols="12" sm="6" md="4" lg="3">
-        <v-card elevation="2" rounded="xl" class="stats-card pa-5" style="background: linear-gradient(135deg, rgba(76, 175, 80, 0.1) 0%, rgba(76, 175, 80, 0.05) 100%); border: 1px solid rgba(76, 175, 80, 0.2);">
-          <div class="d-flex align-center justify-space-between">
-            <div>
-              <div class="text-body-2 text-medium-emphasis mb-2">Мои проекты</div>
-              <div class="text-h4 font-weight-bold text-primary">{{ summary.joined_count }}</div>
-            </div>
-            <v-icon icon="mdi-account-check" size="32" class="text-primary" style="opacity: 0.3;" />
-          </div>
-        </v-card>
-      </v-col>
-    </v-row>
-
-    <!-- Фильтры -->
-    <v-card elevation="2" rounded="xl" class="mb-6" style="border: 1px solid rgba(0, 0, 0, 0.08);">
-      <v-card-text class="pa-6">
-        <v-row class="ga-4">
-          <!-- Показать -->
-          <v-col cols="12" md="4">
-            <div class="text-body-2 font-weight-medium mb-3 d-flex align-center text-primary">
-              <v-icon icon="mdi-filter-variant" size="20" class="me-2" />
-              Показать
-            </div>
-            <v-btn-toggle v-model="filter" mandatory color="primary" class="w-100" density="comfortable" variant="outlined" divided>
-              <v-btn value="all" class="flex-grow-1 text-none">Все</v-btn>
-              <v-btn value="available" class="flex-grow-1 text-none">Доступные</v-btn>
-              <v-btn value="joined" class="flex-grow-1 text-none">Мои</v-btn>
-            </v-btn-toggle>
-          </v-col>
-          
-          <!-- Тип волонтёрства -->
-          <v-col cols="12" md="4">
-            <div class="text-body-2 font-weight-medium mb-3 d-flex align-center text-primary">
-              <v-icon icon="mdi-heart-multiple" size="20" class="me-2" />
-              Тип волонтёрства
-            </div>
-            <v-btn-toggle v-model="typeFilter" mandatory color="primary" class="w-100" density="comfortable" variant="outlined" divided>
-              <v-btn value="all" class="flex-grow-1 text-none text-caption">Все</v-btn>
-              <v-btn value="social" class="flex-grow-1 text-none text-caption">Социальные</v-btn>
-              <v-btn value="environmental" class="flex-grow-1 text-none text-caption">Экологические</v-btn>
-            </v-btn-toggle>
-          </v-col>
-          
-          <!-- Поиск по названию -->
-          <v-col cols="12" md="4">
-            <div class="text-body-2 font-weight-medium mb-3 d-flex align-center text-primary">
-              <v-icon icon="mdi-magnify" size="20" class="me-2" />
-              Поиск по названию
-            </div>
-            <v-text-field
-              v-model="searchTitle"
-              placeholder="Введите название..."
-              prepend-inner-icon="mdi-magnify"
-              variant="outlined"
-              density="comfortable"
-              clearable
-              hide-details
-              bg-color="white"
-              rounded="lg"
-            />
-          </v-col>
-        </v-row>
-      </v-card-text>
-    </v-card>
-
-    <!-- Теги -->
-    <v-card elevation="2" rounded="lg" class="mb-6 tags-filter-card" style="border: 1px solid rgba(0, 0, 0, 0.08);" v-if="availableTags.length">
-      <v-card-text class="pa-4">
-        <div class="d-flex align-center justify-space-between mb-3 flex-wrap ga-2">
-          <div class="d-flex align-center">
-            <v-icon icon="mdi-tag-multiple" size="18" class="me-2 text-primary" />
-            <span class="text-body-2 font-weight-medium">Фильтр по тегам</span>
-            <v-chip 
-              size="x-small" 
-              variant="tonal" 
-              color="primary" 
-              v-if="selectedTags.length"
-              prepend-icon="mdi-check-circle"
-              class="ms-3"
-            >
-              {{ selectedTags.length }}
-            </v-chip>
-          </div>
-          <v-btn
-            v-if="searchTitle || selectedTags.length"
-            color="error"
-            variant="text"
-            size="small"
-            prepend-icon="mdi-filter-off"
-            @click="clearFilters"
-            class="text-none"
-            density="compact"
-          >
-            Сбросить
-          </v-btn>
-        </div>
-        <div class="tags-container">
+    <!-- Шапка страницы с inline-статистикой -->
+    <div class="page-header d-flex align-center justify-space-between mb-6 flex-wrap ga-3">
+      <div>
+        <h1 class="text-h5 font-weight-bold">Проекты</h1>
+        <div class="d-flex ga-3 mt-2 flex-wrap">
+          <v-chip prepend-icon="mdi-folder-multiple" color="primary" variant="tonal" size="small" class="font-weight-medium">
+            Всего: {{ summary.total_available }}
+          </v-chip>
+          <v-chip prepend-icon="mdi-account-check" color="success" variant="tonal" size="small" class="font-weight-medium">
+            Мои: {{ summary.joined_count }}
+          </v-chip>
           <v-chip
-            v-for="tag in availableTags"
-            :key="tag"
-            filter
-            :variant="selectedTags.includes(tag) ? 'flat' : 'outlined'"
-            :color="selectedTags.includes(tag) ? 'primary' : 'default'"
+            v-if="filteredProjects.length !== projects.length"
+            prepend-icon="mdi-filter-variant"
+            color="warning"
+            variant="tonal"
             size="small"
-            class="tag-chip cursor-pointer"
-            @click="toggleTag(tag)"
-            rounded="lg"
-            density="compact"
+            class="font-weight-medium"
           >
-            <v-icon v-if="selectedTags.includes(tag)" icon="mdi-check-circle" start size="14" />
-            {{ tag }}
+            Найдено: {{ filteredProjects.length }}
           </v-chip>
         </div>
-      </v-card-text>
-    </v-card>
+      </div>
+      <div class="d-flex align-center ga-2">
+        <!-- View mode toggle -->
+        <v-btn-toggle
+          v-model="viewMode"
+          color="primary"
+          variant="outlined"
+          mandatory
+          rounded="lg"
+        >
+          <v-btn value="grid" icon="mdi-view-grid" size="large"></v-btn>
+          <v-btn value="list" icon="mdi-format-list-bulleted" size="large"></v-btn>
+        </v-btn-toggle>
 
-    <!-- Результаты поиска -->
-    <div class="mb-6 d-flex align-center ga-3 flex-wrap" v-if="filteredProjects.length !== projects.length || searchTitle || selectedTags.length">
-      <v-chip
+        <!-- Mobile filter trigger -->
+        <v-btn
+          class="d-md-none filter-mobile-btn"
+        prepend-icon="mdi-filter-variant"
         color="primary"
-        variant="flat"
-        size="default"
-        prepend-icon="mdi-format-list-bulleted"
-        class="font-weight-medium"
+        variant="tonal"
+        rounded="lg"
+        @click="showMobileFilters = true"
       >
-        Найдено: {{ filteredProjects.length }} из {{ projects.length }}
-      </v-chip>
+        Фильтры
+        <v-badge
+          v-if="activeFiltersCount > 0"
+          :content="activeFiltersCount"
+          color="error"
+          inline
+          class="ms-1"
+        />
+      </v-btn>
+      </div>
     </div>
 
-    <v-alert
-      v-if="!loading && !filteredProjects.length"
-      type="info"
-      variant="tonal"
-      class="mb-6"
+    <!-- Мобильное offcanvas-меню для фильтров (bottom sheet) -->
+    <v-dialog
+      v-model="showMobileFilters"
+      class="align-end"
+      max-width="100%"
+      content-class="filter-dialog-mobile"
+      scrim="rgba(0,0,0,0.5)"
     >
-      Проекты не найдены. Попробуйте изменить фильтр или зайдите позже — новые инициативы появляются регулярно.
-    </v-alert>
-
-        <v-row class="ga-6" v-if="filteredProjects.length">
-          <v-col
-            v-for="project in filteredProjects"
-            :key="project.id"
-            cols="12"
-            sm="12"
-            md="6"
-          >
-            <v-card 
-              :data-project-id="project.id"
-              elevation="3" 
-              class="pa-6 h-100 d-flex flex-column"
-            >
-          <v-img
-            v-if="project.cover_image_url"
-            :src="getFullImageUrl(project.cover_image_url) || ''"
-            height="160"
-            class="mb-4 rounded-lg"
-            cover
-            @error="(e) => {
-              // Скрываем ошибку в консоли, просто не показываем изображение
-              const img = e.target as HTMLImageElement;
-              if (img) {
-                img.style.display = 'none';
-              }
-            }"
-          >
-            <template #placeholder>
-              <div class="d-flex align-center justify-center fill-height bg-grey-lighten-4">
-                <v-icon icon="mdi-image-off" size="48" color="grey-lighten-1" />
-              </div>
-            </template>
-          </v-img>
-          <div v-else class="d-flex align-center justify-center mb-4 rounded-lg bg-grey-lighten-4" style="height: 160px;">
-            <v-icon icon="mdi-image-off" size="48" color="grey-lighten-1" />
+      <template #default>
+        <v-card
+          class="filter-bottom-sheet"
+          style="width: 100%; max-height: 88vh; border-radius: 24px 24px 0 0; overflow: hidden; display: flex; flex-direction: column;"
+        >
+          <!-- Хэндл -->
+          <div class="d-flex justify-center pt-3 pb-1">
+            <div style="width: 40px; height: 4px; border-radius: 2px; background: rgba(0,0,0,0.15);"></div>
           </div>
-          <div class="d-flex justify-space-between align-start mb-4">
-            <div>
-              <h2 class="text-h6 font-weight-bold mb-2">{{ project.title }}</h2>
-              <div class="text-body-2 text-medium-emphasis">
-                {{ volunteerTypeMap[project.volunteer_type] || project.volunteer_type }} •
-                {{ project.city || 'Город не указан' }}
+          <!-- Заголовок -->
+          <div class="d-flex align-center justify-space-between px-4 pb-2">
+            <span class="text-body-1 font-weight-bold">Фильтры</span>
+            <div class="d-flex align-center ga-2">
+              <v-btn v-if="hasActiveFilters" size="small" variant="tonal" color="error" @click="clearAllFilters" class="text-none">
+                Сбросить
+              </v-btn>
+              <v-btn icon="mdi-close" variant="text" size="small" @click="showMobileFilters = false" />
+            </div>
+          </div>
+          <v-divider />
+          <!-- Контент с прокруткой -->
+          <div class="pa-4 overflow-y-auto flex-grow-1">
+            <!-- Поиск -->
+            <div class="sidebar-section">
+              <div class="sidebar-label">Поиск</div>
+              <v-text-field
+                v-model="searchTitle"
+                placeholder="Найти проект..."
+                prepend-inner-icon="mdi-magnify"
+                variant="outlined"
+                density="compact"
+                clearable
+                hide-details
+                rounded="lg"
+              />
+            </div>
+
+            <!-- Статус -->
+            <div class="sidebar-section">
+              <div class="sidebar-label">Статус</div>
+              <v-radio-group v-model="filter" hide-details density="compact">
+                <v-radio label="Все" value="all" color="primary" />
+                <v-radio label="Доступные" value="available" color="primary" />
+                <v-radio label="Вступил" value="joined" color="primary" />
+              </v-radio-group>
+            </div>
+
+            <!-- Тип волонтёрства -->
+            <div class="sidebar-section">
+              <div class="sidebar-label">Тип волонтёрства</div>
+              <v-radio-group v-model="typeFilter" hide-details density="compact">
+                <v-radio label="Все" value="all" color="primary" />
+                <v-radio label="Социальное" value="social" color="primary" />
+                <v-radio label="Экологическое" value="environmental" color="primary" />
+                <v-radio label="Культурное" value="cultural" color="primary" />
+              </v-radio-group>
+            </div>
+
+            <!-- Город -->
+            <div class="sidebar-section" v-if="availableCities.length">
+              <div class="sidebar-label">Город</div>
+              <v-select
+                v-model="cityFilter"
+                :items="[{ title: 'Все города', value: 'all' }, ...availableCities.map(c => ({ title: c, value: c }))]"
+                item-title="title"
+                item-value="value"
+                variant="outlined"
+                density="compact"
+                hide-details
+                rounded="lg"
+              />
+            </div>
+
+            <!-- Период -->
+            <div class="sidebar-section">
+              <div class="sidebar-label">Период</div>
+              <v-radio-group v-model="dateFilter" hide-details density="compact">
+                <v-radio label="Все" value="all" color="primary" />
+                <v-radio label="Активные" value="active" color="primary" />
+                <v-radio label="Скоро начнутся" value="upcoming" color="primary" />
+              </v-radio-group>
+            </div>
+
+            <!-- Задачи -->
+            <div class="sidebar-section">
+              <v-checkbox
+                v-model="hasTasksFilter"
+                label="Есть открытые задачи"
+                hide-details
+                density="compact"
+                color="primary"
+              />
+            </div>
+
+            <!-- Теги -->
+            <div class="sidebar-section" v-if="availableTags.length">
+              <div class="sidebar-label d-flex align-center justify-space-between">
+                <span>Теги</span>
+                <v-chip v-if="selectedTags.length" size="x-small" color="primary" variant="flat">{{ selectedTags.length }}</v-chip>
               </div>
-              <div class="text-body-2 text-medium-emphasis" v-if="project.address">
-                <v-icon icon="mdi-map-marker-outline" size="16" class="me-1" />
-                {{ project.address }}
-              </div>
-              <div class="text-body-2 text-medium-emphasis">
-                С {{ formatDate(project.start_date) }} по {{ formatDate(project.end_date) }}
+              <div v-for="tag in availableTags" :key="tag + '_mob'">
+                <v-checkbox
+                  density="compact"
+                  hide-details
+                  :label="tag"
+                  :model-value="selectedTags.includes(tag)"
+                  @update:model-value="toggleTag(tag)"
+                  color="primary"
+                />
               </div>
             </div>
-            <v-chip
-              :color="statusMap[project.status]?.color || 'primary'"
-              variant="tonal"
-              class="text-uppercase font-weight-medium"
-              size="small"  
-            >
-              {{ statusMap[project.status]?.text || project.status }}
-            </v-chip>
-          </div>
 
-          <p class="text-body-2 mb-4">
-            {{ project.description }}
-          </p>
-
-          <div class="d-flex flex-wrap ga-2 mb-4" v-if="project.tags?.length">
-            <v-chip
-              v-for="tag in project.tags"
-              :key="tag"
-              size="small"
-              :color="selectedTags.includes(tag) ? 'primary' : 'primary-lighten-4'"
-              :variant="selectedTags.includes(tag) ? 'flat' : 'outlined'"
-              class="text-none cursor-pointer"
-              @click="toggleTag(tag)"
-            >
-              {{ tag }}
-              <v-icon v-if="selectedTags.includes(tag)" icon="mdi-check" size="14" class="ms-1" />
-            </v-chip>
-          </div>
-
-          <div
-            class="d-flex flex-wrap ga-4 text-body-2 text-medium-emphasis mb-4"
-            v-if="project.latitude !== null && project.latitude !== undefined && project.longitude !== null && project.longitude !== undefined"
-          >
+            <!-- Кнопка Применить -->
             <v-btn
-              :href="`https://maps.google.com/?q=${project.latitude},${project.longitude}`"
-              target="_blank"
-              variant="outlined"
-              size="small"
-              class="text-none"
+              color="primary"
+              variant="flat"
+              block
+              class="text-none font-weight-bold mt-4"
+              @click="showMobileFilters = false"
             >
-              Открыть на карте
-              <v-icon icon="mdi-map" end size="16" />
+              Применить фильтры
+              <v-chip v-if="activeFiltersCount > 0" size="x-small" color="white" text-color="primary" class="ms-2">
+                {{ activeFiltersCount }}
+              </v-chip>
+            </v-btn>
+          </div>
+        </v-card>
+      </template>
+    </v-dialog>
+
+
+    <!-- Основная двухколоночная сетка -->
+    <v-row>
+      <!-- LEFT SIDEBAR (desktop only) -->
+      <v-col cols="12" md="3" class="d-none d-md-flex flex-column">
+        <div class="sidebar">
+          <!-- Поиск -->
+          <div class="sidebar-section">
+            <div class="sidebar-label">Поиск</div>
+            <v-text-field
+              v-model="searchTitle"
+              placeholder="Найти проект..."
+              prepend-inner-icon="mdi-magnify"
+              variant="outlined"
+              density="compact"
+              clearable
+              hide-details
+              rounded="lg"
+            />
+          </div>
+
+          <!-- Статус -->
+          <div class="sidebar-section">
+            <div class="sidebar-label">Статус</div>
+            <v-radio-group v-model="filter" hide-details density="compact">
+              <v-radio label="Все" value="all" color="primary" />
+              <v-radio label="Доступные" value="available" color="primary" />
+              <v-radio label="Вступил" value="joined" color="primary" />
+            </v-radio-group>
+          </div>
+
+          <!-- Тип волонтёрства -->
+          <div class="sidebar-section">
+            <div class="sidebar-label">Тип волонтёрства</div>
+            <v-radio-group v-model="typeFilter" hide-details density="compact">
+              <v-radio label="Все" value="all" color="primary" />
+              <v-radio label="Социальное" value="social" color="primary" />
+              <v-radio label="Экологическое" value="environmental" color="primary" />
+              <v-radio label="Культурное" value="cultural" color="primary" />
+            </v-radio-group>
+          </div>
+
+          <!-- Город -->
+          <div class="sidebar-section" v-if="availableCities.length">
+            <div class="sidebar-label">Город</div>
+            <v-select
+              v-model="cityFilter"
+              :items="[{ title: 'Все города', value: 'all' }, ...availableCities.map(c => ({ title: c, value: c }))]"
+              item-title="title"
+              item-value="value"
+              variant="outlined"
+              density="compact"
+              hide-details
+              rounded="lg"
+            />
+          </div>
+
+          <!-- Период -->
+          <div class="sidebar-section">
+            <div class="sidebar-label">Период</div>
+            <v-radio-group v-model="dateFilter" hide-details density="compact">
+              <v-radio label="Все" value="all" color="primary" />
+              <v-radio label="Активные" value="active" color="primary" />
+              <v-radio label="Скоро начнутся" value="upcoming" color="primary" />
+            </v-radio-group>
+          </div>
+
+          <!-- Задачи -->
+          <div class="sidebar-section">
+            <v-checkbox
+              v-model="hasTasksFilter"
+              label="Есть открытые задачи"
+              hide-details
+              density="compact"
+              color="primary"
+            />
+          </div>
+
+          <!-- Теги -->
+          <div class="sidebar-section" v-if="availableTags.length">
+            <div class="sidebar-label d-flex align-center justify-space-between">
+              <span>Теги</span>
+              <v-chip v-if="selectedTags.length" size="x-small" color="primary" variant="flat">{{ selectedTags.length }}</v-chip>
+            </div>
+            <div v-for="tag in visibleTags" :key="tag">
+              <v-checkbox
+                density="compact"
+                hide-details
+                :label="tag"
+                :model-value="selectedTags.includes(tag)"
+                @update:model-value="toggleTag(tag)"
+                color="primary"
+              />
+            </div>
+            <v-expand-transition>
+              <div v-if="showAllTags">
+                <div v-for="tag in availableTags.slice(TAGS_PREVIEW_COUNT)" :key="tag + '_extra'">
+                  <v-checkbox
+                    density="compact"
+                    hide-details
+                    :label="tag"
+                    :model-value="selectedTags.includes(tag)"
+                    @update:model-value="toggleTag(tag)"
+                    color="primary"
+                  />
+                </div>
+              </div>
+            </v-expand-transition>
+            <v-btn
+              v-if="availableTags.length > TAGS_PREVIEW_COUNT"
+              variant="text"
+              size="small"
+              color="primary"
+              class="text-none mt-1 px-0"
+              @click="showAllTags = !showAllTags"
+            >
+              {{ showAllTags ? 'Скрыть' : `Показать все (${availableTags.length})` }}
+              <v-icon :icon="showAllTags ? 'mdi-chevron-up' : 'mdi-chevron-down'" end size="16" />
             </v-btn>
           </div>
 
-          <div class="d-flex flex-wrap ga-4 text-body-2 text-medium-emphasis mb-6 align-center">
-            <span>Участников: {{ project.active_members }}</span>
-            <span>Заданий: {{ project.tasks_count }}</span>
-            <div class="d-flex align-center ga-2 flex-wrap">
-              <span>Организатор:</span>
-              <v-btn
-                variant="text"
-                size="small"
-                color="primary"
-                class="text-none pa-0"
-                style="min-width: auto; text-transform: none;"
-                @click="openOrganizerPortfolio((project as any).organizer_id || (project as any).organizer?.id)"
-              >
-                {{ project.organizer_name }}
-                <v-icon icon="mdi-account-circle" size="16" class="ms-1" />
-              </v-btn>
-            </div>
-          </div>
+          <!-- Сбросить все -->
+          <v-btn
+            v-if="hasActiveFilters"
+            color="error"
+            variant="tonal"
+            block
+            class="text-none mt-2"
+            prepend-icon="mdi-filter-off"
+            @click="clearAllFilters"
+          >
+            Сбросить фильтры
+          </v-btn>
+        </div>
+      </v-col>
 
-          <div class="contact-card" v-if="project.contact_person || project.contact_phone || project.contact_telegram || project.info_url || project.gis2_url">
-            <div class="text-caption text-medium-emphasis mb-2">Контакты</div>
-            <ul class="text-body-2 text-medium-emphasis pa-0 ma-0 contact-list">
-              <li v-if="project.contact_person">
-                <v-icon icon="mdi-account-tie" size="16" class="me-1" />
-                {{ project.contact_person }}
-              </li>
-              <li v-if="project.contact_phone">
-                <v-icon icon="mdi-phone" size="16" class="me-1" />
-                <a :href="`tel:${project.contact_phone}`" class="link">{{ project.contact_phone }}</a>
-              </li>
-              <li v-if="project.contact_email">
-                <v-icon icon="mdi-email-outline" size="16" class="me-1" />
-                <a :href="`mailto:${project.contact_email}`" class="link">{{ project.contact_email }}</a>
-              </li>
-              <li v-if="project.contact_telegram">
-                <v-icon icon="mdi-send" size="16" class="me-1" />
-                <a :href="project.contact_telegram" class="link" target="_blank">Telegram</a>
-              </li>
-              <li v-if="project.info_url">
-                <v-icon icon="mdi-web" size="16" class="me-1" />
-                <a :href="project.info_url" class="link" target="_blank">Дополнительная информация</a>
-              </li>
-              <li v-if="project.gis2_url">
-                <v-icon icon="mdi-map-marker" size="16" class="me-1" />
-                <a :href="project.gis2_url" class="link" target="_blank">Открыть в 2ГИС</a>
-              </li>
-            </ul>
-          </div>
+      <!-- MAIN CONTENT -->
+      <v-col cols="12" md="9">
+        <v-alert
+          v-if="!loading && !filteredProjects.length"
+          type="info"
+          variant="tonal"
+          class="mb-6"
+        >
+          Проекты не найдены. Попробуйте изменить фильтры или сбросить их, чтобы увидеть все доступные волонтёрские проекты.
+        </v-alert>
 
-          <v-spacer />
-
-          <div class="d-flex flex-column ga-3 mt-auto">
-            <div class="d-flex flex-wrap justify-space-between align-center ga-2 project-join-section">
-              <div class="text-caption text-medium-emphasis project-status-text" v-if="project.joined">
-                Вы присоединились к проекту
-              </div>
-              <div class="text-caption text-medium-emphasis project-status-text" v-else>
-                Нажмите, чтобы вступить и получать задания
-              </div>
-              <v-btn
-                v-if="!project.joined"
-                color="primary"
-                variant="flat"
-                class="text-none font-weight-bold project-join-btn"
-                :disabled="loading"
-                @click="handleJoin(project.id)"
+        <v-row class="ga-4" v-if="filteredProjects.length">
+          <v-col
+            v-for="project in paginatedProjects"
+            :key="project.id"
+            cols="12"
+            :sm="viewMode === 'grid' ? 6 : 12"
+            :md="viewMode === 'grid' ? 6 : 12"
+          >
+            <v-card
+              :data-project-id="project.id"
+              elevation="1"
+              rounded="xl"
+              class="project-card h-100 d-flex"
+              :class="viewMode === 'grid' ? 'flex-column' : 'flex-row'"
+            >
+              <!-- Обложка -->
+              <div 
+                class="project-card-image-wrapper d-flex align-center justify-center bg-white flex-shrink-0" 
+                :class="viewMode === 'grid' ? 'grid-mode-img' : 'list-mode-img'"
               >
-                Присоединиться
-              </v-btn>
-              <v-btn
-                v-else
-                color="error"
-                variant="outlined"
-                class="text-none font-weight-bold project-join-btn"
-                :disabled="loading"
-                @click="handleLeave(project.id)"
-              >
-                Выйти из проекта
-              </v-btn>
-            </div>
-
-            <div class="d-flex flex-wrap ga-2 project-actions">
-              <!-- Кнопка для просмотра деталей проекта -->
-              <v-btn
-                variant="outlined"
-                color="primary"
-                class="text-none font-weight-bold project-action-btn"
-                @click="openProjectDialog(project.id)"
-              >
-                <v-icon icon="mdi-information-outline" start />
-                Подробнее
-              </v-btn>
-
-              <!-- Кнопка чата (только для присоединенных проектов) -->
-              <v-btn
-                v-if="project.joined"
-                variant="outlined"
-                color="primary"
-                class="text-none font-weight-bold project-action-btn"
-                @click="openProjectChat(project.id)"
-              >
-                <v-icon icon="mdi-chat-outline" start />
-                Чат
-                <v-badge v-if="chatUnreadCounts[project.id]" :content="chatUnreadCounts[project.id]" color="error" class="ms-2">
-                  <template #badge>
-                    <span>{{ chatUnreadCounts[project.id] }}</span>
-                  </template>
-                </v-badge>
-              </v-btn>
-
-              <!-- Кнопка для просмотра заданий (только для присоединенных проектов) -->
-              <v-btn
-                v-if="project.joined"
-                variant="outlined"
-                color="primary"
-                class="text-none font-weight-bold project-action-btn tasks-btn"
-                @click="toggleProjectDetails(project.id)"
-              >
-                <v-icon :icon="expandedProjectId === project.id ? 'mdi-chevron-up' : 'mdi-chevron-down'" start class="flex-shrink-0" />
-                <span class="tasks-btn-text">{{ expandedProjectId === project.id ? 'Скрыть' : 'Задания' }}</span>
-                <v-chip
-                  v-if="project.tasks_count > 0"
-                  size="x-small"
-                  class="ms-2 tasks-count-chip flex-shrink-0"
-                  color="primary"
-                  variant="flat"
+                <v-img
+                  v-if="project.cover_image_url"
+                  :src="getFullImageUrl(project.cover_image_url) || ''"
+                  height="100%"
+                  width="100%"
+                  contain
+                  class="project-cover-img"
                 >
-                  {{ project.tasks_count }}
-                </v-chip>
-              </v-btn>
-            </div>
-          </div>
-
-          <!-- Расширяемая секция с заданиями проекта -->
-          <v-expand-transition>
-            <div v-if="expandedProjectId === project.id && project.joined" class="project-details mt-4 pt-4" style="border-top: 1px solid rgba(0,0,0,0.12);">
-              <div class="text-h6 font-weight-bold mb-4">Задания проекта</div>
-              
-              <v-skeleton-loader
-                v-if="loadingTasks[project.id]"
-                type="list-item-three-line@3"
-                class="mb-4"
-              />
-
-              <div v-else-if="projectTasks[project.id] && projectTasks[project.id].length" class="tasks-list">
-                <v-card
-                  v-for="task in projectTasks[project.id]"
-                  :key="task.id"
-                  variant="outlined"
-                  class="mb-3 pa-4 task-card"
-                >
-                  <div class="d-flex justify-space-between align-start mb-3 flex-wrap ga-2">
-                    <div class="flex-grow-1 min-width-0">
-                      <div class="text-body-1 font-weight-medium mb-2">{{ task.text }}</div>
-                      <div class="d-flex flex-column flex-md-row flex-wrap ga-2 text-body-2 text-medium-emphasis task-info">
-                        <span v-if="task.deadline_date" class="d-flex align-center task-info-item">
-                          <v-icon icon="mdi-calendar-clock" size="16" class="me-1 flex-shrink-0" />
-                          <span class="text-nowrap">Срок: {{ formatDate(task.deadline_date) }}</span>
-                          <span v-if="task.start_time && task.end_time" class="ms-1">
-                            ({{ task.start_time }} - {{ task.end_time }})
-                          </span>
-                        </span>
-                        <span class="d-flex align-center task-info-item">
-                          <v-icon icon="mdi-clock-outline" size="16" class="me-1 flex-shrink-0" />
-                          <span>Создано: {{ formatDateTime(task.created_at) }}</span>
-                        </span>
-                      </div>
+                  <template #error>
+                    <div class="d-flex align-center justify-center fill-height bg-grey-lighten-4 w-100">
+                      <v-icon icon="mdi-image-off" size="48" color="grey-lighten-1" />
                     </div>
-                    <v-chip
-                      :color="taskStatusMap[task.status]?.color || 'primary'"
-                      variant="tonal"
-                      size="small"
-                      class="ml-3 flex-shrink-0 task-status-chip"
-                    >
-                      {{ taskStatusMap[task.status]?.text || task.status }}
-                    </v-chip>
-                  </div>
-                  <div class="d-flex justify-end">
-                    <v-btn
-                      color="primary"
-                      variant="outlined"
-                      size="small"
-                      class="text-none font-weight-bold task-action-btn"
-                      :to="{ name: 'volunteer-task-detail', params: { id: task.id } }"
-                    >
-                      Перейти к задаче
-                      <v-icon icon="mdi-arrow-right" end size="16" class="flex-shrink-0" />
-                    </v-btn>
-                  </div>
-                </v-card>
+                  </template>
+                  <template #placeholder>
+                    <div class="d-flex align-center justify-center fill-height bg-grey-lighten-4 w-100">
+                      <v-icon icon="mdi-image-off" size="48" color="grey-lighten-1" />
+                    </div>
+                  </template>
+                </v-img>
+                <div v-else class="d-flex align-center justify-center bg-grey-lighten-4 w-100 fill-height">
+                  <v-icon icon="mdi-image-off" size="48" color="grey-lighten-1" />
+                </div>
               </div>
 
-              <v-alert
-                v-else
-                type="info"
-                variant="tonal"
-                class="mb-0"
-              >
-                В этом проекте пока нет заданий. Новые задания появятся здесь после их создания организатором.
-              </v-alert>
-            </div>
-          </v-expand-transition>
-        </v-card>
+              <!-- Тело карточки -->
+              <div class="pa-4 d-flex flex-column flex-grow-1" style="min-width: 0;">
+                <!-- Тип волонтёрства + статус -->
+                <div class="d-flex align-center justify-space-between mb-2">
+                  <v-chip size="x-small" color="primary" variant="tonal" class="font-weight-medium">
+                    {{ volunteerTypeMap[project.volunteer_type] || project.volunteer_type }}
+                  </v-chip>
+                  <v-chip
+                    :color="statusMap[project.status]?.color || 'primary'"
+                    variant="tonal"
+                    size="x-small"
+                    class="font-weight-medium"
+                  >
+                    {{ statusMap[project.status]?.text || project.status }}
+                  </v-chip>
+                </div>
+
+                <!-- Название -->
+                <h2 class="text-body-1 font-weight-bold mb-1 card-title-clamp">{{ project.title }}</h2>
+
+                <!-- Город + даты -->
+                <div class="text-caption text-medium-emphasis mb-2 d-flex align-center gap-2 flex-wrap">
+                  <span v-if="project.city" class="d-flex align-center">
+                    <v-icon icon="mdi-map-marker-outline" size="13" class="me-1" />{{ project.city }}
+                  </span>
+                  <span v-if="project.start_date" class="d-flex align-center">
+                    <v-icon icon="mdi-calendar-outline" size="13" class="me-1" />
+                    {{ formatDate(project.start_date) }}
+                    <template v-if="project.end_date"> — {{ formatDate(project.end_date) }}</template>
+                  </span>
+                </div>
+
+                <!-- Описание (3 строки) -->
+                <p class="text-body-2 project-desc text-medium-emphasis mb-3">
+                  {{ project.description }}
+                </p>
+
+                <v-spacer />
+
+                <!-- Кнопки действий -->
+                <div class="d-flex ga-2 mt-2 flex-wrap">
+                  <!-- Подробнее -->
+                  <v-btn
+                    variant="outlined"
+                    color="primary"
+                    class="text-none font-weight-bold flex-grow-1"
+                    @click="openProjectDialog(project.id)"
+                  >
+                    <v-icon icon="mdi-information-outline" start size="16" />
+                    Подробнее
+                  </v-btn>
+
+                  <!-- Присоединиться / Выйти -->
+                  <v-btn
+                    v-if="!project.joined"
+                    color="primary"
+                    variant="flat"
+                    class="text-none font-weight-bold flex-grow-1"
+                    :disabled="loading"
+                    @click="handleJoin(project.id)"
+                  >
+                    Вступить
+                  </v-btn>
+                  <v-btn
+                    v-else
+                    color="error"
+                    variant="outlined"
+                    class="text-none font-weight-bold flex-grow-1"
+                    :disabled="loading"
+                    @click="handleLeave(project.id)"
+                  >
+                    Выйти
+                  </v-btn>
+
+                  <!-- Чат (только для вступивших) -->
+                  <v-btn
+                    v-if="project.joined"
+                    variant="outlined"
+                    color="primary"
+                    size="small"
+                    class="text-none font-weight-bold"
+                    @click="openProjectChat(project.id)"
+                  >
+                    <v-icon icon="mdi-chat-outline" size="16" />
+                    <v-badge v-if="chatUnreadCounts[project.id]" :content="chatUnreadCounts[project.id]" color="error" inline class="ms-1">
+                      <template #badge><span>{{ chatUnreadCounts[project.id] }}</span></template>
+                    </v-badge>
+                  </v-btn>
+
+                  <!-- Задачи (только для вступивших) -->
+                  <v-btn
+                    v-if="project.joined"
+                    variant="outlined"
+                    color="primary"
+                    size="small"
+                    class="text-none font-weight-bold"
+                    @click="toggleProjectDetails(project.id)"
+                  >
+                    <v-icon :icon="expandedProjectId === project.id ? 'mdi-chevron-up' : 'mdi-chevron-down'" size="16" />
+                    <v-chip
+                      v-if="project.tasks_count > 0"
+                      size="x-small"
+                      class="ms-1"
+                      color="primary"
+                      variant="flat"
+                    >{{ project.tasks_count }}</v-chip>
+                  </v-btn>
+                </div>
+
+                <!-- Развернутые задачи -->
+                <v-expand-transition>
+                  <div v-if="expandedProjectId === project.id && project.joined" class="project-details mt-3 pt-3" style="border-top: 1px solid rgba(0,0,0,0.08);">
+                    <div class="text-body-2 font-weight-bold mb-3">Задачи проекта</div>
+
+                    <v-skeleton-loader
+                      v-if="loadingTasks[project.id]"
+                      type="list-item-three-line@3"
+                      class="mb-4"
+                    />
+
+                    <div v-else-if="projectTasks[project.id] && projectTasks[project.id].length" class="tasks-list">
+                      <v-card
+                        v-for="task in projectTasks[project.id]"
+                        :key="task.id"
+                        variant="outlined"
+                        class="mb-3 pa-3 task-card"
+                      >
+                        <div class="d-flex justify-space-between align-start mb-2 flex-wrap ga-2">
+                          <div class="flex-grow-1 min-width-0">
+                            <div class="text-body-2 font-weight-medium mb-1">{{ task.text }}</div>
+                            <div class="d-flex flex-wrap ga-2 text-caption text-medium-emphasis task-info">
+                              <span v-if="task.deadline_date" class="d-flex align-center task-info-item">
+                                <v-icon icon="mdi-calendar-clock" size="14" class="me-1 flex-shrink-0" />
+                                <span>Срок: {{ formatDate(task.deadline_date) }}</span>
+                                <span v-if="task.start_time && task.end_time" class="ms-1">
+                                  ({{ task.start_time }} - {{ task.end_time }})
+                                </span>
+                              </span>
+                              <span class="d-flex align-center task-info-item">
+                                <v-icon icon="mdi-clock-outline" size="14" class="me-1 flex-shrink-0" />
+                                <span>Создано: {{ formatDateTime(task.created_at) }}</span>
+                              </span>
+                            </div>
+                          </div>
+                          <v-chip
+                            :color="taskStatusMap[task.status]?.color || 'primary'"
+                            variant="tonal"
+                            size="small"
+                            class="flex-shrink-0 task-status-chip"
+                          >
+                            {{ taskStatusMap[task.status]?.text || task.status }}
+                          </v-chip>
+                        </div>
+                        <div class="d-flex justify-end">
+                          <v-btn
+                            color="primary"
+                            variant="outlined"
+                            size="small"
+                            class="text-none font-weight-bold task-action-btn"
+                            :to="{ name: 'volunteer-task-detail', params: { id: task.id } }"
+                          >
+                            Перейти к задаче
+                            <v-icon icon="mdi-arrow-right" end size="16" class="flex-shrink-0" />
+                          </v-btn>
+                        </div>
+                      </v-card>
+                    </div>
+
+                    <v-alert
+                      v-else
+                      type="info"
+                      variant="tonal"
+                      class="mb-0"
+                      density="compact"
+                    >
+                      В этом проекте нет задач. Следите за обновлениями от организатора.
+                    </v-alert>
+                  </div>
+                </v-expand-transition>
+              </div>
+            </v-card>
+          </v-col>
+        </v-row>
+
+        <!-- Пагинация -->
+        <div class="d-flex justify-center mt-6 mb-4" v-if="totalPages > 1">
+          <v-pagination
+            v-model="currentPage"
+            :length="totalPages"
+            :total-visible="4"
+            active-color="primary"
+            rounded="circle"
+            elevation="2"
+          />
+        </div>
+
+        <v-skeleton-loader
+          v-if="loading"
+          type="list-item-three-line@4"
+        />
       </v-col>
     </v-row>
-
-    <v-skeleton-loader
-      v-if="loading"
-      type="list-item-three-line@4"
-    />
 
     <!-- Диалог подтверждения входа в проект -->
     <v-dialog 
       v-model="joinConfirmDialog" 
-      :max-width="$vuetify.display.mobile ? '100%' : '500'"
+      :max-width="$vuetify.display.mobile ? '100%' : '450'"
       :fullscreen="$vuetify.display.mobile"
       persistent
     >
-      <v-card>
-        <v-card-title class="d-flex align-center">
-          <v-icon icon="mdi-information" color="primary" class="mr-3" />
-          <span class="text-wrap">Подтверждение входа в проект</span>
-        </v-card-title>
+      <v-card rounded="xl" class="pa-4 text-center">
         <v-card-text class="pa-4">
-          <p class="text-body-1 mb-4 text-wrap">
-            Вы действительно хотите вступить в этот проект?
+          <div class="mb-4">
+            <v-avatar color="primary-lighten-4" size="64">
+              <v-icon icon="mdi-handshake-outline" color="primary" size="32" />
+            </v-avatar>
+          </div>
+          <h3 class="text-h6 font-weight-bold mb-2">Присоединиться к проекту?</h3>
+          <p class="text-body-2 mb-6 text-medium-emphasis">
+            Вы собираетесь стать частью этого проекта. После присоединения все задачи будут обязательными для выполнения.
           </p>
-          <v-alert type="info" variant="tonal" density="compact" class="mb-0 text-wrap">
-            <div class="text-caption" style="word-wrap: break-word; overflow-wrap: break-word;">
-              После присоединения к проекту все задачи, созданные после вашего присоединения, будут обязательными для выполнения.
-            </div>
-          </v-alert>
+          <div class="d-flex flex-column ga-3">
+            <v-btn 
+              color="primary" 
+              variant="flat" 
+              size="large"
+              rounded="pill"
+              class="font-weight-bold w-100 text-none"
+              @click="confirmJoin" 
+              :loading="loading"
+            >
+              Да, присоединиться
+            </v-btn>
+            <v-btn 
+              variant="text" 
+              size="large"
+              rounded="pill"
+              class="font-weight-medium w-100 text-none text-medium-emphasis"
+              @click="joinConfirmDialog = false; pendingJoinProjectId = null"
+            >
+              Отмена
+            </v-btn>
+          </div>
         </v-card-text>
-        <v-card-actions class="pa-4 flex-wrap">
-          <v-btn 
-            variant="text" 
-            @click="joinConfirmDialog = false; pendingJoinProjectId = null"
-            class="flex-grow-1 flex-md-grow-0"
-          >
-            Отмена
-          </v-btn>
-          <v-btn 
-            color="primary" 
-            variant="flat" 
-            @click="confirmJoin" 
-            :loading="loading"
-            class="flex-grow-1 flex-md-grow-0"
-          >
-            Да, присоединиться
-          </v-btn>
-        </v-card-actions>
       </v-card>
     </v-dialog>
 
@@ -1389,15 +1558,17 @@ onUnmounted(() => {
 
           <div v-else>
             <!-- Обложка проекта -->
+            <div class="bg-grey-lighten-5 rounded-xl mb-6 pa-6 d-flex align-center justify-center border" style="min-height: 200px; box-shadow: inset 0 2px 8px rgba(0,0,0,0.02);">
               <v-img
                 v-if="projectDetail.cover_image_url"
                 :src="getFullImageUrl(projectDetail.cover_image_url) || ''"
-              :height="$vuetify.display.mobile ? '160' : '200'"
-              class="project-detail-cover mb-6 rounded-lg"
-              cover
-              @error="(e) => console.error('Error loading project cover:', e, projectDetail.cover_image_url)"
-              @load="() => console.log('Project cover loaded successfully')"
-            />
+                :height="$vuetify.display.mobile ? '160' : '240'"
+                class="project-detail-cover"
+                contain
+                @error="(e) => console.error('Error loading project cover:', e, projectDetail.cover_image_url)"
+                @load="() => console.log('Project cover loaded successfully')"
+              />
+            </div>
 
             <!-- Описание -->
             <div class="project-detail-section mb-6">
@@ -1532,30 +1703,30 @@ onUnmounted(() => {
                 </v-list-item>
                 <v-list-item v-if="projectDetail.contact_phone" class="px-0">
                   <template #prepend>
-                    <v-icon icon="mdi-phone" size="20" class="me-2" />
+                    <v-icon icon="mdi-phone" size="20" class="me-2 text-primary" />
                   </template>
                   <v-list-item-title>
-                    <a :href="`tel:${projectDetail.contact_phone}`" class="text-decoration-none">
+                    <a :href="`tel:${projectDetail.contact_phone}`" class="text-primary font-weight-medium text-decoration-none contact-link">
                       {{ projectDetail.contact_phone }}
                     </a>
                   </v-list-item-title>
                 </v-list-item>
                 <v-list-item v-if="projectDetail.contact_email" class="px-0">
                   <template #prepend>
-                    <v-icon icon="mdi-email-outline" size="20" class="me-2" />
+                    <v-icon icon="mdi-email-outline" size="20" class="me-2 text-primary" />
                   </template>
                   <v-list-item-title>
-                    <a :href="`mailto:${projectDetail.contact_email}`" class="text-decoration-none">
+                    <a :href="`mailto:${projectDetail.contact_email}`" class="text-primary font-weight-medium text-decoration-none contact-link">
                       {{ projectDetail.contact_email }}
                     </a>
                   </v-list-item-title>
                 </v-list-item>
                 <v-list-item v-if="projectDetail.contact_telegram" class="px-0">
                   <template #prepend>
-                    <v-icon icon="mdi-send" size="20" class="me-2" />
+                    <v-icon icon="mdi-telegram" size="20" class="me-2 text-primary" />
                   </template>
                   <v-list-item-title>
-                    <a :href="projectDetail.contact_telegram" target="_blank" class="text-decoration-none">
+                    <a :href="projectDetail.contact_telegram" target="_blank" class="text-primary font-weight-medium text-decoration-none contact-link">
                       Telegram
                     </a>
                   </v-list-item-title>
@@ -1837,10 +2008,150 @@ onUnmounted(() => {
 
 <style scoped>
 .projects-page {
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
+  /* Block container */
 }
+
+/* Hide mobile filter button on desktop */
+@media (min-width: 960px) {
+  .filter-mobile-btn {
+    display: none !important;
+  }
+}
+
+/* Mobile tweaks */
+@media (max-width: 599px) {
+  .page-header {
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 8px;
+  }
+}
+
+/* ═══════════════════════════════════════════
+   PAGE HEADER
+═══════════════════════════════════════════ */
+.page-header {
+  min-height: 56px;
+}
+
+/* ═══════════════════════════════════════════
+   SIDEBAR
+═══════════════════════════════════════════ */
+.sidebar {
+  position: sticky;
+  top: 80px;
+  background: #fff;
+  border-radius: 16px;
+  border: 1px solid rgba(0, 0, 0, 0.07);
+  padding: 16px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
+  /* Must be visible so v-expand-transition works */
+  overflow: visible;
+  max-height: calc(100vh - 100px);
+  overflow-y: auto;
+}
+
+.sidebar-section {
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  padding: 12px 0;
+}
+
+.sidebar-section:first-child {
+  padding-top: 0;
+}
+
+.sidebar-section:last-of-type {
+  border-bottom: none;
+  padding-bottom: 4px;
+}
+
+.sidebar-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: rgba(0, 0, 0, 0.38);
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* ═══════════════════════════════════════════
+   MOBILE FILTER BOTTOM SHEET
+═══════════════════════════════════════════ */
+.filter-mobile-btn {
+  flex-shrink: 0;
+}
+
+/* Align dialog to bottom of screen */
+:deep(.filter-dialog-mobile) {
+  align-self: flex-end !important;
+  margin: 0 !important;
+  max-width: 100% !important;
+  width: 100% !important;
+}
+
+.filter-bottom-sheet {
+  /* Scoped inner styles - see inline style */
+}
+
+/* Scrollbar for mobile filter sheet */
+.filter-bottom-sheet .overflow-y-auto::-webkit-scrollbar {
+  width: 4px;
+}
+
+.filter-bottom-sheet .overflow-y-auto::-webkit-scrollbar-thumb {
+  background: rgba(76, 175, 80, 0.3);
+  border-radius: 2px;
+}
+
+
+.project-card {
+  transition: all 0.3s ease;
+  border: 1px solid rgba(0,0,0,0.05);
+}
+
+.project-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 24px rgba(76, 175, 80, 0.12) !important;
+}
+
+.project-card-image-wrapper {
+  background-color: #f8f9fa;
+  border-bottom: 1px solid rgba(0,0,0,0.05);
+}
+
+.project-cover-img {
+  /* No padding - contain mode shows full image */
+  border-radius: 0;
+}
+
+.project-desc {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-height: 54px; /* ~3 lines */
+}
+
+.card-title-clamp {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-height: 44px;
+}
+
+.gap-2 {
+  gap: 8px;
+}
+
+
+/* tags-scroll-container removed — replaced by sidebar checkboxes */
+
 
 .gradient-card {
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.95));
@@ -1900,9 +2211,19 @@ onUnmounted(() => {
   text-decoration: none;
 }
 
+.contact-link {
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.contact-link:hover {
+  text-decoration: underline !important;
+  opacity: 0.8;
+}
+
 /* ════════════════════════════════════
    MESSAGE NOTIFICATION BANNER
-════════════════════════════════════ */
+   ════════════════════════════════════ */
 .message-notification-banner {
   background: linear-gradient(135deg, rgba(139, 195, 74, 0.1), rgba(139, 195, 74, 0.05));
   border: 1px solid rgba(139, 195, 74, 0.2);
@@ -2610,6 +2931,27 @@ onUnmounted(() => {
   
   .project-join-btn {
     width: 100%;
+  }
+}
+
+/* View Mode Toggle */
+.grid-mode-img {
+  height: 170px;
+  width: 100%;
+  border-radius: 12px 12px 0 0;
+}
+.list-mode-img {
+  height: 100%;
+  min-height: 120px;
+  width: 120px;
+  border-radius: 12px 0 0 12px;
+  border-right: 1px solid rgba(0,0,0,0.05);
+  border-bottom: none;
+}
+@media (min-width: 600px) {
+  .list-mode-img {
+    min-height: 200px;
+    width: 250px;
   }
 }
 </style>
