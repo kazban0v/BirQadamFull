@@ -13,13 +13,15 @@ from api.users.models import (
     TrustFactorHistory,
     VerificationCode,
     Activity,
+    VolunteerDocument,
 )
 
 # Projects domain
 from api.projects.models import (
         Project, 
     VolunteerProject,
-        Event, 
+        Event,
+    VolunteerReview,
 )
 
 # Tasks domain
@@ -75,6 +77,7 @@ __all__ = [
     'Project',
     'VolunteerProject',
     'Event',
+    'VolunteerReview',
     # Tasks
     'Task',
     'TaskAssignment',

@@ -366,6 +366,38 @@ const handleLogout = async () => {
     <!-- ─── Main Content ─── -->
     <v-main class="main-area">
       <div class="main-content">
+        <div
+          v-if="authStore.needsProfileCompletion && route.name !== 'volunteer-profile'"
+          class="bio-completion-banner"
+        >
+          <v-icon size="18" color="#d97706">mdi-alert-circle-outline</v-icon>
+          <span>Заполните «О себе» и загрузите резюме, чтобы участвовать в проектах.</span>
+          <v-btn
+            size="small"
+            variant="flat"
+            color="warning"
+            class="text-none ms-auto"
+            @click="router.push({ name: 'volunteer-profile', query: { complete: '1' } })"
+          >
+            Перейти в профиль
+          </v-btn>
+        </div>
+        <div
+          v-else-if="authStore.needsBioCompletion && authStore.isApprovedOrganizer && route.name !== 'organizer-profile'"
+          class="bio-completion-banner"
+        >
+          <v-icon size="18" color="#d97706">mdi-alert-circle-outline</v-icon>
+          <span>Заполните «О себе» в портфолио, чтобы управлять проектами и быть в каталоге.</span>
+          <v-btn
+            size="small"
+            variant="flat"
+            color="warning"
+            class="text-none ms-auto"
+            @click="router.push({ name: 'organizer-profile', query: { complete: '1' } })"
+          >
+            Перейти в профиль
+          </v-btn>
+        </div>
         <RouterView />
       </div>
       
@@ -714,6 +746,19 @@ const handleLogout = async () => {
   padding: clamp(16px, 3vw, 36px) clamp(16px, 4vw, 40px);
   max-width: 100%;
   position: relative;
+}
+
+.bio-completion-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+  padding: 12px 16px;
+  border-radius: 12px;
+  background: rgba(217, 119, 6, 0.08);
+  border: 1px solid rgba(217, 119, 6, 0.18);
+  color: #92400e;
+  font-size: 0.92rem;
 }
 
 .navigation-overlay {

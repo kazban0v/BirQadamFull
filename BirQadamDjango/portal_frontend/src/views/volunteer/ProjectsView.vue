@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue';
-import { useRoute } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 
 import { useDashboardStore } from '@/stores/dashboard';
 import { useAuthStore } from '@/stores/auth';
@@ -16,6 +16,7 @@ import { formatDate, getFullImageUrl } from '@/utils/formatters';
 const dashboardStore = useDashboardStore();
 const authStore = useAuthStore();
 const route = useRoute();
+const router = useRouter();
 const currentUser = computed(() => authStore.user);
 
 const loading = ref(false);
@@ -439,6 +440,11 @@ async function confirmJoin() {
     const errorMessage = error?.response?.data?.error || error?.response?.data?.detail || 'Не удалось присоединиться к проекту.';
     showMessage(errorMessage, 'error');
     
+    if (error?.response?.status === 403 && error?.response?.data?.code === 'profile_incomplete') {
+      router.push({ name: 'volunteer-profile', query: { complete: '1' } });
+      return;
+    }
+
     // Если ошибка связана с TrustFactor или лимитом проектов, показываем более подробное сообщение
     if (error?.response?.status === 403 || error?.response?.status === 400) {
       if (error?.response?.data?.trust_factor !== undefined) {

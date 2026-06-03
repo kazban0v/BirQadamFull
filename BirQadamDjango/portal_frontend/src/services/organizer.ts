@@ -310,7 +310,7 @@ export async function fetchOrganizerPhotoReportDetail(photoId: number): Promise<
 
 export async function approveOrganizerPhotoReport(
   photoId: number,
-  payload: { rating?: number; feedback?: string; skip?: boolean },
+  payload: { rating?: number; feedback?: string; skip?: boolean; publish_as_review?: boolean },
 ): Promise<PhotoMutationResponse> {
   // Очищаем payload от undefined значений
   const cleanPayload: Record<string, any> = {};
@@ -326,6 +326,10 @@ export async function approveOrganizerPhotoReport(
   
   if (payload.feedback !== undefined && payload.feedback !== null && payload.feedback.trim() !== '') {
     cleanPayload.feedback = payload.feedback.trim();
+  }
+
+  if (payload.publish_as_review) {
+    cleanPayload.publish_as_review = true;
   }
   
   const { data } = await httpClient.post<PhotoMutationResponse>(

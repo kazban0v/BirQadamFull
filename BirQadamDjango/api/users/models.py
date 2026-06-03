@@ -9,6 +9,8 @@ from django.utils import timezone
 import logging
 from typing import Any
 
+from common.storage.upload_paths import volunteer_document_upload_path
+
 logger = logging.getLogger(__name__)
 
 
@@ -560,5 +562,43 @@ class VerificationCode(models.Model):
         self.full_clean()
         super().save(*args, **kwargs)
 
+
+class VolunteerDocument(models.Model):
+    """Документы волонтёра (резюме, сертификат)."""
+
+    DOC_TYPE_RESUME = 'resume'
+    DOC_TYPE_CERTIFICATE = 'certificate'
+    DOC_TYPE_CHOICES = [
+        (DOC_TYPE_RESUME, 'Резюме, презентация'),
+        (DOC_TYPE_CERTIFICATE, 'Диплом, сертификат, награда'),
+    ]
+
+    volunteer = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='documents',
+        verbose_name='Волонтёр',
+    )
+    doc_type = models.CharField(max_length=20, choices=DOC_TYPE_CHOICES, verbose_name='Тип документа')
+    file = models.FileField(
+        upload_to=volunteer_document_upload_path,
+        verbose_name='Файл',
+    )
+    original_name = models.CharField(max_length=255, verbose_name='Исходное имя файла')
+    uploaded_at = models.DateTimeField(auto_now_add=True, db_index=True, verbose_name='Загружен')
+
+    class Meta:
+        verbose_name = 'Документ волонтёра'
+        verbose_name_plural = 'Документы волонтёров'
+        ordering = ['-uploaded_at']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['volunteer', 'doc_type'],
+                name='unique_volunteer_doc_type',
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f'{self.get_doc_type_display()} — {self.volunteer.username}'
 
 

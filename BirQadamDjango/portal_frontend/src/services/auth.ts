@@ -32,8 +32,7 @@ export async function fetchVolunteerProfile() {
   return data;
 }
 
-export async function updateVolunteerProfile(payload: Partial<{ name: string; phone_number: string; email: string }>) {
-  // Очищаем payload от пустых значений и null
+export async function updateVolunteerProfile(payload: Partial<{ name: string; phone_number: string; email: string; bio: string }>) {
   const cleanPayload: Record<string, string> = {};
   
   if (payload.name !== undefined && payload.name !== null && payload.name.trim() !== '') {
@@ -45,8 +44,10 @@ export async function updateVolunteerProfile(payload: Partial<{ name: string; ph
   if (payload.email !== undefined && payload.email !== null && payload.email.trim() !== '') {
     cleanPayload.email = payload.email.trim();
   }
+  if (payload.bio !== undefined && payload.bio !== null) {
+    cleanPayload.bio = payload.bio.trim();
+  }
   
-  // Проверяем, что есть хотя бы одно поле для обновления
   if (Object.keys(cleanPayload).length === 0) {
     console.warn('Попытка обновить профиль без данных');
     throw new Error('Нет данных для обновления профиля');

@@ -48,6 +48,26 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/InstructionsView.vue'),
       },
       {
+        path: 'volunteers',
+        name: 'public-volunteers',
+        component: () => import('@/views/public/VolunteersView.vue'),
+      },
+      {
+        path: 'volunteers/:id',
+        name: 'public-volunteer-detail',
+        component: () => import('@/views/public/VolunteerDetailView.vue'),
+      },
+      {
+        path: 'organizers',
+        name: 'public-organizers',
+        component: () => import('@/views/public/OrganizersView.vue'),
+      },
+      {
+        path: 'organizers/:id',
+        name: 'public-organizer-detail',
+        component: () => import('@/views/public/OrganizerDetailView.vue'),
+      },
+      {
         path: ':pathMatch(.*)*',
         name: 'not-found',
         component: () => import('@/views/NotFoundView.vue'),
@@ -212,6 +232,28 @@ router.beforeEach(async (to, from, next) => {
     const requiresApprovedOrganizer = to.matched.some((record) => record.meta?.requiresApprovedOrganizer);
     if (requiresApprovedOrganizer && !isApprovedOrganizer) {
       next({ name: 'organizer-dashboard' });
+      return;
+    }
+
+    const isVolunteerOnly = !isOrganizerRole;
+    if (
+      isVolunteerOnly
+      && !user?.profile_complete
+      && to.path.startsWith('/volunteer')
+      && to.name !== 'volunteer-profile'
+    ) {
+      next({ name: 'volunteer-profile', query: { complete: '1' } });
+      return;
+    }
+
+    if (
+      isApprovedOrganizer
+      && !user?.bio_filled
+      && to.path.startsWith('/organizer')
+      && to.name !== 'organizer-profile'
+      && to.name !== 'organizer-application-rejected'
+    ) {
+      next({ name: 'organizer-profile', query: { complete: '1' } });
       return;
     }
   }

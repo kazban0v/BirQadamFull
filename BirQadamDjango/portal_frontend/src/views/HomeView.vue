@@ -360,30 +360,32 @@ function toggleFaq(index: number, event?: KeyboardEvent) {
               <span>Аналитика и статистика проектов</span>
             </li>
           </ul>
-          <RouterLink 
-            v-if="showRegistrationCTA"
-            to="/register/organizer" 
-            class="cta-btn cta-btn--lime" 
-            aria-label="Организовывать проект"
-          >
-            Организовывать проект →
-          </RouterLink>
-          <RouterLink 
-            v-else-if="isOrganizerRole"
-            :to="dashboardRoute" 
-            class="cta-btn cta-btn--lime" 
-            aria-label="Перейти в кабинет организатора"
-          >
-            Открыть мой кабинет →
-          </RouterLink>
-          <RouterLink
-            to="/instructions"
-            class="cta-btn cta-btn--instr"
-            aria-label="Инструкция по регистрации"
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
-            Инструкция
-          </RouterLink>
+          <div class="split__actions">
+            <RouterLink 
+              v-if="showRegistrationCTA"
+              to="/register/organizer" 
+              class="cta-btn cta-btn--lime" 
+              aria-label="Организовывать проект"
+            >
+              Организовывать проект →
+            </RouterLink>
+            <RouterLink 
+              v-else-if="isOrganizerRole"
+              :to="dashboardRoute" 
+              class="cta-btn cta-btn--lime" 
+              aria-label="Перейти в кабинет организатора"
+            >
+              Открыть мой кабинет →
+            </RouterLink>
+            <RouterLink
+              to="/instructions"
+              class="cta-btn cta-btn--instr"
+              aria-label="Инструкция по регистрации"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+              Инструкция
+            </RouterLink>
+          </div>
         </div>
 
       </div>
@@ -474,7 +476,6 @@ function toggleFaq(index: number, event?: KeyboardEvent) {
             </RouterLink>
           </template>
         </div>
-        <p class="final-cta__note">Бесплатно · Без скрытых условий · Синхронизировано с Telegram</p>
       </div>
     </section>
 
@@ -959,6 +960,24 @@ function toggleFaq(index: number, event?: KeyboardEvent) {
   flex-shrink: 0;
 }
 .split__check--lime { background: rgba(184,224,74,0.12); color: var(--lime); }
+
+.split__actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+@media (max-width: 600px) {
+  .split__actions {
+    width: 100%;
+  }
+
+  .split__actions .cta-btn {
+    width: 100%;
+    justify-content: center;
+  }
+}
 
 /* ════════════════════════════════════
    QUOTE BAND

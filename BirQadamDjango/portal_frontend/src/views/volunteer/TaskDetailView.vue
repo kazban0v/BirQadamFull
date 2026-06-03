@@ -115,6 +115,9 @@ async function handleAcceptTask() {
     await dashboardStore.loadDashboard(true);
   } catch (error: any) {
     showSnackbar(error?.response?.data?.error || error?.response?.data?.detail || 'Не удалось принять задачу.', 'error');
+    if (error?.response?.status === 403 && error?.response?.data?.code === 'profile_incomplete') {
+      router.push({ name: 'volunteer-profile', query: { complete: '1' } });
+    }
   } finally { loading.value = false; }
 }
 

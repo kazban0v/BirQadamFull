@@ -46,8 +46,21 @@ from api.projects.services.lifecycle import (
     archive_finished_project_tasks,
     cleanup_archived_project_chats,
     get_active_volunteer_project_ids,
+    is_project_active,
 )
-from api.users.services.profile import get_volunteer_stats
+from api.users.services.profile import (
+    get_volunteer_stats,
+    volunteer_bio_is_complete,
+    volunteer_profile_is_complete,
+    volunteer_resume_is_complete,
+    public_volunteers_with_complete_bio,
+    public_volunteers_with_complete_profile,
+    public_organizers_with_complete_bio,
+    organizer_bio_is_complete,
+    VOLUNTEER_PROFILE_REQUIRED_DETAIL,
+    VOLUNTEER_BIO_MIN_LENGTH,
+    VOLUNTEER_BIO_MAX_LENGTH,
+)
 from api.services.web_portal_profile import get_volunteer_activity
 from api.users.services.organizer_permissions import is_approved_organizer
 from api.users.services.telegram_sync import (
@@ -775,6 +788,9 @@ class VolunteerMeAPIView(APIView):
                 'organizer_status': getattr(user, 'organizer_status', None),
                 'is_approved': getattr(user, 'is_approved', False),
                 'organization_name': getattr(user, 'organization_name', None),
+                'bio_filled': volunteer_bio_is_complete(user),
+                'resume_filled': volunteer_resume_is_complete(user),
+                'profile_complete': volunteer_profile_is_complete(user),
             },
             status=status.HTTP_200_OK,
         )
@@ -1443,6 +1459,14 @@ class VolunteerProjectJoinAPIView(APIView):
             return Response({'detail': 'Проект не найден или недоступен.'}, status=status.HTTP_404_NOT_FOUND)
 
         current_trust_factor = getattr(request.user, 'trust_factor', 0)
+        if not volunteer_profile_is_complete(request.user):
+            return Response(
+                {
+                    'detail': VOLUNTEER_PROFILE_REQUIRED_DETAIL,
+                    'code': 'profile_incomplete',
+                },
+                status=status.HTTP_403_FORBIDDEN,
+            )
         if not request.user.can_join_projects():  # type: ignore[attr-defined]
             return Response(
                 {
@@ -1843,6 +1867,8 @@ class OrganizerProfileAPIView(APIView):
             'email': user.email,
             'phone_number': user.phone_number,
             'organization_name': user.organization_name,
+            'bio_filled': organizer_bio_is_complete(user),
+            'profile_complete': organizer_bio_is_complete(user),
             'portfolio': {
                 'age': user.age,
                 'gender': user.gender,
@@ -1874,7 +1900,29 @@ class OrganizerProfileAPIView(APIView):
         if 'gender' in request.data:
             user.gender = request.data.get('gender') or None
         if 'bio' in request.data:
-            user.bio = request.data.get('bio') or None
+            bio_raw = request.data.get('bio') or ''
+            bio_text = bio_raw.strip() if bio_raw else ''
+            if bio_text and len(bio_text) < VOLUNTEER_BIO_MIN_LENGTH:
+                return Response(
+                    {
+                        'detail': (
+                            f'Описание «О себе» должно содержать минимум '
+                            f'{VOLUNTEER_BIO_MIN_LENGTH} символов.'
+                        ),
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            if bio_text and len(bio_text) > VOLUNTEER_BIO_MAX_LENGTH:
+                return Response(
+                    {
+                        'detail': (
+                            f'Описание «О себе» не должно превышать '
+                            f'{VOLUNTEER_BIO_MAX_LENGTH} символов.'
+                        ),
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            user.bio = bio_text or None
         if 'work_experience_years' in request.data:
             exp = request.data.get('work_experience_years')
             user.work_experience_years = int(exp) if exp else None
@@ -1911,6 +1959,8 @@ class OrganizerProfileAPIView(APIView):
             'email': user.email,
             'phone_number': user.phone_number,
             'organization_name': user.organization_name,
+            'bio_filled': organizer_bio_is_complete(user),
+            'profile_complete': organizer_bio_is_complete(user),
             'portfolio': {
                 'age': user.age,
                 'gender': user.gender,
@@ -2566,6 +2616,14 @@ class VolunteerTaskAcceptAPIView(APIView):
     permission_classes = [IsAuthenticated]
     authentication_classes = (CsrfExemptSessionAuthentication,)
     def post(self, request, task_id):
+        if not volunteer_profile_is_complete(request.user):
+            return Response(
+                {
+                    'detail': VOLUNTEER_PROFILE_REQUIRED_DETAIL,
+                    'code': 'profile_incomplete',
+                },
+                status=status.HTTP_403_FORBIDDEN,
+            )
         task = get_object_or_404(Task, id=task_id, is_deleted=False)
         assignment, created = TaskAssignment.objects.get_or_create(task=task, volunteer=request.user)
         assignment.accepted = True
@@ -3815,7 +3873,453 @@ class PublicPlatformStatsAPIView(APIView):
             )
 
 
+@method_decorator(csrf_exempt, name='dispatch')
+class VolunteerDocumentsAPIView(APIView):
+    """CRUD документов волонтёра (резюме, сертификат)."""
+    permission_classes = [IsAuthenticated]
+    authentication_classes = (CsrfExemptSessionAuthentication,)
+    parser_classes = (MultiPartParser, FormParser)
+
+    MAX_FILE_SIZE = 5 * 1024 * 1024
+    ALLOWED_CONTENT_TYPES = {
+        'application/pdf',
+        'image/jpeg',
+        'image/png',
+    }
+    ALLOWED_EXTENSIONS = {'.pdf', '.jpg', '.jpeg', '.png'}
+
+    def get(self, request, *args, **kwargs):
+        from api.users.models import VolunteerDocument
+        from api.serializers.web_portal import VolunteerDocumentSerializer
+
+        docs = VolunteerDocument.objects.filter(volunteer=request.user).order_by('doc_type')
+        serializer = VolunteerDocumentSerializer(docs, many=True, context={'request': request})
+        return Response({'documents': serializer.data}, status=status.HTTP_200_OK)
+
+    def post(self, request, *args, **kwargs):
+        import os
+        from django.db import transaction
+        from api.users.models import VolunteerDocument
+        from api.serializers.web_portal import VolunteerDocumentSerializer
+
+        doc_type = (request.data.get('doc_type') or '').strip()
+        if doc_type not in (VolunteerDocument.DOC_TYPE_RESUME, VolunteerDocument.DOC_TYPE_CERTIFICATE):
+            return Response(
+                {'detail': 'Укажите doc_type: resume или certificate.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        uploaded = request.FILES.get('file')
+        if not uploaded:
+            return Response({'detail': 'Файл не передан.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if uploaded.size > self.MAX_FILE_SIZE:
+            return Response(
+                {'detail': 'Размер файла не должен превышать 5 МБ.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        content_type = (uploaded.content_type or '').split(';')[0].strip().lower()
+        ext = os.path.splitext(uploaded.name)[1].lower()
+        if content_type not in self.ALLOWED_CONTENT_TYPES and ext not in self.ALLOWED_EXTENSIONS:
+            return Response(
+                {'detail': 'Допустимые форматы: PDF, JPG, PNG.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        from api.users.services.documents import validate_volunteer_document_upload
+        validation_error = validate_volunteer_document_upload(uploaded)
+        if validation_error:
+            return Response({'detail': validation_error}, status=status.HTTP_400_BAD_REQUEST)
+
+        with transaction.atomic():
+            doc = VolunteerDocument.objects.filter(
+                volunteer_id=request.user.pk,
+                doc_type=doc_type,
+            ).first()
+            if doc is None:
+                doc = VolunteerDocument(
+                    volunteer_id=request.user.pk,
+                    doc_type=doc_type,
+                )
+            elif doc.file:
+                doc.file.delete(save=False)
+            doc.file = uploaded
+            doc.original_name = uploaded.name
+            doc.save()
+
+        serializer = VolunteerDocumentSerializer(doc, context={'request': request})
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+@method_decorator(csrf_exempt, name='dispatch')
+class VolunteerDocumentDeleteAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+    authentication_classes = (CsrfExemptSessionAuthentication,)
+
+    def delete(self, request, document_id: int, *args, **kwargs):
+        from api.users.models import VolunteerDocument
+
+        doc = get_object_or_404(VolunteerDocument, pk=document_id, volunteer=request.user)
+        if doc.file:
+            doc.file.delete(save=False)
+        doc.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+@method_decorator(csrf_exempt, name='dispatch')
+class PublicVolunteersAPIView(APIView):
+    """
+    Публичный каталог волонтеров.
+    """
+    permission_classes = [AllowAny]
+    authentication_classes = (CsrfExemptSessionAuthentication,)
+
+    def get(self, request, *args, **kwargs):
+        from api.serializers.web_portal import PublicVolunteerSerializer
+        
+        # Публичны только волонтёры с полным профилем (bio + резюме)
+        volunteers = User.objects.filter(
+            role='volunteer',
+            is_active=True,
+        )
+        volunteers = public_volunteers_with_complete_profile(volunteers)
+
+        sort = request.query_params.get('sort', 'rating').strip()
+        if sort == 'tasks':
+            volunteers = volunteers.annotate(
+                _completed_tasks=Count('assignments', filter=Q(assignments__completed=True))
+            ).order_by('-_completed_tasks', '-rating')
+        elif sort == 'newest':
+            volunteers = volunteers.order_by('-date_joined')
+        else:
+            volunteers = volunteers.order_by('-rating', '-average_rating', '-date_joined')
+        
+        # Поддержка простого поиска
+        search_query = request.query_params.get('search', '').strip()
+        if search_query:
+            volunteers = volunteers.filter(
+                Q(name__icontains=search_query) | Q(username__icontains=search_query)
+            )
+
+        serializer = PublicVolunteerSerializer(volunteers[:50], many=True, context={'request': request})
+        return Response({'volunteers': serializer.data}, status=status.HTTP_200_OK)
+
+
+@method_decorator(csrf_exempt, name='dispatch')
+class PublicOrganizersAPIView(APIView):
+    """
+    Публичный каталог НКО (Организаторов).
+    """
+    permission_classes = [AllowAny]
+    authentication_classes = (CsrfExemptSessionAuthentication,)
+
+    def get(self, request, *args, **kwargs):
+        from api.serializers.web_portal import PublicOrganizerSerializer
+        
+        organizers = User.objects.filter(
+            role='organizer',
+            organizer_status='approved',
+            is_active=True
+        ).select_related('organizer_application').order_by('-date_joined')
+        organizers = public_organizers_with_complete_bio(organizers)
+        
+        # Поддержка поиска
+        search_query = request.query_params.get('search', '').strip()
+        if search_query:
+            organizers = organizers.filter(
+                Q(organization_name__icontains=search_query) | 
+                Q(organizer_application__city__icontains=search_query)
+            )
+
+        serializer = PublicOrganizerSerializer(organizers[:50], many=True, context={'request': request})
+        return Response({'organizers': serializer.data}, status=status.HTTP_200_OK)
+
+
+@method_decorator(csrf_exempt, name='dispatch')
+class PublicOrganizerDetailAPIView(APIView):
+    """Публичный профиль организатора (фонда / НКО)."""
+    permission_classes = [AllowAny]
+    authentication_classes = (CsrfExemptSessionAuthentication,)
+
+    def get(self, request, pk, *args, **kwargs):
+        from api.serializers.web_portal import PublicOrganizerDetailSerializer, PublicOrganizerSerializer
+
+        organizer = get_object_or_404(
+            User.objects.select_related('organizer_application'),
+            pk=pk,
+            role='organizer',
+            organizer_status='approved',
+            is_active=True,
+        )
+        if not organizer_bio_is_complete(organizer):
+            return Response({'detail': 'Профиль организации не найден.'}, status=status.HTTP_404_NOT_FOUND)
+        serializer = PublicOrganizerDetailSerializer(organizer, context={'request': request})
+
+        related = public_organizers_with_complete_bio(
+            User.objects.filter(
+                role='organizer',
+                organizer_status='approved',
+                is_active=True,
+            ).select_related('organizer_application').exclude(pk=pk)
+        ).order_by('-date_joined')[:6]
+        related_serializer = PublicOrganizerSerializer(related, many=True, context={'request': request})
+
+        return Response({
+            'organizer': serializer.data,
+            'related_organizers': related_serializer.data,
+        }, status=status.HTTP_200_OK)
+
+
+@method_decorator(csrf_exempt, name='dispatch')
+class PublicVolunteerDetailAPIView(APIView):
+    """
+    Публичный профиль волонтера.
+    """
+    permission_classes = [AllowAny]
+    authentication_classes = (CsrfExemptSessionAuthentication,)
+
+    def get(self, request, pk, *args, **kwargs):
+        from api.serializers.web_portal import PublicVolunteerSerializer
+        
+        user = get_object_or_404(User, pk=pk, role='volunteer', is_active=True)
+        if not volunteer_profile_is_complete(user):
+            return Response({'detail': 'Профиль волонтёра не найден.'}, status=status.HTTP_404_NOT_FOUND)
+        serializer = PublicVolunteerSerializer(user, context={'request': request})
+
+        related = public_volunteers_with_complete_profile(
+            User.objects.filter(
+                role='volunteer',
+                is_active=True,
+            ).exclude(pk=pk)
+        ).order_by('-rating', '-average_rating', '-date_joined')[:6]
+        related_serializer = PublicVolunteerSerializer(related, many=True, context={'request': request})
+
+        return Response({
+            'volunteer': serializer.data,
+            'related_volunteers': related_serializer.data,
+            'reviews': self._get_public_reviews(user, request),
+        }, status=status.HTTP_200_OK)
+
+    def _get_public_reviews(self, user, request):
+        from api.projects.models import VolunteerReview
+        from api.serializers.web_portal import PublicVolunteerReviewSerializer
+        reviews = VolunteerReview.objects.filter(
+            volunteer=user,
+            is_published=True,
+        ).select_related('organizer', 'project').order_by('-created_at')[:20]
+        return PublicVolunteerReviewSerializer(reviews, many=True, context={'request': request}).data
+
+
+@method_decorator(csrf_exempt, name='dispatch')
+class PublicVolunteerDocumentDownloadAPIView(APIView):
+    """Скачивание документа волонтёра с публичного профиля."""
+    permission_classes = [AllowAny]
+    authentication_classes = (CsrfExemptSessionAuthentication,)
+
+    def get(self, request, pk: int, doc_type: str, *args, **kwargs):
+        from urllib.parse import quote
+        from django.http import FileResponse
+        from api.users.models import VolunteerDocument
+        from api.users.services.documents import detect_volunteer_document_content_type
+
+        volunteer = get_object_or_404(User, pk=pk, role='volunteer', is_active=True)
+        if not volunteer_profile_is_complete(volunteer):
+            return Response({'detail': 'Профиль волонтёра не найден.'}, status=status.HTTP_404_NOT_FOUND)
+
+        if doc_type not in (VolunteerDocument.DOC_TYPE_RESUME, VolunteerDocument.DOC_TYPE_CERTIFICATE):
+            return Response({'detail': 'Неверный тип документа.'}, status=status.HTTP_404_NOT_FOUND)
+
+        doc = get_object_or_404(
+            VolunteerDocument.objects.select_related('volunteer'),
+            volunteer=volunteer,
+            doc_type=doc_type,
+        )
+        if not doc.file:
+            return Response({'detail': 'Документ не найден.'}, status=status.HTTP_404_NOT_FOUND)
+
+        try:
+            file_handle = doc.file.open('rb')
+        except OSError:
+            return Response({'detail': 'Файл недоступен.'}, status=status.HTTP_404_NOT_FOUND)
+
+        content_type = detect_volunteer_document_content_type(file_handle, doc.original_name)
+        response = FileResponse(file_handle, content_type=content_type)
+        # attachment — скачивание; корректный MIME не даёт PDF-viewer падать на «левом» .pdf
+        safe_name = quote(doc.original_name)
+        response['Content-Disposition'] = f"attachment; filename*=UTF-8''{safe_name}"
+        return response
+
+
+@method_decorator(csrf_exempt, name='dispatch')
+class OrganizerVolunteerInviteAPIView(APIView):
+    """Пригласить волонтёра в проект организатора (из публичного каталога)."""
+    permission_classes = [IsAuthenticated]
+    authentication_classes = (CsrfExemptSessionAuthentication,)
+
+    def post(self, request, volunteer_id: int, *args, **kwargs):
+        if not is_approved_organizer(request.user):
+            return Response(
+                {'detail': 'Только одобренные организаторы могут приглашать волонтёров.'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        volunteer = get_object_or_404(User, pk=volunteer_id, role='volunteer', is_active=True)
+
+        project_id = request.data.get('project_id')
+        if not project_id:
+            return Response({'detail': 'Укажите project_id.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            project_id = int(project_id)
+        except (TypeError, ValueError):
+            return Response({'detail': 'Некорректный project_id.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        project = get_object_or_404(
+            Project,
+            pk=project_id,
+            creator=request.user,
+            is_deleted=False,
+            status='approved',
+        )
+
+        if not is_project_active(project):
+            return Response(
+                {'detail': 'Проект завершён или недоступен для новых участников.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        membership, created = VolunteerProject.objects.get_or_create(
+            volunteer=volunteer,
+            project=project,
+            defaults={'is_active': True},
+        )
+        if not created and not membership.is_active:
+            membership.is_active = True
+            membership.save(update_fields=['is_active'])
+
+        org_name = request.user.organization_name or request.user.name or request.user.username
+        Activity.objects.create(
+            user=volunteer,
+            type='project_joined',
+            title='Приглашение в проект',
+            description=f'Организация «{org_name}» пригласила вас в проект «{project.title}».',
+            project=project,
+        )
+
+        return Response({
+            'message': f'Волонтёр приглашён в проект «{project.title}».',
+            'project_id': project.id,
+            'volunteer_id': volunteer.id,
+            'created': created,
+        }, status=status.HTTP_200_OK)
+
+
+@method_decorator(csrf_exempt, name='dispatch')
+class OrganizerVolunteerReviewAPIView(APIView):
+    """Оставить публичный отзыв о волонтёре."""
+    permission_classes = [IsAuthenticated]
+    authentication_classes = (CsrfExemptSessionAuthentication,)
+
+    def post(self, request, volunteer_id: int, *args, **kwargs):
+        if not is_approved_organizer(request.user):
+            return Response(
+                {'detail': 'Только одобренные организаторы могут оставлять отзывы.'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        volunteer = get_object_or_404(User, pk=volunteer_id, role='volunteer', is_active=True)
+
+        project_id = request.data.get('project_id')
+        rating = request.data.get('rating')
+        text = (request.data.get('text') or '').strip()
+
+        if not project_id:
+            return Response({'detail': 'Укажите project_id.'}, status=status.HTTP_400_BAD_REQUEST)
+        if not text or len(text) < 10:
+            return Response(
+                {'detail': 'Текст отзыва должен содержать минимум 10 символов.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            project_id = int(project_id)
+            rating = int(rating)
+        except (TypeError, ValueError):
+            return Response({'detail': 'Некорректные project_id или rating.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if rating < 1 or rating > 5:
+            return Response({'detail': 'Оценка должна быть от 1 до 5.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        project = get_object_or_404(
+            Project,
+            pk=project_id,
+            creator=request.user,
+            is_deleted=False,
+        )
+
+        from api.projects.services.reviews import (
+            create_or_update_volunteer_review,
+            volunteer_has_completed_work_on_project,
+        )
+
+        if not volunteer_has_completed_work_on_project(volunteer, project):
+            return Response(
+                {'detail': 'Отзыв можно оставить только после выполненной работы волонтёра в этом проекте.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            review = create_or_update_volunteer_review(
+                volunteer=volunteer,
+                organizer=request.user,
+                project=project,
+                rating=rating,
+                text=text,
+            )
+        except ValueError as exc:
+            return Response({'detail': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
+        from api.serializers.web_portal import PublicVolunteerReviewSerializer
+        serializer = PublicVolunteerReviewSerializer(review, context={'request': request})
+        return Response({'message': 'Отзыв опубликован.', 'review': serializer.data}, status=status.HTTP_201_CREATED)
+
+
+@method_decorator(csrf_exempt, name='dispatch')
+class PublicVolunteerReviewsAPIView(APIView):
+    permission_classes = [AllowAny]
+    authentication_classes = (CsrfExemptSessionAuthentication,)
+
+    def get(self, request, pk: int, *args, **kwargs):
+        from api.projects.models import VolunteerReview
+        from api.serializers.web_portal import PublicVolunteerReviewSerializer
+
+        volunteer = get_object_or_404(User, pk=pk, role='volunteer', is_active=True)
+        reviews_qs = VolunteerReview.objects.filter(
+            volunteer=volunteer,
+            is_published=True,
+        ).select_related('organizer', 'project').order_by('-created_at')
+        total = reviews_qs.count()
+        reviews = reviews_qs[:50]
+        serializer = PublicVolunteerReviewSerializer(reviews, many=True, context={'request': request})
+        return Response({'reviews': serializer.data, 'count': total}, status=status.HTTP_200_OK)
+
+
 urlpatterns += [
+    path('volunteer/documents/', VolunteerDocumentsAPIView.as_view(), name='volunteer_documents'),
+    path('volunteer/documents/<int:document_id>/', VolunteerDocumentDeleteAPIView.as_view(), name='volunteer_document_delete'),
     path('public/stats/', PublicPlatformStatsAPIView.as_view(), name='public_platform_stats'),
+    path('public/volunteers/', PublicVolunteersAPIView.as_view(), name='public_volunteers'),
+    path('public/volunteers/<int:pk>/', PublicVolunteerDetailAPIView.as_view(), name='public_volunteer_detail'),
+    path(
+        'public/volunteers/<int:pk>/documents/<str:doc_type>/download/',
+        PublicVolunteerDocumentDownloadAPIView.as_view(),
+        name='public_volunteer_document_download',
+    ),
+    path('public/volunteers/<int:pk>/reviews/', PublicVolunteerReviewsAPIView.as_view(), name='public_volunteer_reviews'),
+    path('public/organizers/', PublicOrganizersAPIView.as_view(), name='public_organizers'),
+    path('public/organizers/<int:pk>/', PublicOrganizerDetailAPIView.as_view(), name='public_organizer_detail'),
+    path('organizer/volunteers/<int:volunteer_id>/invite/', OrganizerVolunteerInviteAPIView.as_view(), name='organizer_volunteer_invite'),
+    path('organizer/volunteers/<int:volunteer_id>/reviews/', OrganizerVolunteerReviewAPIView.as_view(), name='organizer_volunteer_review'),
 ]
 

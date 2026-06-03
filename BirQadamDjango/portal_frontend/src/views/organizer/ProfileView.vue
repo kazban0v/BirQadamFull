@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, nextTick } from 'vue';
+import { useRoute } from 'vue-router';
 import type { VForm } from 'vuetify/components';
 import { useDisplay } from 'vuetify';
 
@@ -11,6 +12,7 @@ import { getOrganizerProfile, updateOrganizerProfile, type OrganizerProfile } fr
 const { mobile } = useDisplay();
 
 const authStore = useAuthStore();
+const route = useRoute();
 const loading = ref(false);
 const formRef = ref<VForm | null>(null);
 const snackbar = reactive({
@@ -25,6 +27,8 @@ const formState = reactive({
 });
 
 const profileData = ref<OrganizerProfile | null>(null);
+const bioFilled = ref(false);
+const profileCompleteBanner = computed(() => route.query.complete === '1' || !bioFilled.value);
 
 // Проверка, заполнена ли личная информация
 const isPersonalInfoFilled = computed(() => {
@@ -80,6 +84,14 @@ const portfolioLoading = ref(false);
 
 const rules = {
   required: (value: string) => !!value || 'Поле обязательно для заполнения.',
+  bioMin: (value: string) => {
+    if (!value || value.trim().length < 30) return 'Минимум 30 символов.';
+    return true;
+  },
+  bioMax: (value: string) => {
+    if (value && value.length > 2000) return 'Не более 2000 символов.';
+    return true;
+  },
 };
 
 const stats = ref<{
@@ -183,6 +195,7 @@ const loadProfile = async () => {
     profileData.value = profile;
     formState.name = profile.full_name || '';
     formState.organization_name = profile.organization_name || '';
+    bioFilled.value = !!profile.bio_filled;
     
     // Загружаем портфолио
     await loadPortfolio();
@@ -218,6 +231,7 @@ const loadPortfolio = async () => {
     portfolioState.work_history = profile.portfolio?.work_history || '';
     // Преобразуем URL в полный, если нужно
     portfolioState.portfolio_photo_url = getFullImageUrl(profile.portfolio?.portfolio_photo_url) || null;
+    bioFilled.value = !!profile.bio_filled;
   } catch (error: any) {
     console.error('Failed to load portfolio:', error);
   } finally {
@@ -253,6 +267,8 @@ const submitPortfolio = async () => {
 
     // Перезагружаем портфолио для обновления состояния
     await loadPortfolio();
+    await authStore.refreshOrganizerProfile();
+    bioFilled.value = !!authStore.user?.bio_filled;
 
     snackbar.message = 'Портфолио успешно сохранено';
     snackbar.color = 'success';
@@ -505,6 +521,9 @@ const submitEditPortfolio = async () => {
     
     editPortfolioState.portfolio_photo = null;
     editPortfolioState.portfolio_photo_preview = null;
+
+    await authStore.refreshOrganizerProfile();
+    bioFilled.value = !!authStore.user?.bio_filled;
 
     snackbar.message = 'Портфолио успешно обновлено';
     snackbar.color = 'success';
@@ -772,6 +791,11 @@ onMounted(async () => {
         <span>{{ portfolioState.bio }}</span>
             </div>
           </div>
+
+    <div v-if="profileCompleteBanner && authStore.isApprovedOrganizer" class="bio-alert">
+      <v-icon size="18" color="#d97706">mdi-alert-circle-outline</v-icon>
+      <span>Заполните «О себе» в портфолио (минимум 30 символов), чтобы управлять проектами и быть в публичном каталоге.</span>
+    </div>
 
     <!-- ─── Статистика ─── -->
     <div class="section-card">
@@ -1077,11 +1101,13 @@ onMounted(async () => {
           <v-col cols="12">
             <v-textarea
               v-model="portfolioState.bio"
-              label="О себе"
+              label="О себе *"
               prepend-inner-icon="mdi-account-circle"
                 variant="outlined"
                 density="comfortable"
               rows="4"
+              maxlength="2000"
+              :rules="[rules.required, rules.bioMin, rules.bioMax]"
               :loading="portfolioLoading"
               rounded="lg"
               hide-details="auto"
@@ -1527,11 +1553,13 @@ onMounted(async () => {
                 <v-col cols="12">
                   <v-textarea
                     v-model="editPortfolioState.bio"
-                    label="О себе"
+                    label="О себе *"
                     prepend-inner-icon="mdi-account-circle"
                     variant="outlined"
                     density="comfortable"
                     rows="4"
+                    maxlength="2000"
+                    :rules="[rules.required, rules.bioMin, rules.bioMax]"
                     rounded="lg"
                     hide-details="auto"
                     auto-grow
@@ -1976,6 +2004,19 @@ onMounted(async () => {
   display: flex;
   flex-direction: column;
   gap: 20px;
+}
+
+.bio-alert {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: rgba(217, 119, 6, 0.08);
+  border: 1px solid rgba(217, 119, 6, 0.18);
+  color: #92400e;
+  font-size: 0.9rem;
+  line-height: 1.45;
 }
 
 /* ─── Page Header ─── */

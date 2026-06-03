@@ -250,7 +250,7 @@ export const useOrganizerStore = defineStore('organizer', () => {
 
   async function approvePhotoReport(
     photoId: number,
-    payload: { rating?: number; feedback?: string; skip?: boolean } = {},
+    payload: { rating?: number; feedback?: string; skip?: boolean; publish_as_review?: boolean } = {},
   ) {
     if (!isOrganizer.value) throw new Error('Недостаточно прав');
     photoActionLoading[photoId] = true;

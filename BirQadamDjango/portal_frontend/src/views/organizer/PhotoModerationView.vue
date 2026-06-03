@@ -100,7 +100,7 @@ const detailDialog = reactive({ open: false, photoId: null as number | null, sli
 
 const approveDialog = reactive({
   open: false, photoId: null as number | null,
-  rating: 5, feedback: '', error: '',
+  rating: 5, feedback: '', error: '', publishAsReview: false,
 });
 
 const rejectDialog = reactive({
@@ -196,6 +196,7 @@ function openApproveDialog(photoId: number) {
   approveDialog.photoId = photoId;
   approveDialog.rating = 5;
   approveDialog.feedback = '';
+  approveDialog.publishAsReview = false;
   approveDialog.error = '';
 }
 
@@ -213,6 +214,7 @@ async function submitApprove(skip = false) {
       skip,
       rating: skip ? undefined : approveDialog.rating,
       feedback: approveDialog.feedback.trim() || undefined,
+      publish_as_review: !skip && approveDialog.publishAsReview && !!approveDialog.feedback.trim(),
     });
     approveDialog.open = false;
     snackbar.message = skip ? 'Фото одобрено без оценки.' : 'Фото одобрено.';
@@ -771,6 +773,15 @@ watch(() => detailDialog.open, (open) => { if (!open) detailDialog.slide = 0; })
             counter="400"
             maxlength="400"
             hint="Обязателен для оценки 1–3 ★"
+          />
+          <v-checkbox
+            v-model="approveDialog.publishAsReview"
+            label="Опубликовать комментарий как отзыв в профиле волонтёра"
+            density="compact"
+            hide-details
+            color="primary"
+            class="mt-2"
+            :disabled="!approveDialog.feedback.trim()"
           />
           <v-alert v-if="approveDialog.error" type="error" variant="tonal" density="compact" rounded="lg" class="mt-3">
             {{ approveDialog.error }}

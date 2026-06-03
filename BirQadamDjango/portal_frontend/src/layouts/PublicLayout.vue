@@ -43,6 +43,9 @@ onUnmounted(() => {
 
 const navigationLinks = [
   { title: 'Главная', to: { path: '/' }, icon: 'mdi-home-outline' },
+  { title: 'Волонтёры', to: { name: 'public-volunteers' }, icon: 'mdi-account-group-outline' },
+  { title: 'Фонды', to: { name: 'public-organizers' }, icon: 'mdi-domain' },
+  { title: 'Инструкция', to: { name: 'instructions' }, icon: 'mdi-book-open-outline' },
 ];
 
 const isAuthenticated = computed(() => authStore.isAuthenticated);

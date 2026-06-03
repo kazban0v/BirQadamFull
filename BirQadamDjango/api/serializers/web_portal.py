@@ -68,6 +68,9 @@ class VolunteerProfileSerializer(serializers.ModelSerializer):
     is_organizer = serializers.BooleanField(read_only=True)
     is_approved = serializers.BooleanField(read_only=True)
     organization_name = serializers.CharField(read_only=True, allow_null=True)
+    bio_filled = serializers.SerializerMethodField()
+    resume_filled = serializers.SerializerMethodField()
+    profile_complete = serializers.SerializerMethodField()
     
     _dashboard_cache = None
 
@@ -75,6 +78,23 @@ class VolunteerProfileSerializer(serializers.ModelSerializer):
         if self._dashboard_cache is None:
             self._dashboard_cache = get_volunteer_dashboard_data(obj)
         return self._dashboard_cache
+
+    def validate_bio(self, value: str | None) -> str | None:
+        from api.users.services.profile import VOLUNTEER_BIO_MAX_LENGTH, VOLUNTEER_BIO_MIN_LENGTH
+        if value is None:
+            return None
+        text = value.strip()
+        if not text:
+            return None
+        if len(text) < VOLUNTEER_BIO_MIN_LENGTH:
+            raise serializers.ValidationError(
+                f'Описание должно содержать минимум {VOLUNTEER_BIO_MIN_LENGTH} символов.'
+            )
+        if len(text) > VOLUNTEER_BIO_MAX_LENGTH:
+            raise serializers.ValidationError(
+                f'Описание не должно превышать {VOLUNTEER_BIO_MAX_LENGTH} символов.'
+            )
+        return text
     
     class Meta:
         model = User
@@ -86,6 +106,10 @@ class VolunteerProfileSerializer(serializers.ModelSerializer):
             'phone_number',
             'email',
             'avatar',
+            'bio',
+            'bio_filled',
+            'resume_filled',
+            'profile_complete',
             'rating',
             'trust_factor',
             'average_rating',
@@ -101,7 +125,7 @@ class VolunteerProfileSerializer(serializers.ModelSerializer):
             'is_approved',
             'organization_name',
         )
-        read_only_fields = ('id', 'username', 'rating', 'trust_factor', 'average_rating')
+        read_only_fields = ('id', 'username', 'rating', 'trust_factor', 'average_rating', 'bio_filled', 'profile_complete')
 
     def get_tasks_completed(self, obj: User) -> int:
         try:
@@ -141,6 +165,18 @@ class VolunteerProfileSerializer(serializers.ModelSerializer):
         except Exception:
             return 0
 
+    def get_bio_filled(self, obj: User) -> bool:
+        from api.users.services.profile import volunteer_bio_is_complete
+        return volunteer_bio_is_complete(obj)
+
+    def get_resume_filled(self, obj: User) -> bool:
+        from api.users.services.profile import volunteer_resume_is_complete
+        return volunteer_resume_is_complete(obj)
+
+    def get_profile_complete(self, obj: User) -> bool:
+        from api.users.services.profile import volunteer_profile_is_complete
+        return volunteer_profile_is_complete(obj)
+
     def update(self, instance: User, validated_data: dict) -> User:
         update_fields = []
         if 'name' in validated_data:
@@ -155,6 +191,9 @@ class VolunteerProfileSerializer(serializers.ModelSerializer):
         if 'avatar' in validated_data:
             instance.avatar = validated_data['avatar']
             update_fields.append('avatar')
+        if 'bio' in validated_data:
+            instance.bio = validated_data['bio']
+            update_fields.append('bio')
         if update_fields:
             instance.save(update_fields=update_fields)
         return instance
@@ -506,4 +545,281 @@ class ReportSerializer(serializers.ModelSerializer):
         model = Report
         fields = ['id', 'reported_user', 'content_type', 'content_id', 'reason', 'details', 'status', 'created_at']
         read_only_fields = ['id', 'status', 'created_at']
+
+
+class PublicAchievementSerializer(serializers.ModelSerializer):
+    name = serializers.CharField(source='achievement.name', read_only=True)
+    description = serializers.CharField(source='achievement.description', read_only=True)
+    icon = serializers.CharField(source='achievement.icon', read_only=True)
+    unlocked_at = serializers.DateTimeField(read_only=True)
+
+    class Meta:
+        from api.achievements.models import UserAchievement
+        model = UserAchievement
+        fields = ('name', 'description', 'icon', 'unlocked_at')
+        read_only_fields = fields
+
+
+class PublicVolunteerSerializer(serializers.ModelSerializer):
+    full_name = serializers.CharField(source='name', read_only=True)
+    completed_tasks = serializers.SerializerMethodField()
+    avatar_url = serializers.SerializerMethodField()
+    level = serializers.SerializerMethodField()
+    achievements = serializers.SerializerMethodField()
+    reviews_count = serializers.SerializerMethodField()
+    documents = serializers.SerializerMethodField()
+
+    class Meta:
+        model = User
+        fields = (
+            'id',
+            'full_name',
+            'username',
+            'bio',
+            'rating',
+            'average_rating',
+            'trust_factor',
+            'avatar_url',
+            'completed_tasks',
+            'date_joined',
+            'level',
+            'achievements',
+            'reviews_count',
+            'documents',
+        )
+        read_only_fields = fields
+
+    def get_completed_tasks(self, obj: User) -> int:
+        from api.tasks.models import TaskAssignment
+        return TaskAssignment.objects.filter(volunteer=obj, completed=True).count()
+
+    def get_avatar_url(self, obj: User) -> str | None:
+        request = self.context.get('request') if hasattr(self, 'context') else None
+        if obj.avatar:
+            if request:
+                return request.build_absolute_uri(obj.avatar.url)
+            return obj.avatar.url
+        return None
+
+    def get_level(self, obj: User) -> int:
+        return min(5, max(1, obj.rating // 150 + 1))
+
+    def get_achievements(self, obj: User) -> list:
+        from api.achievements.models import UserAchievement
+        unlocked = UserAchievement.objects.filter(user=obj).select_related('achievement').order_by('-unlocked_at')[:12]
+        return PublicAchievementSerializer(unlocked, many=True).data
+
+    def get_reviews_count(self, obj: User) -> int:
+        from api.projects.models import VolunteerReview
+        return VolunteerReview.objects.filter(volunteer=obj, is_published=True).count()
+
+    def get_documents(self, obj: User) -> list:
+        from api.users.models import VolunteerDocument
+        docs_by_type = {
+            d.doc_type: d
+            for d in VolunteerDocument.objects.filter(volunteer=obj)
+        }
+        request = self.context.get('request') if hasattr(self, 'context') else None
+        rows = []
+        for doc_type, label in VolunteerDocument.DOC_TYPE_CHOICES:
+            doc = docs_by_type.get(doc_type)
+            download_url = None
+            original_name = None
+            if doc and doc.file:
+                original_name = doc.original_name
+                path = f'/api/web/public/volunteers/{obj.pk}/documents/{doc_type}/download/'
+                if request:
+                    download_url = request.build_absolute_uri(path)
+                else:
+                    download_url = path
+            rows.append({
+                'doc_type': doc_type,
+                'label': label,
+                'original_name': original_name,
+                'download_url': download_url,
+            })
+        return rows
+
+
+class VolunteerDocumentSerializer(serializers.ModelSerializer):
+    download_url = serializers.SerializerMethodField()
+    label = serializers.SerializerMethodField()
+
+    class Meta:
+        from api.users.models import VolunteerDocument
+        model = VolunteerDocument
+        fields = ('id', 'doc_type', 'label', 'original_name', 'uploaded_at', 'download_url')
+        read_only_fields = fields
+
+    def get_label(self, obj) -> str:
+        return obj.get_doc_type_display()
+
+    def get_download_url(self, obj) -> str | None:
+        if not obj.file:
+            return None
+        request = self.context.get('request') if hasattr(self, 'context') else None
+        if request:
+            return request.build_absolute_uri(obj.file.url)
+        return obj.file.url
+
+
+class PublicVolunteerReviewSerializer(serializers.ModelSerializer):
+    organization_name = serializers.SerializerMethodField()
+    organizer_avatar_url = serializers.SerializerMethodField()
+    project_title = serializers.CharField(source='project.title', read_only=True)
+
+    class Meta:
+        from api.projects.models import VolunteerReview
+        model = VolunteerReview
+        fields = (
+            'id',
+            'organization_name',
+            'organizer_avatar_url',
+            'project_title',
+            'rating',
+            'text',
+            'created_at',
+        )
+        read_only_fields = fields
+
+    def get_organization_name(self, obj) -> str:
+        org = getattr(obj.organizer, 'organization_name', None)
+        return org or obj.organizer.name or obj.organizer.username
+
+    def get_organizer_avatar_url(self, obj) -> str | None:
+        request = self.context.get('request') if hasattr(self, 'context') else None
+        organizer = obj.organizer
+        if organizer.portfolio_photo:
+            url = organizer.portfolio_photo.url
+        elif organizer.avatar:
+            url = organizer.avatar.url
+        else:
+            return None
+        if request:
+            return request.build_absolute_uri(url)
+        return url
+
+
+class PublicOrganizerSerializer(serializers.ModelSerializer):
+    avatar_url = serializers.SerializerMethodField()
+    completed_projects = serializers.SerializerMethodField()
+    city = serializers.SerializerMethodField()
+    website = serializers.SerializerMethodField()
+
+    class Meta:
+        model = User
+        fields = (
+            'id',
+            'organization_name',
+            'city',
+            'website',
+            'avatar_url',
+            'date_joined',
+            'completed_projects'
+        )
+        read_only_fields = fields
+
+    def get_completed_projects(self, obj: User) -> int:
+        from api.projects.models import Project
+        return Project.objects.filter(creator=obj, status='completed').count()
+
+    def get_avatar_url(self, obj: User) -> str | None:
+        request = self.context.get('request') if hasattr(self, 'context') else None
+        if obj.portfolio_photo:
+            if request:
+                return request.build_absolute_uri(obj.portfolio_photo.url)
+            return obj.portfolio_photo.url
+        elif obj.avatar:
+            if request:
+                return request.build_absolute_uri(obj.avatar.url)
+            return obj.avatar.url
+        return None
+
+    def get_city(self, obj: User) -> str | None:
+        if hasattr(obj, 'organizer_application'):
+            return obj.organizer_application.city
+        return None
+
+    def get_website(self, obj: User) -> str | None:
+        if hasattr(obj, 'organizer_application'):
+            return obj.organizer_application.website
+        return None
+
+
+class PublicOrganizerProjectSerializer(serializers.ModelSerializer):
+    cover_url = serializers.SerializerMethodField()
+    volunteer_type_display = serializers.CharField(source='get_volunteer_type_display', read_only=True)
+
+    class Meta:
+        from api.projects.models import Project
+        model = Project
+        fields = (
+            'id',
+            'title',
+            'description',
+            'city',
+            'volunteer_type',
+            'volunteer_type_display',
+            'cover_url',
+            'start_date',
+            'end_date',
+        )
+        read_only_fields = fields
+
+    def get_cover_url(self, obj) -> str | None:
+        if not obj.cover_image:
+            return None
+        request = self.context.get('request') if hasattr(self, 'context') else None
+        if request:
+            return request.build_absolute_uri(obj.cover_image.url)
+        return obj.cover_image.url
+
+
+class PublicOrganizerDetailSerializer(PublicOrganizerSerializer):
+    bio = serializers.CharField(read_only=True, allow_null=True)
+    description = serializers.SerializerMethodField()
+    active_projects = serializers.SerializerMethodField()
+    total_projects = serializers.SerializerMethodField()
+    projects = serializers.SerializerMethodField()
+    work_experience_years = serializers.IntegerField(read_only=True, allow_null=True)
+    work_history = serializers.CharField(read_only=True, allow_null=True)
+
+    class Meta(PublicOrganizerSerializer.Meta):
+        fields = PublicOrganizerSerializer.Meta.fields + (
+            'bio',
+            'description',
+            'active_projects',
+            'total_projects',
+            'projects',
+            'work_experience_years',
+            'work_history',
+        )
+        read_only_fields = fields
+
+    def get_description(self, obj: User) -> str | None:
+        app = getattr(obj, 'organizer_application', None)
+        if app and app.description:
+            return app.description.strip() or None
+        return None
+
+    def get_active_projects(self, obj: User) -> int:
+        from api.projects.models import Project
+        return Project.objects.filter(
+            creator=obj,
+            status='approved',
+            is_deleted=False,
+        ).count()
+
+    def get_total_projects(self, obj: User) -> int:
+        from api.projects.models import Project
+        return Project.objects.filter(creator=obj, is_deleted=False).count()
+
+    def get_projects(self, obj: User) -> list:
+        from api.projects.models import Project
+        qs = Project.objects.filter(
+            creator=obj,
+            status='approved',
+            is_deleted=False,
+        ).order_by('-created_at')[:12]
+        return PublicOrganizerProjectSerializer(qs, many=True, context=self.context).data
 

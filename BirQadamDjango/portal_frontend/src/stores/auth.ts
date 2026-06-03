@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 import { login as apiLogin, logout as apiLogout, fetchCurrentUser, fetchVolunteerProfile } from '@/services/auth';
+import { getOrganizerProfile } from '@/services/webPortal';
 import type { LoginPayload } from '@/services/auth';
 
 export interface AuthUser {
@@ -17,6 +18,9 @@ export interface AuthUser {
   organization_name?: string | null;
   trust_factor?: number;
   average_rating?: number;
+  bio_filled?: boolean;
+  resume_filled?: boolean;
+  profile_complete?: boolean;
 }
 
 function persistAccessToken(data: { access_token?: string }) {
@@ -49,6 +53,20 @@ export const useAuthStore = defineStore('auth', () => {
   const isRejectedOrganizer = computed(
     () => isOrganizerRole.value && user.value?.organizer_status === 'rejected',
   );
+
+  const needsBioCompletion = computed(() => {
+    const u = user.value;
+    if (!u) return false;
+    if (isApprovedOrganizer.value) return !u.bio_filled;
+    if (!isOrganizerRole.value) return !u.bio_filled;
+    return false;
+  });
+
+  const needsProfileCompletion = computed(() => {
+    const u = user.value;
+    if (!u || isOrganizerRole.value) return false;
+    return !u.profile_complete;
+  });
 
   async function loadUser() {
     try {
@@ -110,6 +128,9 @@ export const useAuthStore = defineStore('auth', () => {
       if (profile.average_rating !== undefined) {
         user.value.average_rating = profile.average_rating;
       }
+      user.value.bio_filled = profile.bio_filled;
+      user.value.resume_filled = profile.resume_filled;
+      user.value.profile_complete = profile.profile_complete;
     } else {
       user.value = {
         id: profile.id || 0,
@@ -120,7 +141,21 @@ export const useAuthStore = defineStore('auth', () => {
         registration_source: null,
         trust_factor: profile.trust_factor,
         average_rating: profile.average_rating,
+        bio_filled: profile.bio_filled,
+        resume_filled: profile.resume_filled,
+        profile_complete: profile.profile_complete,
       } as AuthUser;
+    }
+    return profile;
+  }
+
+  async function refreshOrganizerProfile() {
+    const profile = await getOrganizerProfile();
+    if (user.value) {
+      user.value.full_name = profile.full_name;
+      user.value.organization_name = profile.organization_name;
+      user.value.bio_filled = profile.bio_filled;
+      user.value.profile_complete = profile.profile_complete;
     }
     return profile;
   }
@@ -133,12 +168,15 @@ export const useAuthStore = defineStore('auth', () => {
     isApprovedOrganizer,
     isPendingOrganizer,
     isRejectedOrganizer,
+    needsBioCompletion,
+    needsProfileCompletion,
     initialize,
     initialized,
     loadUser,
     login,
     logout,
     refreshProfile,
+    refreshOrganizerProfile,
     persistAccessToken,
   };
 });

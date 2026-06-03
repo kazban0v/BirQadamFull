@@ -18,6 +18,73 @@ from api.projects.models import VolunteerProject
 
 logger = logging.getLogger(__name__)
 
+VOLUNTEER_BIO_MIN_LENGTH = 30
+VOLUNTEER_BIO_MAX_LENGTH = 2000
+VOLUNTEER_BIO_REQUIRED_DETAIL = (
+    'Заполните раздел «О себе» в профиле (минимум 30 символов), чтобы участвовать в проектах.'
+)
+VOLUNTEER_RESUME_REQUIRED_DETAIL = (
+    'Загрузите резюме в профиле, чтобы участвовать в проектах.'
+)
+VOLUNTEER_PROFILE_REQUIRED_DETAIL = (
+    'Заполните «О себе» (минимум 30 символов) и загрузите резюме в профиле, '
+    'чтобы участвовать в проектах.'
+)
+ORGANIZER_BIO_REQUIRED_DETAIL = (
+    'Заполните раздел «О себе» в портфолио (минимум 30 символов), '
+    'чтобы управлять проектами и быть в публичном каталоге.'
+)
+
+
+def volunteer_bio_is_complete(user) -> bool:
+    bio = getattr(user, 'bio', None) or ''
+    return len(bio.strip()) >= VOLUNTEER_BIO_MIN_LENGTH
+
+
+def organizer_bio_is_complete(user) -> bool:
+    return volunteer_bio_is_complete(user)
+
+
+def volunteer_resume_is_complete(user) -> bool:
+    from api.users.models import VolunteerDocument
+    return VolunteerDocument.objects.filter(
+        volunteer=user,
+        doc_type=VolunteerDocument.DOC_TYPE_RESUME,
+    ).exists()
+
+
+def volunteer_profile_is_complete(user) -> bool:
+    return volunteer_bio_is_complete(user) and volunteer_resume_is_complete(user)
+
+
+def public_volunteers_with_complete_bio(queryset):
+    """Queryset filter: only volunteers with published bio."""
+    from django.db.models import Q
+    from django.db.models.functions import Length
+    return queryset.exclude(Q(bio__isnull=True) | Q(bio='')).annotate(
+        _bio_len=Length('bio'),
+    ).filter(_bio_len__gte=VOLUNTEER_BIO_MIN_LENGTH)
+
+
+def public_volunteers_with_complete_profile(queryset):
+    """Queryset filter: volunteers with bio and resume for public catalog."""
+    from django.db.models import Exists, OuterRef
+    from api.users.models import VolunteerDocument
+    resume_exists = VolunteerDocument.objects.filter(
+        volunteer=OuterRef('pk'),
+        doc_type=VolunteerDocument.DOC_TYPE_RESUME,
+    )
+    return public_volunteers_with_complete_bio(queryset).filter(Exists(resume_exists))
+
+
+def public_organizers_with_complete_bio(queryset):
+    """Queryset filter: only organizers with published bio."""
+    from django.db.models import Q
+    from django.db.models.functions import Length
+    return queryset.exclude(Q(bio__isnull=True) | Q(bio='')).annotate(
+        _bio_len=Length('bio'),
+    ).filter(_bio_len__gte=VOLUNTEER_BIO_MIN_LENGTH)
+
 
 def get_volunteer_stats(user) -> Dict[str, Any]:  # type: ignore[no-any-unimported]
     rating = user.rating or 0

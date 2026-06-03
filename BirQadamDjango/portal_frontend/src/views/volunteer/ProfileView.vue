@@ -1,17 +1,30 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue';
+import { computed, onMounted, reactive, ref, watch } from 'vue';
+import { useRoute } from 'vue-router';
 import type { VForm } from 'vuetify/components';
 
 import { fetchVolunteerProfile, updateVolunteerProfile, getTelegramSyncStatus, generateTelegramLinkCode } from '@/services/auth';
 import { fetchVolunteerStats, fetchVolunteerActivity } from '@/services/stats';
 import { useAuthStore } from '@/stores/auth';
 import { fetchTrustFactorHistory, type TrustFactorHistoryResponse } from '@/services/trustFactor';
+import {
+  deleteVolunteerDocument,
+  fetchVolunteerDocuments,
+  uploadVolunteerDocument,
+  type VolunteerDocumentItem,
+} from '@/services/webPortal';
 
 const authStore = useAuthStore();
+const route = useRoute();
 const loading = ref(false);
 const formRef = ref<VForm | null>(null);
+const bioFormRef = ref<VForm | null>(null);
 const snackbar = reactive({ show: false, color: 'success', message: '' });
-const formState = reactive({ name: '', phone_number: '', email: '' });
+const formState = reactive({ name: '', phone_number: '', email: '', bio: '' });
+const bioFilled = ref(false);
+const resumeFilled = ref(false);
+const profileComplete = ref(false);
+const profileCompleteBanner = computed(() => route.query.complete === '1' || !profileComplete.value);
 
 const passwordDialog = ref(false);
 const passwordFormRef = ref<VForm | null>(null);
@@ -24,7 +37,30 @@ const rules = {
     if (!value) return true;
     return value.length <= 15 || 'Номер телефона не должен превышать 15 символов.';
   },
+  bioMin: (value: string) => {
+    if (!value || value.trim().length < 30) return 'Минимум 30 символов.';
+    return true;
+  },
+  bioMax: (value: string) => {
+    if (value && value.length > 2000) return 'Не более 2000 символов.';
+    return true;
+  },
 };
+
+const DOC_ROWS = [
+  { doc_type: 'resume' as const, label: 'Резюме, презентация' },
+  { doc_type: 'certificate' as const, label: 'Диплом, сертификат, награда' },
+];
+const documents = ref<VolunteerDocumentItem[]>([]);
+const documentsLoading = ref(false);
+const documentUploading = ref<string | null>(null);
+const fileInputs = ref<Record<string, HTMLInputElement | null>>({});
+
+const documentByType = computed(() => {
+  const map: Record<string, VolunteerDocumentItem | undefined> = {};
+  for (const doc of documents.value) map[doc.doc_type] = doc;
+  return map;
+});
 
 const stats = ref<Awaited<ReturnType<typeof fetchVolunteerStats>> | null>(null);
 const activity = ref<Awaited<ReturnType<typeof fetchVolunteerActivity>> | null>(null);
@@ -55,8 +91,67 @@ const loadProfile = async () => {
   try {
     const d = await fetchVolunteerProfile();
     formState.name = d.name || ''; formState.phone_number = d.phone_number || ''; formState.email = d.email || '';
+    formState.bio = d.bio || '';
+    bioFilled.value = !!d.bio_filled;
+    resumeFilled.value = !!d.resume_filled;
+    profileComplete.value = !!d.profile_complete;
     await authStore.refreshProfile();
   } finally { loading.value = false; }
+};
+
+const loadDocuments = async () => {
+  documentsLoading.value = true;
+  try {
+    documents.value = await fetchVolunteerDocuments();
+  } catch {
+    snackbar.message = 'Не удалось загрузить документы.'; snackbar.color = 'error'; snackbar.show = true;
+  } finally {
+    documentsLoading.value = false;
+  }
+};
+
+const triggerDocumentUpload = (docType: string) => {
+  fileInputs.value[docType]?.click();
+};
+
+const handleDocumentSelected = async (docType: 'resume' | 'certificate', event: Event) => {
+  const input = event.target as HTMLInputElement;
+  const file = input.files?.[0];
+  input.value = '';
+  if (!file) return;
+
+  documentUploading.value = docType;
+  try {
+    const uploaded = await uploadVolunteerDocument(docType, file);
+    documents.value = [
+      ...documents.value.filter((d) => d.doc_type !== docType),
+      uploaded,
+    ];
+    snackbar.message = 'Документ загружен.'; snackbar.color = 'success'; snackbar.show = true;
+    await authStore.refreshProfile();
+    profileComplete.value = !!authStore.user?.profile_complete;
+    resumeFilled.value = !!authStore.user?.resume_filled;
+  } catch (e: any) {
+    snackbar.message = e?.response?.data?.detail || 'Не удалось загрузить документ.'; snackbar.color = 'error'; snackbar.show = true;
+  } finally {
+    documentUploading.value = null;
+  }
+};
+
+const handleDocumentDelete = async (doc: VolunteerDocumentItem) => {
+  documentUploading.value = doc.doc_type;
+  try {
+    await deleteVolunteerDocument(doc.id);
+    documents.value = documents.value.filter((d) => d.id !== doc.id);
+    snackbar.message = 'Документ удалён.'; snackbar.color = 'success'; snackbar.show = true;
+    await authStore.refreshProfile();
+    profileComplete.value = !!authStore.user?.profile_complete;
+    resumeFilled.value = !!authStore.user?.resume_filled;
+  } catch (e: any) {
+    snackbar.message = e?.response?.data?.detail || 'Не удалось удалить документ.'; snackbar.color = 'error'; snackbar.show = true;
+  } finally {
+    documentUploading.value = null;
+  }
 };
 
 const loadTrustFactorHistory = async () => {
@@ -97,8 +192,9 @@ const copyToClipboard = async (text: string | null) => {
 const openTelegramBot = () => window.open('https://t.me/VolunteerDlyaLyudei_bot', '_blank');
 
 const submit = async () => {
-  const { valid } = (await formRef.value?.validate()) ?? { valid: false };
-  if (!valid) return;
+  const mainResult = (await formRef.value?.validate()) ?? { valid: false };
+  const bioResult = (await bioFormRef.value?.validate()) ?? { valid: false };
+  if (!mainResult.valid || !bioResult.valid) return;
   if ((formState.phone_number?.trim().length ?? 0) > 15) {
     snackbar.message = 'Номер телефона слишком длинный (макс. 15 символов).'; snackbar.color = 'error'; snackbar.show = true; return;
   }
@@ -108,10 +204,15 @@ const submit = async () => {
     if (formState.name?.trim())         payload.name         = formState.name.trim();
     if (formState.phone_number?.trim()) payload.phone_number = formState.phone_number.trim();
     if (formState.email?.trim())        payload.email        = formState.email.trim();
+    if (formState.bio !== undefined)    payload.bio          = formState.bio;
     const updated = await updateVolunteerProfile(payload);
     await authStore.refreshProfile();
+    bioFilled.value = !!updated.bio_filled;
+    resumeFilled.value = !!updated.resume_filled;
+    profileComplete.value = !!updated.profile_complete;
     snackbar.message = 'Профиль обновлён'; snackbar.color = 'success'; snackbar.show = true;
     formState.name = updated.name || ''; formState.phone_number = updated.phone_number || ''; formState.email = updated.email || '';
+    formState.bio = updated.bio || '';
   } catch (e: any) {
     const r = e?.response?.data;
     let msg = 'Не удалось сохранить профиль.';
@@ -160,7 +261,19 @@ const tfBg     = computed(() => profile.value.trust_factor >= 20 ? 'rgba(61,122,
 const tfPct    = computed(() => (profile.value.trust_factor / 30) * 100);
 const levelPct = computed(() => Math.round((stats.value?.progress ?? 0) * 100));
 
-onMounted(() => Promise.all([loadProfile(), loadStats(), loadActivity(), loadTelegramSync()]));
+onMounted(() => Promise.all([loadProfile(), loadStats(), loadActivity(), loadTelegramSync(), loadDocuments()]));
+
+watch(
+  () => route.query.complete,
+  (value) => {
+    if (value === '1' && !profileComplete.value) {
+      snackbar.message = 'Заполните «О себе», чтобы участвовать в проектах и принимать задачи.';
+      snackbar.color = 'warning';
+      snackbar.show = true;
+    }
+  },
+  { immediate: true },
+);
 </script>
 
 <template>
@@ -199,6 +312,15 @@ onMounted(() => Promise.all([loadProfile(), loadStats(), loadActivity(), loadTel
           Волонтёр BirQadam
         </div>
       </div>
+    </div>
+
+    <div v-if="profileCompleteBanner" class="bio-alert">
+      <v-icon size="18" color="#d97706">mdi-alert-circle-outline</v-icon>
+      <span>
+        Заполните «О себе» (минимум 30 символов) и загрузите резюме, чтобы участвовать в проектах и принимать задачи.
+        <template v-if="!bioFilled"> Сейчас не заполнено «О себе».</template>
+        <template v-else-if="!resumeFilled"> Сейчас не загружено резюме.</template>
+      </span>
     </div>
 
     <!-- ═══════════════════════════════
@@ -271,6 +393,90 @@ onMounted(() => Promise.all([loadProfile(), loadStats(), loadActivity(), loadTel
               </button>
             </div>
           </v-form>
+        </div>
+
+        <!-- About -->
+        <div class="card">
+          <div class="card__head">
+            <div class="card__ico"><v-icon size="18" color="#3d7a1a">mdi-text-box-outline</v-icon></div>
+            <div>
+              <h2 class="card__title">О себе</h2>
+              <p class="card__sub">Это описание видят фонды в публичном профиле</p>
+            </div>
+          </div>
+
+          <v-form ref="bioFormRef" @submit.prevent="submit">
+            <v-textarea
+              v-model="formState.bio"
+              label="Расскажите о себе"
+              variant="outlined"
+              density="comfortable"
+              rows="5"
+              counter="2000"
+              maxlength="2000"
+              :rules="[rules.required, rules.bioMin, rules.bioMax]"
+              :loading="loading"
+              hide-details="auto"
+              class="pf pf--full"
+            />
+            <div class="form-actions">
+              <button class="btn btn--primary" type="submit" :disabled="loading">
+                <v-icon size="15">mdi-content-save-outline</v-icon>
+                {{ loading ? 'Сохранение…' : 'Сохранить профиль' }}
+              </button>
+            </div>
+          </v-form>
+        </div>
+
+        <!-- Documents -->
+        <div class="card">
+          <div class="card__head">
+            <div class="card__ico"><v-icon size="18" color="#3d7a1a">mdi-file-document-outline</v-icon></div>
+            <div>
+              <h2 class="card__title">Документы</h2>
+              <p class="card__sub">PDF, JPG или PNG, до 5 МБ · резюме обязательно</p>
+            </div>
+          </div>
+
+          <div v-if="documentsLoading" class="state-center"><v-progress-circular indeterminate color="#8bc34a" size="30"/></div>
+          <div v-else class="docs-list">
+            <div v-for="row in DOC_ROWS" :key="row.doc_type" class="docs-list__row">
+              <div class="docs-list__info">
+                <span class="docs-list__label">
+                  {{ row.label }}
+                  <span v-if="row.doc_type === 'resume'" class="docs-list__req">*</span>
+                </span>
+                <span v-if="documentByType[row.doc_type]" class="docs-list__file">{{ documentByType[row.doc_type]?.original_name }}</span>
+                <span v-else class="docs-list__empty">Не загружено</span>
+              </div>
+              <div class="docs-list__actions">
+                <input
+                  :ref="(el) => { fileInputs[row.doc_type] = el as HTMLInputElement | null }"
+                  type="file"
+                  accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"
+                  class="docs-list__input"
+                  @change="handleDocumentSelected(row.doc_type, $event)"
+                />
+                <button
+                  type="button"
+                  class="btn btn--outline btn--sm"
+                  :disabled="documentUploading === row.doc_type"
+                  @click="triggerDocumentUpload(row.doc_type)"
+                >
+                  {{ documentByType[row.doc_type] ? 'Заменить' : 'Загрузить' }}
+                </button>
+                <button
+                  v-if="documentByType[row.doc_type]"
+                  type="button"
+                  class="btn btn--ghost btn--sm"
+                  :disabled="documentUploading === row.doc_type"
+                  @click="handleDocumentDelete(documentByType[row.doc_type]!)"
+                >
+                  Удалить
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
 
         <!-- Activity -->
@@ -1257,6 +1463,39 @@ onMounted(() => Promise.all([loadProfile(), loadStats(), loadActivity(), loadTel
 .tfh-item__delta--up { color: var(--g); }
 .tfh-item__delta--dn { color: #dc2626; }
 .tfh-item__meta { font-size: .7rem; color: var(--ink2); }
+
+.bio-alert {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 0 0 16px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: rgba(217, 119, 6, 0.08);
+  border: 1px solid rgba(217, 119, 6, 0.18);
+  color: #92400e;
+  font-size: .9rem;
+  line-height: 1.45;
+}
+
+.docs-list { display: flex; flex-direction: column; gap: 12px; }
+.docs-list__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 0;
+  border-bottom: 1px solid rgba(0,0,0,.06);
+}
+.docs-list__row:last-child { border-bottom: none; }
+.docs-list__info { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.docs-list__label { font-weight: 600; color: var(--ink); }
+.docs-list__req { color: #d97706; margin-left: 2px; }
+.docs-list__file { font-size: .82rem; color: var(--ink2); word-break: break-all; }
+.docs-list__empty { font-size: .82rem; color: rgba(0,0,0,.4); }
+.docs-list__actions { display: flex; gap: 8px; flex-shrink: 0; flex-wrap: wrap; }
+.docs-list__input { display: none; }
+.btn--sm { padding: 8px 12px; font-size: .82rem; }
 
 /* ═══════════════════════════════════════
    RESPONSIVE

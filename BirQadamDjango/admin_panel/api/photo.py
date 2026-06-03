@@ -554,6 +554,31 @@ class RatePhotoReportAPIView(APIView):
 
             photo.refresh_from_db()
 
+            publish_review = request.data.get('publish_as_review', False)
+            if isinstance(publish_review, str):
+                publish_review = publish_review.lower() in {'1', 'true', 'yes', 'on'}
+            if (
+                publish_review
+                and feedback
+                and feedback.strip()
+                and rating_value
+                and photo.volunteer
+                and photo.project
+            ):
+                try:
+                    from api.projects.services.reviews import create_or_update_volunteer_review
+                    create_or_update_volunteer_review(
+                        volunteer=photo.volunteer,
+                        organizer=request.user,
+                        project=photo.project,
+                        rating=rating_value,
+                        text=feedback.strip(),
+                        task=photo.task,
+                        photo=photo,
+                    )
+                except ValueError as review_error:
+                    logger.warning('Could not publish volunteer review: %s', review_error)
+
             # Отправляем уведомление волонтеру (Telegram + Push)
             from admin_panel.services.notification_service import NotificationService
             from asgiref.sync import async_to_sync

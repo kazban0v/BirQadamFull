@@ -3,6 +3,7 @@ Projects domain models
 Модели домена проектов
 """
 from django.db import models
+from django.core.validators import MinValueValidator, MaxValueValidator
 from django.utils import timezone
 from taggit.managers import TaggableManager  # type: ignore[reportMissingTypeStubs]
 from asgiref.sync import async_to_sync
@@ -224,4 +225,46 @@ class Event(models.Model):
     def get_participants_count(self) -> int:
         """Количество участников"""
         return self.participants.count()
+
+
+class VolunteerReview(models.Model):
+    """Публичный отзыв организации о работе волонтёра"""
+    volunteer = models.ForeignKey(
+        'api.User', on_delete=models.CASCADE, related_name='received_reviews', verbose_name='Волонтёр',
+    )
+    organizer = models.ForeignKey(
+        'api.User', on_delete=models.CASCADE, related_name='given_reviews', verbose_name='Организатор',
+    )
+    project = models.ForeignKey(
+        Project, on_delete=models.CASCADE, related_name='volunteer_reviews', verbose_name='Проект',
+    )
+    task = models.ForeignKey(
+        'api.Task', on_delete=models.SET_NULL, null=True, blank=True, related_name='volunteer_reviews',
+    )
+    photo = models.ForeignKey(
+        'api.Photo', on_delete=models.SET_NULL, null=True, blank=True, related_name='volunteer_reviews',
+    )
+    rating = models.PositiveSmallIntegerField(
+        validators=[MinValueValidator(1), MaxValueValidator(5)], verbose_name='Оценка',
+    )
+    text = models.TextField(max_length=2000, verbose_name='Текст отзыва')
+    is_published = models.BooleanField(default=True, db_index=True, verbose_name='Опубликован')
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        verbose_name = 'Отзыв о волонтёре'
+        verbose_name_plural = 'Отзывы о волонтёрах'
+        ordering = ['-created_at']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['organizer', 'volunteer', 'project'],
+                name='unique_volunteer_review_per_project',
+            ),
+        ]
+        indexes = [
+            models.Index(fields=['volunteer', 'is_published', 'created_at'], name='vol_review_pub_idx'),
+        ]
+
+    def __str__(self) -> str:
+        return f'Review by {self.organizer_id} for {self.volunteer_id} on {self.project_id}'
 
